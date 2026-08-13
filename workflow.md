@@ -43,7 +43,7 @@ wiki/sources/YYYY-MM-DD-主题.md
 status: candidate
 ```
 
-不要默认给每篇文章建立独立摘要。
+不要默认给每篇文章建立独立摘要。个别需要快速了解的单篇素材，可生成独立摘要写入 `summaries/`，同样标记 `status: candidate`。
 
 ## 3. 选择深读
 

@@ -1,5 +1,16 @@
 # Log
 
+## 2026-08-13
+
+- 整理：仓库目录结构全面整理
+- 重构：`resume/` 更名为 `summaries/`，定位为 AI 逐篇摘要区，与 `wiki/sources/` 主题综述互补
+- 摊平：`raw/new/`、`raw/案例/`、`raw/知识库/`、`raw/研发范式/`、`raw/评测/` 全部并入 `raw/`，恢复「raw 不分类」原则
+- 去重：删除 10 个重复 raw 文件（字节级重复和同文章多次抓取，各保留最完整版本）
+- 分流：根目录简历母稿×6 → `output/resume/`；面试训练方案 → `wiki/interview/`；个人思考笔记 → `wiki/thinking/`；外部文章 → `raw/`
+- 删除：根目录与 `raw/` 重复的牛客网文章 2 篇；`summaries/` 内部重复 1 篇
+- 清理：删除空目录 `tmp/`、`output/summaries/`
+- 更新：`CLAUDE.md`、`index.md`、`workflow.md` 同步新结构
+
 ## 2026-06-24
 
 - 执行：对 `raw/` 当前文章做第一步批量粗加工

@@ -55,7 +55,7 @@ status: captured | candidate | reading | integrated
 | 状态 | 含义 | 主要位置 |
 |---|---|---|
 | `captured` | 已保存，尚未判断价值 | `raw/` |
-| `candidate` | AI 粗加工后确认值得继续关注或深读 | `wiki/sources/` |
+| `candidate` | AI 粗加工后确认值得继续关注或深读 | `wiki/sources/`、`summaries/` |
 | `reading` | 正在阅读、验证、讨论和复述 | `reading/` |
 | `integrated` | 已转化为自己的知识、表达、判断或行动规则 | `wiki/`、`output/` |
 
@@ -185,6 +185,10 @@ AI 先读取用户的阅读笔记，再进行：
 ### `wiki/sources/`
 
 AI 粗加工区。以多来源主题综述为主，状态通常为 `candidate`。
+
+### `summaries/`
+
+AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补：需要快速了解单篇素材时生成独立摘要，多来源同类内容仍优先走主题综述。状态最高为 `candidate`，不进入 `wiki/`。
 
 ### `reading/`
 
