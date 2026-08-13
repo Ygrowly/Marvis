@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.tsbuildinfo
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+deploy/.env.prod
+deploy/.env.localtest
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp / captcha
+captcha*.jpg
+captcha*.png
+captcha*.txt
+
+# IBMS temp files
+ibms_cookies.txt
+ibms_headers.txt
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.dump
+
+# Firecrawl
+.firecrawl/
+
+# Offline deployment bundles
+artifacts/
+
+# Claude local settings
+.claude/settings.local.json
+
+# Large docs (keep in .firecrawl or external)
+
+api.pdf
+
+outputs/
+audit-results/
+
+docs/
+
+.tmp/
+pytest-tmp-current/
+
+.obsidian/
+.claudian/
