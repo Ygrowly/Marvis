@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>刘宇广 - AI应用工程师技术成果展示</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #7c3aed;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #0f172a;
+                --card-background: #1e293b;
+                --text-primary: #f1f5f9;
+                --text-secondary: #cbd5e1;
+                --border-color: #334155;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--card-background);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--card-background), var(--background-color));
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 8px 0;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .improvement {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .improvement.positive {
+            background-color: rgba(5, 150, 105, 0.1);
+            color: var(--success-color);
+        }
+
+        .improvement.negative {
+            background-color: rgba(220, 38, 38, 0.1);
+            color: var(--danger-color);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        .section {
+            margin: 40px 0;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .tech-tag {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .mermaid {
+            background: var(--card-background);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table th {
+            background-color: rgba(37, 99, 235, 0.1);
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -36px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: 3px solid var(--card-background);
+        }
+
+        .timeline-date {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .timeline-content {
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>刘宇广 - AI应用工程师技术成果展示</h1>
+        <p>专注企业级AI应用工程化，具备Agent治理、数据可信闭环与系统性能优化的完整实践经验</p>
+        <div class="tech-stack">
+            <span class="tech-tag">Python</span>
+            <span class="tech-tag">FastAPI</span>
+            <span class="tech-tag">PostgreSQL</span>
+            <span class="tech-tag">Agent架构</span>
+            <span class="tech-tag">RAG</span>
+            <span class="tech-tag">TypeScript</span>
+            <span class="tech-tag">React</span>
+            <span class="tech-tag">Docker</span>
+        </div>
+    </header>
+
+    <section class="section">
+        <h2 class="section-title">🎯 核心能力概览</h2>
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white;">📊</div>
+                    <h3 class="card-title">数据治理与质量</h3>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">99.7%</div>
+                        <p class="metric-label">可信聚合完整率</p>
+                        <span class="improvement positive">+2.9%</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">100%</div>
+                        <p class="metric-label">数据一致性率</p>
+                        <span class="improvement positive">+13.3%</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">99.6%</div>
+                        <p class="metric-label">定时任务成功率</p>
+                        <span class="improvement positive">+2.7%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">⚡</div>
+                    <h3 class="card-title">系统性能优化</h3>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">86.3%</div>
+                        <p class="metric-label">查询性能提升</p>
+                        <span class="improvement positive">P95: 20.4s→2.8s</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">95.8%</div>
+                        <p class="metric-label">Agent任务完成率</p>
+                        <span class="improvement positive">+12.5%</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">66.7%</div>
+                        <p class="metric-label">研判时间缩短</p>
+                        <span class="improvement positive">18min→6min</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">🛡️</div>
+                    <h3 class="card-title">安全架构验证</h3>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">100%</div>
+                        <p class="metric-label">危险语句拦截率</p>
+                        <span class="improvement positive">300条测试</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">2.7%</div>
+                        <p class="metric-label">正常查询误拦率</p>
+                        <span class="improvement negative">需优化</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">5层</div>
+                        <p class="metric-label">纵深防御架构</p>
+                        <span class="improvement positive">企业级安全</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">📈 性能优化对比</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">📊</div>
+                <h3 class="card-title">核心查询性能优化</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">🏗️ 技术架构展示</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background: linear-gradient(135deg, #ec4899, #db2777); color: white;">🔗</div>
+                <h3 class="card-title">Hook链治理架构</h3>
+            </div>
+            <div class="mermaid">
+                graph TB
+                    subgraph "Before Tool Hook链"
+                        B1[参数Schema校验] --> B2[数据完整性检查]
+                        B2 --> B3[权限验证]
+                        B3 --> B4[风险分级处理]
+                        B4 --> B5[人工确认检查]
+                    end
+
+                    subgraph "R0/R1/R2风险分级"
+                        R0[查询操作] --> R1[草稿操作]
+                        R1 --> R2[发布操作]
+                    end
+
+                    subgraph "After Tool Hook链"
+                        A1[证据登记] --> A2[Artifact外置]
+                        A2 --> A3[任务状态更新]
+                        A3 --> A4[审计日志写入]
+                    end
+
+                    B5 --> R0
+                    R2 --> A1
+
+                    style B1 fill:#3b82f6,color:#fff
+                    style B5 fill:#3b82f6,color:#fff
+                    style R0 fill:#10b981,color:#fff
+                    style R2 fill:#ef4444,color:#fff
+                    style A1 fill:#8b5cf6,color:#fff
+                    style A4 fill:#8b5cf6,color:#fff
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <div class="card-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">🛡️</div>
+                <h3 class="card-title">五层安全边界架构</h3>
+            </div>
+            <div class="mermaid">
+                graph TD
+                    A[用户请求] --> B[1. JWT认证]
+                    B --> C[2. 工具注册校验]
+                    C --> D[3. 参数业务验证]
+                    D --> E[4. SQL AST审查]
+                    E --> F[5. 结果脱敏输出]
+
+                    style A fill:#f59e0b,stroke:#333,stroke-width:2px,color:#fff
+                    style B fill:#3b82f6,stroke:#333,stroke-width:2px,color:#fff
+                    style C fill:#8b5cf6,stroke:#333,stroke-width:2px,color:#fff
+                    style D fill:#ec4899,stroke:#333,stroke-width:2px,color:#fff
+                    style E fill:#10b981,stroke:#333,stroke-width:2px,color:#fff
+                    style F fill:#ef4444,stroke:#333,stroke-width:2px,color:#fff
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">📊 PayTrace诊断系统评测</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon" style="background: linear-gradient(135deg, #84cc16, #65a30d); color: white;">🎯</div>
+                <h3 class="card-title">核心技术指标提升</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="paytraceChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">📋 项目时间线</h2>
+        <div class="card">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-date">2026.05 - 至今</div>
+                    <div class="timeline-title">金山 EnergyOps Agent</div>
+                    <div class="timeline-content">
+                        园区能耗智能运营平台，实现Hook链治理、能力路由、证据系统
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">2025.10 - 2026.03</div>
+                    <div class="timeline-title">数驭穹图 NL2SQL平台</div>
+                    <div class="timeline-content">
+                        企业AI数据分析与协作平台，构建五层安全边界
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">2025.12 - 至今</div>
+                    <div class="timeline-title">PayTrace诊断系统</div>
+                    <div class="timeline-content">
+                        支付转化异常归因与诊断Agent，实现证据契约系统
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">2025.09 - 2026.01</div>
+                    <div class="timeline-title">Ovanta跨区域签证平台</div>
+                    <div class="timeline-content">
+                        全栈开发，实现配置化区域适配与统一行为事件追踪
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">📈 业务价值量化</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>价值维度</th>
+                    <th>优化前</th>
+                    <th>优化后</th>
+                    <th>提升幅度</th>
+                    <th>年化价值</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>人工分析成本</td>
+                    <td>100%</td>
+                    <td>15%</td>
+                    <td><span class="improvement positive">85%</span></td>
+                    <td>¥120,000</td>
+                </tr>
+                <tr>
+                    <td>误判业务损失</td>
+                    <td>100%</td>
+                    <td>30%</td>
+                    <td><span class="improvement positive">70%</span></td>
+                    <td>¥250,000</td>
+                </tr>
+                <tr>
+                    <td>系统运维成本</td>
+                    <td>100%</td>
+                    <td>40%</td>
+                    <td><span class="improvement positive">60%</span></td>
+                    <td>¥80,000</td>
+                </tr>
+                <tr>
+                    <td>培训维护成本</td>
+                    <td>100%</td>
+                    <td>40%</td>
+                    <td><span class="improvement positive">60%</span></td>
+                    <td>¥40,000</td>
+                </tr>
+                <tr>
+                    <td><strong>总计</strong></td>
+                    <td><strong>400%</strong></td>
+                    <td><strong>125%</strong></td>
+                    <td><span class="improvement positive">69%</span></td>
+                    <td><strong>¥490,000</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">🔗 资源链接</h2>
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white;">📄</div>
+                    <h3 class="card-title">文档资源</h3>
+                </div>
+                <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary);">
+                    <li>量化证据：energyops_metrics.md</li>
+                    <li>安全架构：five_layer_security_architecture.md</li>
+                    <li>项目评测：paytrace_evaluation_system.md</li>
+                    <li>架构设计：hook_chain_governance.md</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white;">💻</div>
+                    <h3 class="card-title">代码仓库</h3>
+                </div>
+                <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary);">
+                    <li>PayTrace项目：github.com/Ygrowly/PayTrace</li>
+                    <li>个人博客：Ygrowly.github.io</li>
+                    <li>GitHub主页：github.com/Ygrowly</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488); color: white;">📝</div>
+                    <h3 class="card-title">简历材料</h3>
+                </div>
+                <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary);">
+                    <li>详细简历：AI应用开发-Agent后端-2027秋招-投递版.md</li>
+                    <li>Boss直聘简历：BOSS直聘在线简历.md</li>
+                    <li>量化口径：简历量化指标口径.md</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <p>📧 邮箱：lyg3044@qq.com | 📱 电话：18771478399 | 🐙 GitHub：github.com/Ygrowly</p>
+        <p>最后更新：2026年8月14日 | 文档状态：生产就绪</p>
+    </footer>
+
+    <script>
+        // 初始化Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#3b82f6',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#1d4ed8',
+                lineColor: '#64748b',
+                secondaryColor: '#10b981',
+                tertiaryColor: '#8b5cf6'
+            }
+        });
+
+        // 性能优化对比图
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(performanceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['小时聚合', '日报表', '月度结算'],
+                datasets: [
+                    {
+                        label: '优化前',
+                        data: [20.4, 15.2, 32.1],
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgb(239, 68, 68)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '优化后',
+                        data: [2.8, 1.9, 3.5],
+                        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                        borderColor: 'rgb(34, 197, 94)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '核心查询性能优化对比（P95响应时间）',
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}秒`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '响应时间（秒）',
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                        }
+                    }
+                }
+            }
+        });
+
+        // PayTrace技术指标图
+        const paytraceCtx = document.getElementById('paytraceChart').getContext('2d');
+        new Chart(paytraceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['阶段定位', '根因F1', '损失MAE', '重复损失', '工具调用', 'Token消耗'],
+                datasets: [{
+                    label: '提升幅度',
+                    data: [21, 26, -11.8, -10.8, -45, -36],
+                    backgroundColor: [
+                        'rgba(34, 197, 94, 0.7)',
+                        'rgba(34, 197, 94, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(239, 68, 68, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgb(34, 197, 94)',
+                        'rgb(34, 197, 94)',
+                        'rgb(239, 68, 68)',
+                        'rgb(239, 68, 68)',
+                        'rgb(239, 68, 68)',
+                        'rgb(239, 68, 68)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'PayTrace核心技术指标提升（百分比）',
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const absValue = Math.abs(value);
+                                const direction = value > 0 ? '提升' : '降低';
+                                return `${context.label}: ${direction} ${absValue}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: '提升幅度（%）',
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        grid: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                        },
+                        grid: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                        }
+                    }
+                }
+            }
+        });
+
+        // 主题切换支持
+        function updateTheme() {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        }
+
+        // 监听主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+
+        // 初始主题设置
+        updateTheme();
+    </script>
+</body>
+</html>

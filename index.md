@@ -42,6 +42,11 @@ wiki/ 沉淀为知识、项目经验、表达与行动规则
 - [[2026-06-18-vercel-eve-agent-framework|Vercel Eve Agent 框架]]
 - [[2026-06-24-agent-loop-harness-review|Agent Loop、Harness 与代码审查工程化]]
 - [[2026-06-24-agent-product-adoption|Agent 产品形态与用户采用路径]]
+- [[2026-08-13-agent-runtime-engineering|Agent 运行时工程：治理、记忆、自主迭代]]
+- [[2026-08-13-dewu-agent-production-practice|生产级 Agent 工程实践（得物 12 篇）]]
+- [[2026-08-13-agent-evaluation-observability|Agent 评测与可观测体系]]
+- [[2026-08-13-data-intelligence-nl2sql|数据智能 Agent：NL2SQL、NL2BI 与意图识别]]
+- [[2026-08-13-interview-prep-2027|2027 秋招 Agent 后端面试备战素材]]
 
 ## 个人思考
 

@@ -10,6 +10,10 @@
 - 删除：根目录与 `raw/` 重复的牛客网文章 2 篇；`summaries/` 内部重复 1 篇
 - 清理：删除空目录 `tmp/`、`output/summaries/`
 - 更新：`CLAUDE.md`、`index.md`、`workflow.md` 同步新结构
+- 粗加工：对 raw/ 59 篇 + summaries/ 29 篇做批量主题聚类、去重与价值判断
+- 新增：5 篇主题综述（candidate）——Agent 运行时工程、得物生产级实践、Agent 评测与可观测、数据智能 Agent、2027 秋招面试备战
+- 判断：GEO、AI 可见性与求职目标弱相关，按需查阅不建页；小浣熊/OpenClaw/Eve 已入旧综述不重复处理
+- 调整：`summaries/` 中一篇全文转载（Tw93 Claude Code 六层）移回 `raw/`，保持 summaries 只存加工品
 
 ## 2026-06-24
 
