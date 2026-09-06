@@ -1,5 +1,16 @@
 # Log
 
+## 2026-09-06（仓库治理）
+
+- 分支：`repo-governance`
+- 归拢：`projects/` 三棵平行树（根级说明 / study 手册 / feishu 导出）→ 每项目一目录（`{项目}-项目说明.md` + 编号手册），git mv 保留历史
+- 删除：`projects/study/EnergyOps` 与飞书「完整学习资料包」9 文件字节级重复（保留 study 侧）、RuleArena 旧版说明 v0.1（9/1，被 9/4 版取代）、55 行能力地图旧骨架（被 607 行掌握度台账取代并继承页面名与关联链接）、`issue.md`（决策已吸收进 CLAUDE.md/workflow.md/log）、空目录（`.agents/`、`projects/my/`）、`summaries/附件/` 重复图 3 张、`.firecrawl/` 搜索 json 草稿、`output/` 根目录旧版 BOSS 简历（9/5 早于 resume/ 内 9/6 版）与旧版 2027届 PDF（8/10）
+- 迁移：`.firecrawl/` 5 篇内容抓取 → `raw/`（恢复唯一入口原则）；飞书能力掌握度台账 → `wiki/topics/AI应用开发能力地图.md`；`jd/resume/`（他人简历）→ `jd/参考简历/`；飞书 `JD.md`（快手全文，与 all.md 不重叠）→ `jd/快手-JD.md`；output 根目录简历导出 PDF/HTML → `output/resume/`
+- 修复：口述脚本、秋招总面试准备手册、快速上手指南、简历写作方法论共 9 处旧路径引用
+- 卫生：`.workbuddy/`（工具本地记忆）加入 `.gitignore` 并移出跟踪，本地文件保留
+- 元文档：CLAUDE.md 目录职责新增 study/projects/jd/output 四节；index.md 快速导航同步
+- 原因：热区三棵树并存、新旧版本跨目录混放、抓取产物违反唯一入口、协议文档多头
+
 ## 2026-09-06
 
 - 决策：主循环改为问题驱动，`questions.md` 成为系统骨架（问题台账）

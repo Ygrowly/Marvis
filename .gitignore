@@ -62,6 +62,9 @@ audit-results/
 
 docs/
 
+# Local tool state
+.workbuddy/
+
 .tmp/
 pytest-tmp-current/
 

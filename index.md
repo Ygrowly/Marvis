@@ -61,11 +61,14 @@ wiki/ 沉淀为知识、项目经验、表达与行动规则
 |---|---|
 | `questions.md` | 问题台账，加工的唯一驱动 |
 | `raw/` | 唯一外部素材入口 |
-| `summaries/` | AI 逐篇摘要区 |
+| `summaries/` | AI 逐篇摘要区（已冻结，仅按问题按需生成） |
+| `study/` | 跨项目能力课程（JD 要求 → 能力树） |
 | `wiki/sources/` | AI 生成的主题综述与阅读候选 |
 | `reading/` | 深读、验证、讨论和复述 |
 | `wiki/topics/` | 稳定技术知识 |
 | `wiki/projects/` | 项目经验与设计判断 |
 | `wiki/interview/` | 可直接调用的面试表达 |
 | `wiki/thinking/` | 个人判断和行动规则 |
-| `output/` | 对外成品 |
+| `projects/` | 按项目一目录：项目说明 + 编号学习手册 |
+| `jd/` | JD 分析、原始收集与参考简历 |
+| `output/` | 对外成品（简历只放 `output/resume/`） |
