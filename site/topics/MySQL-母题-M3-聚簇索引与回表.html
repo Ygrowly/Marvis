@@ -36,7 +36,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
-    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. <strong>既然覆盖索引能免回表，为什么不全表都建宽索引？</strong></strong></p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然覆盖索引能免回表，为什么不全表都建宽索引？</strong></strong></p>
 <p class="mv-md-p">索引要跟着写入一起维护：越宽的索引写入越慢、占空间越多；且索引数量多会干扰优化器选择。<strong>覆盖是给热点查询的，不是给全表的。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">rows</code> 很小就一定快吗？</strong></strong></p>
 <p class="mv-md-p">不一定。<code class="mv-md-code">rows</code> 是<strong>估算值</strong>，且它不含回表成本。命中 10 行但每行回表一次，可能比扫 100 行的覆盖索引还慢。</p>

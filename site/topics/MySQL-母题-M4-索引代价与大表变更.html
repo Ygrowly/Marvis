@@ -36,7 +36,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
-    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">LOCK=NONE</code> 都开了，为什么还是可能卡住线上？</strong></strong></p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">LOCK=NONE</code> 都开了，为什么还是可能卡住线上？</strong></strong></p>
 <p class="mv-md-p">关键在于 <strong>MDL 等待的连锁反应</strong>：长事务持读锁 → DDL 等写锁 → 后续查询再排在 DDL 后面。<code class="mv-md-code">LOCK=NONE</code> 只保证 DDL 执行期间不阻塞，<strong>不保证它不被别人阻塞</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong>索引是不是越多越好？</strong></strong></p>
 <p class="mv-md-p">不是。写放大 + 空间 + 优化器负担三笔账；判据是"有没有高频查询真的用它"。<strong>没被用上的索引是纯负债，应该删掉。</strong></p>

@@ -36,7 +36,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
-    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. <strong>既然 B+ 树这么矮，为什么还要尽量走覆盖索引？</strong></strong></p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然 B+ 树这么矮，为什么还要尽量走覆盖索引？</strong></strong></p>
 <p class="mv-md-p">树高决定定位成本，但<strong>回表是额外的 IO</strong>。B+ 树只解决「找到索引项」，回表要再查一次聚簇索引，那才是大头。</p>
 <p class="mv-md-p"><strong>2. <strong>为什么 B+ 树的叶子要用双向链表，单向不行？</strong></strong></p>
 <p class="mv-md-p">范围查询通常只需要向右扫（单向够用），但<strong>反向扫描</strong>（<code class="mv-md-code">ORDER BY ... DESC</code>）和某些优化器路径需要向左，双向是通用选择。</p>

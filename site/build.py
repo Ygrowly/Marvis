@@ -254,7 +254,7 @@ def parse_topic(path):
         "keywords": [x.strip() for x in re.split(r"[/｜|·]", grab(body, "恢复关键词")) if x.strip()],
         "invariant": grab(body, "核心不变量 / 主线") or grab(body, "核心不变量"),
         "skeleton": grab(body, "完整回答骨架"),
-        "followups": grab_numbered(body, "两层追问"),
+        "followups": grab_numbered(body, "追问") or grab_numbered(body, "两层追问"),
         "variants": grab_list(body, "同类变体"),
         "related": grab(body, "关联母题"),
         "transfer": grab(body, "可迁移场景"),
@@ -387,7 +387,7 @@ def render_topic(t):
             items += ('<p class="mv-md-p"><strong>%d. %s</strong></p>\n<p class="mv-md-p">%s</p>\n'
                       % (i, inline(fq),
                          inline(fa) if fa else '<span class="mv-topic-meta">答案见正文底稿</span>'))
-        panels.append('<collapse-panel title="两层追问（能答完才算出师）">%s</collapse-panel>' % items)
+        panels.append('<collapse-panel title="追问（先说后看）">%s</collapse-panel>' % items)
     if t["variants"]:
         panels.append('<collapse-panel title="同类变体"><ul class="mv-md-ul">%s</ul></collapse-panel>'
                       % "".join("<li>%s</li>" % inline(v) for v in t["variants"]))
@@ -1036,13 +1036,9 @@ def render_module_line(md, ln, prev_ln, next_ln):
             blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
             continue
 
-        ctx = ""
+        ctx = '<p class="mv-mt-q">%s</p>' % inline(tc["question"])
         if tc["problem"]:
             ctx += '<collapse-panel title="题目背景">%s</collapse-panel>' % md_to_html(tc["problem"])
-        ctx += ('<div class="mv-ask"><p class="mv-ask-q">%s</p>'
-                '<textarea class="mv-ask-in" data-k="ask-%s-%s" rows="3" '
-                'placeholder="先自己答一遍（关键词就行），答完再展开对照"></textarea></div>'
-                % (inline(tc["question"]), esc(md["module"]), esc(t["id"])))
 
         ref = ['<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>' % inline(tc["conclusion"])]
         if tc["keywords"]:
@@ -1064,14 +1060,9 @@ def render_module_line(md, ln, prev_ln, next_ln):
                 '<p class="mv-md-p"><strong>%d. %s</strong></p><p class="mv-md-p">%s</p>'
                 % (i, inline(fq), inline(fa) or '<span class="mv-topic-meta">见讲解</span>')
                 for i, (fq, fa) in enumerate(tc["followups"], 1))
-            ctx += '<collapse-panel title="两层追问（先说后看）">%s</collapse-panel>' % items
+            ctx += '<collapse-panel title="追问（先说后看）">%s</collapse-panel>' % items
 
-        ctx += ('<collapse-panel title="断点与验收">'
-                '<textarea class="mv-ask-in" data-k="bp-%s-%s" rows="2" '
-                'placeholder="这次卡在哪（写成事实，不写评价）"></textarea>'
-                '<p class="mv-note">正本：%s ｜ 闭卷过关后把 frontmatter 的 status 改成 '
-                '<code class="mv-md-code">integrated</code>，它才会进复训牌组。</p>'
-                "</collapse-panel>" % (esc(md["module"]), esc(t["id"]), esc(tc["src"])))
+        ctx += '<p class="mv-note">正本：%s</p>' % esc(tc["src"])
 
         blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
 
@@ -1190,8 +1181,8 @@ MODULE_LINE_PAGE = """<!DOCTYPE html>
   <p class="mv-line-lead">%%TRADEOFF%%</p>
 
   <p class="mv-note" style="margin-bottom:22px">
-    用法：每个母题<strong>先自己答</strong>（写关键词就行）→ 再展开「对照讲解」核对 → 记下断点。
-    全部过了，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
     <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
     它们才会进复训牌组。
   </p>
@@ -1210,14 +1201,6 @@ MODULE_LINE_PAGE = """<!DOCTYPE html>
 </div>
 <script src="../_components/marvis.js"></script>
 <script>
-document.querySelectorAll('.mv-ask-in').forEach(function (t) {
-  var k = 'mv.ask.' + t.getAttribute('data-k');
-  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
-  t.addEventListener('input', function () {
-    try { localStorage.setItem(k, t.value); } catch (e) {}
-  });
-});
-
 document.querySelectorAll('.mv-qdone').forEach(function (b) {
   var k = 'mv.done.' + b.getAttribute('data-k');
   function paint() {

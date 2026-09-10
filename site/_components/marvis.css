@@ -394,6 +394,11 @@ figure-box { display: block; }
 }
 .mv-mt-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; }
 .mv-mt-empty { font-size: 12px; color: var(--mv-muted); margin: 0 0 8px; }
+.mv-mt-q {
+  font-size: 13px; font-weight: 500; line-height: 1.65;
+  margin: 0 0 12px; padding: 11px 14px;
+  background: var(--mv-surface-2); border-radius: var(--mv-radius-sm);
+}
 .mv-mt collapse-panel + collapse-panel { margin-top: 8px; }
 
 .mv-table { width: 100%; border-collapse: collapse; font-size: 12px; }

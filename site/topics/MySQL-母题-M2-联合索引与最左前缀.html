@@ -43,7 +43,7 @@ LIMIT 100;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
-    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">WHERE b = 2 AND a = 1</code> 和 <code class="mv-md-code">WHERE a = 1 AND b = 2</code> 有区别吗？</strong></strong></p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">WHERE b = 2 AND a = 1</code> 和 <code class="mv-md-code">WHERE a = 1 AND b = 2</code> 有区别吗？</strong></strong></p>
 <p class="mv-md-p">没有。优化器会重排条件，<strong>索引匹配看的是列集合，不是书写顺序</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">a = 1 AND c = 3</code> 能用上 <code class="mv-md-code">(a, b, c)</code> 吗？</strong></strong></p>
 <p class="mv-md-p"><code class="mv-md-code">a</code> 能用（定位区间），<code class="mv-md-code">c</code> 用不上（被中间断开的 <code class="mv-md-code">b</code> 阻断）。但如果是 <code class="mv-md-code">a = 1 AND b = 2 AND c = 3</code>，三列都能用。</p>
