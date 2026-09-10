@@ -457,10 +457,18 @@ def short_round(s):
     return m.group(1) if m else (s or "").strip()[:4]
 
 
-def mod_letter(name):
-    """「模块 A · 开场与动机」→「A」"""
-    m = re.search(r"模块\s*([A-Za-z])", name or "")
-    return m.group(1) if m else (name or "?")[:2]
+CN_NUM = "一二三四五六七八九十"
+
+
+def mod_label(name):
+    """「模块 A · 开场与动机」→「一、开场与动机」"""
+    m = re.match(r"模块\s*([A-Za-z])\s*[·•]\s*(.+)$", (name or "").strip())
+    if not m:
+        return name or ""
+    i = ord(m.group(1).upper()) - ord("A")
+    num = CN_NUM[i] if 0 <= i < len(CN_NUM) else m.group(1)
+    title = re.sub(r"（[^）]*）", "", m.group(2)).strip()
+    return "%s、%s" % (num, title)
 
 
 def _num(s):
@@ -590,19 +598,22 @@ def score_color(v):
 
 
 def heat_svg(mod_groups):
-    """每模块一行的得分热力图（原生 hover 提示）"""
-    cell, gap, label_w = 28, 5, 84
-    step, rowh = cell + gap, cell + gap + 8
-    maxn = max((len(a) for _, a in mod_groups), default=1) or 1
-    W, H = label_w + maxn * step, len(mod_groups) * rowh
+    """每模块一行：模块名（中文序号 + 标题）｜逐题方块｜该模块平均分"""
+    cell, gap, label_w, avg_w = 30, 6, 232, 74
+    step, rowh = cell + gap, cell + gap + 10
+    maxn = max((len(arr) for _, arr, _ in mod_groups), default=1) or 1
+    W = label_w + maxn * step + avg_w
+    H = len(mod_groups) * rowh
     out = ['<svg viewBox="0 0 %d %d" width="100%%" role="img" xmlns="http://www.w3.org/2000/svg">' % (W, H),
-           '<title>各模块逐题得分分布</title>',
-           '<desc>每行是一个面试模块，方块颜色越深得分越高，悬停可看题目。</desc>']
-    for r, (label, arr) in enumerate(mod_groups):
+           '<title>各模块逐题得分与平均分</title>',
+           '<desc>每行一个面试模块，方块是该模块每道题的得分（颜色越深分越高），行末是模块平均分。</desc>']
+
+    for r, (label, arr, avg) in enumerate(mod_groups):
         y = r * rowh
+        # 行标签：一面 · 一、开场与动机
         out.append('<text x="%d" y="%d" text-anchor="end" dominant-baseline="central" '
-                   'font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">%s</text>'
-                   % (label_w - 10, y + cell // 2, esc(label)))
+                   'font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">%s</text>'
+                   % (label_w - 14, y + cell // 2, esc(label)))
         for c, it in enumerate(arr):
             v = it["total"]
             x = label_w + c * step
@@ -613,9 +624,14 @@ def heat_svg(mod_groups):
             out.append('<rect x="%d" y="%d" width="%d" height="%d" rx="5" fill="%s"/>'
                        % (x, y, cell, cell, score_color(v)))
             out.append('<text x="%d" y="%d" text-anchor="middle" dominant-baseline="central" '
-                       'font-family="ui-monospace,monospace" font-size="10" fill="#FFFFFF">%s</text>'
+                       'font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">%s</text>'
                        % (x + cell // 2, y + cell // 2 + 1, "%g" % v if v is not None else "—"))
             out.append('</g>')
+        # 行末平均分
+        ax = label_w + maxn * step + 10
+        out.append('<text x="%d" y="%d" dominant-baseline="central" '
+                   'font-family="ui-monospace,monospace" font-size="12" font-weight="500" '
+                   'fill="%s">%.1f</text>' % (ax, y + cell // 2, score_color(avg), avg))
     out.append('</svg>')
     return "".join(out)
 
@@ -629,13 +645,12 @@ def render_review(rv):
             gorder.append(k)
         groups[k].append(it)
 
-    bars, panels, heat_groups = [], [], []
+    panels, heat_groups = [], []
     for rnd, mod in gorder:
         arr = groups[(rnd, mod)]
         scored = [x for x in arr if x["total"] is not None]
         avg = (sum(x["total"] for x in scored) / len(scored)) if scored else 0
-        bars.append("%s%s:%.1f" % (rnd, mod_letter(mod), avg))
-        heat_groups.append(("%s · %s%s" % (rnd, mod_letter(mod), ""), arr))
+        heat_groups.append(("%s · %s" % (rnd, mod_label(mod)), arr, avg))
 
         inner = ""
         for it in arr:
@@ -692,7 +707,6 @@ def render_review(rv):
         ("%%META%%", meta_line),
         ("%%SUMMARY%%", rv["summary"]),
         ("%%HEAT%%", heat_svg(heat_groups)),
-        ("%%BARS%%", ",".join(bars)),
         ("%%TOTAL%%", str(len(rv["items"]))),
         ("%%PANELS%%", "".join(panels)),
         ("%%MISSING%%", missing or '<p class="mv-note">本报告未列缺失模块。</p>'),
@@ -738,9 +752,8 @@ REVIEW_PAGE = """<!DOCTYPE html>
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">分数分布 <span class="mv-topic-meta">共 %%TOTAL%% 题 · 颜色越深分越高</span></h2>
-    <figure-box num="1" title="逐题得分（悬停看题号与归因）">%%HEAT%%</figure-box>
-    <div style="margin-top:14px"><stat-bars title="各模块平均分（满分 25）" data="%%BARS%%" max="25"></stat-bars></div>
+    <h2 class="mv-section-title">分数分布 <span class="mv-topic-meta">共 %%TOTAL%% 题 · 颜色越深分越高 · 悬停看题号与归因</span></h2>
+    <figure-box num="1" title="各模块逐题得分与平均分（满分 25）">%%HEAT%%</figure-box>
   </div>
 
   <div class="mv-section">
