@@ -28,7 +28,7 @@ Vercel 发布开源 AI Agent 框架 Eve，用目录结构和文件约定把 Agen
 
 ## 关键概念
 
-- [[Agent-RAG-MCP]] — Agent 框架化趋势
+- [[04-Agent-Runtime与Harness]] — Agent 框架化趋势
 - 约定式框架 — 文件约定 > 代码配置
 - 持久化执行 — 任务可暂停恢复
 - 沙箱执行 — 隔离危险操作
@@ -46,6 +46,6 @@ Vercel 发布开源 AI Agent 框架 Eve，用目录结构和文件约定把 Agen
 
 ## 关联页面
 
-- [[Agent-RAG-MCP]]
+- [[04-Agent-Runtime与Harness]]
 - [[AI应用开发能力地图]]
 - [[MetricOps Agent]]

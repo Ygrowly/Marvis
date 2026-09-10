@@ -31,7 +31,7 @@ OUT_DIR = SITE / "_data"
 # 扫描范围：卡片可以内联在笔记里，不必集中放
 SCAN_DIRS = [
     "site/cards",
-    "output/算法",
+    "wiki/topics/算法",
     "study",
     "wiki/interview",
     "wiki/topics",

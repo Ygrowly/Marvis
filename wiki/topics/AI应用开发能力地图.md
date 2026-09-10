@@ -616,8 +616,7 @@ RuleArena 不应只是“多 Agent 审查 Demo”，而应专门补齐这些能�
 
 ## 关联页面
 
-- [[FDE能力地图]]
-- [[Python后端工程]]
-- [[Agent-RAG-MCP]]
+- [[08-Python异步与AI后端]]
+- [[04-Agent-Runtime与Harness]]
 - [[秋招面试地图]]
 

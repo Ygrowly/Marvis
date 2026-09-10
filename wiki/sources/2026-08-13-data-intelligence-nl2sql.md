@@ -15,8 +15,8 @@ sources:
   - "raw/2026-08-03T105229+0800 - RAG 核心概念与原理：Chunking、Embedding、相似度、HNSW 与多路召回｜得物技术.md"
 related:
   - "[[AI BI Text-to-SQL]]"
-  - "[[SQL与业务指标]]"
-  - "[[Agent-RAG-MCP]]"
+  - "[[数驭穹图项目说明]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[金山能源管理系统]]"
 ---
 
@@ -95,6 +95,6 @@ related:
 ## 可能更新的知识页
 
 - [[AI BI Text-to-SQL]]：补确定性路由、表知识卡片、评测驱动的设计取舍。
-- [[SQL与业务指标]]：补口径治理与元数据 Pipeline。
-- [[Agent-RAG-MCP]]：补「检索 vs 确定性路由」的适用条件判断。
+- [[数驭穹图项目说明]]：补口径治理与元数据 Pipeline。
+- [[04-Agent-Runtime与Harness]]：补「检索 vs 确定性路由」的适用条件判断。
 - [[金山能源管理系统]]：补告警收敛、权限治理、小模型意图识别的迁移点。

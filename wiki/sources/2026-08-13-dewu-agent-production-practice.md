@@ -22,7 +22,7 @@ related:
   - "[[2026-06-24-agent-loop-harness-review]]"
   - "[[MetricOps Agent]]"
   - "[[AI BI Text-to-SQL]]"
-  - "[[Agent-RAG-MCP]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[金山能源管理系统]]"
 ---
 
@@ -111,4 +111,4 @@ related:
 - [[MetricOps Agent]]：补受控执行、成本模型、Skill 即 SOP。
 - [[AI BI Text-to-SQL]]：补语义层、口径显式化、需求质量门禁。
 - [[金山能源管理系统]]：补 Agent 化改造的 HITL 分级与副作用时机。
-- [[Agent-RAG-MCP]]：补 Harness 分层与「通用 Agent + 业务 Skill」模式。
+- [[04-Agent-Runtime与Harness]]：补 Harness 分层与「通用 Agent + 业务 Skill」模式。

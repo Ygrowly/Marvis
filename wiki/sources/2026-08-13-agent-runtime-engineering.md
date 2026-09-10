@@ -20,7 +20,7 @@ sources:
 related:
   - "[[2026-06-24-agent-loop-harness-review]]"
   - "[[MetricOps Agent]]"
-  - "[[Agent-RAG-MCP]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[AI应用开发能力地图]]"
   - "[[阅读判断训练]]"
 ---
@@ -110,6 +110,6 @@ Agent 工程化第二阶段从「搭起 harness」进入「让系统自己变好
 ## 可能更新的知识页
 
 - [[MetricOps Agent]]：长期记忆设计（Hook 采集、置信度演化、检索注入）。
-- [[Agent-RAG-MCP]]：补运行时治理（Hook/offload/记忆）的位置。
+- [[04-Agent-Runtime与Harness]]：补运行时治理（Hook/offload/记忆）的位置。
 - [[AI应用开发能力地图]]：补「运行时工程」能力模块。
 - [[阅读判断训练]]：补「reward hacking 与评测信号质量」的判断规则。

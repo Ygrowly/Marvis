@@ -14,7 +14,7 @@ sources:
   - "raw/2026-06-24T123640+0800 - Agent harness engineering with Claude 14-step roadmap from one agent to a self-improving system.Agent 利用 Claude 实现工程化应用：从一个智能体到具备自我改进能力的系统的 14 步实现路径。.md"
   - "raw/2026-06-24T123632+0800 - Agentic Code Review.md"
 related:
-  - "[[Agent-RAG-MCP]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[AI应用开发能力地图]]"
   - "[[MetricOps Agent]]"
   - "[[阅读判断训练]]"
@@ -99,7 +99,7 @@ AI Coding 的关键瓶颈正在从“怎么提示模型”迁移到“如何设�
 
 ## 可能更新的知识页
 
-- [[Agent-RAG-MCP]]：补充 Harness/Loop 在 Agent 工程化中的位置。
+- [[04-Agent-Runtime与Harness]]：补充 Harness/Loop 在 Agent 工程化中的位置。
 - [[AI应用开发能力地图]]：加入“验证、评测、权限、状态、记忆、review”作为 AI 应用工程能力。
 - [[MetricOps Agent]]：设计最小 harness 和长期 loop 路线。
 - [[阅读判断训练]]：加入“AI 摘要/AI 代码不是掌握证明，验证才是核心”的判断规则。

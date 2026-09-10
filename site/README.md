@@ -24,7 +24,7 @@ site/
 
 ## 怎么加卡片
 
-写在**任何被扫描的 md** 里（`site/cards/`、`output/算法/`、`study/`、`wiki/interview/`、`wiki/topics/`、`wiki/thinking/`、`projects/`）：
+写在**任何被扫描的 md** 里（`site/cards/`、`wiki/topics/算法/`、`study/`、`wiki/interview/`、`wiki/topics/`、`wiki/thinking/`、`projects/`）：
 
 ```md
 ::card id=lru-01 tag=算法

@@ -17,7 +17,7 @@ sources:
 related:
   - "[[MetricOps Agent]]"
   - "[[AI应用开发能力地图]]"
-  - "[[Agent-RAG-MCP]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[金山能源管理系统]]"
 ---
 
@@ -100,5 +100,5 @@ related:
 
 - [[MetricOps Agent]]：补评测体系设计（Golden Set、评分器分层、回归用例 CI 门禁）。
 - [[AI应用开发能力地图]]：把「评测与可观测」升级为独立能力模块。
-- [[Agent-RAG-MCP]]：补「Trace/可观测是 Agent 标准能力」的判断。
+- [[04-Agent-Runtime与Harness]]：补「Trace/可观测是 Agent 标准能力」的判断。
 - [[金山能源管理系统]]：补监控异常发现的「候选≠通知」与回放验证。

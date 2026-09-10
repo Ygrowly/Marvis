@@ -10,7 +10,7 @@ sources:
   - "raw/2026-06-24T123617+0800 - 单月 10 倍增长背后，商汤小浣熊的反精英叙事.md"
   - "raw/2026-06-18T150744+0800 - Vercel 放大招：前端 Agent 框架 Eve 来了！.md"
 related:
-  - "[[Agent-RAG-MCP]]"
+  - "[[04-Agent-Runtime与Harness]]"
   - "[[AI应用开发能力地图]]"
   - "[[2026-06-18-vercel-eve-agent-framework]]"
 ---
@@ -85,6 +85,6 @@ Agent 产品不是只有“高权限本地智能体”一条路：开发者/极�
 
 ## 可能更新的知识页
 
-- [[Agent-RAG-MCP]]：补充 Agent 产品常见部件：Gateway、Tools、Skills、Channels、Memory、Heartbeat。
+- [[04-Agent-Runtime与Harness]]：补充 Agent 产品常见部件：Gateway、Tools、Skills、Channels、Memory、Heartbeat。
 - [[AI应用开发能力地图]]：加入“Agent 产品化与用户采用”维度。
 - [[项目表达地图]]：补充“普通用户 AI 产品设计”案例。

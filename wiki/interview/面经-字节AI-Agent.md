@@ -941,4 +941,3 @@ def max_area(height: list[int]) -> int:
 - [OpenAI：Improving mathematical reasoning with process supervision](https://openai.com/index/improving-mathematical-reasoning-with-process-supervision/)
 - [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050)
 - [Curriculum Learning for LLM fine-tuning: difficulty and utility](https://ojs.aaai.org/index.php/AAAI/article/view/40400/44361)
-

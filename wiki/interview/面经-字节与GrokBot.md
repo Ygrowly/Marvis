@@ -535,4 +535,3 @@ Cloud Agent 可以启动 Dev 环境、运行测试、操作应用并返回截图
 - [27 秋招懂车帝 AI Agent 一面](https://www.nowcoder.com/feed/main/detail/69e209d77a4647b7896ef3fd835239b6)
 - [OpenAI：Process supervision for mathematical reasoning](https://openai.com/index/improving-mathematical-reasoning-with-process-supervision/)
 - [LoRA 论文](https://arxiv.org/abs/2106.09685)
-
