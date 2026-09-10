@@ -65,7 +65,7 @@
 叶子层  137 万页 × 约 16 行    ≈ 2000 万行</pre>
 <p class="mv-md-p"><strong>查 2000 万行只需要 3 次 IO</strong>（除非走索引扫了很多行，或频繁回表）。 记忆点：<strong>三层 ≈ 2000 万行</strong>。这也解释了为什么几百万行的表只有三层、加不加索引高度感受不到差别。</p>
 <h3 class="mv-md-h">四、为什么不是别的结构</h3>
-<p class="mv-md-p">| 结构 | 致命问题 | |---|---| | <strong>B 树</strong> | 非叶节点也存数据 → 同样一页能放的键少得多 → 扇出小、树更高；范围查询要中序遍历回溯，不能顺链表走 | | <strong>红黑树 / AVL</strong> | 二叉树，扇出只有 2。几百万行高度 20+ → 20+ 次随机 IO，完全不可接受 | | <strong>哈希表</strong> | 等值查询 O(1) 很快，但<strong>不支持范围、排序、最左前缀</strong>——而真实业务查询几乎都是范围的 |</p>
+<table class="mv-table"><thead><tr><th>结构</th><th>致命问题</th></tr></thead><tbody><tr><td><strong>B 树</strong></td><td>非叶节点也存数据 → 同样一页能放的键少得多 → 扇出小、树更高；范围查询要中序遍历回溯，不能顺链表走</td></tr><tr><td><strong>红黑树 / AVL</strong></td><td>二叉树，扇出只有 2。几百万行高度 20+ → 20+ 次随机 IO，完全不可接受</td></tr><tr><td><strong>哈希表</strong></td><td>等值查询 O(1) 很快，但<strong>不支持范围、排序、最左前缀</strong>——而真实业务查询几乎都是范围的</td></tr></tbody></table>
 <p class="mv-md-p">一句话：B 树败在扇出，红黑树败在高度，哈希败在不支持范围。</p>
     </collapse-panel>
   </div>

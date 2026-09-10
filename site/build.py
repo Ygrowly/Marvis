@@ -139,8 +139,27 @@ def md_to_html(md):
                        "".join("<li>" + inline(x) + "</li>" for x in lst) + "</ul>")
             lst.clear()
 
-    for line in md.splitlines():
-        raw = line.rstrip()
+    lines = md.splitlines()
+    i = 0
+    while i < len(lines):
+        raw = lines[i].rstrip()
+        i += 1
+        # 表格：连续以 | 开头的行
+        if raw.strip().startswith("|") and raw.strip().count("|") >= 2:
+            block = [raw.strip()]
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                block.append(lines[i].strip())
+                i += 1
+            flush_para(); flush_list()
+            rows = parse_md_table(block)
+            if rows:
+                out.append("<table class=\"mv-table\"><thead><tr>" +
+                           "".join("<th>%s</th>" % inline(c) for c in rows[0]) +
+                           "</tr></thead><tbody>" +
+                           "".join("<tr>" + "".join("<td>%s</td>" % inline(c) for c in r) +
+                                   "</tr>" for r in rows[1:]) +
+                           "</tbody></table>")
+            continue
         if raw.startswith("```"):
             if not in_code:
                 flush_para(); flush_list(); code, in_code = [], True

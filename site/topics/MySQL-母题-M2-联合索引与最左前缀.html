@@ -63,7 +63,7 @@ LIMIT 100;</pre>
 <p class="mv-md-p">索引本身就是一份<strong>排好序的数据</strong>。<code class="mv-md-code">(status, next_retry_time, priority)</code> 的排序规则是：</p>
 <pre class="mv-md-pre">先按 status 排  →  status 相同再按 next_retry_time 排  →  再相同才按 priority 排</pre>
 <p class="mv-md-p">所以：</p>
-<p class="mv-md-p">| 查询条件 | 能否用索引 | 原因 | |---|---|---| | <code class="mv-md-code">status = 'PENDING'</code> | ✅ | 命中最左列 | | <code class="mv-md-code">status = ? AND next_retry_time &lt;= ?</code> | ✅ | 连续前缀 | | <code class="mv-md-code">next_retry_time &lt;= ?</code>（单独） | ❌ | <code class="mv-md-code">next_retry_time</code> 只在「同 status 内」有序，全局无序 | | <code class="mv-md-code">priority = 3</code>（单独） | ❌ | 只在最小范围内有序 |</p>
+<table class="mv-table"><thead><tr><th>查询条件</th><th>能否用索引</th><th>原因</th></tr></thead><tbody><tr><td><code class="mv-md-code">status = 'PENDING'</code></td><td>✅</td><td>命中最左列</td></tr><tr><td><code class="mv-md-code">status = ? AND next_retry_time &lt;= ?</code></td><td>✅</td><td>连续前缀</td></tr><tr><td><code class="mv-md-code">next_retry_time &lt;= ?</code>（单独）</td><td>❌</td><td><code class="mv-md-code">next_retry_time</code> 只在「同 status 内」有序，全局无序</td></tr><tr><td><code class="mv-md-code">priority = 3</code>（单独）</td><td>❌</td><td>只在最小范围内有序</td></tr></tbody></table>
 <p class="mv-md-p"><strong>一句话</strong>：<code class="mv-md-code">b</code> 是「局部有序、全局无序」的，所以只用 <code class="mv-md-code">b</code> 查等于在无序数据里找。</p>
 <h3 class="mv-md-h">二、字段顺序的四条经验（来自素材）</h3>
 <p class="mv-md-p">围绕<strong>执行路径</strong>设计，不是围绕字段热度：</p>
@@ -76,7 +76,7 @@ LIMIT 100</pre>
 <ul class="mv-md-ul"><li><code class="mv-md-code">status</code> 是等值 → 放最前</li><li><code class="mv-md-code">next_retry_time</code> 是范围 → 放第二位（它会截断后面）</li><li><code class="mv-md-code">priority</code> 是排序列 → 接在范围列后面，<strong>能用上一部分有序性</strong>（同一 <code class="mv-md-code">next_retry_time</code> 区间内仍是排好的）</li><li>若 <code class="mv-md-code">priority</code> 无法完全靠索引排序，<code class="mv-md-code">Extra</code> 里会出现 <code class="mv-md-code">Using filesort</code></li></ul>
 <p class="mv-md-p"><strong>注意</strong>：范围列之后的有序性只在「范围内部」有效，这是这条 SQL 是否出现 filesort 的关键——<strong>不要背「范围列后面全失效」，那是过度简化</strong>。</p>
 <h3 class="mv-md-h">四、索引失效的典型场景</h3>
-<p class="mv-md-p">| 场景 | 为什么失效 | |---|---| | 列上做函数 / 运算：<code class="mv-md-code">WHERE YEAR(created_at) = 2026</code> | 破坏了「按列原值有序」这个前提 | | 隐式类型转换：字符串列 <code class="mv-md-code">WHERE phone = 13800138000</code> | 相当于对列做了类型转换 | | 前导模糊：<code class="mv-md-code">LIKE '%abc'</code> | 前缀不定，无法定位有序区间的起点 | | <code class="mv-md-code">OR</code> 连接的条件里有非索引列 | 只能全表扫再合并 | | <code class="mv-md-code">!=</code> / <code class="mv-md-code">NOT IN</code> | 命中区间过于分散，优化器判断扫索引不如全表 | | 选择度太低（如 <code class="mv-md-code">status</code> 只有 3 个值） | 优化器主动放弃索引走全表 |</p>
+<table class="mv-table"><thead><tr><th>场景</th><th>为什么失效</th></tr></thead><tbody><tr><td>列上做函数 / 运算：<code class="mv-md-code">WHERE YEAR(created_at) = 2026</code></td><td>破坏了「按列原值有序」这个前提</td></tr><tr><td>隐式类型转换：字符串列 <code class="mv-md-code">WHERE phone = 13800138000</code></td><td>相当于对列做了类型转换</td></tr><tr><td>前导模糊：<code class="mv-md-code">LIKE '%abc'</code></td><td>前缀不定，无法定位有序区间的起点</td></tr><tr><td><code class="mv-md-code">OR</code> 连接的条件里有非索引列</td><td>只能全表扫再合并</td></tr><tr><td><code class="mv-md-code">!=</code> / <code class="mv-md-code">NOT IN</code></td><td>命中区间过于分散，优化器判断扫索引不如全表</td></tr><tr><td>选择度太低（如 <code class="mv-md-code">status</code> 只有 3 个值）</td><td>优化器主动放弃索引走全表</td></tr></tbody></table>
 <p class="mv-md-p"><strong>最后一条最容易被忽略</strong>：索引失效不一定是「写法错了」，可能是<strong>优化器算过成本后主动不选</strong>。</p>
     </collapse-panel>
   </div>
