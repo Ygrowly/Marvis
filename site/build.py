@@ -30,9 +30,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 OUT_DATA = SITE / "_data"
 OUT_TOPICS = SITE / "topics"
+OUT_REVIEWS = SITE / "reviews"
 FIGURES = SITE / "figures"
 
 TOPIC_DIRS = ["wiki/topics"]          # 母题卡
+REVIEW_DIRS = ["wiki/interview"]      # 面试复盘（诊断页）
 CARD_DIRS = ["site/cards", "output/算法", "study", "wiki/interview", "wiki/thinking", "projects"]
 
 CARD_RE = re.compile(r"^::card\s+id=(?P<id>\S+)(?:\s+tag=(?P<tag>\S+))?\s*$")
@@ -422,6 +424,348 @@ def render_topic(t):
     return out
 
 
+# ---------------------------------------------------------------- adapter：面试复盘（诊断页）
+
+def parse_md_table(lines):
+    rows = []
+    for ln in lines:
+        s = ln.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c.strip()):
+            continue
+        rows.append(cells)
+    return rows
+
+
+def slice_section(body, start_re, end_re=None):
+    m = re.search(start_re, body, re.M)
+    if not m:
+        return ""
+    rest = body[m.end():]
+    if end_re:
+        m2 = re.search(end_re, rest, re.M)
+        if m2:
+            rest = rest[:m2.start()]
+    return rest
+
+
+def short_round(s):
+    """「一面（61 分钟）」→「一面」"""
+    m = re.match(r"^(一面|二面|三面|四面|终面|HR 面|HR面)", (s or "").strip())
+    return m.group(1) if m else (s or "").strip()[:4]
+
+
+def mod_letter(name):
+    """「模块 A · 开场与动机」→「A」"""
+    m = re.search(r"模块\s*([A-Za-z])", name or "")
+    return m.group(1) if m else (name or "?")[:2]
+
+
+def _num(s):
+    m = re.search(r"-?\d+(?:\.\d+)?", s or "")
+    return float(m.group(0)) if m else None
+
+
+def parse_review(path):
+    meta, body = split_front(path.read_text(encoding="utf-8"))
+    if "面试官问题全清单" not in body:
+        return None
+
+    m = re.search(r"^#\s+(.+)$", body, re.M)
+    title = m.group(1).strip() if m else path.stem
+
+    head_meta = [(mm.group(1), mm.group(2))
+                 for mm in re.finditer(r"^\*\*(.+?)\*\*[：:]\s*(.+)$",
+                                       body[:body.find("## 0.")], re.M)]
+
+    # §1 问题清单（同时跟踪「轮次」与「模块」行）
+    items, order = {}, []
+    cur_mod, cur_round = "未分组", ""
+    for ln in slice_section(body, r"^##\s*1\.", r"^##\s*2\.").splitlines():
+        h = re.match(r"^###\s+\d+\.\d+\s*(.*)$", ln.strip())
+        if h:
+            cur_round = h.group(1).strip()
+            continue
+        s = ln.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c.strip()):
+            continue
+        first = cells[0] if cells else ""
+        if first.startswith("**") and "模块" in first:
+            cur_mod = first.strip("*").strip()
+            continue
+        if not re.fullmatch(r"[AB]\d+", first):
+            continue
+        items[first] = {
+            "id": first, "module": cur_mod, "round": short_round(cur_round),
+            "time": cells[1] if len(cells) > 1 else "",
+            "q": cells[2] if len(cells) > 2 else "",
+            "type": cells[3] if len(cells) > 3 else "",
+            "want": cells[4] if len(cells) > 4 else "",
+            "total": None, "cause": "", "radar": {}, "answer": "",
+        }
+        order.append(first)
+
+    # §2 五维评分
+    for cells in parse_md_table(slice_section(body, r"^##\s*2\.", r"^##\s*3\.").splitlines()):
+        sid = cells[0] if cells else ""
+        if sid not in items:
+            continue
+        for i, k in enumerate(["结构", "论据", "完整", "清晰", "针对"]):
+            if len(cells) > 2 + i:
+                items[sid]["radar"][k] = _num(cells[2 + i])
+        if len(cells) > 7:
+            items[sid]["total"] = _num(cells[7])
+        if len(cells) > 8:
+            items[sid]["cause"] = cells[8].strip()
+
+    # §3 标准回答（按 ### / #### 切分，标题里找题号）
+    sec3 = slice_section(body, r"^##\s*3\.", r"^##\s*4\.")
+    for part in re.split(r"^#{3,4}\s+", sec3, flags=re.M)[1:]:
+        lines = part.splitlines()
+        if not lines:
+            continue
+        mm = re.search(r"([AB]\d+(?:\s*/\s*[AB]\d+)*)\s*[·•]\s*(.+)$", lines[0].strip())
+        if not mm:
+            continue
+        html = md_to_html("\n".join(lines[1:]).strip())
+        for sid in re.findall(r"[AB]\d+", mm.group(1)):
+            if sid in items and not items[sid]["answer"]:
+                items[sid]["answer"] = html
+
+    # §4 缺失知识模块
+    missing = []
+    for cells in parse_md_table(slice_section(body, r"^##\s*4\.", r"^##\s*5\.").splitlines()):
+        if not cells or not re.match(r"\**M\d+", cells[0]):
+            continue
+        missing.append({
+            "id": cells[0].strip("*").strip(),
+            "name": cells[1].strip("*").strip() if len(cells) > 1 else "",
+            "why": cells[2] if len(cells) > 2 else "",
+            "target": cells[3] if len(cells) > 3 else "",
+            "ref": cells[4] if len(cells) > 4 else "",
+        })
+
+    # §5 下次准备清单
+    plan = []
+    sec5 = slice_section(body, r"^##\s*5\.", r"^##\s*6\.")
+    for part in re.split(r"^###\s+", sec5, flags=re.M)[1:]:
+        lines = part.splitlines()
+        if not lines:
+            continue
+        todos = [re.sub(r"^\s*-\s*\[[ xX]\]\s*", "", ln).strip()
+                 for ln in lines if re.match(r"^\s*-\s*\[[ xX]\]\s*\S", ln)]
+        if todos:
+            plan.append({"section": lines[0].strip(), "todos": todos})
+
+    return {
+        "key": path.relative_to(ROOT).as_posix(),
+        "stem": path.stem,
+        "title": title,
+        "head_meta": head_meta,
+        "summary": md_to_html(slice_section(body, r"^##\s*0\.", r"^##\s*1\.")),
+        "items": [items[i] for i in order],
+        "missing": missing,
+        "plan": plan,
+        "page": "reviews/%s.html" % path.stem,
+    }
+
+
+# ---------------------------------------------------------------- 渲染诊断页
+
+def score_color(v):
+    if v is None:
+        return "#D3D1C7"
+    if v <= 11:
+        return "#E24B4A"
+    if v <= 15:
+        return "#EF9F27"
+    if v <= 20:
+        return "#639922"
+    return "#3B6D11"
+
+
+def heat_svg(mod_groups):
+    """每模块一行的得分热力图（原生 hover 提示）"""
+    cell, gap, label_w = 28, 5, 84
+    step, rowh = cell + gap, cell + gap + 8
+    maxn = max((len(a) for _, a in mod_groups), default=1) or 1
+    W, H = label_w + maxn * step, len(mod_groups) * rowh
+    out = ['<svg viewBox="0 0 %d %d" width="100%%" role="img" xmlns="http://www.w3.org/2000/svg">' % (W, H),
+           '<title>各模块逐题得分分布</title>',
+           '<desc>每行是一个面试模块，方块颜色越深得分越高，悬停可看题目。</desc>']
+    for r, (label, arr) in enumerate(mod_groups):
+        y = r * rowh
+        out.append('<text x="%d" y="%d" text-anchor="end" dominant-baseline="central" '
+                   'font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">%s</text>'
+                   % (label_w - 10, y + cell // 2, esc(label)))
+        for c, it in enumerate(arr):
+            v = it["total"]
+            x = label_w + c * step
+            out.append('<g><title>%s · %s —— %s%s</title>'
+                       % (it["id"], esc(it["q"][:30]),
+                          ("%g 分" % v) if v is not None else "未评分",
+                          ("（%s）" % it["cause"]) if it["cause"] else ""))
+            out.append('<rect x="%d" y="%d" width="%d" height="%d" rx="5" fill="%s"/>'
+                       % (x, y, cell, cell, score_color(v)))
+            out.append('<text x="%d" y="%d" text-anchor="middle" dominant-baseline="central" '
+                       'font-family="ui-monospace,monospace" font-size="10" fill="#FFFFFF">%s</text>'
+                       % (x + cell // 2, y + cell // 2 + 1, "%g" % v if v is not None else "—"))
+            out.append('</g>')
+    out.append('</svg>')
+    return "".join(out)
+
+
+def render_review(rv):
+    groups, gorder = {}, []
+    for it in rv["items"]:
+        k = (it["round"], it["module"])
+        if k not in groups:
+            groups[k] = []
+            gorder.append(k)
+        groups[k].append(it)
+
+    bars, panels, heat_groups = [], [], []
+    for rnd, mod in gorder:
+        arr = groups[(rnd, mod)]
+        scored = [x for x in arr if x["total"] is not None]
+        avg = (sum(x["total"] for x in scored) / len(scored)) if scored else 0
+        bars.append("%s%s:%.1f" % (rnd, mod_letter(mod), avg))
+        heat_groups.append(("%s · %s%s" % (rnd, mod_letter(mod), ""), arr))
+
+        inner = ""
+        for it in arr:
+            chips = ""
+            if it["total"] is not None:
+                chips += '<span class="mv-chip">%g/25</span>' % it["total"]
+            if it["cause"]:
+                chips += '<span class="mv-chip warn">%s</span>' % esc(it["cause"])
+            if it["type"]:
+                chips += '<span class="mv-chip ghost">%s</span>' % esc(it["type"])
+            ans = it["answer"]
+            if ans:
+                abody = ans
+            elif it["want"]:
+                abody = '<p class="mv-md-p">面试官真正想听：%s</p>' % inline(it["want"])
+            else:
+                abody = '<p class="mv-md-p mv-topic-meta">本报告未附标准答案。</p>'
+            inner += (
+                '<div class="mv-qitem">'
+                '<div class="mv-qhead"><span class="mv-qid">%s</span>'
+                '<span class="mv-qtime">%s</span>%s</div>'
+                '<flip-card card-id="review-%s" tag="%s" q="%s" a="%s"></flip-card>'
+                '</div>'
+                % (esc(it["id"]), esc(it["time"]), chips,
+                   attrs(it["id"]) + "-" + attrs(rv["stem"])[:12],
+                   attrs(it["type"] or "面试题"),
+                   attrs(it["q"]), attrs(_strip_tags(abody)))
+            )
+        panels.append('<collapse-panel title="%s · %s · 平均 %.1f（%d 题）">%s</collapse-panel>'
+                      % (esc(rnd), esc(mod), avg, len(arr), inner))
+
+    missing = ""
+    for mm in rv["missing"]:
+        inner = ('<p class="mv-md-p"><strong>为什么是缺口</strong>：%s</p>'
+                 '<p class="mv-md-p"><strong>补到什么程度</strong>：%s</p>'
+                 '<p class="mv-md-p"><strong>挂靠</strong>：%s</p>'
+                 % (inline(mm["why"]), inline(mm["target"]),
+                    inline(mm["ref"]) or '<span class="mv-topic-meta">—</span>'))
+        missing += ('<collapse-panel title="%s · %s">%s</collapse-panel>'
+                    % (esc(mm["id"]), esc(mm["name"]), inner))
+
+    plan = ""
+    for blk in rv["plan"]:
+        lis = "".join("<li>%s</li>" % inline(x) for x in blk["todos"])
+        plan += ('<collapse-panel title="%s（%d 条）"%s>'
+                 '<ul class="mv-md-ul">%s</ul></collapse-panel>'
+                 % (esc(blk["section"]), len(blk["todos"]),
+                    " open" if blk == rv["plan"][0] else "", lis))
+
+    meta_line = esc(" ｜ ".join("%s %s" % (k, v) for k, v in rv["head_meta"][:4]))
+    out = REVIEW_PAGE
+    for k, v in (
+        ("%%TITLE%%", esc(rv["title"])),
+        ("%%META%%", meta_line),
+        ("%%SUMMARY%%", rv["summary"]),
+        ("%%HEAT%%", heat_svg(heat_groups)),
+        ("%%BARS%%", ",".join(bars)),
+        ("%%TOTAL%%", str(len(rv["items"]))),
+        ("%%PANELS%%", "".join(panels)),
+        ("%%MISSING%%", missing or '<p class="mv-note">本报告未列缺失模块。</p>'),
+        ("%%PLAN%%", plan or '<p class="mv-note">本报告未列下次清单。</p>'),
+        ("%%SRC%%", esc(rv["key"])),
+    ):
+        out = out.replace(k, v)
+    return out
+
+
+def _strip_tags(html):
+    """把答案 HTML 压成纯文本（flip-card 只接受文本属性）"""
+    s = re.sub(r"<br\s*/?>", "\n", html)
+    s = re.sub(r"</(p|li|h3|pre|div)>", "\n", s)
+    s = re.sub(r"<li>", "· ", s)
+    s = re.sub(r"<[^>]+>", "", s)
+    s = s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
+REVIEW_PAGE = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%%TITLE%%</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">面试诊断</span>
+    <h1 class="mv-topic-title">%%TITLE%%</h1>
+    <p class="mv-topic-meta">%%META%%</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">总评</h2>
+    <div class="mv-problem">%%SUMMARY%%</div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">分数分布 <span class="mv-topic-meta">共 %%TOTAL%% 题 · 颜色越深分越高</span></h2>
+    <figure-box num="1" title="逐题得分（悬停看题号与归因）">%%HEAT%%</figure-box>
+    <div style="margin-top:14px"><stat-bars title="各模块平均分（满分 25）" data="%%BARS%%" max="25"></stat-bars></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">逐题（按模块）<span class="mv-topic-meta">先说后翻</span></h2>
+    %%PANELS%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">缺失知识模块</h2>
+    %%MISSING%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">下次准备清单</h2>
+    %%PLAN%%
+  </div>
+
+  <p class="mv-note">正本：%%SRC%%　（改正本后重跑 build.py 即可刷新本页）</p>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
+"""
+
+
 # ---------------------------------------------------------------- main
 
 DIRTY_ATTR = re.compile(r'\s+data-page-[a-z-]+="[^"]*"')
@@ -478,6 +822,23 @@ def main():
         (OUT_TOPICS / ("%s-%s.html" % (t["module"], t["stem"]))).write_text(
             render_topic(t), encoding="utf-8")
 
+    # 诊断页
+    reviews, seen_r = [], set()
+    for d in REVIEW_DIRS:
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in sorted(base.rglob("*.md")):
+            rv = parse_review(p)
+            if not rv or rv["stem"] in seen_r:
+                continue
+            seen_r.add(rv["stem"])
+            reviews.append(rv)
+    OUT_REVIEWS.mkdir(parents=True, exist_ok=True)
+    for rv in reviews:
+        (OUT_REVIEWS / (rv["stem"] + ".html")).write_text(
+            render_review(rv), encoding="utf-8")
+
     decks = []
     if topics:
         decks.append({
@@ -499,6 +860,13 @@ def main():
         "window.MARVIS_DECKS = " + json.dumps(decks, ensure_ascii=False) + ";\n",
         encoding="utf-8")
 
+    review_index = [{"title": rv["title"], "href": rv["page"],
+                     "items": len(rv["items"]), "missing": len(rv["missing"])}
+                    for rv in reviews]
+    (OUT_DATA / "reviews.js").write_text(
+        "window.MARVIS_REVIEWS = " + json.dumps(review_index, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+
     n = sum(len(d["cards"]) for d in decks)
     print("母题页 %d | 牌组 %d | 卡片合计 %d" % (len(topics), len(decks), n))
     for d in decks:
@@ -507,6 +875,12 @@ def main():
         print("  -> %s（%s，追问 %d，变体 %d）"
               % (t["page"], "有图" if t["figures"] else "无图",
                  len(t["followups"]), len(t["variants"])))
+    for rv in reviews:
+        scored = [x for x in rv["items"] if x["total"] is not None]
+        print("  => %s（%d 题，已评 %d，有标准答案 %d，缺失模块 %d，计划 %d 段）"
+              % (rv["page"], len(rv["items"]), len(scored),
+                 sum(1 for x in rv["items"] if x["answer"]),
+                 len(rv["missing"]), len(rv["plan"])))
 
     cleaned = cleanup_html()
     if cleaned:

@@ -339,6 +339,25 @@ figure-box { display: block; }
 .mv-problem > :first-child { margin-top: 0; }
 .mv-problem > :last-child { margin-bottom: 0; }
 
+/* 诊断页：逐题条目 */
+.mv-qitem { padding: 14px 0; border-top: 1px solid var(--mv-border); }
+.mv-qitem:first-child { border-top: none; padding-top: 4px; }
+.mv-qhead {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px;
+}
+.mv-qid {
+  font-family: var(--mv-mono); font-size: 12px; font-weight: 500;
+  color: var(--mv-accent); flex: 0 0 auto;
+}
+.mv-qtime { font-family: var(--mv-mono); font-size: 11px; color: var(--mv-muted); }
+.mv-chip {
+  font-size: 11px; padding: 2px 9px; border-radius: 999px;
+  background: var(--mv-accent-soft); color: var(--mv-accent);
+  font-family: var(--mv-mono); white-space: nowrap;
+}
+.mv-chip.warn { background: var(--mv-warn-soft); color: var(--mv-warn); }
+.mv-chip.ghost { background: var(--mv-surface-2); color: var(--mv-muted); }
+
 .mv-md-h { font-size: 13px; font-weight: 500; margin: 16px 0 8px; }
 .mv-md-p { margin: 0 0 10px; }
 .mv-md-ul { margin: 0 0 10px; padding-left: 20px; }

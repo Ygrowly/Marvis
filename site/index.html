@@ -33,6 +33,8 @@
     </ul>
   </palace-map>
 
+  <p class="mv-note" id="mv-reviews" style="margin-top:14px"></p>
+
   <h2 class="mv-h2" style="margin-top:26px">今日复训 <small>1-3-7-14-30 · 进度存本地</small></h2>
   <review-deck title="间隔复训牌组"></review-deck>
 
@@ -71,6 +73,7 @@
 </div>
 
 <script src="_data/decks.js"></script>
+<script src="_data/reviews.js"></script>
 <script src="_components/marvis.js"></script>
 <script>
   function mvOpen(id) { document.getElementById(id).hidden = false; }
@@ -78,6 +81,17 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') mvClose('drill');
   });
+
+  (function () {
+    var el = document.getElementById('mv-reviews');
+    var list = window.MARVIS_REVIEWS || [];
+    if (!el) return;
+    if (!list.length) { el.remove(); return; }
+    el.innerHTML = '面试诊断：' + list.map(function (r) {
+      return '<a href="' + r.href + '" style="color:var(--mv-accent);text-decoration:none">' +
+        r.title.replace(/复盘报告$/, '') + '</a>　' + r.items + ' 题 · ' + r.missing + ' 个缺失模块';
+    }).join('　·　');
+  })();
 </script>
 </body>
 </html>
