@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>七 · 业务并发场景</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 七</span>
+    <h1 class="mv-topic-title">业务并发场景</h1>
+    <p class="mv-topic-meta">这条线在回答：抢库存、冲排行榜怎么不出错</p>
+  </div>
+  <p class="mv-line-lead">数据库扛 vs 挪到 Redis</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M13</span><span class="mv-mt-name">**乐观锁 vs 悲观锁怎么选**（9.9 一面原题，答得不合格）</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li><strong>乐观锁 vs 悲观锁怎么选？</strong>（9.9 一面原题）</li><li>排行榜用 MySQL 还是 Redis？为什么？</li><li>高并发扣库存 / 扣体力怎么防超卖？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M14</span><span class="mv-mt-name">排行榜 / 防超卖：用 MySQL 还是 Redis，为什么</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li><strong>乐观锁 vs 悲观锁怎么选？</strong>（9.9 一面原题）</li><li>排行榜用 MySQL 还是 Redis？为什么？</li><li>高并发扣库存 / 扣体力怎么防超卖？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">3 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">14</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q14" tag="MySQL" q="**乐观锁 vs 悲观锁怎么选？**（9.9 一面原题）" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">25</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q25" tag="MySQL" q="排行榜用 MySQL 还是 Redis？为什么？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">26</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q26" tag="MySQL" q="高并发扣库存 / 扣体力怎么防超卖？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-06-数据增长与高可用.html">← 六 · 数据增长与高可用</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>

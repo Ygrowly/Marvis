@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二 · SQL 执行与优化</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 二</span>
+    <h1 class="mv-topic-title">SQL 执行与优化</h1>
+    <p class="mv-topic-meta">这条线在回答：一条 SQL 到底怎么走、慢在哪</p>
+  </div>
+  <p class="mv-line-lead">优化器会选谁；改写 SQL 还是加索引</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M4</span><span class="mv-mt-name">一条 SQL 从连接到返回经历了什么（server 层 + 引擎层）</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>一条 SQL 从发送到返回经历了什么？</li><li>explain 主要看哪些字段？type 从好到坏怎么排？</li><li>慢查询怎么定位和优化？</li><li>深分页 <code class="mv-md-code">limit 1000000,10</code> 为什么慢？怎么优化？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M5</span><span class="mv-mt-name">慢查询怎么定位；深分页 `limit 1000000,10` 为什么慢</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>一条 SQL 从发送到返回经历了什么？</li><li>explain 主要看哪些字段？type 从好到坏怎么排？</li><li>慢查询怎么定位和优化？</li><li>深分页 <code class="mv-md-code">limit 1000000,10</code> 为什么慢？怎么优化？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">6 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">15</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q15" tag="MySQL" q="一条 SQL 从发送到返回经历了什么？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">16</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q16" tag="MySQL" q="explain 主要看哪些字段？type 从好到坏怎么排？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">17</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q17" tag="MySQL" q="慢查询怎么定位和优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">18</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q18" tag="MySQL" q="深分页 `limit 1000000,10` 为什么慢？怎么优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">19</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q19" tag="MySQL" q="`count(*)` / `count(1)` / `count(列)` 的区别？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">20</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q20" tag="MySQL" q="join 的驱动表怎么选？怎么优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-01-索引.html">← 一 · 索引</a><a class="mv-line-nav next" href="modules/MySQL-03-事务与锁.html">三 · 事务与锁 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>

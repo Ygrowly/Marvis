@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四 · 日志与持久化</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 四</span>
+    <h1 class="mv-topic-title">日志与持久化</h1>
+    <p class="mv-topic-meta">这条线在回答：提交过的数据，服务挂了为什么不该丢</p>
+  </div>
+  <p class="mv-line-lead">写放大 vs 崩溃恢复能力</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M9</span><span class="mv-mt-name">redo / undo / binlog 各管什么；两阶段提交为什么必要</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>ACID 分别是怎么实现的？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">1 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">8</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q8" tag="MySQL" q="ACID 分别是怎么实现的？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-03-事务与锁.html">← 三 · 事务与锁</a><a class="mv-line-nav next" href="modules/MySQL-05-长事务.html">五 · 长事务 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>

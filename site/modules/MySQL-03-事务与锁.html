@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三 · 事务与锁</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 三</span>
+    <h1 class="mv-topic-title">事务与锁</h1>
+    <p class="mv-topic-meta">这条线在回答：并发改同一份数据，为什么不会乱</p>
+  </div>
+  <p class="mv-line-lead">隔离强度 vs 并发吞吐；锁范围 vs 正确性</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M6</span><span class="mv-mt-name">四个隔离级别各解决什么问题；ACID 分别怎么实现</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>四个隔离级别分别解决什么问题？</li><li>MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？</li><li>RR 下幻读怎么解决？快照读和当前读的区别？</li><li>行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M7</span><span class="mv-mt-name">MVCC 怎么实现；RR 与 RC 生成 ReadView 的时机差在哪；幻读怎么解决</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>四个隔离级别分别解决什么问题？</li><li>MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？</li><li>RR 下幻读怎么解决？快照读和当前读的区别？</li><li>行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M8</span><span class="mv-mt-name">行锁、间隙锁、next-key lock 各锁什么；死锁怎么来、怎么排查</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>四个隔离级别分别解决什么问题？</li><li>MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？</li><li>RR 下幻读怎么解决？快照读和当前读的区别？</li><li>行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">5 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">9</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q9" tag="MySQL" q="四个隔离级别分别解决什么问题？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">10</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q10" tag="MySQL" q="MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">11</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q11" tag="MySQL" q="RR 下幻读怎么解决？快照读和当前读的区别？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">12</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q12" tag="MySQL" q="行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">13</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q13" tag="MySQL" q="死锁怎么产生、怎么排查、怎么避免？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-02-SQL 执行与优化.html">← 二 · SQL 执行与优化</a><a class="mv-line-nav next" href="modules/MySQL-04-日志与持久化.html">四 · 日志与持久化 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>

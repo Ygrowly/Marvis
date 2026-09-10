@@ -407,6 +407,58 @@ figure-box { display: block; }
 }
 .mv-table tr:last-child td { border-bottom: none; }
 
+/* 模块概览：统计条 */
+.mv-stat { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+.mv-stat-i {
+  font-size: 12px; color: var(--mv-muted); padding: 6px 12px;
+  border-radius: 999px; border: 1px solid var(--mv-border);
+  background: var(--mv-surface);
+}
+.mv-stat-i b { font-family: var(--mv-mono); font-size: 13px; font-weight: 500; color: var(--mv-text); }
+.mv-stat-i.ok b { color: var(--mv-ok); }
+.mv-stat-i.warn b { color: var(--mv-warn); }
+
+/* 模块概览：主线行 */
+.mv-line-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); text-decoration: none; color: inherit;
+  transition: border-color .15s;
+}
+.mv-line-row:hover { border-color: var(--mv-accent); }
+.mv-line-no { font-family: var(--mv-mono); font-size: 12px; color: var(--mv-accent); flex: 0 0 18px; }
+.mv-line-name { font-size: 13px; font-weight: 500; flex: 0 0 100px; }
+.mv-line-q { font-size: 12px; color: var(--mv-muted); flex: 1; min-width: 0; }
+.mv-line-st { font-size: 11px; color: var(--mv-muted); font-family: var(--mv-mono); flex: 0 0 auto; }
+.mv-line-bar {
+  flex: 0 0 56px; height: 6px; border-radius: 999px;
+  background: var(--mv-surface-2); overflow: hidden;
+}
+.mv-line-bar i { display: block; height: 100%; background: var(--mv-accent); }
+
+/* 主线页：先答区 */
+.mv-ask {
+  background: var(--mv-surface-2); border-radius: var(--mv-radius-sm);
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.mv-ask-q { font-size: 13px; font-weight: 500; margin: 0 0 9px; line-height: 1.6; }
+.mv-ask-in {
+  width: 100%; box-sizing: border-box; font-family: var(--mv-font);
+  font-size: 13px; line-height: 1.6; color: var(--mv-text);
+  background: var(--mv-surface); border: 1px solid var(--mv-border);
+  border-radius: var(--mv-radius-sm); padding: 9px 11px; resize: vertical;
+}
+.mv-ask-in:focus { outline: none; border-color: var(--mv-accent); }
+
+/* 主线页：上下条导航 */
+.mv-nav {
+  display: flex; justify-content: space-between; gap: 12px;
+  margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--mv-border);
+}
+.mv-line-nav { font-size: 12px; color: var(--mv-muted); text-decoration: none; }
+.mv-line-nav:hover { color: var(--mv-accent); }
+
 .mv-md-h { font-size: 13px; font-weight: 500; margin: 16px 0 8px; }
 .mv-md-p { margin: 0 0 10px; }
 .mv-md-ul { margin: 0 0 10px; padding-left: 20px; }

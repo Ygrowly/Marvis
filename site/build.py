@@ -872,100 +872,74 @@ def parse_module_card(path):
     }
 
 
-def render_module(md):
-    """学习页：主线 → 母题（有母题卡就展开，没有就标待提炼）"""
-    topics_by_line = {}
+CN_INDEX = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def line_short(name):
+    """「**索引**：怎么让查询不用扫全表」→「索引」"""
+    return re.split(r"[：:]", re.sub(r"\*+", "", name or ""))[0].strip()
+
+
+def line_question(name):
+    """取冒号后的那半（这条线在回答什么问题）"""
+    s = re.sub(r"\*+", "", name or "")
+    parts = re.split(r"[：:]", s, 1)
+    return parts[1].strip() if len(parts) > 1 else ""
+
+
+def module_line_page(md, no):
+    idx = CN_INDEX.get(no, 0)
+    return "modules/%s-%02d-%s.html" % (md["module"], idx, line_short(
+        next((l["name"] for l in md["lines"] if l["no"] == no), no)))
+
+
+def _by_line(rows, key="line"):
+    d = {}
+    for r in rows:
+        d.setdefault(r[key], []).append(r)
+    return d
+
+
+def _topic_state(md, tid):
+    p = md["cards"].get(tid)
+    if not p:
+        return "none", None
+    tc = parse_topic(p)
+    if not tc:
+        return "none", None
+    return ("live" if tc.get("status") == "integrated" else "draft"), tc
+
+
+def render_module_index(md):
+    """模块概览页：几条主线、多少题、走到哪了"""
+    tbl, qbl = _by_line(md["topics"]), _by_line(md["questions"])
+    n_live = n_draft = 0
     for t in md["topics"]:
-        topics_by_line.setdefault(t["line"], []).append(t)
+        st, _ = _topic_state(md, t["id"])
+        n_live += st == "live"
+        n_draft += st == "draft"
+    n_q = len(md["questions"])
+    n_must = sum(1 for q in md["questions"] if "必背" in (q["pri"] or ""))
 
-    q_by_line = {}
-    for q in md["questions"]:
-        q_by_line.setdefault(q["line"], []).append(q)
-
-    # 顶部总览：主线地图
-    chips = []
+    rows = ""
     for ln in md["lines"]:
-        arr = topics_by_line.get(ln["no"], [])
-        done = sum(1 for t in arr if "已过" in (t["status"] or ""))
-        chips.append(
-            '<span class="mv-lm-item"><b>%s</b> %s<span class="n">%d/%d</span></span>'
-            % (esc(ln["no"]), esc(ln["name"].split("：")[-1].split("——")[-1].strip()),
-               done, len(arr))
+        arr, qs = tbl.get(ln["no"], []), qbl.get(ln["no"], [])
+        done = sum(1 for t in arr if _topic_state(md, t["id"])[0] != "none")
+        pct = int(done * 100 / len(arr)) if arr else 0
+        rows += (
+            '<a class="mv-line-row" href="%s">'
+            '<span class="mv-line-no">%s</span>'
+            '<span class="mv-line-name">%s</span>'
+            '<span class="mv-line-q">%s</span>'
+            '<span class="mv-line-st">母题 %d · 题 %d</span>'
+            '<span class="mv-line-bar"><i style="width:%d%%"></i></span>'
+            "</a>"
+            % (esc(module_line_page(md, ln["no"])), esc(ln["no"]),
+               esc(line_short(ln["name"])), esc(line_question(ln["name"])),
+               len(arr), len(qs), pct)
         )
 
-    # 主线区块
-    panels = []
-    for ln in md["lines"]:
-        inner = ""
-        if ln["tradeoff"]:
-            inner += ('<p class="mv-line-lead">这条线的取舍：%s</p>' % inline(ln["tradeoff"]))
-
-        for t in topics_by_line.get(ln["no"], []):
-            path = md["cards"].get(t["id"])
-            tcard = parse_topic(path) if path else None
-            if tcard:
-                body = '<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>' % inline(tcard["conclusion"])
-                if tcard["keywords"]:
-                    body += '<ul class="mv-kw">%s</ul>' % "".join(
-                        "<li>%s</li>" % esc(k) for k in tcard["keywords"])
-                if tcard["invariant"]:
-                    body += '<p class="mv-md-p"><strong>主线</strong>：%s</p>' % inline(tcard["invariant"])
-                sub = []
-                if tcard["followups"]:
-                    items = "".join(
-                        '<p class="mv-md-p"><strong>%d. %s</strong></p><p class="mv-md-p">%s</p>'
-                        % (i, inline(fq), inline(fa) or '<span class="mv-topic-meta">见正文</span>')
-                        for i, (fq, fa) in enumerate(tcard["followups"], 1))
-                    sub.append('<collapse-panel title="两层追问（先说后看）">%s</collapse-panel>' % items)
-                if tcard["body_html"]:
-                    sub.append('<collapse-panel title="展开原理与推导">%s</collapse-panel>' % tcard["body_html"])
-                if tcard["figures"]:
-                    for i, f in enumerate(tcard["figures"], 1):
-                        sub.append('<figure-box num="%s-%d" title="%s" note="%s">%s</figure-box>'
-                                   % (t["id"], i, attrs(f["title"]), attrs(f["note"]),
-                                      prefix_svg_ids(f["svg"], "m%s%d" % (t["id"], i))))
-                dd = tcard.get("_dir")
-                body += "".join(sub) if sub else ""
-                link = '<p class="mv-note">正本：%s</p>' % esc(tcard["src"])
-                chip = ('<span class="mv-chip">已掌握</span>'
-                        if tcard.get("status") == "integrated"
-                        else '<span class="mv-chip warn">草稿 · 待验收</span>')
-                inner += ('<div class="mv-mt"><div class="mv-mt-head">'
-                          '<span class="mv-mt-id">%s</span><span class="mv-mt-name">%s</span>%s'
-                          '</div>%s%s</div>'
-                          % (esc(t["id"]), esc(t["name"]), chip, body, link))
-            else:
-                qs = "".join("<li>%s</li>" % inline(q["q"]) for q in q_by_line.get(ln["no"], [])[:4])
-                inner += ('<div class="mv-mt"><div class="mv-mt-head">'
-                          '<span class="mv-mt-id">%s</span><span class="mv-mt-name">%s</span>'
-                          '<span class="mv-chip ghost">%s</span></div>'
-                          '<p class="mv-mt-empty">内容待提炼。覆盖的题：</p>'
-                          '<ul class="mv-md-ul">%s</ul></div>'
-                          % (esc(t["id"]), esc(t["name"]), esc(t["status"] or "未开"), qs))
-
-        n = len(topics_by_line.get(ln["no"], []))
-        panels.append('<collapse-panel title="%s · %s（%d 个母题）">%s</collapse-panel>'
-                      % (esc(ln["no"]), esc(ln["name"]), n, inner))
-
-    # 抽查区（题单里所有必背题 → 翻转卡）
-    drill = ""
-    for q in md["questions"]:
-        if "必背" not in (q["pri"] or ""):
-            continue
-        drill += ('<div class="mv-qitem"><div class="mv-qhead">'
-                  '<span class="mv-qid">%s</span><span class="mv-chip ghost">主线%s</span></div>'
-                  '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
-                  % (esc(q["no"]), esc(q["line"]), attrs(md["module"]), attrs(q["no"]),
-                     attrs(md["module"]), attrs(q["q"]),
-                     attrs("先自己讲一遍，再回主线区核对。这道题归属主线" + q["line"] + "。")))
-
-    bridge = "".join(
-        "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
-        % tuple(inline(c) for c in row) for row in md["bridge"])
-
-    gate = "".join('<li>%s</li>' % inline(x) for x in md["gate"])
-
-    out = MODULE_PAGE
+    out = MODULE_INDEX_PAGE
     for k, v in (
         ("%%TITLE%%", esc(md["title"])),
         ("%%MODULE%%", esc(md["module"])),
@@ -974,18 +948,119 @@ def render_module(md):
         ("%%REASON%%", esc(md["reason"])),
         ("%%INCLUDE%%", esc(md["include"])),
         ("%%EXCLUDE%%", esc(md["exclude"])),
-        ("%%LINEMAP%%", "".join(chips)),
-        ("%%PANELS%%", "".join(panels)),
-        ("%%DRILL%%", drill or '<p class="mv-note">题单里还没有「必背」题。</p>'),
-        ("%%BRIDGE%%", bridge or '<tr><td colspan="4">未填写</td></tr>'),
-        ("%%GATE%%", gate or "<li>未填写</li>"),
+        ("%%NLINE%%", str(len(md["lines"]))),
+        ("%%NTOPIC%%", str(len(md["topics"]))),
+        ("%%NQ%%", str(n_q)),
+        ("%%NMUST%%", str(n_must)),
+        ("%%NLIVE%%", str(n_live)),
+        ("%%NDRAFT%%", str(n_draft)),
+        ("%%ROWS%%", rows or '<p class="mv-note">还没有主线。</p>'),
         ("%%SRC%%", esc(md["key"])),
     ):
         out = out.replace(k, v)
     return out
 
 
-MODULE_PAGE = """<!DOCTYPE html>
+def render_module_line(md, ln, prev_ln, next_ln):
+    """主线页：先出题 → 自己答 → 展开对照 → 记断点；本主线的题在页内"""
+    tbl, qbl = _by_line(md["topics"]), _by_line(md["questions"])
+    arr, qs = tbl.get(ln["no"], []), qbl.get(ln["no"], [])
+
+    blocks = ""
+    for t in arr:
+        st, tc = _topic_state(md, t["id"])
+        chip = {"live": '<span class="mv-chip">已掌握</span>',
+                "draft": '<span class="mv-chip warn">草稿 · 待验收</span>'}.get(
+                    st, '<span class="mv-chip ghost">未提炼</span>')
+        head = ('<div class="mv-mt-head"><span class="mv-mt-id">%s</span>'
+                '<span class="mv-mt-name">%s</span>%s</div>'
+                % (esc(t["id"]), esc(t["name"]), chip))
+
+        if not tc:
+            ctx = ('<p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p>'
+                   '<ul class="mv-md-ul">%s</ul>'
+                   % "".join("<li>%s</li>" % inline(q["q"]) for q in qs[:4]))
+            blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
+            continue
+
+        ctx = ""
+        if tc["problem"]:
+            ctx += '<collapse-panel title="题目背景">%s</collapse-panel>' % md_to_html(tc["problem"])
+        ctx += ('<div class="mv-ask"><p class="mv-ask-q">%s</p>'
+                '<textarea class="mv-ask-in" data-k="ask-%s-%s" rows="3" '
+                'placeholder="先自己答一遍（关键词就行），答完再展开对照"></textarea></div>'
+                % (inline(tc["question"]), esc(md["module"]), esc(t["id"])))
+
+        ref = ['<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>' % inline(tc["conclusion"])]
+        if tc["keywords"]:
+            ref.append('<ul class="mv-kw">%s</ul>' % "".join("<li>%s</li>" % esc(k)
+                                                             for k in tc["keywords"]))
+        if tc["invariant"]:
+            ref.append('<p class="mv-md-p"><strong>主线</strong>：%s</p>' % inline(tc["invariant"]))
+        if tc["body_html"]:
+            ref.append(tc["body_html"])
+        for i, f in enumerate(tc["figures"], 1):
+            ref.append('<figure-box num="%s-%d" title="%s" note="%s">%s</figure-box>'
+                       % (t["id"], i, attrs(f["title"]), attrs(f["note"]),
+                          prefix_svg_ids(f["svg"], "m%s%d" % (t["id"], i))))
+        ctx += ('<collapse-panel title="对照讲解（先答完再看）">%s</collapse-panel>'
+                % "".join(ref))
+
+        if tc["followups"]:
+            items = "".join(
+                '<p class="mv-md-p"><strong>%d. %s</strong></p><p class="mv-md-p">%s</p>'
+                % (i, inline(fq), inline(fa) or '<span class="mv-topic-meta">见讲解</span>')
+                for i, (fq, fa) in enumerate(tc["followups"], 1))
+            ctx += '<collapse-panel title="两层追问（先说后看）">%s</collapse-panel>' % items
+
+        ctx += ('<collapse-panel title="断点与验收">'
+                '<textarea class="mv-ask-in" data-k="bp-%s-%s" rows="2" '
+                'placeholder="这次卡在哪（写成事实，不写评价）"></textarea>'
+                '<p class="mv-note">正本：%s ｜ 闭卷过关后把 frontmatter 的 status 改成 '
+                '<code class="mv-md-code">integrated</code>，它才会进复训牌组。</p>'
+                "</collapse-panel>" % (esc(md["module"]), esc(t["id"]), esc(tc["src"])))
+
+        blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
+
+    drill = ""
+    for q in qs:
+        drill += ('<div class="mv-qitem"><div class="mv-qhead">'
+                  '<span class="mv-qid">%s</span><span class="mv-chip ghost">%s</span></div>'
+                  '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
+                  % (esc(q["no"]), esc(q["pri"]), attrs(md["module"]), attrs(q["no"]),
+                     attrs(md["module"]), attrs(q["q"]),
+                     attrs("先自己讲一遍，再回上面的母题区核对。")))
+    if not drill:
+        drill = '<p class="mv-note">这条主线还没有挂题。</p>'
+
+    nav = ""
+    if prev_ln:
+        nav += '<a class="mv-line-nav" href="%s">← %s · %s</a>' % (
+            esc(module_line_page(md, prev_ln["no"])), esc(prev_ln["no"]),
+            esc(line_short(prev_ln["name"])))
+    if next_ln:
+        nav += '<a class="mv-line-nav next" href="%s">%s · %s →</a>' % (
+            esc(module_line_page(md, next_ln["no"])), esc(next_ln["no"]),
+            esc(line_short(next_ln["name"])))
+
+    out = MODULE_LINE_PAGE
+    for k, v in (
+        ("%%TITLE%%", esc(line_short(ln["name"]))),
+        ("%%MODULE%%", esc(md["module"])),
+        ("%%INDEX%%", esc("modules/%s.html" % md["module"])),
+        ("%%NO%%", esc(ln["no"])),
+        ("%%LEAD%%", inline(line_question(ln["name"])) or "—"),
+        ("%%TRADEOFF%%", inline(ln["tradeoff"]) if ln["tradeoff"] else ""),
+        ("%%BLOCKS%%", blocks or '<p class="mv-note">这条主线还没有母题。</p>'),
+        ("%%DRILL%%", drill),
+        ("%%NQ%%", str(len(qs))),
+        ("%%NAV%%", nav),
+    ):
+        out = out.replace(k, v)
+    return out
+
+
+MODULE_INDEX_PAGE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -998,9 +1073,17 @@ MODULE_PAGE = """<!DOCTYPE html>
   <a class="mv-back" href="../index.html">← 返回训练台</a>
 
   <div class="mv-topic-head">
-    <span class="mv-topic-module">模块学习</span>
+    <span class="mv-topic-module">模块概览</span>
     <h1 class="mv-topic-title">%%TITLE%%</h1>
     <p class="mv-topic-meta">正本 %%SRC%%</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>%%NLINE%%</b> 条主线</span>
+    <span class="mv-stat-i"><b>%%NTOPIC%%</b> 个母题</span>
+    <span class="mv-stat-i"><b>%%NQ%%</b> 道题（<b>%%NMUST%%</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>%%NLIVE%%</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>%%NDRAFT%%</b> 草稿待验收</span>
   </div>
 
   <div class="mv-section">
@@ -1018,39 +1101,61 @@ MODULE_PAGE = """<!DOCTYPE html>
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">主线地图 <span class="mv-topic-meta">先看线，再落点</span></h2>
-    <div class="mv-linemap">%%LINEMAP%%</div>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">七条主线 <span class="mv-topic-meta">一次只开一条</span></h2>
-    %%PANELS%%
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">抽查 <span class="mv-topic-meta">必背题 · 先说后翻</span></h2>
-    %%DRILL%%
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">方言桥 <span class="mv-topic-meta">岗位栈 ←→ 我的项目栈</span></h2>
-    <table class="mv-table">
-      <thead><tr><th>面试官问的</th><th>我项目里的</th><th>关键差异</th><th>我该怎么说</th></tr></thead>
-      <tbody>%%BRIDGE%%</tbody>
-    </table>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">验收门 <span class="mv-topic-meta">全勾才算闭环</span></h2>
-    <check-list key="gate-%%MODULE%%" title="模块验收">
-      <ul>%%GATE%%</ul>
-    </check-list>
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    %%ROWS%%
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
 </body>
 </html>
 """
+
+
+MODULE_LINE_PAGE = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%%NO%% · %%TITLE%%</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="%%INDEX%%">← %%MODULE%% 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">%%MODULE%% · 主线 %%NO%%</span>
+    <h1 class="mv-topic-title">%%TITLE%%</h1>
+    <p class="mv-topic-meta">这条线在回答：%%LEAD%%</p>
+  </div>
+  <p class="mv-line-lead">%%TRADEOFF%%</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    %%BLOCKS%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">%%NQ%% 道 · 先说后翻</span></h2>
+    %%DRILL%%
+  </div>
+
+  <div class="mv-nav">%%NAV%%</div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>
+"""
+
 
 
 # ---------------------------------------------------------------- main
@@ -1141,7 +1246,14 @@ def main():
     OUT_MODULES.mkdir(parents=True, exist_ok=True)
     for md in modules:
         (OUT_MODULES / ("%s.html" % md["module"])).write_text(
-            render_module(md), encoding="utf-8")
+            render_module_index(md), encoding="utf-8")
+        for i, ln in enumerate(md["lines"]):
+            fname = module_line_page(md, ln["no"]).split("/")[-1]
+            (OUT_MODULES / fname).write_text(
+                render_module_line(md, ln,
+                                   md["lines"][i - 1] if i > 0 else None,
+                                   md["lines"][i + 1] if i + 1 < len(md["lines"]) else None),
+                encoding="utf-8")
 
     # 复训牌组只收已验收（integrated）的母题；草稿只读不练
     live = [t for t in topics if t.get("status") == "integrated"]

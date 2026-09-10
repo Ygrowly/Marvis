@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>五 · 长事务</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 五</span>
+    <h1 class="mv-topic-title">长事务</h1>
+    <p class="mv-topic-meta">这条线在回答：它为什么危险，为什么拖系统下水</p>
+  </div>
+  <p class="mv-line-lead">事务边界该划多大</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M10</span><span class="mv-mt-name">长事务为什么危险（不只是持锁久）</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">0 道 · 先说后翻</span></h2>
+    <p class="mv-note">这条主线还没有挂题。</p>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-04-日志与持久化.html">← 四 · 日志与持久化</a><a class="mv-line-nav next" href="modules/MySQL-06-数据增长与高可用.html">六 · 数据增长与高可用 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-ask-in').forEach(function (t) {
+  var k = 'mv.ask.' + t.getAttribute('data-k');
+  try { var v = localStorage.getItem(k); if (v) t.value = v; } catch (e) {}
+  t.addEventListener('input', function () {
+    try { localStorage.setItem(k, t.value); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>
