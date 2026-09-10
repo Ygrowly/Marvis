@@ -1130,6 +1130,13 @@ MODULE_LINE_PAGE = """<!DOCTYPE html>
   </div>
   <p class="mv-line-lead">%%TRADEOFF%%</p>
 
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己答</strong>（写关键词就行）→ 再展开「对照讲解」核对 → 记下断点。
+    全部过了，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
     %%BLOCKS%%

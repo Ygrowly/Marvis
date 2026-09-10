@@ -17,6 +17,13 @@
   </div>
   <p class="mv-line-lead">先加索引/归档，还是先分表</p>
 
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己答</strong>（写关键词就行）→ 再展开「对照讲解」核对 → 记下断点。
+    全部过了，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
     <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M11</span><span class="mv-mt-name">主从复制原理；主从延迟怎么来的、读到旧数据怎么办</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>主从复制的原理？binlog 有哪几种格式？</li><li>主从延迟的原因和缓解办法？读写分离读到旧数据怎么办？</li><li>什么情况下才需要分库分表？分片键怎么选？</li><li>连接池打满 / 数据库 CPU 飙高怎么排查？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M12</span><span class="mv-mt-name">冷热分离 / 归档 / 读写分离；为什么不是一上来就分库分表</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>主从复制的原理？binlog 有哪几种格式？</li><li>主从延迟的原因和缓解办法？读写分离读到旧数据怎么办？</li><li>什么情况下才需要分库分表？分片键怎么选？</li><li>连接池打满 / 数据库 CPU 飙高怎么排查？</li></ul></div>
