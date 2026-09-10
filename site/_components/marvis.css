@@ -1,0 +1,243 @@
+/* Marvis 知识宫殿 · 组件库 v0.1
+   约定：
+   1. 组件用 light DOM，不用 Shadow DOM —— 样式可被页面直接覆盖，改一行 CSS 就能换肤。
+   2. 所有组件只依赖本文件 + marvis.js，零第三方依赖，file:// 双击可开。
+   3. 组件只负责"长什么样"，数据由页面或 md 构建产物注入。
+*/
+
+:root {
+  --mv-bg: #FAFAF8;
+  --mv-surface: #FFFFFF;
+  --mv-surface-2: #F5F3EE;
+  --mv-border: #E5E3DC;
+  --mv-border-strong: #CFCCC2;
+  --mv-text: #2C2C2A;
+  --mv-muted: #6B6A65;
+  --mv-accent: #534AB7;
+  --mv-accent-soft: #EEEDFE;
+  --mv-warn: #BA7517;
+  --mv-warn-soft: #FAEEDA;
+  --mv-ok: #0F6E56;
+  --mv-ok-soft: #E1F5EE;
+  --mv-danger: #A32D2D;
+  --mv-danger-soft: #FCEBEB;
+  --mv-radius: 12px;
+  --mv-radius-sm: 8px;
+  --mv-font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --mv-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.mv-page {
+  font-family: var(--mv-font);
+  color: var(--mv-text);
+  background: var(--mv-bg);
+  line-height: 1.6;
+  margin: 0;
+  padding: 32px 24px 80px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mv-wrap { max-width: 1080px; margin: 0 auto; }
+
+.mv-h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+.mv-sub { font-size: 13px; color: var(--mv-muted); margin: 0 0 28px; }
+.mv-h2 {
+  font-size: 15px; font-weight: 500; margin: 36px 0 12px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--mv-border);
+  display: flex; align-items: baseline; gap: 10px;
+}
+.mv-h2 small { font-size: 12px; color: var(--mv-muted); font-weight: 400; }
+.mv-grid { display: grid; gap: 14px; }
+.mv-grid-2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.mv-grid-3 { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.mv-note { font-size: 12px; color: var(--mv-muted); margin-top: 8px; }
+
+.mv-btn {
+  font-family: inherit; font-size: 12px; padding: 6px 14px;
+  border-radius: 999px; border: 1px solid var(--mv-border-strong);
+  background: var(--mv-surface); color: var(--mv-text);
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.mv-btn:hover { background: var(--mv-surface-2); border-color: var(--mv-muted); }
+.mv-btn-primary { background: var(--mv-accent); border-color: var(--mv-accent); color: #fff; }
+.mv-btn-primary:hover { background: #443a9e; border-color: #443a9e; }
+.mv-btn-ok { background: var(--mv-ok-soft); border-color: #9FE1CB; color: var(--mv-ok); }
+.mv-btn-bad { background: var(--mv-danger-soft); border-color: #F7C1C1; color: var(--mv-danger); }
+
+/* ---------- 1. flip-card 翻转卡 ---------- */
+flip-card { display: block; perspective: 1400px; }
+.mv-fc {
+  position: relative; width: 100%; min-height: 190px;
+  transform-style: preserve-3d; cursor: pointer;
+  transition: transform .55s cubic-bezier(.4, .15, .2, 1);
+}
+.mv-fc.is-flip { transform: rotateY(180deg); }
+.mv-face {
+  position: absolute; inset: 0; backface-visibility: hidden;
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 18px 20px;
+  display: flex; flex-direction: column; overflow: auto;
+}
+.mv-face-back {
+  transform: rotateY(180deg);
+  background: var(--mv-accent-soft); border-color: #CECBF6;
+}
+.mv-fc-tag {
+  font-size: 11px; color: var(--mv-muted); letter-spacing: .04em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.mv-fc-q { font-size: 14px; font-weight: 500; line-height: 1.55; margin: 0; }
+.mv-fc-a { font-size: 13px; line-height: 1.7; margin: 0; white-space: pre-wrap; }
+.mv-fc-hint {
+  margin-top: auto; padding-top: 12px; font-size: 11px; color: var(--mv-muted);
+}
+.mv-fc-actions {
+  margin-top: auto; padding-top: 12px; display: flex; gap: 8px;
+  transform: rotateY(0deg);
+}
+
+/* ---------- 2. timer-ring 计时环 ---------- */
+timer-ring { display: block; }
+.mv-timer {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 16px;
+  display: flex; align-items: center; gap: 16px;
+}
+.mv-timer-ring { flex: 0 0 auto; position: relative; width: 84px; height: 84px; }
+.mv-timer-ring svg { transform: rotate(-90deg); display: block; }
+.mv-timer-bg { fill: none; stroke: var(--mv-surface-2); stroke-width: 8; }
+.mv-timer-fg { fill: none; stroke: var(--mv-accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .95s linear, stroke .3s; }
+.mv-timer.is-warn .mv-timer-fg { stroke: var(--mv-warn); }
+.mv-timer.is-over .mv-timer-fg { stroke: var(--mv-danger); }
+.mv-timer-num {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--mv-mono); font-size: 18px; font-weight: 500;
+}
+.mv-timer-body { min-width: 0; flex: 1; }
+.mv-timer-label { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.mv-timer-note { font-size: 11px; color: var(--mv-muted); margin-bottom: 10px; }
+.mv-timer-actions { display: flex; gap: 6px; }
+
+/* ---------- 3. check-list 待办 ---------- */
+check-list { display: block; }
+.mv-cl {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 16px 18px;
+}
+.mv-cl-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.mv-cl-title { font-size: 13px; font-weight: 500; }
+.mv-cl-count { font-size: 12px; color: var(--mv-muted); font-family: var(--mv-mono); }
+.mv-cl-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-top: 1px solid var(--mv-border); cursor: pointer;
+}
+.mv-cl-item:first-of-type { border-top: none; }
+.mv-cl-box {
+  flex: 0 0 auto; width: 16px; height: 16px; margin-top: 3px;
+  border: 1.5px solid var(--mv-border-strong); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: transparent; transition: all .15s;
+}
+.mv-cl-item.on .mv-cl-box { background: var(--mv-ok); border-color: var(--mv-ok); color: #fff; }
+.mv-cl-item.on .mv-cl-text { color: var(--mv-muted); text-decoration: line-through; }
+.mv-cl-text { font-size: 13px; }
+.mv-cl-sub { font-size: 11px; color: var(--mv-muted); }
+
+/* ---------- 4. review-deck 间隔复训牌组 ---------- */
+review-deck { display: block; }
+.mv-rd {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 18px 20px;
+}
+.mv-rd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.mv-rd-title { font-size: 13px; font-weight: 500; }
+.mv-rd-stat { font-size: 12px; color: var(--mv-muted); font-family: var(--mv-mono); }
+.mv-rd-slot { min-height: 190px; }
+.mv-rd-empty { color: var(--mv-muted); font-size: 13px; padding: 40px 0; text-align: center; }
+.mv-rd-ladder { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+.mv-rd-step {
+  font-size: 11px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--mv-border); color: var(--mv-muted); font-family: var(--mv-mono);
+}
+.mv-rd-step.on { background: var(--mv-accent-soft); border-color: #CECBF6; color: var(--mv-accent); }
+
+/* ---------- 5. palace-map 宫殿地图 ---------- */
+palace-map { display: block; }
+.mv-pm-room {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 14px 16px;
+  text-decoration: none; color: inherit; display: block;
+  transition: border-color .15s, transform .15s, background .15s;
+}
+.mv-pm-room:hover { border-color: var(--mv-accent); transform: translateY(-2px); }
+.mv-pm-room.cellar { background: var(--mv-surface-2); }
+.mv-pm-icon {
+  width: 26px; height: 26px; border-radius: 7px; margin-bottom: 10px;
+  background: var(--mv-accent-soft); color: var(--mv-accent);
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.mv-pm-room.cellar .mv-pm-icon { background: var(--mv-surface-2); color: var(--mv-muted); border: 1px solid var(--mv-border); }
+.mv-pm-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.mv-pm-desc { font-size: 11px; color: var(--mv-muted); line-height: 1.5; }
+
+/* palace-map 紧凑条模式：入口页用，一行排完，不抢视线 */
+.mv-pm-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.mv-pm-bar .mv-pm-room {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 13px 6px 8px; border-radius: 999px;
+}
+.mv-pm-bar .mv-pm-room:hover { transform: none; }
+.mv-pm-bar .mv-pm-icon {
+  width: 20px; height: 20px; border-radius: 6px; margin: 0; font-size: 11px; flex: 0 0 auto;
+}
+.mv-pm-bar .mv-pm-name { font-size: 12px; margin: 0; white-space: nowrap; }
+.mv-pm-bar .mv-pm-desc { display: none; }
+.mv-pm-bar .mv-pm-room.cellar { opacity: .65; }
+
+/* ---------- 弹窗：承载非每日必需的功能，避免入口页堆砌 ---------- */
+.mv-modal-mask {
+  position: fixed; inset: 0; z-index: 50; padding: 24px;
+  background: rgba(44, 44, 42, .32);
+  display: flex; align-items: center; justify-content: center;
+}
+.mv-modal-mask[hidden] { display: none; }
+.mv-modal {
+  background: var(--mv-bg); border: 1px solid var(--mv-border);
+  border-radius: 16px; width: 100%; max-width: 720px;
+  max-height: 86vh; overflow: auto; padding: 22px 24px 24px;
+}
+.mv-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--mv-border);
+}
+.mv-modal-title { font-size: 15px; font-weight: 500; }
+
+/* ---------- 6. stat-bars 数据条 ---------- */
+stat-bars { display: block; }
+.mv-sb { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface); padding: 16px 18px; }
+.mv-sb-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+.mv-sb-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.mv-sb-row:last-child { margin-bottom: 0; }
+.mv-sb-label { flex: 0 0 84px; font-size: 12px; color: var(--mv-muted); }
+.mv-sb-track { flex: 1; height: 8px; border-radius: 999px; background: var(--mv-surface-2); overflow: hidden; }
+.mv-sb-fill { height: 100%; border-radius: 999px; background: var(--mv-accent); transition: width .5s; }
+.mv-sb-val { flex: 0 0 40px; text-align: right; font-size: 12px; font-family: var(--mv-mono); }
+
+/* ---------- 通用：未渲染前的原始列表先隐藏，避免闪烁 ---------- */
+palace-map ul, check-list ul, metric-strip ul { display: none; margin: 0; padding: 0; }
+
+/* ---------- 7. metric-strip 指标条 ---------- */
+metric-strip { display: block; }
+.mv-ms { display: flex; gap: 12px; flex-wrap: wrap; }
+.mv-ms-item {
+  flex: 1; min-width: 140px; border: 1px solid var(--mv-border);
+  border-radius: var(--mv-radius); background: var(--mv-surface); padding: 14px 16px;
+}
+.mv-ms-label { font-size: 11px; color: var(--mv-muted); margin-bottom: 4px; }
+.mv-ms-value { font-size: 20px; font-weight: 500; font-family: var(--mv-mono); }
+.mv-ms-value small { font-size: 12px; color: var(--mv-muted); font-weight: 400; }
+.mv-ms-value.ok { color: var(--mv-ok); }
+.mv-ms-value.warn { color: var(--mv-warn); }

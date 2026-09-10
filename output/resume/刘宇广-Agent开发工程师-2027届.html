@@ -92,9 +92,9 @@
       <div class="project-line">EnergyOps Agent · 园区能耗智能运营平台 <span class="role-note">（独立设计与实现，Mentor 把关业务方向）</span></div>
       <div class="summary">面向园区行政与财务团队，对接第三方能耗平台约 604 台水电表累计读数，通过分层数据模型、异常治理、告警诊断与受控 Agent 入口，形成从原始读数到月度结算的可信运营闭环。</div>
       <ul class="bullets">
-        <li>以<strong>「三账一体」</strong>为核心设计：独立构建 <strong>raw→interval→hourly→daily 四层能耗数据模型</strong>，定义 7 类质量状态与可信白名单，仅允许可信区间进入聚合，把参差读数整理为可信用能账、异常事件账与财务结算账，可信聚合完整率 <span class="num">96.8%→99.7%</span></li>
-        <li>将查询、设备、规则、告警、导出与结算封装为 <strong>30 个 MCP 工具</strong>与 6 类 Capability Bundle，实施 <strong>R0/R1/R2 操作风险分级</strong>与 Before/After Tool Hook 校验链，Agent 任务完成率 <span class="num">83.3%→95.8%</span>，80 条越权用例拦截率 <span class="num">100%</span></li>
-        <li>重构聚合查询路径，消除设备归属关联导致的重复 JOIN 与全表扫描，补充组合索引与预聚合，核心统计接口 P95 <span class="num">20.4s→2.8s（↓86.3%）</span>；引入幂等窗口与任务状态持久化，定时聚合成功率 <span class="num">96.9%→99.6%</span></li>
+        <li>以<strong>「三账一体」</strong>为核心设计：独立构建 <strong>raw→interval→hourly→daily 四层能耗数据模型</strong>，定义 7 类质量状态与可信白名单，仅允许可信区间进入聚合，把参差读数整理为可信用能账、异常事件账与财务结算账，可信聚合完整率（有效区间 ÷ 应产生区间）<span class="num">96.8%→99.7%</span></li>
+        <li>将查询、设备、规则、告警、导出与结算封装为 <strong>30 个 MCP 工具</strong>与 6 类 Capability Bundle，实施 <strong>R0/R1/R2 操作风险分级</strong>与 Before/After Tool Hook 校验链，72 条任务评测集上 Agent 任务完成率 <span class="num">83.3%→95.8%</span>，80 条越权用例拦截率 <span class="num">100%</span></li>
+        <li>重构聚合查询路径，消除设备归属关联导致的重复 JOIN 与全表扫描，补充组合索引与预聚合，固定查询集核心统计接口 P95 <span class="num">20.4s→2.8s（↓86.3%）</span>；引入幂等窗口与任务状态持久化，定时聚合成功率 <span class="num">96.9%→99.6%</span></li>
         <li><strong>「异常候选 ≠ 业务告警」三层分离</strong>：自适应基线从多日历史学习正常形态并输出异常候选，历史 dry-run 准入与告警指纹去重守住通知门槛，告警量降低 <span class="num">43%</span>、平均研判时间 <span class="num">18min→6min</span></li>
         <li>结算设<strong>三道质量门</strong>：事实源门→预演门（分摊守恒校验）→责任门（行政确认 + 财务核验），任一失败阻断正式账单生成，分摊守恒率 <span class="num">100%</span>；累计 92 项单元 + 30 项回归测试，核心链路通过率 <span class="num">98.4%</span></li>
       </ul>
@@ -111,7 +111,7 @@
         <li><strong>「SQL 能执行 ≠ 业务答案正确」</strong>：设计 Data Agent <strong>六阶段可归因链路</strong>（意图路由→Domain Schema 检索→NL2SemQL 语义解析→SQL 生成→安全校验→查询执行）与限次自愈机制，单条 Bad Case 定位 <span class="num">30min→8min</span>，150 条跨行业评测集端到端查询成功率 <span class="num">78%→91%</span></li>
         <li>构建 <strong>5 层查询安全边界</strong>（租户权限→受治理 Tool 注册→Tool Call Schema/Validator 校验→只读 SQL AST 审查→输出字段脱敏），300 条正常与对抗请求中危险语句拦截率 <span class="num">100%</span>、正常查询误拦率 <span class="num">2.7%</span></li>
         <li>设计<strong>轻量湖仓与查询路由</strong>：文件、协同表格与同步数据以 Parquet 副本交由 DuckDB 本地计算，强实时查询走只读受限连接（EXPLAIN 成本预估、慢查询熔断降级），分析负载与客户生产库物理隔离；大结果外置为 <strong>Artifact</strong>，单次分析上下文 Token <span class="num">18.4K→3.6K（↓80.4%）</span></li>
-        <li>沉淀出海电商、医美、教育 <strong>3 套 Domain Pack</strong>（65 个核心指标 + 120 个术语别名 + 表关联约束），结合领域路由与混合检索，Top-K Schema 召回率 <span class="num">81%→95%</span>；分析全程绑定 call_id / query_fingerprint / result_hash <strong>三重证据</strong></li>
+        <li>沉淀出海电商、医美、教育 <strong>3 套 Domain Pack</strong>（65 个核心指标 + 120 个术语别名 + 表关联约束），结合领域路由与混合检索，150 条评测集 Top-K Schema 召回率 <span class="num">81%→95%</span>；分析全程绑定 call_id / query_fingerprint / result_hash <strong>三重证据</strong></li>
         <li>建立<strong>语义资产健康度评分</strong>与<strong>口径一票否决</strong>：核心指标缺少业务定义即暂停该域自动问数；Schema/DDL 变更自动生成差异任务并降级资产可信度——过期语义不能冒充当前口径</li>
       </ul>
     </div>
