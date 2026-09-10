@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三 · 事务与锁</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL · 主线 三</span>
+    <h1 class="mv-topic-title">事务与锁</h1>
+    <p class="mv-topic-meta">这条线在回答：并发改同一份数据，为什么不会乱</p>
+  </div>
+  <p class="mv-line-lead">默认 <strong>RC</strong>（不是 RR）、Serializable 会失败要重试、<strong>无间隙锁</strong>、FOR UPDATE 四变体</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P7</span><span class="mv-mt-name">默认 RC 还是 RR？同一事务内两次查询为什么会看到不同结果</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>PG 的默认隔离级别是什么？和 MySQL 有什么不同？</li><li>Read Committed 下，同一事务内两次查询为什么可能看到不同结果？</li><li>Serializable 隔离级别什么时候会失败？应用层该怎么处理？</li><li>PG 没有间隙锁，那幻读怎么防？SSI 是什么？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P8</span><span class="mv-mt-name">为什么 Serializable 会失败？应用层怎么处理才正确</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>PG 的默认隔离级别是什么？和 MySQL 有什么不同？</li><li>Read Committed 下，同一事务内两次查询为什么可能看到不同结果？</li><li>Serializable 隔离级别什么时候会失败？应用层该怎么处理？</li><li>PG 没有间隙锁，那幻读怎么防？SSI 是什么？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P9</span><span class="mv-mt-name">PG 没有间隙锁，幻读和写偏斜靠什么防？FOR UPDATE 四个变体怎么选</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>PG 的默认隔离级别是什么？和 MySQL 有什么不同？</li><li>Read Committed 下，同一事务内两次查询为什么可能看到不同结果？</li><li>Serializable 隔离级别什么时候会失败？应用层该怎么处理？</li><li>PG 没有间隙锁，那幻读怎么防？SSI 是什么？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">6 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">12</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P7</span><button class="mv-qdone" data-k="PostgreSQL-q12" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q12" tag="PostgreSQL" q="PG 的默认隔离级别是什么？和 MySQL 有什么不同？" a="【P7】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">13</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P7</span><button class="mv-qdone" data-k="PostgreSQL-q13" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q13" tag="PostgreSQL" q="Read Committed 下，同一事务内两次查询为什么可能看到不同结果？" a="【P7】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">14</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P8</span><button class="mv-qdone" data-k="PostgreSQL-q14" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q14" tag="PostgreSQL" q="Serializable 隔离级别什么时候会失败？应用层该怎么处理？" a="【P8】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">15</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P9</span><button class="mv-qdone" data-k="PostgreSQL-q15" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q15" tag="PostgreSQL" q="PG 没有间隙锁，那幻读怎么防？SSI 是什么？" a="【P9】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">16</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P9</span><button class="mv-qdone" data-k="PostgreSQL-q16" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q16" tag="PostgreSQL" q="FOR UPDATE / FOR NO KEY UPDATE / FOR SHARE / FOR KEY SHARE 有什么区别？" a="【P9】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">17</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P9</span><button class="mv-qdone" data-k="PostgreSQL-q17" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q17" tag="PostgreSQL" q="死锁在 PG 里怎么产生、怎么减少？" a="【P9】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/PostgreSQL-02-SQL 执行与优化.html">← 二 · SQL 执行与优化</a><a class="mv-line-nav next" href="modules/PostgreSQL-04-日志与持久化.html">四 · 日志与持久化 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

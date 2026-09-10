@@ -847,7 +847,7 @@ def parse_module_card(path):
 
     topics = []
     for cells in parse_md_table(slice_section(body, r"^##\s*3\.", r"^##\s*4\.").splitlines()):
-        if len(cells) < 4 or not re.fullmatch(r"M\d+", cells[0].strip()):
+        if len(cells) < 4 or not re.fullmatch(r"[A-Z]\d+", cells[0].strip()):
             continue
         topics.append({"id": cells[0].strip(), "name": cells[1].strip(),
                        "line": cells[2].strip(), "status": cells[3].strip()})
@@ -943,7 +943,7 @@ def _topic_state(md, tid):
 
 def q_answer(md, topic_field):
     """题卡背面：从对应母题自动装出面试口径答案（不另写一遍，避免与讲解重复）"""
-    ids = re.findall(r"M\d+", topic_field or "")
+    ids = re.findall(r"[A-Z]\d+", topic_field or "")
     if not ids:
         return ("这道题目前没有母题覆盖。\n\n"
                 "这正是「覆盖度校验」要暴露的：要么给它补一个母题，"

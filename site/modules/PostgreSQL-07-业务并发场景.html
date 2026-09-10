@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>七 · 业务并发场景</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL · 主线 七</span>
+    <h1 class="mv-topic-title">业务并发场景</h1>
+    <p class="mv-topic-meta">这条线在回答：抢库存、冲排行榜怎么不出错</p>
+  </div>
+  <p class="mv-line-lead">乐观并发控制（条件更新 + version）、UPSERT、唯一约束兜底</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P17</span><span class="mv-mt-name">乐观并发控制在 PG 里怎么做？为什么项目里选它不选 FOR UPDATE</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>乐观并发控制在 PG 里怎么做？（条件更新 + version）</li><li>唯一约束为什么是幂等的最终防线？</li><li>UPSERT（ON CONFLICT）怎么用？有什么坑？</li><li>高并发扣库存 / 抢任务怎么防超卖、防重复执行？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P18</span><span class="mv-mt-name">唯一约束为什么是幂等的最终防线？UPSERT 怎么用、有哪些坑</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>乐观并发控制在 PG 里怎么做？（条件更新 + version）</li><li>唯一约束为什么是幂等的最终防线？</li><li>UPSERT（ON CONFLICT）怎么用？有什么坑？</li><li>高并发扣库存 / 抢任务怎么防超卖、防重复执行？</li></ul></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">4 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">31</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P17</span><button class="mv-qdone" data-k="PostgreSQL-q31" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q31" tag="PostgreSQL" q="乐观并发控制在 PG 里怎么做？（条件更新 + version）" a="【P17】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">32</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q32" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q32" tag="PostgreSQL" q="唯一约束为什么是幂等的最终防线？" a="【P18】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">33</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q33" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q33" tag="PostgreSQL" q="UPSERT（ON CONFLICT）怎么用？有什么坑？" a="【P18】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">34</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P17</span><button class="mv-qdone" data-k="PostgreSQL-q34" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q34" tag="PostgreSQL" q="高并发扣库存 / 抢任务怎么防超卖、防重复执行？" a="【P17】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="modules/PostgreSQL-06-数据增长与高可用.html">← 六 · 数据增长与高可用</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

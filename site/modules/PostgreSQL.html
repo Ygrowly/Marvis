@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PostgreSQL 模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">PostgreSQL 模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/PostgreSQL/PostgreSQL模块深挖卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>7</b> 条主线</span>
+    <span class="mv-stat-i"><b>18</b> 个母题</span>
+    <span class="mv-stat-i"><b>34</b> 道题（<b>23</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>0</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：PG 14+ 的索引类型与选型、执行计划与统计信息、MVCC 与隔离级别、VACUUM 与表膨胀、WAL 与复制、分区与连接池、项目里用到的并发控制模式</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：PG 源码、扩展生态（PostGIS / TimescaleDB / Citus）、高可用组件深入（Patroni / repmgr 部署细节）、PG 与 MySQL 的性能对比测评</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：三个项目全是 PG（EnergyOps / 数驭穹图 / RuleArena）。面试官一定会问「你项目里数据库怎么设计的」，回答里出现的每一个 PG 术语都必须准确——**这是 VS MySQL 模块更贴近你本人经历的部分**</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="modules/PostgreSQL-01-索引.html"><span class="mv-line-no">一</span><span class="mv-line-name">索引</span><span class="mv-line-q">怎么让查询不用扫全表</span><span class="mv-line-st">母题 4 · 题 7</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-02-SQL 执行与优化.html"><span class="mv-line-no">二</span><span class="mv-line-name">SQL 执行与优化</span><span class="mv-line-q">一条 SQL 怎么走、慢在哪</span><span class="mv-line-st">母题 2 · 题 4</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-03-事务与锁.html"><span class="mv-line-no">三</span><span class="mv-line-name">事务与锁</span><span class="mv-line-q">并发改同一份数据，为什么不会乱</span><span class="mv-line-st">母题 3 · 题 6</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-04-日志与持久化.html"><span class="mv-line-no">四</span><span class="mv-line-name">日志与持久化</span><span class="mv-line-q">提交过的数据，服务挂了为什么不该丢</span><span class="mv-line-st">母题 2 · 题 4</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-05-长事务.html"><span class="mv-line-no">五</span><span class="mv-line-name">长事务</span><span class="mv-line-q">它为什么危险，为什么拖系统下水</span><span class="mv-line-st">母题 3 · 题 6</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-06-数据增长与高可用.html"><span class="mv-line-no">六</span><span class="mv-line-name">数据增长与高可用</span><span class="mv-line-q">数据多了怎么不被拖垮</span><span class="mv-line-st">母题 2 · 题 3</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="modules/PostgreSQL-07-业务并发场景.html"><span class="mv-line-no">七</span><span class="mv-line-name">业务并发场景</span><span class="mv-line-q">抢库存、冲排行榜怎么不出错</span><span class="mv-line-st">母题 2 · 题 4</span><span class="mv-line-bar"><i style="width:0%"></i></span></a>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
