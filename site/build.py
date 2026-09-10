@@ -31,10 +31,12 @@ SITE = ROOT / "site"
 OUT_DATA = SITE / "_data"
 OUT_TOPICS = SITE / "topics"
 OUT_REVIEWS = SITE / "reviews"
+OUT_MODULES = SITE / "modules"
 FIGURES = SITE / "figures"
 
 TOPIC_DIRS = ["wiki/topics"]          # 母题卡
 REVIEW_DIRS = ["wiki/interview"]      # 面试复盘（诊断页）
+MODULE_DIRS = ["wiki/topics"]         # 模块深挖卡（学习页）
 CARD_DIRS = ["site/cards", "output/算法", "study", "wiki/interview", "wiki/thinking", "projects"]
 
 CARD_RE = re.compile(r"^::card\s+id=(?P<id>\S+)(?:\s+tag=(?P<tag>\S+))?\s*$")
@@ -217,6 +219,7 @@ def parse_topic(path):
         "module": module,
         "stem": stem,
         "title": title,
+        "status": meta.get("status", ""),
         "src": path.relative_to(ROOT).as_posix(),
         "question": q,
         "conclusion": a,
@@ -779,6 +782,277 @@ REVIEW_PAGE = """<!DOCTYPE html>
 """
 
 
+# ---------------------------------------------------------------- adapter：模块深挖卡（学习页）
+
+def bullet_field(text, label):
+    """抽 `- **标签**（可选补充）：值`"""
+    m = re.search(r"^\s*-\s*\*\*" + re.escape(label) + r"\*\*[^：:]*[：:]\s*(.+)$",
+                  text, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def parse_module_card(path):
+    """解析模块深挖卡（按 templates/模块深挖卡模板.md 的结构）"""
+    meta, body = split_front(path.read_text(encoding="utf-8"))
+    if "主线拆解" not in body:
+        return None
+
+    m = re.search(r"^#\s+(.+)$", body, re.M)
+    title = m.group(1).strip() if m else path.stem
+    module = (meta.get("module") or path.parent.name).split("/")[0].strip()
+    if module in ("topics", "wiki"):
+        module = path.stem
+
+    sec1 = slice_section(body, r"^##\s*1\.", r"^##\s*2\.")
+    sm = re.search(r"^>\s*(.+)$", sec1, re.M)
+    summary = sm.group(1).strip() if sm else ""
+    if summary.startswith("【"):
+        summary = ""
+
+    lines_ = []
+    for cells in parse_md_table(slice_section(body, r"^##\s*2\.", r"^##\s*3\.").splitlines()):
+        if len(cells) < 3 or not re.fullmatch(r"[一二三四五六七八九十]+", cells[0].strip()):
+            continue
+        lines_.append({
+            "no": cells[0].strip(), "name": cells[1].strip(),
+            "tradeoff": cells[2].strip(),
+            "count": cells[3].strip() if len(cells) > 3 else "",
+        })
+
+    topics = []
+    for cells in parse_md_table(slice_section(body, r"^##\s*3\.", r"^##\s*4\.").splitlines()):
+        if len(cells) < 4 or not re.fullmatch(r"M\d+", cells[0].strip()):
+            continue
+        topics.append({"id": cells[0].strip(), "name": cells[1].strip(),
+                       "line": cells[2].strip(), "status": cells[3].strip()})
+
+    questions = []
+    for cells in parse_md_table(slice_section(body, r"^##\s*4\.", r"^##\s*5\.").splitlines()):
+        if len(cells) < 4 or not re.fullmatch(r"\d+", cells[0].strip()):
+            continue
+        questions.append({"no": cells[0].strip(), "q": cells[1].strip(),
+                          "line": cells[2].strip(), "pri": cells[3].strip()})
+
+    bridge, seen_b = [], False
+    for cells in parse_md_table(slice_section(body, r"^##\s*6\.", r"^##\s*7\.").splitlines()):
+        if len(cells) < 4:
+            continue
+        if "面试官问的" in cells[0]:
+            seen_b = True
+            continue
+        bridge.append(cells[:4])
+
+    gate = [re.sub(r"^\s*-\s*\[[ xX]\]\s*", "", ln).strip()
+            for ln in slice_section(body, r"^##\s*7\.", r"^##\s*8\.").splitlines()
+            if re.match(r"^\s*-\s*\[[ xX]\]\s*\S", ln)]
+
+    # 同目录下的母题卡（内容来源）
+    cards = {}
+    for p in sorted(path.parent.glob("母题-*.md")):
+        mm = re.match(r"母题-([A-Za-z]?\d+)", p.stem)
+        if mm:
+            cards[mm.group(1)] = p
+
+    return {
+        "key": path.relative_to(ROOT).as_posix(),
+        "module": module,
+        "stem": path.stem,
+        "title": title,
+        "summary": summary,
+        "include": bullet_field(body, "包含"),
+        "exclude": bullet_field(body, "明确不包含"),
+        "reason": bullet_field(body, "为什么现在"),
+        "lines": lines_,
+        "topics": topics,
+        "questions": questions,
+        "bridge": bridge,
+        "gate": gate,
+        "cards": cards,
+        "page": "modules/%s.html" % module,
+    }
+
+
+def render_module(md):
+    """学习页：主线 → 母题（有母题卡就展开，没有就标待提炼）"""
+    topics_by_line = {}
+    for t in md["topics"]:
+        topics_by_line.setdefault(t["line"], []).append(t)
+
+    q_by_line = {}
+    for q in md["questions"]:
+        q_by_line.setdefault(q["line"], []).append(q)
+
+    # 顶部总览：主线地图
+    chips = []
+    for ln in md["lines"]:
+        arr = topics_by_line.get(ln["no"], [])
+        done = sum(1 for t in arr if "已过" in (t["status"] or ""))
+        chips.append(
+            '<span class="mv-lm-item"><b>%s</b> %s<span class="n">%d/%d</span></span>'
+            % (esc(ln["no"]), esc(ln["name"].split("：")[-1].split("——")[-1].strip()),
+               done, len(arr))
+        )
+
+    # 主线区块
+    panels = []
+    for ln in md["lines"]:
+        inner = ""
+        if ln["tradeoff"]:
+            inner += ('<p class="mv-line-lead">这条线的取舍：%s</p>' % inline(ln["tradeoff"]))
+
+        for t in topics_by_line.get(ln["no"], []):
+            path = md["cards"].get(t["id"])
+            tcard = parse_topic(path) if path else None
+            if tcard:
+                body = '<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>' % inline(tcard["conclusion"])
+                if tcard["keywords"]:
+                    body += '<ul class="mv-kw">%s</ul>' % "".join(
+                        "<li>%s</li>" % esc(k) for k in tcard["keywords"])
+                if tcard["invariant"]:
+                    body += '<p class="mv-md-p"><strong>主线</strong>：%s</p>' % inline(tcard["invariant"])
+                sub = []
+                if tcard["followups"]:
+                    items = "".join(
+                        '<p class="mv-md-p"><strong>%d. %s</strong></p><p class="mv-md-p">%s</p>'
+                        % (i, inline(fq), inline(fa) or '<span class="mv-topic-meta">见正文</span>')
+                        for i, (fq, fa) in enumerate(tcard["followups"], 1))
+                    sub.append('<collapse-panel title="两层追问（先说后看）">%s</collapse-panel>' % items)
+                if tcard["body_html"]:
+                    sub.append('<collapse-panel title="展开原理与推导">%s</collapse-panel>' % tcard["body_html"])
+                if tcard["figures"]:
+                    for i, f in enumerate(tcard["figures"], 1):
+                        sub.append('<figure-box num="%s-%d" title="%s" note="%s">%s</figure-box>'
+                                   % (t["id"], i, attrs(f["title"]), attrs(f["note"]),
+                                      prefix_svg_ids(f["svg"], "m%s%d" % (t["id"], i))))
+                dd = tcard.get("_dir")
+                body += "".join(sub) if sub else ""
+                link = '<p class="mv-note">正本：%s</p>' % esc(tcard["src"])
+                chip = ('<span class="mv-chip">已掌握</span>'
+                        if tcard.get("status") == "integrated"
+                        else '<span class="mv-chip warn">草稿 · 待验收</span>')
+                inner += ('<div class="mv-mt"><div class="mv-mt-head">'
+                          '<span class="mv-mt-id">%s</span><span class="mv-mt-name">%s</span>%s'
+                          '</div>%s%s</div>'
+                          % (esc(t["id"]), esc(t["name"]), chip, body, link))
+            else:
+                qs = "".join("<li>%s</li>" % inline(q["q"]) for q in q_by_line.get(ln["no"], [])[:4])
+                inner += ('<div class="mv-mt"><div class="mv-mt-head">'
+                          '<span class="mv-mt-id">%s</span><span class="mv-mt-name">%s</span>'
+                          '<span class="mv-chip ghost">%s</span></div>'
+                          '<p class="mv-mt-empty">内容待提炼。覆盖的题：</p>'
+                          '<ul class="mv-md-ul">%s</ul></div>'
+                          % (esc(t["id"]), esc(t["name"]), esc(t["status"] or "未开"), qs))
+
+        n = len(topics_by_line.get(ln["no"], []))
+        panels.append('<collapse-panel title="%s · %s（%d 个母题）">%s</collapse-panel>'
+                      % (esc(ln["no"]), esc(ln["name"]), n, inner))
+
+    # 抽查区（题单里所有必背题 → 翻转卡）
+    drill = ""
+    for q in md["questions"]:
+        if "必背" not in (q["pri"] or ""):
+            continue
+        drill += ('<div class="mv-qitem"><div class="mv-qhead">'
+                  '<span class="mv-qid">%s</span><span class="mv-chip ghost">主线%s</span></div>'
+                  '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
+                  % (esc(q["no"]), esc(q["line"]), attrs(md["module"]), attrs(q["no"]),
+                     attrs(md["module"]), attrs(q["q"]),
+                     attrs("先自己讲一遍，再回主线区核对。这道题归属主线" + q["line"] + "。")))
+
+    bridge = "".join(
+        "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+        % tuple(inline(c) for c in row) for row in md["bridge"])
+
+    gate = "".join('<li>%s</li>' % inline(x) for x in md["gate"])
+
+    out = MODULE_PAGE
+    for k, v in (
+        ("%%TITLE%%", esc(md["title"])),
+        ("%%MODULE%%", esc(md["module"])),
+        ("%%SUMMARY%%", esc(md["summary"]) if md["summary"]
+            else '<span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span>'),
+        ("%%REASON%%", esc(md["reason"])),
+        ("%%INCLUDE%%", esc(md["include"])),
+        ("%%EXCLUDE%%", esc(md["exclude"])),
+        ("%%LINEMAP%%", "".join(chips)),
+        ("%%PANELS%%", "".join(panels)),
+        ("%%DRILL%%", drill or '<p class="mv-note">题单里还没有「必背」题。</p>'),
+        ("%%BRIDGE%%", bridge or '<tr><td colspan="4">未填写</td></tr>'),
+        ("%%GATE%%", gate or "<li>未填写</li>"),
+        ("%%SRC%%", esc(md["key"])),
+    ):
+        out = out.replace(k, v)
+    return out
+
+
+MODULE_PAGE = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%%TITLE%%</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块学习</span>
+    <h1 class="mv-topic-title">%%TITLE%%</h1>
+    <p class="mv-topic-meta">正本 %%SRC%%</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p">%%SUMMARY%%</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：%%INCLUDE%%</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：%%EXCLUDE%%</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：%%REASON%%</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线地图 <span class="mv-topic-meta">先看线，再落点</span></h2>
+    <div class="mv-linemap">%%LINEMAP%%</div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">七条主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    %%PANELS%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">抽查 <span class="mv-topic-meta">必背题 · 先说后翻</span></h2>
+    %%DRILL%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">方言桥 <span class="mv-topic-meta">岗位栈 ←→ 我的项目栈</span></h2>
+    <table class="mv-table">
+      <thead><tr><th>面试官问的</th><th>我项目里的</th><th>关键差异</th><th>我该怎么说</th></tr></thead>
+      <tbody>%%BRIDGE%%</tbody>
+    </table>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">验收门 <span class="mv-topic-meta">全勾才算闭环</span></h2>
+    <check-list key="gate-%%MODULE%%" title="模块验收">
+      <ul>%%GATE%%</ul>
+    </check-list>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
+"""
+
+
 # ---------------------------------------------------------------- main
 
 DIRTY_ATTR = re.compile(r'\s+data-page-[a-z-]+="[^"]*"')
@@ -852,13 +1126,34 @@ def main():
         (OUT_REVIEWS / (rv["stem"] + ".html")).write_text(
             render_review(rv), encoding="utf-8")
 
+    # 模块学习页
+    modules, seen_m = [], set()
+    for d in MODULE_DIRS:
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in sorted(base.rglob("*.md")):
+            md = parse_module_card(p)
+            if not md or md["module"] in seen_m:
+                continue
+            seen_m.add(md["module"])
+            modules.append(md)
+    OUT_MODULES.mkdir(parents=True, exist_ok=True)
+    for md in modules:
+        (OUT_MODULES / ("%s.html" % md["module"])).write_text(
+            render_module(md), encoding="utf-8")
+
+    # 复训牌组只收已验收（integrated）的母题；草稿只读不练
+    live = [t for t in topics if t.get("status") == "integrated"]
+    drafts = [t for t in topics if t.get("status") != "integrated"]
+
     decks = []
-    if topics:
+    if live:
         decks.append({
             "id": "topics", "name": "母题",
             "cards": [{"id": t["key"], "q": t["question"], "a": t["conclusion"],
                        "tag": t["module"], "href": t["page"], "src": t["src"]}
-                      for t in topics],
+                      for t in live],
         })
     if cards:
         decks.append({
@@ -880,8 +1175,19 @@ def main():
         "window.MARVIS_REVIEWS = " + json.dumps(review_index, ensure_ascii=False) + ";\n",
         encoding="utf-8")
 
+    mod_index = [{"module": md["module"], "title": md["title"], "href": md["page"],
+                  "lines": len(md["lines"]), "topics": len(md["topics"]),
+                  "ready": sum(1 for t in md["topics"] if t["id"] in md["cards"])}
+                 for md in modules]
+    (OUT_DATA / "modules.js").write_text(
+        "window.MARVIS_MODULES = " + json.dumps(mod_index, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+
     n = sum(len(d["cards"]) for d in decks)
-    print("母题页 %d | 牌组 %d | 卡片合计 %d" % (len(topics), len(decks), n))
+    print("母题页 %d | 牌组 %d | 可练卡片 %d" % (len(topics), len(decks), n))
+    if drafts:
+        print("  草稿 %d 个（只读不练）：%s"
+              % (len(drafts), " ".join(t["stem"] for t in drafts)))
     for d in decks:
         print("  [%s] %d 个" % (d["name"], len(d["cards"])))
     for t in topics:
@@ -894,6 +1200,11 @@ def main():
               % (rv["page"], len(rv["items"]), len(scored),
                  sum(1 for x in rv["items"] if x["answer"]),
                  len(rv["missing"]), len(rv["plan"])))
+    for md in modules:
+        ready = sum(1 for t in md["topics"] if t["id"] in md["cards"])
+        print("  == %s（%d 主线 / %d 母题，已提炼 %d，必背题 %d）"
+              % (md["page"], len(md["lines"]), len(md["topics"]), ready,
+                 sum(1 for q in md["questions"] if "必背" in (q["pri"] or ""))))
 
     cleaned = cleanup_html()
     if cleaned:

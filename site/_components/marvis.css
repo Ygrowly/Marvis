@@ -358,6 +358,55 @@ figure-box { display: block; }
 .mv-chip.warn { background: var(--mv-warn-soft); color: var(--mv-warn); }
 .mv-chip.ghost { background: var(--mv-surface-2); color: var(--mv-muted); }
 
+/* ---------- 模块学习页 ---------- */
+.mv-bd {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 14px 18px;
+}
+.mv-bd > :last-child { margin-bottom: 0; }
+
+.mv-linemap { display: flex; flex-wrap: wrap; gap: 8px; }
+.mv-lm-item {
+  display: flex; align-items: center; gap: 6px; font-size: 12px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--mv-border); background: var(--mv-surface);
+  color: var(--mv-text);
+}
+.mv-lm-item b { font-family: var(--mv-mono); font-weight: 500; color: var(--mv-accent); }
+.mv-lm-item .n { font-family: var(--mv-mono); font-size: 11px; color: var(--mv-muted); }
+
+.mv-line-lead {
+  font-size: 12px; color: var(--mv-muted); margin: 0 0 14px;
+  padding-bottom: 10px; border-bottom: 1px dashed var(--mv-border);
+}
+
+.mv-mt {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
+  background: var(--mv-surface); padding: 14px 16px; margin-bottom: 12px;
+}
+.mv-mt:last-child { margin-bottom: 0; }
+.mv-mt-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.mv-mt-id {
+  font-family: var(--mv-mono); font-size: 12px; font-weight: 500;
+  color: var(--mv-accent); flex: 0 0 auto;
+}
+.mv-mt-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; }
+.mv-mt-empty { font-size: 12px; color: var(--mv-muted); margin: 0 0 8px; }
+.mv-mt collapse-panel + collapse-panel { margin-top: 8px; }
+
+.mv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mv-table th {
+  text-align: left; font-weight: 500; color: var(--mv-muted);
+  padding: 8px 10px; border-bottom: 1px solid var(--mv-border);
+}
+.mv-table td {
+  padding: 10px; border-bottom: 1px solid var(--mv-border);
+  vertical-align: top; line-height: 1.65;
+}
+.mv-table tr:last-child td { border-bottom: none; }
+
 .mv-md-h { font-size: 13px; font-weight: 500; margin: 16px 0 8px; }
 .mv-md-p { margin: 0 0 10px; }
 .mv-md-ul { margin: 0 0 10px; padding-left: 20px; }
