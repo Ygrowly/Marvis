@@ -26,12 +26,71 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
-    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P11</span><span class="mv-mt-name">WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>WAL 是怎么保证崩溃后已提交数据不丢的？</li><li>checkpoint 做什么？太频繁有什么代价？</li><li>流复制和逻辑复制有什么区别？各用在什么场景？</li><li>同步复制和异步复制怎么取舍？主从延迟怎么办？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P12</span><span class="mv-mt-name">流复制和逻辑复制有什么区别？同步/异步怎么取舍</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>WAL 是怎么保证崩溃后已提交数据不丢的？</li><li>checkpoint 做什么？太频繁有什么代价？</li><li>流复制和逻辑复制有什么区别？各用在什么场景？</li><li>同步复制和异步复制怎么取舍？主从延迟怎么办？</li></ul></div>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P11</span><span class="mv-mt-name">WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P11-WAL与checkpoint.html">单卡 →</a></div><p class="mv-mt-q">WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？</p><collapse-panel title="题目背景"><p class="mv-md-p">MySQL 有 redo / undo / binlog 三套日志，PG 只有一套 WAL。它是怎么保证「提交过的不丢」的？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>WAL 是「先写日志、再改数据页」</strong>：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；<strong>提交时靠 <code class="mv-md-code">fsync</code> 保证这个事务的 WAL 已经落盘</strong>（<code class="mv-md-code">synchronous_commit = on</code>），所以崩溃后能用 WAL 把已提交的改动重放出来。<strong>checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」</strong>——它不影响正确性，只影响<strong>崩溃后要重放多久</strong>。PG 不需要 undo，是因为<strong>旧版本本来就留在堆里</strong>（P13），不靠日志回滚。</p><ul class="mv-kw"><li>预写日志（先日志后数据页）</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li>checkpoint 推进恢复起点</li><li>checkpoint 频率的两面</li><li>full_page_writes（检查点后首写整页）</li><li>恢复从最近 checkpoint 开始</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>WAL 管「已提交的能不能重放出来」（正确性），checkpoint 管「重放要从多久之前开始」（恢复时间）。</strong> 两件事，<strong>但它们由同一组参数牵动</strong>——checkpoint 越勤，恢复越快，常态 IO 压力越大。</p><h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、为什么需要 WAL</h3>
+<p class="mv-md-p">修改数据时不直接改磁盘数据页（随机 IO 太慢），而是：</p>
+<pre class="mv-md-pre">改内存（shared_buffers 里的数据页）
+  + 把「改了什么」顺序追加到 WAL
+  ↓
+提交时：fsync WAL（保证这次提交已落盘）
+  ↓
+数据页留在内存，稍后由后台批量刷盘</pre>
+<p class="mv-md-p"><strong>两个收益</strong>：① <strong>把随机写换成顺序写</strong>（写入性能）；② <strong>只要 WAL 落盘，即使数据页没刷、机器立刻断电，重启后也能重放出来</strong>（崩溃安全）。</p>
+<p class="mv-md-p"><strong>关键在「提交时 fsync 的是 WAL，不是数据页」</strong>——这就是「提交很快但数据页还没落盘」却依然安全的原因。</p>
+<h3 class="mv-md-h">二、<code class="mv-md-code">synchronous_commit</code>：唯一承诺的落盘点</h3>
+<table class="mv-table"><thead><tr><th>值</th><th>语义</th><th>丢什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">on</code>（默认）</td><td>提交时等本事务 WAL <strong>fsync 完成</strong>才返回成功</td><td>不丢已提交事务</td></tr><tr><td><code class="mv-md-code">off</code></td><td>提交不等 fsync，让后台尽快刷</td><td><strong>可能丢最近若干毫秒「已提交」的事务</strong></td></tr><tr><td><code class="mv-md-code">local</code> / <code class="mv-md-code">remote_apply</code> 等</td><td>与复制相关（见 P12）</td><td>取决于复制配置</td></tr></tbody></table>
+<p class="mv-md-p"><strong>必须讲清的一点</strong>：<code class="mv-md-code">off</code> 丢的是「<strong>已经向客户端返回成功、但 WAL 还没落盘</strong>」的那部分——<strong>这是唯一一个「数据库告诉成功了却可能丢」的配置</strong>。所以：</p>
+<ul class="mv-md-ul"><li><strong>钱、订单、状态机等路径</strong>：必须 <code class="mv-md-code">on</code>；</li><li><strong>批量导入、可重建的埋点数据</strong>：可以临时 <code class="mv-md-code">off</code> 换吞吐，但<strong>要在业务层知道这件事</strong>，不是"顺手关了"。</li></ul>
+<h3 class="mv-md-h">三、checkpoint 在做什么</h3>
+<pre class="mv-md-pre">checkpoint 触发
+  ↓
+把「某个 LSN 之前」的所有脏页刷到磁盘
+  ↓
+在 WAL 里记一个 checkpoint 记录
+  ↓
+崩溃恢复时：从最近这个 checkpoint 开始重放 → 而不是从头</pre>
+<p class="mv-md-p"><strong>所以 checkpoint 的收益是「恢复时间」</strong>，不是数据安全。</p>
+<p class="mv-md-p"><strong>它带来一个必须知道的副作用——<code class="mv-md-code">full_page_writes</code></strong>：因为刷盘是「按页」但不是原子的（可能半页写失败），所以 <strong>checkpoint 之后对这些页的第一次修改，WAL 里要记整页内容</strong>（而不是「某偏移改了某个值」）。后果是：</p>
+<ul class="mv-md-ul"><li><strong>checkpoint 越勤 → 「首写整页」发生得越频繁 → WAL 体积反而更大</strong>；</li><li>所以「把 checkpoint 调很勤以缩短恢复时间」会<strong>用 WAL 写放大和 IO 抖动换恢复速度</strong>——这是 PG 调优里一个经典的两难。</li></ul>
+<h3 class="mv-md-h">四、为什么 PG 只有一套日志（不需要 undo）</h3>
+<p class="mv-md-p">MySQL 需要 undo 有两个原因：① 事务回滚；② 给 MVCC 提供旧版本。</p>
+<p class="mv-md-p"><strong>PG 两个都不需要日志层面的 undo</strong>：</p>
+<ul class="mv-md-ul"><li><strong>旧版本</strong>：PG 的 <code class="mv-md-code">UPDATE</code> 是「写新版本 + 标记旧版本」（P13），<strong>旧版本本来就在堆里</strong>，读的时候按快照挑版本，不需要去 undo log 里拼；</li><li><strong>回滚</strong>：未提交事务的改动在崩溃恢复/回滚时，靠「这个版本的 <code class="mv-md-code">xmin</code> 属于一个未提交事务」判定为不可见即可，<strong>并且由 VACUUM 清掉</strong>。</li></ul>
+<p class="mv-md-p"><strong>代价</strong>：旧版本占用空间、必须靠 <strong>VACUUM</strong> 回收——<strong>于是「PG 没有 undo」这件事，直接解释了三件现象</strong>：</p>
+<p class="mv-md-p">1. 为什么 PG 会<strong>表膨胀</strong>（P14）； 2. 为什么有 <strong>VACUUM 与事务 ID 回卷</strong>这种 MySQL 不存在的运维风险（P15）； 3. 为什么 <strong>长事务在 PG 里格外危险</strong>（它按住了快照，让回收停摆）。</p>
+<p class="mv-md-p"><strong>这条是整条主线五的入口。</strong></p>
+<h3 class="mv-md-h">五、生产怎么配（说这段才像做过线上）</h3>
+<pre class="mv-md-pre">① 关键写路径：synchronous_commit = on（默认，别动）
+② checkpoint 频率：先看 pg_stat_bgwriter 的 checkpoint 频率与刷盘量，
+   再决定是放宽 checkpoint 间隔（减 IO 抖动）还是收紧（减恢复时间）
+③ 恢复时间是可测量的：用 checkpoint 位置与 WAL 生成速率估算「最坏要重放多少」
+④ 复制场景额外考虑：synchronous_standby_names（P12）</pre>
+<p class="mv-md-p"><strong>第 ② 步的方法论比结论重要</strong>：<strong>调 checkpoint 之前先拿 <code class="mv-md-code">pg_stat_bgwriter</code> 的数据说话</strong>，而不是「网上说 checkpoint 要调大」。</p>
+<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P11-WAL与checkpoint.md</p></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P12</span><span class="mv-mt-name">流复制和逻辑复制有什么区别？同步/异步怎么取舍</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P12-流复制与逻辑复制.html">单卡 →</a></div><p class="mv-mt-q">流复制和逻辑复制有什么区别？同步 / 异步怎么取舍？</p><collapse-panel title="题目背景"><p class="mv-md-p">你要 (1) 搭一个只读副本给报表用，(2) 还要把其中几张表的变更同步到另一个系统。这两件事用同一种复制吗？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>流复制（物理）复制的是「整个实例的 WAL 字节流」</strong>——备库是主库的<strong>逐字节副本</strong>，只能整实例、备库只读、版本必须一致；<strong>逻辑复制复制的是「逻辑变更」</strong>——可以按表、可以按行过滤、备端可写、可跨大版本、能做异构与多源汇聚。所以 <strong>① 只读副本用流复制；② 部分表同步到别的系统用逻辑复制</strong>。同步 / 异步的取舍本质是 <strong>RPO vs 提交延迟</strong>。</p><ul class="mv-kw"><li>物理复制（WAL 字节流）vs 逻辑复制（变更流）</li><li>表级与行级过滤</li><li>跨版本</li><li>备库只读 vs 可写</li><li>同步提交的 RPO 与延迟</li><li>**复制槽不消费导致 WAL 堆积**</li><li>主从延迟读数不一致</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>物理复制复制的是「存储的变化」，逻辑复制复制的是「数据的变化」。</strong> 所以前者绑定<strong>实例与版本</strong>，后者绑定<strong>表与行</strong>——<strong>所有能力差异（能不能选择性复制、备端能不能写、能不能跨版本）都是这一句话的推论。</strong></p><h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、两种复制：复制的是什么</h3>
+<table class="mv-table"><thead><tr><th></th><th><strong>流复制（物理）</strong></th><th><strong>逻辑复制</strong></th></tr></thead><tbody><tr><td>复制内容</td><td><strong>WAL 字节流</strong>（存储层变化）</td><td><strong>逻辑变更</strong>（表的行变更）</td></tr><tr><td>粒度</td><td><strong>整个实例</strong></td><td><strong>表级</strong>（可再按行过滤）</td></tr><tr><td>备端</td><td><strong>只读</strong>（热备）</td><td><strong>可读可写</strong></td></tr><tr><td>版本</td><td><strong>必须一致</strong>（含小版本，实践上同大版本内也要谨慎）</td><td><strong>可跨大版本</strong></td></tr><tr><td>用途</td><td>高可用、只读副本、读写分离</td><td>CDC、异构同步、多源汇聚、升级迁移</td></tr><tr><td>机制</td><td>WAL 直接传输 + 重放</td><td>主库从 WAL <strong>逻辑解码</strong>成变更流，备端按表应用</td></tr></tbody></table>
+<p class="mv-md-p"><strong>一句话对照</strong>：<strong>流复制让「另一个我」存在；逻辑复制让「我的一部分数据」出现在别处。</strong></p>
+<h3 class="mv-md-h">二、回到题目</h3>
+<ul class="mv-md-ul"><li><strong>(1) 只读副本做报表</strong> → <strong>流复制</strong>。它是完整副本、可以在备库上跑长查询（<strong>但要注意长查询会阻塞备库上的回放</strong>——见下文「主从延迟」）；</li><li><strong>(2) 几张表的变更同步到别的系统</strong> → <strong>逻辑复制</strong>。因为你只需要那几张表、目标端可能版本不同或不是 PG。</li></ul>
+<p class="mv-md-p"><strong>数驭穹图的真实选择正好落在这条线上</strong>：它需要的是「授权的分析数据集」——<strong>不是整个实例</strong>，所以走<strong>逻辑路径</strong>；而且要能跨源、能只同步部分表，物理复制<strong>根本做不到</strong>。</p>
+<h3 class="mv-md-h">三、同步 / 异步：本质是 RPO 换延迟</h3>
+<table class="mv-table"><thead><tr><th>模式</th><th>语义</th><th>代价</th></tr></thead><tbody><tr><td><strong>异步</strong>（默认）</td><td>主库提交不等备库</td><td><strong>主库宕机可能丢最近一段已提交事务</strong>（备库没收到）；备库延迟不稳定</td></tr><tr><td><strong>同步</strong></td><td>主库提交<strong>等待</strong>备库确认收到（或应用）</td><td><strong>提交延迟 = 等备库的网络 + 刷盘时间</strong>；备库抖动会拖慢主库</td></tr></tbody></table>
+<p class="mv-md-p"><strong>判据</strong>：<strong>能接受丢多少（RPO）就选什么。</strong> 但要注意一个陷阱——<strong>同步复制会让「备库的可用性」变成「主库可用性」的一部分</strong>：备库挂了，主库提交就可能被卡住。所以生产通常配 <strong><code class="mv-md-code">FIRST 1 (a, b)</code> 这类「至少一个备库确认即可」</strong>的写法，而不是「等全部」。</p>
+<p class="mv-md-p"><strong>这一条比结论重要</strong>：<strong>不要简单说「我们用了同步复制保证不丢」——要说清楚「几种确认策略、以及备库故障时主库会怎样」。</strong></p>
+<h3 class="mv-md-h">四、必须知道的两个坑</h3>
+<p class="mv-md-p"><strong>坑一：复制槽不消费 → WAL 永久堆积 → 磁盘写满</strong></p>
+<p class="mv-md-p">逻辑复制用<strong>复制槽</strong>记录消费位点，<strong>PG 必须保留位点之后的所有 WAL</strong>（否则无法重放给消费者）。所以：</p>
+<ul class="mv-md-ul"><li>消费者挂了、或者某个备库长期离线 → <strong>WAL 只增不减</strong>；</li><li>结果是<strong>磁盘被 WAL 写满，整个实例写不进去</strong>——这是 PG 最常见的一类生产事故。</li></ul>
+<p class="mv-md-p"><strong>排查</strong>：查复制槽的 <code class="mv-md-code">restart_lsn</code> / <code class="mv-md-code">confirmed_flush_lsn</code> 与当前 WAL 位置的差距；<strong>必须监控「不活跃的复制槽」</strong>，并明确「离线多久就该删槽并重建」的运维约定。</p>
+<p class="mv-md-p"><strong>坑二：主从延迟不只是网络</strong></p>
+<p class="mv-md-p">延迟有三段：<strong>① 主库产出 WAL 的速度 → ② 网络传输 → ③ 备库回放</strong>。第 ③ 段最容易被忽略，而它的一个主要来源正是 <strong>备库上的长查询/长事务</strong>——<strong>PG 12+ 之前，备库的查询会与 WAL 回放互相阻塞</strong>（现代版本用 <code class="mv-md-code">hot_standby_feedback</code> / 快照导出缓解，但引入了<strong>备库把主库膨胀顶住</strong>的副作用）。</p>
+<p class="mv-md-p"><strong>业务后果与处理</strong>：读写分离下「写主库、读备库」会<strong>读到旧数据</strong>。处理方式按业务重要性排序：<strong>关键读回主库</strong>（最可靠）→ <strong>写后一段时间内钉住主库</strong>（读己之写）→ 监控延迟并在超阈值时降级。<strong>不要用「sleep 一下再读」这种办法。</strong></p>
+<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P12-流复制与逻辑复制.md</p></div>
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">4 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">23</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P11</span><button class="mv-qdone" data-k="PostgreSQL-q23" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q23" tag="PostgreSQL" q="WAL 是怎么保证崩溃后已提交数据不丢的？" a="【P11】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">24</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P11</span><button class="mv-qdone" data-k="PostgreSQL-q24" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q24" tag="PostgreSQL" q="checkpoint 做什么？太频繁有什么代价？" a="【P11】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">25</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P12</span><button class="mv-qdone" data-k="PostgreSQL-q25" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q25" tag="PostgreSQL" q="流复制和逻辑复制有什么区别？各用在什么场景？" a="【P12】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">26</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P12</span><button class="mv-qdone" data-k="PostgreSQL-q26" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q26" tag="PostgreSQL" q="同步复制和异步复制怎么取舍？主从延迟怎么办？" a="【P12】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">23</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P11</span><button class="mv-qdone" data-k="PostgreSQL-q23" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q23" tag="PostgreSQL" q="WAL 是怎么保证崩溃后已提交数据不丢的？" a="【P11】WAL 是「先写日志、再改数据页」：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；提交时靠 fsync 保证这个事务的 WAL 已经落盘（synchronous_commit = on），所以崩溃后能用 WAL 把已提交的改动重放出来。checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」——它不影响正确性，只影响崩溃后要重放多久。PG 不需要 undo，是因为旧版本本来就留在堆里（P13），不靠日志回滚。&#10;&#10;展开：为什么需要 WAL（顺序写换随机写 + 崩溃安全）→ WAL 怎么保证已提交不丢 → checkpoint 在做什么 → 为什么 PG 只有一套日志（不需要 undo）→ synchronous_commit 的取舍 → 生产怎么配&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">24</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P11</span><button class="mv-qdone" data-k="PostgreSQL-q24" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q24" tag="PostgreSQL" q="checkpoint 做什么？太频繁有什么代价？" a="【P11】WAL 是「先写日志、再改数据页」：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；提交时靠 fsync 保证这个事务的 WAL 已经落盘（synchronous_commit = on），所以崩溃后能用 WAL 把已提交的改动重放出来。checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」——它不影响正确性，只影响崩溃后要重放多久。PG 不需要 undo，是因为旧版本本来就留在堆里（P13），不靠日志回滚。&#10;&#10;展开：为什么需要 WAL（顺序写换随机写 + 崩溃安全）→ WAL 怎么保证已提交不丢 → checkpoint 在做什么 → 为什么 PG 只有一套日志（不需要 undo）→ synchronous_commit 的取舍 → 生产怎么配&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">25</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P12</span><button class="mv-qdone" data-k="PostgreSQL-q25" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q25" tag="PostgreSQL" q="流复制和逻辑复制有什么区别？各用在什么场景？" a="【P12】流复制（物理）复制的是「整个实例的 WAL 字节流」——备库是主库的逐字节副本，只能整实例、备库只读、版本必须一致；逻辑复制复制的是「逻辑变更」——可以按表、可以按行过滤、备端可写、可跨大版本、能做异构与多源汇聚。所以 ① 只读副本用流复制；② 部分表同步到别的系统用逻辑复制。同步 / 异步的取舍本质是 RPO vs 提交延迟。&#10;&#10;展开：两种复制的机制差异 → 各自绑定的东西 → 回到题目做选择 → 同步/异步怎么取舍 → 两个必须知道的坑（复制槽、主从延迟）→ 你项目为什么选逻辑路径&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">26</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P12</span><button class="mv-qdone" data-k="PostgreSQL-q26" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q26" tag="PostgreSQL" q="同步复制和异步复制怎么取舍？主从延迟怎么办？" a="【P12】流复制（物理）复制的是「整个实例的 WAL 字节流」——备库是主库的逐字节副本，只能整实例、备库只读、版本必须一致；逻辑复制复制的是「逻辑变更」——可以按表、可以按行过滤、备端可写、可跨大版本、能做异构与多源汇聚。所以 ① 只读副本用流复制；② 部分表同步到别的系统用逻辑复制。同步 / 异步的取舍本质是 RPO vs 提交延迟。&#10;&#10;展开：两种复制的机制差异 → 各自绑定的东西 → 回到题目做选择 → 同步/异步怎么取舍 → 两个必须知道的坑（复制槽、主从延迟）→ 你项目为什么选逻辑路径&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="PostgreSQL-03-事务与锁.html">← 三 · 事务与锁</a><a class="mv-line-nav next" href="PostgreSQL-05-长事务.html">五 · 长事务 →</a></div>

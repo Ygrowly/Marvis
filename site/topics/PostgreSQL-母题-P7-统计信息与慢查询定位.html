@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P7 · 统计信息与慢查询定位</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P7 · 统计信息与慢查询定位</h1>
+    <p class="mv-topic-meta">关联 母题-P6-执行计划怎么看 · 母题-P15-VACUUM与事务ID回卷 ｜ 正本 wiki/topics/PostgreSQL/母题-P7-统计信息与慢查询定位.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">优化器把「只返回 10 行」的条件估成了 100 万行，于是选了 <code class="mv-md-code">Seq Scan</code>。你要不要直接加个索引？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P7-统计信息与慢查询定位" tag="PostgreSQL" q="估计行数与实际行数差很多说明什么？怎么修？线上的慢查询怎么第一时间定位？" a="偏差来自三类原因——统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数；对应三种修法——ANALYZE（或调 autovacuum 的 analyze 阈值）、CREATE STATISTICS 建扩展统计、把表达式抽成索引或改写 SQL。定位慢查询的第一站是 pg_stat_statements（按总耗时排序，先治「最贵的」），再对单条用 EXPLAIN (ANALYZE, BUFFERS)。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「加索引」和「修信息」的分界线</strong>。上一题的例子已经说明——<strong>优化器不是一个会犯傻的黑盒，它是在用你给它的统计信息算代价</strong>。估错说明「给它的信息不对」，这时候加索引是<strong>治症状</strong>：统计信息还是错的，下一个查询照样选错。<strong>能区分这两件事，是「会看计划」和「会调数据库」的差别。</strong></p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>pg_stat_statements</li><li>ANALYZE</li><li>autovacuum analyze</li><li>n_distinct 与 MCV</li><li>列相关性</li><li>CREATE STATISTICS</li><li>表达式与函数</li><li>generic plan 陷阱</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表（聚合表数据量跳变，最容易统计过期）；数驭穹图的查询成本控制（<strong>按总耗时而不是单次耗时做优化排序</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 的对应工具是<strong>慢查询日志 + <code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">filtered</code> / <code class="mv-md-code">rows</code></strong>，没有 <code class="mv-md-code">pg_stat_statements</code> 这种「按总耗时聚合」的内置视图（要靠 performance_schema）；MySQL 也<strong>没有 <code class="mv-md-code">CREATE STATISTICS</code> 扩展统计</strong>，多列相关性主要靠组合索引和 SQL 改写绕开。<strong>这一条 PG 明显更强，可以主动说。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">偏差的三类原因 → 三种修法 → 定位慢查询的工具链（pg_stat_statements → EXPLAIN ANALYZE）→ 一个隐蔽陷阱（generic plan）→ 优化顺序</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>优化器不是在猜，它是在拿统计信息算代价。</strong> 所以「计划不对」的排查顺序永远是：<strong>先问信息对不对，再问 SQL 形状对不对，最后才问索引够不够。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能对「估算差三个数量级」说出三类原因与三种修法，并说清「先治最贵的 SQL」这个排序原则。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、统计信息从哪来、估什么</h3>
+<p class="mv-md-p">PG 的 autovacuum 进程顺带做 <code class="mv-md-code">ANALYZE</code>，采样表的一部分行，记录每个列的：</p>
+<ul class="mv-md-ul"><li><strong><code class="mv-md-code">n_distinct</code></strong>：不同值大约有多少个；</li><li><strong>MCV（most common values）</strong>：出现频率最高的若干个值和它们的频率（<strong>用来处理数据倾斜</strong>）；</li><li><strong>直方图</strong>：其余值的分布。</li></ul>
+<p class="mv-md-p">优化器拿这些数字<strong>相乘</strong>得到组合条件的行数估计。<strong>乘法就埋下了第一个大坑：它假设列之间相互独立。</strong></p>
+<h3 class="mv-md-h">二、偏差的三类原因与三种修法</h3>
+<table class="mv-table"><thead><tr><th>#</th><th>原因</th><th>表现</th><th>修法</th></tr></thead><tbody><tr><td>1</td><td><strong>统计信息过期</strong></td><td>刚导入大批数据、刚大批删除后，估算明显偏离</td><td><strong><code class="mv-md-code">ANALYZE</code> 该表</strong>；把 autovacuum 的 analyze 阈值调低（大表默认阈值往往触发太晚）</td></tr><tr><td>2</td><td><strong>列间相关</strong></td><td>一个条件估得挺准，<strong>两个条件一乘就错得离谱</strong></td><td><strong><code class="mv-md-code">CREATE STATISTICS</code> 建扩展统计</strong>（多列相关性 / 多列 n_distinct），让优化器知道它们不独立</td></tr><tr><td>3</td><td><strong>表达式 / 函数</strong></td><td><code class="mv-md-code">WHERE lower(name) = ?</code>、<code class="mv-md-code">WHERE date(created_at) = ?</code> 这类条件几乎无法估算</td><td>建<strong>表达式索引</strong>（P3）让条件变成可按索引估算，或<strong>改写 SQL</strong> 去掉函数</td></tr></tbody></table>
+<p class="mv-md-p"><strong>第 2 类最容易被忽略</strong>：单列统计都是准的，所以「统计信息没错啊」——但优化器把两个独立假设乘起来，结果差三个数量级。<strong>被判据就是：单列条件各自估得准、组合条件估得错，就是相关性问题。</strong></p>
+<h3 class="mv-md-h">三、定位慢查询：先排序，再看单条</h3>
+<p class="mv-md-p"><strong>第一站 <code class="mv-md-code">pg_stat_statements</code></strong>（需要启用扩展）。它把 SQL 按「归一化后的语句」聚合，关键列：</p>
+<table class="mv-table"><thead><tr><th>列</th><th>用途</th></tr></thead><tbody><tr><td><code class="mv-md-code">total_exec_time</code></td><td><strong>按总耗时排序——先治最贵的</strong>（一条慢但很少跑的 SQL，往往不如一条中等但每秒跑一万次的重要）</td></tr><tr><td><code class="mv-md-code">calls</code></td><td>调用次数</td></tr><tr><td><code class="mv-md-code">mean_exec_time</code> / <code class="mv-md-code">p99</code></td><td>平均与尾延迟</td></tr><tr><td><code class="mv-md-code">rows</code></td><td>返回行数总量</td></tr><tr><td><code class="mv-md-code">shared_blks_read</code> / <code class="mv-md-code">hit</code></td><td><strong>区分「算得慢」和「读得多」</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>这一步的核心判断是「按总耗时排，而不是按单次耗时排」。</strong> 优化资源应该给「总成本最高」的语句。</p>
+<p class="mv-md-p"><strong>第二站</strong>：对选中的语句跑 <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>，按 P6 的五步看。</p>
+<h3 class="mv-md-h">四、一个隐蔽陷阱：generic plan</h3>
+<p class="mv-md-p">PG 的预处理语句有个行为：<strong>前 5 次执行会根据具体参数生成「定制计划」（custom plan），之后可能切换成「通用计划」（generic plan）——一个不含参数值的固定计划。</strong></p>
+<p class="mv-md-p">后果：如果某条 SQL 的参数选择性差异极大（比如 <code class="mv-md-code">status = 'RUNNING'</code> 只命中 0.1%，<code class="mv-md-code">status = 'COMPLETED'</code> 命中 99%），<strong>通用计划只能取一个折中方案</strong>，于是对某些参数就变得很慢。</p>
+<p class="mv-md-p"><strong>判据与处理</strong>：</p>
+<ul class="mv-md-ul"><li>现象：<strong><code class="mv-md-code">EXPLAIN ANALYZE</code> 里很快，线上同一条 SQL 很慢</strong>；</li><li>检查：看计划里是不是用了通用计划（不同参数下计划完全一样、没有参数被代入）；</li><li>处理：改写成参数不敏感的形状、或强制重新规划（在连接级别控制）。</li></ul>
+<p class="mv-md-p"><strong>这条和 P6 的追问正好接上</strong>——<strong>「explain 里快、线上慢」有一个标准答案，就是这里。</strong></p>
+<h3 class="mv-md-h">五、优化顺序（这一段是给面试收尾用的）</h3>
+<pre class="mv-md-pre">① 信息层：统计信息对不对（ANALYZE / 扩展统计）
+② SQL 层：有没有多余的行被过早展开（先缩小范围，再 JOIN）
+③ 索引层：索引是否存在、是否匹配（P1–P4）
+④ 结构层：缓存、物化、预聚合、分区（P16）
+⑤ 架构层：读写分离 / OLAP</pre>
+<p class="mv-md-p"><strong>顺序不能颠倒</strong>：先加索引、再发现统计信息是错的，就白加了。<strong>EnergyOps 的优化顺序（先修范围与 JOIN → 再建索引 → 再消 N+1 → 最后才缓存）和这条链是一致的。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P18 · 乐观并发控制</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P18 · 乐观并发控制</h1>
+    <p class="mv-topic-meta">关联 母题-P19-唯一约束与UPSERT · 母题-P10-无间隙锁与锁变体 · 母题-P8-隔离级别与读一致性 ｜ 正本 wiki/topics/PostgreSQL/母题-P18-乐观并发控制.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">两个 Worker 同时认领同一个任务，怎么保证只有一个成功、而且不靠加锁？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P18-乐观并发控制" tag="PostgreSQL" q="乐观并发控制在 PG 里怎么做？为什么你项目里选它而不选 FOR UPDATE？" a="条件更新——把「我期望的状态」写进 WHERE："></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>你的项目最硬的一段技术证据</strong>，也是<strong>主线七唯一的落点</strong>——而且它和前面五条主线全都接上了：<strong>无间隙锁（P10）让它成为必要、RC 下 <code class="mv-md-code">UPDATE</code> 会重新判定（P8）让它能安全工作、短事务（P17）让它省连接、唯一约束（P19）给它兜底。</strong> <strong>能把这条链讲通，说明你不是"知道一个技巧"，而是有一致的技术判断。</strong></p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>条件更新</li><li>期望状态进 WHERE</li><li>version 或状态机做期望</li><li>**影响行数 0 = 冲突**</li><li>与 `FOR UPDATE` 取舍</li><li>无锁可重试</li><li>跨行不变量要靠约束</li><li>`RETURNING`</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena 的任务认领与退款路径（本场主战场，SQL 都是真的）</strong>；EnergyOps 的<strong>设备状态与告警处置</strong>（状态机 + 归属校验）；数驭穹图的<strong>同步任务认领与位点推进</strong>。<strong>方言差异（面试安全底线）</strong>：MySQL 里同样的做法叫「乐观锁 + version」，<strong>语法与思路一致</strong>；但两处不同——<strong>① MySQL 的 RC/RR 下 <code class="mv-md-code">UPDATE</code> 的行为细节不同；② MySQL 的 <code class="mv-md-code">REPEATABLE READ</code> 是默认值，条件更新在 RR 下的表现要比在 RC 下多考虑一层。</strong> <strong>所以「我项目里 PG 默认 RC，条件更新就够」这句话不能在 MySQL 上照抄</strong>——要先确认隔离级别。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先讲「先查再写」为什么必然有竞态 → 条件更新怎么消除它 → 影响行数为 0 之后怎么办 → 为什么不用 <code class="mv-md-code">FOR UPDATE</code> → 它覆盖不了什么（跨行不变量 → 交给 P19）→ 冲突频繁时怎么办</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>乐观并发控制的正确性不来自「不加锁」，而来自「把判断和写入合并成一条语句」。</strong> 只要判断和写入是两个步骤，中间就一定有窗口——<strong>这不是概率问题，是结构问题。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能写出条件更新的完整 SQL（含跨列上限条件与 <code class="mv-md-code">RETURNING</code>），说清「0 行是正常分支」，并解释为什么这个场景不用 <code class="mv-md-code">FOR UPDATE</code>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、先讲清楚「先查再写」为什么必然有竞态</h3>
+<pre class="mv-md-pre">Worker A: SELECT ... WHERE id=1 AND status='QUEUED'   → 查到
+Worker B: SELECT ... WHERE id=1 AND status='QUEUED'   → 也查到
+Worker A: UPDATE ... SET status='RUNNING' WHERE id=1  → 成功
+Worker B: UPDATE ... SET status='RUNNING' WHERE id=1  → 也成功 ← 重复认领</pre>
+<p class="mv-md-p"><strong>两个请求都"读到了合法状态"，所以都认为自己有资格改。</strong> 在 RC（PG 默认，P8）下这完全可能，因为<strong>两条语句各自取快照，中间没有任何东西阻止另一个事务提交</strong>。</p>
+<p class="mv-md-p"><strong>唯一能救的办法是让「判断」和「写入」不可分割。</strong> 三条路：</p>
+<p class="mv-md-p">1. <strong>加锁</strong>（<code class="mv-md-code">SELECT ... FOR UPDATE</code>）——把中间窗口锁住； 2. <strong>数据库约束</strong>（唯一约束）——让重复的那次直接失败（P19）； 3. <strong>条件更新</strong>——把判断条件搬进 <code class="mv-md-code">WHERE</code>，让数据库在一次原子操作里同时判断和写入。</p>
+<p class="mv-md-p"><strong>第 3 条就是本题答案</strong>，也是 PG 项目里最常用的那条。</p>
+<h3 class="mv-md-h">二、条件更新的完整形态</h3>
+<pre class="mv-md-pre">-- 认领任务：只有当前状态还是 QUEUED、且版本没变，才改成 RUNNING
+UPDATE tasks
+SET status = 'RUNNING',
+    worker_id = :worker_id,
+    started_at = now(),
+    version = version + 1
+WHERE id = :id
+  AND status = 'QUEUED'
+  AND version = :expected_version
+RETURNING id, status, version;</pre>
+<p class="mv-md-p">三个要点：</p>
+<p class="mv-md-p"><strong>① 判断依据可以是「状态」也可以是「版本号」</strong>，通常两个一起用：<strong>状态管业务语义</strong>（必须是 <code class="mv-md-code">QUEUED</code> 才能认领），<strong>版本管并发冲突</strong>（即便状态刚好又变回 <code class="mv-md-code">QUEUED</code>，版本也不会重复）。</p>
+<p class="mv-md-p"><strong>② <code class="mv-md-code">RETURNING</code> 让这件事变成一次往返</strong>：认领成功时直接拿到更新后的行，不用再去 <code class="mv-md-code">SELECT</code> 一次。<strong>减少一次往返对连接占用和延迟都有意义（P17）。</strong></p>
+<p class="mv-md-p"><strong>③ 用「影响行数」判断结果，不要用异常</strong>：</p>
+<table class="mv-table"><thead><tr><th>影响行数</th><th>含义</th><th>处理</th></tr></thead><tbody><tr><td><strong>1</strong></td><td>认领成功</td><td>继续执行</td></tr><tr><td><strong>0</strong></td><td>别人先改了 / 状态不匹配 / 版本不匹配</td><td><strong>读出权威状态再决定</strong>（继续跳过、或重试、或报冲突）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>「影响行数 0 不是错误」这个认知很关键</strong>——<strong>它是一个正常的业务分支</strong>，不需要抛异常、不需要重试循环。</p>
+<h3 class="mv-md-h">三、为什么不用 <code class="mv-md-code">FOR UPDATE</code></h3>
+<p class="mv-md-p"><code class="mv-md-code">FOR UPDATE</code> 是可行的（而且更"直观"），但在这个场景下有三处不划算：</p>
+<table class="mv-table"><thead><tr><th>维度</th><th><code class="mv-md-code">FOR UPDATE</code></th><th>条件更新</th></tr></thead><tbody><tr><td>冲突时行为</td><td><strong>排队等待</strong>（可能超时/死锁）</td><td><strong>立即返回 0 行</strong>（无等待）</td></tr><tr><td>死锁风险</td><td>有（多行多路径加锁顺序不一致）</td><td><strong>基本没有</strong>（无长持锁）</td></tr><tr><td>幂等性</td><td>需要自己保证</td><td><strong>天然幂等</strong>（重复执行第二次影响 0 行）</td></tr><tr><td>连接占用</td><td>事务持续到业务处理完</td><td><strong>一条语句就结束</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>再加上 PG 的一个特殊性（P10）</strong>：<strong>PG 没有间隙锁</strong>，所以「锁住一个范围以防别人插入」这件事本身做不到——<strong>也就是说，即使你用了 <code class="mv-md-code">FOR UPDATE</code>，它也只保护「已存在的行」，不会保护「还没出现的行」</strong>。<strong>在任务认领这种场景里，要保护的是"这一行的状态"，条件更新正好够用；而在需要跨行不变量的场景里，<code class="mv-md-code">FOR UPDATE</code> 也未必够——那要用约束或 SSI（P9）。</strong></p>
+<p class="mv-md-p"><strong>所以取舍判据是</strong>：<strong>冲突频率 × 锁等待成本 vs 重试成本。</strong> 冲突低 → 条件更新（乐观）；冲突高到重试成本超过加锁成本 → 才用悲观锁。</p>
+<h3 class="mv-md-h">四、它覆盖不了什么（必须主动说出边界）</h3>
+<p class="mv-md-p">条件更新保护的是<strong>「同一行的状态转换」</strong>。它<strong>不能直接保护跨行不变量</strong>，比如：</p>
+<pre class="mv-md-pre">已退款金额 + 本次退款 &lt;= 已付金额        ← 跨列，但可以在同一个 UPDATE 里带上条件
+用户多得的优惠 == 平台多付的成本          ← 跨表/跨行，条件更新做不到</pre>
+<p class="mv-md-p"><strong>处理方式分三层</strong>：</p>
+<p class="mv-md-p">1. <strong>能在同一条 SQL 里表达的条件，就写进 <code class="mv-md-code">WHERE</code></strong>（RuleArena 的实际做法）：</p>
+<pre class="mv-md-pre">UPDATE orders
+SET refunded_amount = refunded_amount + :amount,
+    version = version + 1
+WHERE id = :id
+  AND version = :expected_version
+  AND refunded_amount + :amount &lt;= paid_amount;</pre>
+<p class="mv-md-p"><strong>这条 SQL 一次性守住了三件事</strong>：版本没变（没被别人改过）、<strong>金额上限没被突破</strong>（超额时影响 0 行）、以及幂等（重复执行第二次失败）。<strong>这是"把不变量压进原子操作"的典范。</strong></p>
+<p class="mv-md-p">2. <strong>跨行的重复性</strong> → <strong>唯一约束兜底</strong>（P19）； 3. <strong>真正需要的跨行可串行化</strong> → <strong>SSI（P9）</strong> 或显式加锁 + 统一顺序（P10）。</p>
+<p class="mv-md-p"><strong>说清第 4 节这段，就把「乐观并发控制」从一个技巧升级成了一套有边界的方案。</strong></p>
+<h3 class="mv-md-h">五、冲突频繁时怎么办</h3>
+<p class="mv-md-p">条件更新在<strong>高冲突</strong>下会表现为「大量 0 行」——<strong>这不是错，但要处理</strong>：</p>
+<ul class="mv-md-ul"><li><strong>有界重试 + 退避 + 抖动</strong>（和 P9 的重试要求一样，<strong>但这里重试的是一条语句，不是整个事务</strong>，成本低得多）；</li><li><strong>限流 / 排队</strong>：把并发收敛到可接受范围（比如按任务分区，不同分区不互相冲突）；</li><li><strong>换模式</strong>：如果某个热点行必然被高频争抢（计数器、库存），<strong>考虑把它改成"队列串行化"</strong>（单一写入者）或挪到内存侧（Redis 的原子操作）——<strong>这是"改结构"而不是"调参数"。</strong></li></ul>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

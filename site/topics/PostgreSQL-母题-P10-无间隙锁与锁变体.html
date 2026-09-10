@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P10 · 无间隙锁与锁变体</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P10 · 无间隙锁与锁变体</h1>
+    <p class="mv-topic-meta">关联 母题-P8-隔离级别与读一致性 · 母题-P9-序列化失败与重试 · 母题-P18-乐观并发控制 ｜ 正本 wiki/topics/PostgreSQL/母题-P10-无间隙锁与锁变体.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一个只用过 MySQL 的候选人说「RR 靠间隙锁防幻读」。这句话在 PG 里哪里不成立？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P10-无间隙锁与锁变体" tag="PostgreSQL" q="PG 没有间隙锁，幻读和写偏斜靠什么防？FOR UPDATE 的四个变体怎么选？" a="PG 没有间隙锁——它不会因为「锁了一个范围」而阻止别人往这个范围里插入（MySQL 的 next-key lock 会）。所以防幻读只有两条路：提高隔离级别靠快照（RR / Serializable，冲突时报错重试），或者用显式锁 / 谓词式约束（唯一约束、条件更新）自己把不变量守住。四种行锁从强到弱：FOR UPDATE → FOR NO KEY UPDATE → FOR SHARE → FOR KEY SHARE。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「最容易说反的一处」</strong>——因为它不是「PG 也有类似的东西只是名字不同」，而是<strong>PG 从根本上换了一套机制</strong>。而且它接得很实：<strong>为什么你的项目选条件更新而不选 <code class="mv-md-code">FOR UPDATE</code>（P18），答案就在这里</strong>——PG 的显式锁有四种强度，选错要么挡不住、要么挡太多。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>**无间隙锁**</li><li>不阻塞插入</li><li>FOR UPDATE</li><li>FOR NO KEY UPDATE</li><li>FOR SHARE</li><li>FOR KEY SHARE</li><li>外键用最弱的 KEY SHARE</li><li>写偏斜</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的<strong>任务认领</strong>（多个 Worker 抢同一任务——用条件更新而不是 <code class="mv-md-code">FOR UPDATE</code>）；EnergyOps 的<strong>月度结算</strong>（跨行不变量多，正是该考虑 SSI 或显式锁的地方）。<strong>方言差异（面试安全底线）</strong>：MySQL 的 RR + next-key lock 会<strong>阻止插入</strong>（表现为插入被阻塞）；PG <strong>不会</strong>，它要么让你看到旧快照、要么在冲突时报错。<strong>「PG 也靠间隙锁」是明确的概念性错误</strong>，和「SSE 是短连接」同一级别。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 为什么没有间隙锁 → 那幻读怎么防（两条路）→ 四种行锁强度与用途 → 外键为什么用最弱的那个 → 写偏斜为什么更麻烦 → 工程上怎么选</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>MySQL 用「范围锁」把幻读挡在门外；PG 用「多版本快照」让幻读不产生错误结果，代价是冲突时要报错重试。</strong> 一个靠「不许发生」，一个靠「发生但可检测」——<strong>理解这个分歧，后面的锁与隔离全都能推出来。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「无间隙锁」的后果与两条替代路径，能说出四种行锁的强度与用途，并能解释外键为什么用 <code class="mv-md-code">FOR KEY SHARE</code>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、PG 为什么没有间隙锁</h3>
+<p class="mv-md-p">MySQL 的 next-key lock = <strong>记录锁 + 间隙锁</strong>：锁定「某个范围」，从而<strong>阻止别人在这个范围内插入新行</strong>，这样「第二次查询不会多出几行」（防幻读）。</p>
+<p class="mv-md-p">PG 的做法完全不同：<strong>读操作完全不加锁</strong>，靠<strong>快照</strong>保证「你看到的数据是某个一致时刻的」。所以：</p>
+<ul class="mv-md-ul"><li>「幻读」在 PG 里表现为：<strong>你换了快照就会看到新行（RC 下每条语句一次快照，P8），或看到旧快照（RR/Serializable 下）</strong>；</li><li><strong>PG 不会为此阻塞插入</strong>——所以<strong>插入和范围查询几乎不互相干扰，并发度更高</strong>。</li></ul>
+<p class="mv-md-p"><strong>这就是为什么「PG 没有间隙锁」不是缺陷，而是另一条设计路线。</strong></p>
+<h3 class="mv-md-h">二、幻读和不变量：两条路</h3>
+<table class="mv-table"><thead><tr><th>需求</th><th>路径</th></tr></thead><tbody><tr><td>「我这段计算要基于同一时刻的数据」</td><td><strong>提隔离级别</strong>（RR / Serializable），接受 <code class="mv-md-code">40001</code> 重试（P8 / P9）</td></tr><tr><td>「某个跨行不变量绝不能破」</td><td><strong>用锁或约束显式守住</strong>：<code class="mv-md-code">FOR UPDATE</code> 锁住涉及行、<strong>唯一约束</strong>堵住重复、<strong>条件更新</strong>把判断与写入合并（P18/P19）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>关键判断</strong>：<strong>PG 不会自动帮你把不变量守住</strong>（不像 MySQL 会用间隙锁顺手挡住一部分幻读），所以<strong>PG 的业务正确性更依赖「显式约束 + 显式锁」，而不是「依赖默认隔离级别」</strong>。这句话说出来，对 PG 的理解层次就到位了。</p>
+<h3 class="mv-md-h">三、四种行锁：从强到弱</h3>
+<table class="mv-table"><thead><tr><th>变体</th><th>它阻止什么</th><th>什么时候用</th></tr></thead><tbody><tr><td><code class="mv-md-code">FOR UPDATE</code></td><td><strong>最强</strong>：阻止其他事务对这行做 <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">DELETE</code> / <code class="mv-md-code">SELECT FOR UPDATE</code> / <code class="mv-md-code">FOR NO KEY UPDATE</code></td><td>你马上要改这一行，且不希望任何人插队（<strong>注意：它虽然强，但默认不阻止对「非键列」的某些并发路径</strong>——见追问）</td></tr><tr><td><code class="mv-md-code">FOR NO KEY UPDATE</code></td><td>弱一点：<strong>允许</strong>其他事务对同一行做不涉及唯一键的更新</td><td>更新非键字段的常规写路径（PG 的普通 <code class="mv-md-code">UPDATE</code> 实际对应这一档）</td></tr><tr><td><code class="mv-md-code">FOR SHARE</code></td><td>共享锁：<strong>阻止别人改这行</strong>，但允许多人同时读锁</td><td>「我要基于这行做判断，先别动它」</td></tr><tr><td><code class="mv-md-code">FOR KEY SHARE</code></td><td><strong>最弱</strong>：只阻止「删行」和「改键值」</td><td><strong>外键检查用的就是它</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>为什么外键用最弱的 <code class="mv-md-code">FOR KEY SHARE</code></strong>：外键只需要保证「被引用的键还在」——<strong>只要没人删它、没人改它的键值就够了</strong>，不需要阻止别人改它的其他字段。<strong>所以「向子表插入一行」通常不会和被引用行的普通更新互相阻塞。</strong> 这是 PG 在外键上的一个精细优化，<strong>能主动说出来很加分</strong>。</p>
+<h3 class="mv-md-h">四、写偏斜：比幻读更麻烦的东西</h3>
+<p class="mv-md-p"><strong>定义</strong>：两个事务<strong>读的集合和写的集合都不重叠</strong>，但合起来破坏了一个跨行不变量。</p>
+<p class="mv-md-p">经典例子：约束是「至少有一名医生值班」。两个事务各自看到「有 2 人值班」，各自把其中一人设为「不值班」——各自的读集不包含对方要写的行，<strong>所以 RC 和 RR 都拦不住</strong>，最后 0 人值班。</p>
+<p class="mv-md-p"><strong>为什么 RC/RR 拦不住</strong>：快照隔离只保证「你看到的是一致的」，<strong>它不保证「你的读和你的写之间没有别人插进来」</strong>。</p>
+<p class="mv-md-p"><strong>三条解法</strong>：</p>
+<p class="mv-md-p">1. <strong>Serializable（SSI）</strong>：它能检测出这种依赖环 → 报错重试（P9）——<strong>这是最省心的解法</strong>； 2. <strong>显式锁</strong>：把「读」也加锁（<code class="mv-md-code">FOR UPDATE</code> 锁住所有涉及行），退化成悲观并发的写法； 3. <strong>改成约束 / 单行聚合</strong>：把跨行不变量收敛成一个能被数据库原子保护的东西（比如在一行里维护计数并用条件更新守护）。</p>
+<p class="mv-md-p"><strong>第 3 条最值钱</strong>：<strong>工程上最好的做法不是「加锁保护不变量」，而是「把不变量设计成不需要跨行保护」</strong>——这是设计层面的解法，比机制层面的更根本。</p>
+<h3 class="mv-md-h">五、死锁：PG 里怎么来、怎么减少</h3>
+<p class="mv-md-p">1. <strong>统一加锁/更新顺序</strong>（例如总是按主键升序更新）； 2. <strong>缩短事务</strong>、别在事务里做网络 IO 或等人工确认； 3. <strong>能不用锁就不用锁</strong>——条件更新把「等待」变成「0 行受影响」，<strong>根本不产生锁等待，也就没有死锁</strong>； 4. 批量按固定顺序、分批提交。</p>
+<ul class="mv-md-ul"><li><strong>来</strong>：两个事务以不同顺序锁同一批行（<code class="mv-md-code">UPDATE</code> 顺序不一致、<code class="mv-md-code">FOR UPDATE</code> 顺序不一致），或者<strong>RC 下 <code class="mv-md-code">UPDATE</code> 重新检查最新版本</strong>（P8）造成的互相等待；</li><li><strong>减少</strong>：</li></ul>
+<p class="mv-md-p"><strong>第 3 条接到 P18</strong>：<strong>PG 里减少死锁最有效的手段不是调参，而是换并发控制方式。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

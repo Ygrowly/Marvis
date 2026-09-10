@@ -26,12 +26,119 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
-    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P18</span><span class="mv-mt-name">乐观并发控制在 PG 里怎么做？为什么项目里选它不选 FOR UPDATE</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>乐观并发控制在 PG 里怎么做？（条件更新 + version）</li><li>唯一约束为什么是幂等的最终防线？</li><li>UPSERT（ON CONFLICT）怎么用？有什么坑？</li><li>高并发扣库存 / 抢任务怎么防超卖、防重复执行？</li></ul></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P19</span><span class="mv-mt-name">唯一约束为什么是幂等的最终防线？UPSERT 怎么用、有哪些坑</span><span class="mv-chip ghost">未提炼</span></div><p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p><ul class="mv-md-ul"><li>乐观并发控制在 PG 里怎么做？（条件更新 + version）</li><li>唯一约束为什么是幂等的最终防线？</li><li>UPSERT（ON CONFLICT）怎么用？有什么坑？</li><li>高并发扣库存 / 抢任务怎么防超卖、防重复执行？</li></ul></div>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P18</span><span class="mv-mt-name">乐观并发控制在 PG 里怎么做？为什么项目里选它不选 FOR UPDATE</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P18-乐观并发控制.html">单卡 →</a></div><p class="mv-mt-q">乐观并发控制在 PG 里怎么做？为什么你项目里选它而不选 <code class="mv-md-code">FOR UPDATE</code>？</p><collapse-panel title="题目背景"><p class="mv-md-p">两个 Worker 同时认领同一个任务，怎么保证只有一个成功、而且不靠加锁？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>条件更新</strong>——把「我期望的状态」写进 <code class="mv-md-code">WHERE</code>：</p><ul class="mv-kw"><li>条件更新</li><li>期望状态进 WHERE</li><li>version 或状态机做期望</li><li>**影响行数 0 = 冲突**</li><li>与 `FOR UPDATE` 取舍</li><li>无锁可重试</li><li>跨行不变量要靠约束</li><li>`RETURNING`</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>乐观并发控制的正确性不来自「不加锁」，而来自「把判断和写入合并成一条语句」。</strong> 只要判断和写入是两个步骤，中间就一定有窗口——<strong>这不是概率问题，是结构问题。</strong></p><h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、先讲清楚「先查再写」为什么必然有竞态</h3>
+<pre class="mv-md-pre">Worker A: SELECT ... WHERE id=1 AND status='QUEUED'   → 查到
+Worker B: SELECT ... WHERE id=1 AND status='QUEUED'   → 也查到
+Worker A: UPDATE ... SET status='RUNNING' WHERE id=1  → 成功
+Worker B: UPDATE ... SET status='RUNNING' WHERE id=1  → 也成功 ← 重复认领</pre>
+<p class="mv-md-p"><strong>两个请求都"读到了合法状态"，所以都认为自己有资格改。</strong> 在 RC（PG 默认，P8）下这完全可能，因为<strong>两条语句各自取快照，中间没有任何东西阻止另一个事务提交</strong>。</p>
+<p class="mv-md-p"><strong>唯一能救的办法是让「判断」和「写入」不可分割。</strong> 三条路：</p>
+<p class="mv-md-p">1. <strong>加锁</strong>（<code class="mv-md-code">SELECT ... FOR UPDATE</code>）——把中间窗口锁住； 2. <strong>数据库约束</strong>（唯一约束）——让重复的那次直接失败（P19）； 3. <strong>条件更新</strong>——把判断条件搬进 <code class="mv-md-code">WHERE</code>，让数据库在一次原子操作里同时判断和写入。</p>
+<p class="mv-md-p"><strong>第 3 条就是本题答案</strong>，也是 PG 项目里最常用的那条。</p>
+<h3 class="mv-md-h">二、条件更新的完整形态</h3>
+<pre class="mv-md-pre">-- 认领任务：只有当前状态还是 QUEUED、且版本没变，才改成 RUNNING
+UPDATE tasks
+SET status = 'RUNNING',
+    worker_id = :worker_id,
+    started_at = now(),
+    version = version + 1
+WHERE id = :id
+  AND status = 'QUEUED'
+  AND version = :expected_version
+RETURNING id, status, version;</pre>
+<p class="mv-md-p">三个要点：</p>
+<p class="mv-md-p"><strong>① 判断依据可以是「状态」也可以是「版本号」</strong>，通常两个一起用：<strong>状态管业务语义</strong>（必须是 <code class="mv-md-code">QUEUED</code> 才能认领），<strong>版本管并发冲突</strong>（即便状态刚好又变回 <code class="mv-md-code">QUEUED</code>，版本也不会重复）。</p>
+<p class="mv-md-p"><strong>② <code class="mv-md-code">RETURNING</code> 让这件事变成一次往返</strong>：认领成功时直接拿到更新后的行，不用再去 <code class="mv-md-code">SELECT</code> 一次。<strong>减少一次往返对连接占用和延迟都有意义（P17）。</strong></p>
+<p class="mv-md-p"><strong>③ 用「影响行数」判断结果，不要用异常</strong>：</p>
+<table class="mv-table"><thead><tr><th>影响行数</th><th>含义</th><th>处理</th></tr></thead><tbody><tr><td><strong>1</strong></td><td>认领成功</td><td>继续执行</td></tr><tr><td><strong>0</strong></td><td>别人先改了 / 状态不匹配 / 版本不匹配</td><td><strong>读出权威状态再决定</strong>（继续跳过、或重试、或报冲突）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>「影响行数 0 不是错误」这个认知很关键</strong>——<strong>它是一个正常的业务分支</strong>，不需要抛异常、不需要重试循环。</p>
+<h3 class="mv-md-h">三、为什么不用 <code class="mv-md-code">FOR UPDATE</code></h3>
+<p class="mv-md-p"><code class="mv-md-code">FOR UPDATE</code> 是可行的（而且更"直观"），但在这个场景下有三处不划算：</p>
+<table class="mv-table"><thead><tr><th>维度</th><th><code class="mv-md-code">FOR UPDATE</code></th><th>条件更新</th></tr></thead><tbody><tr><td>冲突时行为</td><td><strong>排队等待</strong>（可能超时/死锁）</td><td><strong>立即返回 0 行</strong>（无等待）</td></tr><tr><td>死锁风险</td><td>有（多行多路径加锁顺序不一致）</td><td><strong>基本没有</strong>（无长持锁）</td></tr><tr><td>幂等性</td><td>需要自己保证</td><td><strong>天然幂等</strong>（重复执行第二次影响 0 行）</td></tr><tr><td>连接占用</td><td>事务持续到业务处理完</td><td><strong>一条语句就结束</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>再加上 PG 的一个特殊性（P10）</strong>：<strong>PG 没有间隙锁</strong>，所以「锁住一个范围以防别人插入」这件事本身做不到——<strong>也就是说，即使你用了 <code class="mv-md-code">FOR UPDATE</code>，它也只保护「已存在的行」，不会保护「还没出现的行」</strong>。<strong>在任务认领这种场景里，要保护的是"这一行的状态"，条件更新正好够用；而在需要跨行不变量的场景里，<code class="mv-md-code">FOR UPDATE</code> 也未必够——那要用约束或 SSI（P9）。</strong></p>
+<p class="mv-md-p"><strong>所以取舍判据是</strong>：<strong>冲突频率 × 锁等待成本 vs 重试成本。</strong> 冲突低 → 条件更新（乐观）；冲突高到重试成本超过加锁成本 → 才用悲观锁。</p>
+<h3 class="mv-md-h">四、它覆盖不了什么（必须主动说出边界）</h3>
+<p class="mv-md-p">条件更新保护的是<strong>「同一行的状态转换」</strong>。它<strong>不能直接保护跨行不变量</strong>，比如：</p>
+<pre class="mv-md-pre">已退款金额 + 本次退款 &lt;= 已付金额        ← 跨列，但可以在同一个 UPDATE 里带上条件
+用户多得的优惠 == 平台多付的成本          ← 跨表/跨行，条件更新做不到</pre>
+<p class="mv-md-p"><strong>处理方式分三层</strong>：</p>
+<p class="mv-md-p">1. <strong>能在同一条 SQL 里表达的条件，就写进 <code class="mv-md-code">WHERE</code></strong>（RuleArena 的实际做法）：</p>
+<pre class="mv-md-pre">UPDATE orders
+SET refunded_amount = refunded_amount + :amount,
+    version = version + 1
+WHERE id = :id
+  AND version = :expected_version
+  AND refunded_amount + :amount &lt;= paid_amount;</pre>
+<p class="mv-md-p"><strong>这条 SQL 一次性守住了三件事</strong>：版本没变（没被别人改过）、<strong>金额上限没被突破</strong>（超额时影响 0 行）、以及幂等（重复执行第二次失败）。<strong>这是"把不变量压进原子操作"的典范。</strong></p>
+<p class="mv-md-p">2. <strong>跨行的重复性</strong> → <strong>唯一约束兜底</strong>（P19）； 3. <strong>真正需要的跨行可串行化</strong> → <strong>SSI（P9）</strong> 或显式加锁 + 统一顺序（P10）。</p>
+<p class="mv-md-p"><strong>说清第 4 节这段，就把「乐观并发控制」从一个技巧升级成了一套有边界的方案。</strong></p>
+<h3 class="mv-md-h">五、冲突频繁时怎么办</h3>
+<p class="mv-md-p">条件更新在<strong>高冲突</strong>下会表现为「大量 0 行」——<strong>这不是错，但要处理</strong>：</p>
+<ul class="mv-md-ul"><li><strong>有界重试 + 退避 + 抖动</strong>（和 P9 的重试要求一样，<strong>但这里重试的是一条语句，不是整个事务</strong>，成本低得多）；</li><li><strong>限流 / 排队</strong>：把并发收敛到可接受范围（比如按任务分区，不同分区不互相冲突）；</li><li><strong>换模式</strong>：如果某个热点行必然被高频争抢（计数器、库存），<strong>考虑把它改成"队列串行化"</strong>（单一写入者）或挪到内存侧（Redis 的原子操作）——<strong>这是"改结构"而不是"调参数"。</strong></li></ul>
+<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P18-乐观并发控制.md</p></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P19</span><span class="mv-mt-name">唯一约束为什么是幂等的最终防线？UPSERT 怎么用、有哪些坑</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P19-唯一约束与UPSERT.html">单卡 →</a></div><p class="mv-mt-q">唯一约束为什么是幂等的最终防线？<code class="mv-md-code">UPSERT</code>（<code class="mv-md-code">ON CONFLICT</code>）怎么用、有哪些坑？</p><collapse-panel title="题目背景"><p class="mv-md-p">消息队列按「至少一次」投递，同一个业务动作可能被投递两次。你怎么保证业务效果只有一次？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>因为它是数据库级别、原子、且对所有并发路径都生效的</strong>——应用层的「先查再插」有竞态（P18 讲过），而唯一约束让<strong>第二次插入直接失败</strong>，从结构上堵住了。<strong>前提是幂等键要基于业务身份构造</strong>（<code class="mv-md-code">run_id + 动作类型 + 目标 + 参数 + 规则版本 + 逻辑步骤</code>），<strong>并且参与约束的列必须 <code class="mv-md-code">NOT NULL</code></strong>（PG 里 <code class="mv-md-code">NULL</code> 彼此不相等，否则约束会漏）。<code class="mv-md-code">UPSERT</code> 用 <code class="mv-md-code">INSERT ... ON CONFLICT ... DO NOTHING / DO UPDATE</code>。</p><ul class="mv-kw"><li>唯一约束是原子防线</li><li>应用层幂等是优化</li><li>先查再插有竞态</li><li>幂等键基于业务身份（**不能用 ToolCallID 这类技术 ID**）</li><li>约束列必须 NOT NULL</li><li>`ON CONFLICT DO NOTHING` vs `DO UPDATE`</li><li>`excluded` 与条件覆盖</li><li>冲突也消耗序列值</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>幂等的最终责任必须落在数据库约束上。</strong> 应用层做幂等只能<strong>减少无效尝试</strong>（省资源），<strong>不能提供正确性保证</strong>——因为任何「查—判断—写」在多进程/多副本下都有窗口。<strong>唯一约束是唯一一个"无论如何都拦得住"的位置。</strong></p><h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、为什么应用层幂等「不够」</h3>
+<p class="mv-md-p"><strong>幂等的常见应用层实现</strong>：</p>
+<pre class="mv-md-pre">查：这个 idempotency_key 有没有处理过？
+  没有 → 处理 → 记录
+  有   → 直接返回上次结果</pre>
+<p class="mv-md-p"><strong>问题就在「查」和「记录」之间</strong>（和 P18 是同一个结构缺陷）：</p>
+<pre class="mv-md-pre">实例 A: 查 → 不存在
+实例 B: 查 → 不存在          ← 两个实例拿到同一个答案
+实例 A: 处理 → 记录
+实例 B: 处理 → 记录           ← 副作用发生了两次</pre>
+<p class="mv-md-p"><strong>读者会问：「那加锁不就行了？」</strong>——加锁可以，但有两个代价：① <strong>锁是应用层的，一旦有第二台机器/第二个进程就失效</strong>（除非用分布式锁，那又引入新依赖和新的失效模式）；② <strong>锁的获取本身可能失败/超时</strong>，于是又回到"要么重试要么放弃"的老问题。</p>
+<p class="mv-md-p"><strong>所以判断是</strong>：<strong>应用层幂等能挡掉绝大多数重复（这是有价值的优化——省掉了重复的昂贵操作），但不能作为正确性保证。</strong></p>
+<h3 class="mv-md-h">二、唯一约束为什么是「最终防线」</h3>
+<p class="mv-md-p">它同时满足四个条件，缺一不可：</p>
+<table class="mv-table"><thead><tr><th>条件</th><th>说明</th></tr></thead><tbody><tr><td><strong>原子</strong></td><td>插入与唯一性检查在数据库内部是一次操作，<strong>不存在「查—写」窗口</strong></td></tr><tr><td><strong>对所有路径生效</strong></td><td>不管来自哪个实例、哪个进程、哪条代码路径、甚至是运维手工插入，<strong>都拦得住</strong></td></tr><tr><td><strong>由持久状态保证</strong></td><td>约束建立在索引/数据上，<strong>不是内存状态</strong>（重启不丢）</td></tr><tr><td><strong>失败是确定的</strong></td><td>第二次插入报 <code class="mv-md-code">23505</code>，<strong>语义明确，不会"有时成功有时失败"</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>所以正确的分工是</strong>：</p>
+<pre class="mv-md-pre">应用层幂等：优化（减少无效的昂贵操作）
+数据库约束：正确性（唯一一个"无论如何都拦得住"的位置）
+权威查询：判定（Receipt/Snapshot 告诉你"它到底成没成"，P18 追问）</pre>
+<p class="mv-md-p"><strong>这三层合起来才是完整的幂等方案</strong>——<strong>只说其中一层都是不完整的。</strong></p>
+<h3 class="mv-md-h">三、幂等键怎么构造（含反例）</h3>
+<p class="mv-md-p"><strong>规则：基于业务身份构造，不依赖任何一次技术调用。</strong></p>
+<p class="mv-md-p">RuleArena 的组成（<code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code>）：</p>
+<pre class="mv-md-pre">run_id + action_type + target_id + normalized_arguments + rule_version + logical_step</pre>
+<p class="mv-md-p"><strong>要能说出每一项挡的是什么</strong>：</p>
+<table class="mv-table"><thead><tr><th>组成</th><th>挡什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">run_id</code></td><td>不同运行的相同动作不能混为一谈</td></tr><tr><td><code class="mv-md-code">action_type</code></td><td>同一目标的不同动作（退款 vs 发券）要分开</td></tr><tr><td><code class="mv-md-code">target_id</code></td><td>同一动作作用在不同对象上要分开</td></tr><tr><td><code class="mv-md-code">normalized_arguments</code></td><td><strong>参数要归一化</strong>（顺序、大小写、数值表示），否则「同一个业务意图」会因为参数写法不同而被当成两次</td></tr><tr><td><code class="mv-md-code">rule_version</code></td><td>规则变了之后，同一个动作是<strong>新的业务意图</strong>，不该复用旧结果</td></tr><tr><td><strong><code class="mv-md-code">logical_step</code></strong></td><td><strong>同一意图可能被合法地重复执行多次</strong>（比如重试策略的第 3 步），逻辑步骤要区分开</td></tr></tbody></table>
+<p class="mv-md-p"><strong>明确的反例（这是这道题最值钱的部分）</strong>：</p>
+<p class="mv-md-p"><strong>不能用 <code class="mv-md-code">ToolCallID</code> 当幂等键。</strong> 因为它是<strong>由模型/运行时为"这一次调用"生成的</strong>，而同一个业务意图在这些情况下会产生不同的 <code class="mv-md-code">ToolCallID</code>：</p>
+<ul class="mv-md-ul"><li>模型<strong>重新规划</strong>（换了调用方式）；</li><li><strong>Worker 重启</strong>后恢复；</li><li><strong>会话恢复</strong>；</li><li><strong>HTTP 超时后重新发起</strong>；</li><li>两个策略<strong>恰好提出相同动作</strong>（各自生成自己的 ID）。</li></ul>
+<p class="mv-md-p"><strong>所以用 <code class="mv-md-code">ToolCallID</code> 做幂等键，等于"每次重试都换一把新钥匙"——约束永远不生效，重复副作用照样发生。</strong> <strong>这条是"幂等设计里最典型的错误"，能讲出来直接体现项目深度。</strong></p>
+<h3 class="mv-md-h">四、<code class="mv-md-code">NOT NULL</code>：一个容易漏的坑</h3>
+<p class="mv-md-p"><strong>PG 里 <code class="mv-md-code">NULL</code> 彼此不相等</strong>（P5 提过），所以唯一约束<strong>允许多行 <code class="mv-md-code">NULL</code></strong>。</p>
+<p class="mv-md-p">后果：如果幂等键的某一列可为 <code class="mv-md-code">NULL</code>，那么「同一业务意图」可能因为该列为 <code class="mv-md-code">NULL</code> 而<strong>不被判定为重复</strong>，约束形同虚设。</p>
+<p class="mv-md-p"><strong>所以规则是</strong>：<strong>参与唯一约束的列一律 <code class="mv-md-code">NOT NULL</code></strong>；确实有可选维度时，<strong>用空字符串 / 哨兵值而不是 <code class="mv-md-code">NULL</code></strong>（或者把可选维度塞进归一化后的参数哈希里）。</p>
+<p class="mv-md-p"><strong>「设计唯一约束时必须检查 <code class="mv-md-code">NOT NULL</code>」——这是一个可以在 5 秒内检查完、但漏掉会致命的检查项。</strong></p>
+<h3 class="mv-md-h">五、<code class="mv-md-code">UPSERT</code>：两种形态与三个坑</h3>
+<pre class="mv-md-pre">-- 形态一：重复就跳过（幂等写入的默认选择）
+INSERT INTO action_receipts (idempotency_key, run_id, action_type, status)
+VALUES (:key, :run_id, :type, 'ACCEPTED')
+ON CONFLICT (idempotency_key) DO NOTHING;
+
+-- 形态二：重复就更新（"取最新"，要小心）
+INSERT INTO counters (id, value)
+VALUES (:id, 1)
+ON CONFLICT (id) DO UPDATE
+  SET value = counters.value + 1;</pre>
+<p class="mv-md-p"><strong>三个坑</strong>：</p>
+<table class="mv-table"><thead><tr><th>坑</th><th>说明</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">DO UPDATE</code> 可能把更新的旧值写回去</strong></td><td>如果目标是「保留最新」，必须加条件：<code class="mv-md-code">... DO UPDATE SET ... WHERE excluded.updated_at &gt; t.updated_at</code>（<code class="mv-md-code">excluded</code> 指"本次想插入的那行"）。<strong>不加条件，一个延迟到达的旧请求就能覆盖掉新数据。</strong></td></tr><tr><td><strong>冲突也会消耗序列值</strong></td><td><code class="mv-md-code">INSERT ... ON CONFLICT</code> <strong>先尝试插入</strong>，所以自增序列<strong>会前进</strong>——于是<strong>主键会出现"空洞"</strong>。<strong>这是正常现象，不要试图修它。</strong></td></tr><tr><td><strong>并发下仍可能报错</strong></td><td><code class="mv-md-code">DO UPDATE</code> 涉及行锁，<strong>同键高并发可能出现序列化失败或死锁</strong>（P9 / P10），<strong>所以重试逻辑依然需要</strong>。</td></tr></tbody></table>
+<p class="mv-md-p"><strong>还有一个语义选择</strong>：<code class="mv-md-code">DO NOTHING</code> 有一个副作用——<strong>它不告诉你是"真的插入了"还是"跳过了"</strong>（<code class="mv-md-code">RETURNING</code> 在这种情况下不返回行）。<strong>如果你需要区分，就得靠"有没有返回行"来判断</strong>：</p>
+<pre class="mv-md-pre">有返回行 → 本次是新插入（首次执行）
+无返回行 → 已有记录（重复执行）  ← 正是幂等判断需要的信号</pre>
+<p class="mv-md-p"><strong>这个技巧很实用</strong>：<strong>一条 <code class="mv-md-code">INSERT ... ON CONFLICT DO NOTHING RETURNING</code> 同时完成了「写入 + 幂等判定」</strong>——<strong>不需要先 SELECT，也不存在竞态。</strong></p>
+<h3 class="mv-md-h">六、落到项目（RuleArena 的真实设计）</h3>
+<p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code> 里的做法值得逐条对照：</p>
+<p class="mv-md-p">1. <strong>唯一约束</strong>：<code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code> —— <strong>约束带上了业务身份前缀</strong>（不只是幂等键本身）； 2. <strong>同一事务提交</strong>：业务效果 + 账本 + BusinessEvent + Receipt <strong>在同一个事务里</strong>——<strong>否则会出现"业务成功但没有 Receipt"（无法判定）或"Receipt 成功但业务回滚"（假成功）</strong>； 3. <strong>Receipt 状态机</strong>：<code class="mv-md-code">ACCEPTED</code> / <code class="mv-md-code">COMPLETED</code> / <code class="mv-md-code">REJECTED</code> / <code class="mv-md-code">UNKNOWN</code>——<strong>把"不知道"变成一个显式状态</strong>（<code class="mv-md-code">ACTION_UNKNOWN</code>），<strong>而不是硬塞进成功或失败</strong>； 4. <strong>超时后不换 key</strong>：<strong>重试仍用同一个幂等键</strong>，因为换了 key 就等于放弃幂等保护； 5. <strong>业务校验 + 数据库约束都要有</strong>：<strong>业务校验给出清晰的错误信息，唯一约束防并发穿透</strong>——<strong>两者职责不同，不能互相替代。</strong></p>
+<p class="mv-md-p"><strong>第 5 条是这道题最好的收尾</strong>：<strong>"清晰错误"是给人和业务看的，"原子约束"是给正确性看的</strong>——<strong>一个负责体验，一个负责不出错。</strong></p>
+<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P19-唯一约束与UPSERT.md</p></div>
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">4 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">36</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q36" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q36" tag="PostgreSQL" q="乐观并发控制在 PG 里怎么做？（条件更新 + version）" a="【P18】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">37</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P19</span><button class="mv-qdone" data-k="PostgreSQL-q37" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q37" tag="PostgreSQL" q="唯一约束为什么是幂等的最终防线？" a="【P19】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">38</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P19</span><button class="mv-qdone" data-k="PostgreSQL-q38" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q38" tag="PostgreSQL" q="UPSERT（ON CONFLICT）怎么用？有什么坑？" a="【P19】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">39</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q39" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q39" tag="PostgreSQL" q="高并发扣库存 / 抢任务怎么防超卖、防重复执行？" a="【P18】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">36</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q36" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q36" tag="PostgreSQL" q="乐观并发控制在 PG 里怎么做？（条件更新 + version）" a="【P18】条件更新——把「我期望的状态」写进 WHERE：&#10;&#10;展开：先讲「先查再写」为什么必然有竞态 → 条件更新怎么消除它 → 影响行数为 0 之后怎么办 → 为什么不用 FOR UPDATE → 它覆盖不了什么（跨行不变量 → 交给 P19）→ 冲突频繁时怎么办&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">37</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P19</span><button class="mv-qdone" data-k="PostgreSQL-q37" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q37" tag="PostgreSQL" q="唯一约束为什么是幂等的最终防线？" a="【P19】因为它是数据库级别、原子、且对所有并发路径都生效的——应用层的「先查再插」有竞态（P18 讲过），而唯一约束让第二次插入直接失败，从结构上堵住了。前提是幂等键要基于业务身份构造（run_id + 动作类型 + 目标 + 参数 + 规则版本 + 逻辑步骤），并且参与约束的列必须 NOT NULL（PG 里 NULL 彼此不相等，否则约束会漏）。UPSERT 用 INSERT ... ON CONFLICT ... DO NOTHING / DO UPDATE。&#10;&#10;展开：为什么应用层幂等不够（竞态）→ 唯一约束为什么是最终防线 → 幂等键怎么构造（含反例）→ NOT NULL 这个坑 → UPSERT 两种形态与坑 → 落到项目的 Receipt 设计&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">38</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P19</span><button class="mv-qdone" data-k="PostgreSQL-q38" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q38" tag="PostgreSQL" q="UPSERT（ON CONFLICT）怎么用？有什么坑？" a="【P19】因为它是数据库级别、原子、且对所有并发路径都生效的——应用层的「先查再插」有竞态（P18 讲过），而唯一约束让第二次插入直接失败，从结构上堵住了。前提是幂等键要基于业务身份构造（run_id + 动作类型 + 目标 + 参数 + 规则版本 + 逻辑步骤），并且参与约束的列必须 NOT NULL（PG 里 NULL 彼此不相等，否则约束会漏）。UPSERT 用 INSERT ... ON CONFLICT ... DO NOTHING / DO UPDATE。&#10;&#10;展开：为什么应用层幂等不够（竞态）→ 唯一约束为什么是最终防线 → 幂等键怎么构造（含反例）→ NOT NULL 这个坑 → UPSERT 两种形态与坑 → 落到项目的 Receipt 设计&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">39</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P18</span><button class="mv-qdone" data-k="PostgreSQL-q39" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q39" tag="PostgreSQL" q="高并发扣库存 / 抢任务怎么防超卖、防重复执行？" a="【P18】条件更新——把「我期望的状态」写进 WHERE：&#10;&#10;展开：先讲「先查再写」为什么必然有竞态 → 条件更新怎么消除它 → 影响行数为 0 之后怎么办 → 为什么不用 FOR UPDATE → 它覆盖不了什么（跨行不变量 → 交给 P19）→ 冲突频繁时怎么办&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="PostgreSQL-06-数据增长与高可用.html">← 六 · 数据增长与高可用</a></div>

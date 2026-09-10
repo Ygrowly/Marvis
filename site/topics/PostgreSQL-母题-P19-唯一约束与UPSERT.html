@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P19 · 唯一约束与 UPSERT</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P19 · 唯一约束与 UPSERT</h1>
+    <p class="mv-topic-meta">关联 母题-P18-乐观并发控制 · 母题-P5-表设计与数据类型 · 母题-P9-序列化失败与重试 ｜ 正本 wiki/topics/PostgreSQL/母题-P19-唯一约束与UPSERT.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">消息队列按「至少一次」投递，同一个业务动作可能被投递两次。你怎么保证业务效果只有一次？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P19-唯一约束与UPSERT" tag="PostgreSQL" q="唯一约束为什么是幂等的最终防线？UPSERT（ON CONFLICT）怎么用、有哪些坑？" a="因为它是数据库级别、原子、且对所有并发路径都生效的——应用层的「先查再插」有竞态（P18 讲过），而唯一约束让第二次插入直接失败，从结构上堵住了。前提是幂等键要基于业务身份构造（run_id + 动作类型 + 目标 + 参数 + 规则版本 + 逻辑步骤），并且参与约束的列必须 NOT NULL（PG 里 NULL 彼此不相等，否则约束会漏）。UPSERT 用 INSERT ... ON CONFLICT ... DO NOTHING / DO UPDATE。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>幂等设计的地基</strong>，而且它有一个非常有说服力的论证结构——<strong>「应用层幂等是优化，数据库约束才是正确性」</strong>。它还接住了你的项目里最核心的一段：<strong>RuleArena 的 ActionReceipt 与唯一约束</strong>（<code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code>）。<strong>能把"为什么必须在数据库层兜底"讲成一条必然性论证，而不是一句结论，这道题就到位了。</strong></p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>唯一约束是原子防线</li><li>应用层幂等是优化</li><li>先查再插有竞态</li><li>幂等键基于业务身份（**不能用 ToolCallID 这类技术 ID**）</li><li>约束列必须 NOT NULL</li><li>`ON CONFLICT DO NOTHING` vs `DO UPDATE`</li><li>`excluded` 与条件覆盖</li><li>冲突也消耗序列值</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena 的 ActionReceipt 与幂等键（本场主战场）</strong>；EnergyOps 的<strong>采集窗口幂等与补数</strong>（15 分钟窗口重跑不该重复计费——<strong>正是"同一业务身份 + 唯一约束"的场景</strong>）；数驭穹图的<strong>同步位点与数据集发布</strong>（发布前校验行数 / 主键重复，<strong>正是"用约束和校验兜住重复"的工程化表达</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 的对应写法是 <code class="mv-md-code">INSERT ... ON DUPLICATE KEY UPDATE</code>，<strong>语义与 <code class="mv-md-code">ON CONFLICT</code> 不完全等价</strong>（它是在"任意唯一键冲突"时更新，而且是先尝试插入、失败后更新，<strong>返回的影响行数语义也不同</strong>：1 = 插入、2 = 更新、0 = 没变）。<strong>「MySQL 的 <code class="mv-md-code">ON DUPLICATE KEY UPDATE</code> 返回 2 表示更新过」这种细节能说出来，是实打实用过的痕迹。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么应用层幂等不够（竞态）→ 唯一约束为什么是最终防线 → 幂等键怎么构造（含反例）→ <code class="mv-md-code">NOT NULL</code> 这个坑 → UPSERT 两种形态与坑 → 落到项目的 Receipt 设计</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>幂等的最终责任必须落在数据库约束上。</strong> 应用层做幂等只能<strong>减少无效尝试</strong>（省资源），<strong>不能提供正确性保证</strong>——因为任何「查—判断—写」在多进程/多副本下都有窗口。<strong>唯一约束是唯一一个"无论如何都拦得住"的位置。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「应用层幂等为什么不够」的必然性，能写出幂等键的正确组成并指出 <code class="mv-md-code">ToolCallID</code> 这类反例，能讲出 <code class="mv-md-code">DO UPDATE</code> 覆盖与 <code class="mv-md-code">NULL</code> 两个坑。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、为什么应用层幂等「不够」</h3>
+<p class="mv-md-p"><strong>幂等的常见应用层实现</strong>：</p>
+<pre class="mv-md-pre">查：这个 idempotency_key 有没有处理过？
+  没有 → 处理 → 记录
+  有   → 直接返回上次结果</pre>
+<p class="mv-md-p"><strong>问题就在「查」和「记录」之间</strong>（和 P18 是同一个结构缺陷）：</p>
+<pre class="mv-md-pre">实例 A: 查 → 不存在
+实例 B: 查 → 不存在          ← 两个实例拿到同一个答案
+实例 A: 处理 → 记录
+实例 B: 处理 → 记录           ← 副作用发生了两次</pre>
+<p class="mv-md-p"><strong>读者会问：「那加锁不就行了？」</strong>——加锁可以，但有两个代价：① <strong>锁是应用层的，一旦有第二台机器/第二个进程就失效</strong>（除非用分布式锁，那又引入新依赖和新的失效模式）；② <strong>锁的获取本身可能失败/超时</strong>，于是又回到"要么重试要么放弃"的老问题。</p>
+<p class="mv-md-p"><strong>所以判断是</strong>：<strong>应用层幂等能挡掉绝大多数重复（这是有价值的优化——省掉了重复的昂贵操作），但不能作为正确性保证。</strong></p>
+<h3 class="mv-md-h">二、唯一约束为什么是「最终防线」</h3>
+<p class="mv-md-p">它同时满足四个条件，缺一不可：</p>
+<table class="mv-table"><thead><tr><th>条件</th><th>说明</th></tr></thead><tbody><tr><td><strong>原子</strong></td><td>插入与唯一性检查在数据库内部是一次操作，<strong>不存在「查—写」窗口</strong></td></tr><tr><td><strong>对所有路径生效</strong></td><td>不管来自哪个实例、哪个进程、哪条代码路径、甚至是运维手工插入，<strong>都拦得住</strong></td></tr><tr><td><strong>由持久状态保证</strong></td><td>约束建立在索引/数据上，<strong>不是内存状态</strong>（重启不丢）</td></tr><tr><td><strong>失败是确定的</strong></td><td>第二次插入报 <code class="mv-md-code">23505</code>，<strong>语义明确，不会"有时成功有时失败"</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>所以正确的分工是</strong>：</p>
+<pre class="mv-md-pre">应用层幂等：优化（减少无效的昂贵操作）
+数据库约束：正确性（唯一一个"无论如何都拦得住"的位置）
+权威查询：判定（Receipt/Snapshot 告诉你"它到底成没成"，P18 追问）</pre>
+<p class="mv-md-p"><strong>这三层合起来才是完整的幂等方案</strong>——<strong>只说其中一层都是不完整的。</strong></p>
+<h3 class="mv-md-h">三、幂等键怎么构造（含反例）</h3>
+<p class="mv-md-p"><strong>规则：基于业务身份构造，不依赖任何一次技术调用。</strong></p>
+<p class="mv-md-p">RuleArena 的组成（<code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code>）：</p>
+<pre class="mv-md-pre">run_id + action_type + target_id + normalized_arguments + rule_version + logical_step</pre>
+<p class="mv-md-p"><strong>要能说出每一项挡的是什么</strong>：</p>
+<table class="mv-table"><thead><tr><th>组成</th><th>挡什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">run_id</code></td><td>不同运行的相同动作不能混为一谈</td></tr><tr><td><code class="mv-md-code">action_type</code></td><td>同一目标的不同动作（退款 vs 发券）要分开</td></tr><tr><td><code class="mv-md-code">target_id</code></td><td>同一动作作用在不同对象上要分开</td></tr><tr><td><code class="mv-md-code">normalized_arguments</code></td><td><strong>参数要归一化</strong>（顺序、大小写、数值表示），否则「同一个业务意图」会因为参数写法不同而被当成两次</td></tr><tr><td><code class="mv-md-code">rule_version</code></td><td>规则变了之后，同一个动作是<strong>新的业务意图</strong>，不该复用旧结果</td></tr><tr><td><strong><code class="mv-md-code">logical_step</code></strong></td><td><strong>同一意图可能被合法地重复执行多次</strong>（比如重试策略的第 3 步），逻辑步骤要区分开</td></tr></tbody></table>
+<p class="mv-md-p"><strong>明确的反例（这是这道题最值钱的部分）</strong>：</p>
+<p class="mv-md-p"><strong>不能用 <code class="mv-md-code">ToolCallID</code> 当幂等键。</strong> 因为它是<strong>由模型/运行时为"这一次调用"生成的</strong>，而同一个业务意图在这些情况下会产生不同的 <code class="mv-md-code">ToolCallID</code>：</p>
+<ul class="mv-md-ul"><li>模型<strong>重新规划</strong>（换了调用方式）；</li><li><strong>Worker 重启</strong>后恢复；</li><li><strong>会话恢复</strong>；</li><li><strong>HTTP 超时后重新发起</strong>；</li><li>两个策略<strong>恰好提出相同动作</strong>（各自生成自己的 ID）。</li></ul>
+<p class="mv-md-p"><strong>所以用 <code class="mv-md-code">ToolCallID</code> 做幂等键，等于"每次重试都换一把新钥匙"——约束永远不生效，重复副作用照样发生。</strong> <strong>这条是"幂等设计里最典型的错误"，能讲出来直接体现项目深度。</strong></p>
+<h3 class="mv-md-h">四、<code class="mv-md-code">NOT NULL</code>：一个容易漏的坑</h3>
+<p class="mv-md-p"><strong>PG 里 <code class="mv-md-code">NULL</code> 彼此不相等</strong>（P5 提过），所以唯一约束<strong>允许多行 <code class="mv-md-code">NULL</code></strong>。</p>
+<p class="mv-md-p">后果：如果幂等键的某一列可为 <code class="mv-md-code">NULL</code>，那么「同一业务意图」可能因为该列为 <code class="mv-md-code">NULL</code> 而<strong>不被判定为重复</strong>，约束形同虚设。</p>
+<p class="mv-md-p"><strong>所以规则是</strong>：<strong>参与唯一约束的列一律 <code class="mv-md-code">NOT NULL</code></strong>；确实有可选维度时，<strong>用空字符串 / 哨兵值而不是 <code class="mv-md-code">NULL</code></strong>（或者把可选维度塞进归一化后的参数哈希里）。</p>
+<p class="mv-md-p"><strong>「设计唯一约束时必须检查 <code class="mv-md-code">NOT NULL</code>」——这是一个可以在 5 秒内检查完、但漏掉会致命的检查项。</strong></p>
+<h3 class="mv-md-h">五、<code class="mv-md-code">UPSERT</code>：两种形态与三个坑</h3>
+<pre class="mv-md-pre">-- 形态一：重复就跳过（幂等写入的默认选择）
+INSERT INTO action_receipts (idempotency_key, run_id, action_type, status)
+VALUES (:key, :run_id, :type, 'ACCEPTED')
+ON CONFLICT (idempotency_key) DO NOTHING;
+
+-- 形态二：重复就更新（"取最新"，要小心）
+INSERT INTO counters (id, value)
+VALUES (:id, 1)
+ON CONFLICT (id) DO UPDATE
+  SET value = counters.value + 1;</pre>
+<p class="mv-md-p"><strong>三个坑</strong>：</p>
+<table class="mv-table"><thead><tr><th>坑</th><th>说明</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">DO UPDATE</code> 可能把更新的旧值写回去</strong></td><td>如果目标是「保留最新」，必须加条件：<code class="mv-md-code">... DO UPDATE SET ... WHERE excluded.updated_at &gt; t.updated_at</code>（<code class="mv-md-code">excluded</code> 指"本次想插入的那行"）。<strong>不加条件，一个延迟到达的旧请求就能覆盖掉新数据。</strong></td></tr><tr><td><strong>冲突也会消耗序列值</strong></td><td><code class="mv-md-code">INSERT ... ON CONFLICT</code> <strong>先尝试插入</strong>，所以自增序列<strong>会前进</strong>——于是<strong>主键会出现"空洞"</strong>。<strong>这是正常现象，不要试图修它。</strong></td></tr><tr><td><strong>并发下仍可能报错</strong></td><td><code class="mv-md-code">DO UPDATE</code> 涉及行锁，<strong>同键高并发可能出现序列化失败或死锁</strong>（P9 / P10），<strong>所以重试逻辑依然需要</strong>。</td></tr></tbody></table>
+<p class="mv-md-p"><strong>还有一个语义选择</strong>：<code class="mv-md-code">DO NOTHING</code> 有一个副作用——<strong>它不告诉你是"真的插入了"还是"跳过了"</strong>（<code class="mv-md-code">RETURNING</code> 在这种情况下不返回行）。<strong>如果你需要区分，就得靠"有没有返回行"来判断</strong>：</p>
+<pre class="mv-md-pre">有返回行 → 本次是新插入（首次执行）
+无返回行 → 已有记录（重复执行）  ← 正是幂等判断需要的信号</pre>
+<p class="mv-md-p"><strong>这个技巧很实用</strong>：<strong>一条 <code class="mv-md-code">INSERT ... ON CONFLICT DO NOTHING RETURNING</code> 同时完成了「写入 + 幂等判定」</strong>——<strong>不需要先 SELECT，也不存在竞态。</strong></p>
+<h3 class="mv-md-h">六、落到项目（RuleArena 的真实设计）</h3>
+<p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code> 里的做法值得逐条对照：</p>
+<p class="mv-md-p">1. <strong>唯一约束</strong>：<code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code> —— <strong>约束带上了业务身份前缀</strong>（不只是幂等键本身）； 2. <strong>同一事务提交</strong>：业务效果 + 账本 + BusinessEvent + Receipt <strong>在同一个事务里</strong>——<strong>否则会出现"业务成功但没有 Receipt"（无法判定）或"Receipt 成功但业务回滚"（假成功）</strong>； 3. <strong>Receipt 状态机</strong>：<code class="mv-md-code">ACCEPTED</code> / <code class="mv-md-code">COMPLETED</code> / <code class="mv-md-code">REJECTED</code> / <code class="mv-md-code">UNKNOWN</code>——<strong>把"不知道"变成一个显式状态</strong>（<code class="mv-md-code">ACTION_UNKNOWN</code>），<strong>而不是硬塞进成功或失败</strong>； 4. <strong>超时后不换 key</strong>：<strong>重试仍用同一个幂等键</strong>，因为换了 key 就等于放弃幂等保护； 5. <strong>业务校验 + 数据库约束都要有</strong>：<strong>业务校验给出清晰的错误信息，唯一约束防并发穿透</strong>——<strong>两者职责不同，不能互相替代。</strong></p>
+<p class="mv-md-p"><strong>第 5 条是这道题最好的收尾</strong>：<strong>"清晰错误"是给人和业务看的，"原子约束"是给正确性看的</strong>——<strong>一个负责体验，一个负责不出错。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

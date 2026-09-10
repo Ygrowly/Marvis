@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P8 · 隔离级别与读一致性</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P8 · 隔离级别与读一致性</h1>
+    <p class="mv-topic-meta">关联 母题-P9-序列化失败与重试 · 母题-P10-无间隙锁与锁变体 ｜ 正本 wiki/topics/PostgreSQL/母题-P8-隔离级别与读一致性.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">同一个事务里，两条完全一样的 <code class="mv-md-code">SELECT</code> 返回了不同的行。这算 bug 吗？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P8-隔离级别与读一致性" tag="PostgreSQL" q="PG 默认是 RC 还是 RR？同一事务内两次查询为什么会看到不同结果？" a="PG 默认 READ COMMITTED。RC 下每条语句开始时取一次快照，所以同一事务里的两条 SELECT 之间如果有别的事务提交，你就会看到不同的结果——这是规范允许的不可重复读。要事务内一致就提到 REPEATABLE READ（PG 的 RR 是快照隔离，整个事务一个快照）；但 PG 的 RR 遇到写冲突会直接报错让你重试，它不靠间隙锁把冲突挡住（那是 MySQL 的做法，见 P10）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 最容易说错的七处」里的第一条</strong>——<strong>MySQL 默认 RR，PG 默认 RC</strong>。而且它的反直觉程度最高：<strong>「同一事务内读到不一样的结果」在 PG 的默认级别下不算 bug，是规范行为。</strong> 如果这条说错，后面 MVCC、锁、膨胀全都跟着错。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>默认 RC</li><li>每条语句一个快照 vs 每事务一个快照</li><li>快照隔离 SI</li><li>写冲突要重试</li><li>RC 下 UPDATE 会重新检查最新版本</li><li>快照基于事务开始时间</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的任务状态机与退款路径（<strong>条件更新能在 RC 下安全工作，正是因为这里说的「重新判定 WHERE」</strong>）；EnergyOps 的结算批处理（<strong>如果要求「整批基于同一时刻」，那就是该用 RR 的场景，同时必须能重试</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照 + 报错重试。<strong>绝对不要说「PG 的 RR 也靠间隙锁」——PG 根本没有间隙锁。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 默认 RC（对比 MySQL 的 RR）→ 快照粒度差异（语句 vs 事务）→ 所以「两次查询不同」是规范行为 → RR 的代价是写冲突要报错 → RC 下 UPDATE 的特殊行为 → 怎么选</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>隔离级别在 PG 里承诺的是「你能看到什么」，不是「你不会失败」。</strong> 级别越高，看到的越一致，但<strong>越可能被要求重试</strong>——这是 PG 与 MySQL 的哲学差异：<strong>PG 用「快照 + 报错重试」换掉了「加锁等待」。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能用「快照粒度」解释「同一事务两次查询结果不同」，并说清 RC / RR 在写冲突上的不同表现（等锁 vs 报错重试）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、默认值：第一处必须说对的差异</h3>
+<table class="mv-table"><thead><tr><th></th><th>MySQL（InnoDB）</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>默认隔离级别</td><td><strong>REPEATABLE READ</strong></td><td><strong>READ COMMITTED</strong></td></tr><tr><td>幻读防护</td><td>next-key lock（间隙锁）</td><td><strong>无间隙锁</strong>，靠快照 / SSI</td></tr><tr><td>写冲突表现</td><td><strong>等待锁</strong>（可能超时/死锁）</td><td><strong>报 <code class="mv-md-code">40001</code>，让应用重试</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>为什么这个默认值差异重要</strong>：MySQL 的 RR 让很多「本来会出现的读不一致」被默认挡住，所以从 MySQL 过来的人<strong>习惯性地假设「事务内读是一致的」</strong>；而 PG 默认不保证这一点。<strong>面试里只要开口说「PG 默认也是 RR」，后面所有关于并发行为的判断都会被怀疑。</strong></p>
+<h3 class="mv-md-h">二、快照粒度：理解一切的关键</h3>
+<table class="mv-table"><thead><tr><th>级别</th><th>快照什么时候取</th></tr></thead><tbody><tr><td><strong>READ COMMITTED（默认）</strong></td><td><strong>每条语句开始时</strong>各取一次</td></tr><tr><td><strong>REPEATABLE READ（PG 的快照隔离）</strong></td><td><strong>事务开始时</strong>取一次，整个事务都用它</td></tr></tbody></table>
+<p class="mv-md-p"><strong>所以 RC 下</strong>：</p>
+<pre class="mv-md-pre">事务 A                                    事务 B
+BEGIN
+SELECT balance  → 100
+                                          UPDATE ... COMMIT（改成 80）
+SELECT balance  → 80     ← 同一事务，结果变了</pre>
+<p class="mv-md-p"><strong>这不是 bug</strong>——两条语句各自取了自己的快照，各自看到了当时已提交的最新数据。</p>
+<p class="mv-md-p"><strong>RR 下</strong>这两条都会返回 100（整个事务用同一快照）——<strong>这才叫「可重复读」。</strong></p>
+<h3 class="mv-md-h">三、RC 下一个必须知道的细节：<code class="mv-md-code">UPDATE</code> 会看到「最新的那一行」</h3>
+<p class="mv-md-p">RC 下，当你 <code class="mv-md-code">UPDATE</code> 一行时，如果这一行在语句执行期间被别人改过，PG 的规则是：</p>
+<p class="mv-md-p"><strong>重新读取该行的最新已提交版本，重新判定 <code class="mv-md-code">WHERE</code> 条件是否仍成立</strong>，成立才更新；不成立就跳过（受影响的可能比你以为的少）。</p>
+<p class="mv-md-p"><strong>为什么这条重要</strong>：它解释了两件常见现象——</p>
+<ul class="mv-md-ul"><li><strong><code class="mv-md-code">UPDATE ... WHERE status = 'QUEUED'</code> 在 RC 下是「相对安全」的</strong>：因为重新判定时会发现 <code class="mv-md-code">status</code> 已经不是 <code class="mv-md-code">QUEUED</code> 了，于是跳过。<strong>这正好是 P18 条件更新能成立的基础。</strong></li><li>反面：<strong>它也可能让你「以为改了一行、实际没改」</strong>，所以必须<strong>用影响行数判断结果</strong>，不能假定一定成功。</li></ul>
+<h3 class="mv-md-h">四、RR 的代价：写冲突会报错</h3>
+<p class="mv-md-p">PG 的 REPEATABLE READ 是<strong>快照隔离</strong>。当两个事务基于同一个旧快照去改同一行时，第二个会拿到：</p>
+<pre class="mv-md-pre">ERROR: could not serialize access due to concurrent update (SQLSTATE 40001)</pre>
+<p class="mv-md-p"><strong>这不是故障，是设计</strong>：<strong>要么让你看到一致快照、要么明确告诉你没改成功，二者不能都要。</strong> 所以 PG 的做法是「报错 + 应用重试」，而不是 MySQL 那样「加锁等待」。</p>
+<p class="mv-md-p"><strong>所以把级别提到 RR 的那一刻，你的应用就必须能重试事务</strong>（见 P9）。</p>
+<h3 class="mv-md-h">五、怎么选（面试收尾）</h3>
+<table class="mv-table"><thead><tr><th>场景</th><th>选择</th></tr></thead><tbody><tr><td>绝大多数业务读写</td><td><strong>RC（默认）</strong>——每条语句看最新已提交数据，最接近直觉，并发冲突最少</td></tr><tr><td>一条事务里需要多次读同一批数据保持一致（对账、汇总计算）</td><td><strong>RR</strong>，并且<strong>整套写路径要能处理 40001 重试</strong></td></tr><tr><td>有跨行不变量、写偏斜风险</td><td><strong>Serializable（SSI）</strong>，同样要能重试（P9）</td></tr><tr><td>只读报表</td><td>RC 或 RR 都行，但<strong>注意长事务对膨胀的影响</strong>（P14）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>一句判据</strong>：<strong>能接受「读到别人刚提交的数据」就用 RC；需要「整段计算基于同一时刻」就往上提，同时接受重试。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

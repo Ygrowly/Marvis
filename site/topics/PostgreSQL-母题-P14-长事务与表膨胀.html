@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P14 · 长事务与表膨胀</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P14 · 长事务与表膨胀</h1>
+    <p class="mv-topic-meta">关联 母题-P13-MVCC与可见性 · 母题-P15-VACUUM与事务ID回卷 · 母题-P2-堆表与回表 ｜ 正本 wiki/topics/PostgreSQL/母题-P14-长事务与表膨胀.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一个开了两小时、只做 <code class="mv-md-code">SELECT</code>、一行都没改过的事务，会让表变大吗？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P14-长事务与表膨胀" tag="PostgreSQL" q="长事务为什么会造成表膨胀？机制是什么？" a="会。 膨胀的机制是「旧的死元组不能被回收」：VACUUM 只能回收「对所有活跃快照都不可见」的死元组——长事务持有的快照还需要看到旧版本，于是 VACUUM 不敢删，死元组一直堆积 → 表页越来越多 → 扫描同样的行要读更多页、回表更贵、缓存命中率下降。所以长事务的危害不是「持锁久」，而是它按住了一个旧快照，让空间回收停摆。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是 <strong>PG 里最反直觉、也最容易在生产上踩的一题</strong>——<strong>「只读事务无害」是错的</strong>。而且它是主线五的核心：<strong>膨胀不是一个独立现象，它是「长事务按住了回收边界」的必然结果。</strong> 答得出这条链，P13（MVCC）和 P15（VACUUM）就串成了一条线；答不出，那两道题也只是两个孤立的知识点。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>活跃快照按住回收</li><li>回收的判据是「对所有人不可见」</li><li>死元组积压 → 表与索引一起膨胀</li><li>`idle in transaction`</li><li>**只读长事务同样有害**</li><li>监控最老事务</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>聚合表重算</strong>（15 分钟窗口持续重算 → 版本堆积最快，是最需要盯回收边界的表）；RuleArena 的<strong>Worker 长任务</strong>（如果任务在事务里等外部 HTTP，就会产生 <code class="mv-md-code">idle in transaction</code>——<strong>「事务边界只包数据库操作」这条纪律在这里最值钱</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 的旧版本进 undo log、由 <strong>purge 线程自动</strong>回收，<strong>所以「长事务导致表膨胀」不是 MySQL 的主要话题</strong>（MySQL 长事务的主要危害是持锁久、undo 表空间膨胀）；<strong>PG 的长事务会直接按住空间回收</strong>。<strong>「MySQL 也需要 VACUUM」是明确错误。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">膨胀的机制（回收边界）→ 为什么只读事务也有害 → 膨胀的连锁代价（扫描 / 回表 / 缓存）→ 怎么发现（监控哪几个视图）→ 怎么防（超时 + 拆批 + 别在事务里等外部）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>回收的判据是「对所有人都不可见」，不是「对当前事务不可见」。</strong> 换句话说——<strong>表能不能瘦，由「最老的那个活跃快照」决定，不由「现在有多少死数据」决定。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能用「回收边界 = 最老快照」把机制推一遍，并说清「只读长事务为什么同样有害」和该监控哪个指标。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、机制：回收边界由最老快照决定</h3>
+<p class="mv-md-p">结合 P13 的版本模型：</p>
+<pre class="mv-md-pre">一个行版本被删/被更新后 → 变成「死元组」，但它还物理存在
+VACUUM 判断「这个死元组能不能清掉」的唯一问题：
+   还有没有活跃事务能看到它？
+     有 → 不能删（删了那个事务就读不到了）
+     没有 → 可以标记为可复用</pre>
+<p class="mv-md-p"><strong>所以 VACUUM 的清理边界 = 所有活跃快照里最老的那一个。</strong></p>
+<p class="mv-md-p">一个两小时前开始的事务 → <strong>它的快照就是两小时前</strong> → <strong>这两小时内产生的所有死元组都不能回收</strong>。<strong>两小时的写入量全部变成"不能动的垃圾"。</strong></p>
+<p class="mv-md-p"><strong>这就是「长事务拖系统下水」的真实路径</strong>——不是它占了多少 CPU，而是<strong>它让整张表的回收停摆了两小时</strong>。</p>
+<h3 class="mv-md-h">二、为什么「只读」也有害（最反直觉的一点）</h3>
+<p class="mv-md-p"><strong>因为回收看的是「快照」，不是「这个事务做了什么」。</strong></p>
+<ul class="mv-md-ul"><li>一个只读事务<strong>不做任何修改</strong>，看上去"人畜无害"；</li><li>但它<strong>持有快照</strong>，而快照决定了回收边界；</li><li><strong>所以只要它开着，膨胀就在积累。</strong></li></ul>
+<p class="mv-md-p"><strong>三种常见的「无害长事务」</strong>：</p>
+<table class="mv-table"><thead><tr><th>形态</th><th>为什么出现</th><th>危害</th></tr></thead><tbody><tr><td><code class="mv-md-code">idle in transaction</code>（开了事务但没提交、连接挂着）</td><td>应用逻辑里 <code class="mv-md-code">BEGIN</code> 之后做了网络请求 / 等用户输入 / 调了慢接口</td><td><strong>最坏的形态</strong>：不干活但一直按住快照</td></tr><tr><td>长只读事务（报表、导出、全量扫描）</td><td>一次性拉大量数据分析</td><td>按快照 + 占备库回放</td></tr><tr><td>批处理事务（几千行一提交）</td><td>「为了原子性把一批包在一个事务里」</td><td>事务内的写入量本身就是膨胀源</td></tr></tbody></table>
+<h3 class="mv-md-h">三、膨胀的连锁代价</h3>
+<p class="mv-md-p">膨胀不只是"占空间"，它会<strong>污染整条查询链路</strong>：</p>
+<pre class="mv-md-pre">表页变多
+  → 同样的行数分布在更多页上
+  → Seq Scan 要读更多页（同样的数据，更多 IO）
+  → 索引查询的回表随机 IO 次数上升（P2：ctid 指向更多稀疏页）
+  → 缓存命中率下降（shared_buffers 装不下有用的数据）
+  → 于是查询整体变慢 → 更慢的查询又延长事务 → 环路加剧</pre>
+<p class="mv-md-p"><strong>这个环路值得记住</strong>：<strong>膨胀 → 查询变慢 → 事务变长 → 回收继续停摆 → 膨胀更严重</strong>。<strong>这就是为什么「PG 表膨胀」经常是性能事故的起点，而不是结果。</strong></p>
+<h3 class="mv-md-h">四、怎么发现（要能说出监控哪一个）</h3>
+<table class="mv-table"><thead><tr><th>看什么</th><th>用途</th></tr></thead><tbody><tr><td><code class="mv-md-code">pg_stat_activity</code> 里<strong>最老的活动事务 / 其 <code class="mv-md-code">xmin</code>（或 <code class="mv-md-code">backend_xmin</code>）</strong></td><td><strong>回收边界</strong>——这是最直接的指标</td></tr><tr><td>「运行时间最长的事务」+「处于 <code class="mv-md-code">idle in transaction</code> 的连接」</td><td>找出真正的肇事者</td></tr><tr><td>表的死元组数量 / 上次 VACUUM 时间（表级统计）</td><td>判断哪张表在积累死元组</td></tr><tr><td>表与索引的实际大小 vs 有效数据量</td><td>判断膨胀程度</td></tr></tbody></table>
+<p class="mv-md-p"><strong>面试里能说出「我盯的是最老事务的 xmin，也就是回收边界」这一句，就说明你真的理解了机制</strong>——因为大部分人只会说「看有没有长事务」。</p>
+<h3 class="mv-md-h">五、怎么防（按有效性排序）</h3>
+<p class="mv-md-p">1. <strong>设超时</strong>：<code class="mv-md-code">idle_in_transaction_session_timeout</code>（<strong>这条最有效</strong>，直接干掉"挂着不干活"的连接）、<code class="mv-md-code">statement_timeout</code>； 2. <strong>拆批</strong>：大批处理拆成小事务分批提交（<strong>不要为了"原子性"把几万行包进一个事务</strong>）； 3. <strong>别在事务里做外部 IO</strong>：网络调用、调外部服务、等人工确认——<strong>事务边界应该只包住数据库操作</strong>； 4. <strong>调 autovacuum</strong>：对大表/高更新表单独设更激进的触发阈值（<strong><code class="mv-md-code">pg_stat_bgwriter</code> 与表级统计是依据</strong>）； 5. <strong>设计层</strong>：把「高频更新的列」排除出索引（利用 HOT，见 P13）、用状态表 / 追加式日志代替就地更新。</p>
+<p class="mv-md-p"><strong>第 3 条是最容易被忽略的工程纪律</strong>：<strong>「事务里不调外部服务」和「事务里等用户输入」是同一类错误</strong>——它们都把「数据库锁与快照的持有时间」绑到了「外部系统的响应时间」上。</p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>
