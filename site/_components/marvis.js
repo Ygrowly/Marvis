@@ -225,12 +225,8 @@
   class ReviewDeck extends HTMLElement {
     connectedCallback() {
       if (this._built) return; this._built = true;
-      var sel = this.getAttribute('src');
-      var node = sel ? document.querySelector(sel) : null;
-      try {
-        this.cards = node ? JSON.parse(node.textContent) : (window.MARVIS_DECK || []);
-      } catch (e) { this.cards = []; }
-      if (!Array.isArray(this.cards)) this.cards = [];
+      this.decks = ReviewDeck.readDecks();
+      this.deckIdx = 0;
       this.state = store.get('mv.review', {});
       this.queue = []; this.idx = -1;
       var self = this;
@@ -239,14 +235,15 @@
           '<div class="mv-rd-head"><span class="mv-rd-title">' +
             esc(this.getAttribute('title') || '间隔复训') + '</span>' +
             '<span class="mv-rd-stat"></span></div>' +
+          '<div class="mv-rd-tabs"></div>' +
           '<div class="mv-rd-slot"></div>' +
           '<div class="mv-rd-actions" style="margin-top:12px;display:flex;gap:8px">' +
             '<button class="mv-btn mv-btn-primary" data-a="start">开始今日复训</button>' +
-            '<button class="mv-btn" data-a="reset">清空进度</button>' +
+            '<button class="mv-btn" data-a="reset">重置进度</button>' +
           '</div>' +
           '<div class="mv-rd-ladder"></div>' +
         '</div>';
-      this.querySelectorAll('button').forEach(function (b) {
+      this.querySelectorAll('button[data-a]').forEach(function (b) {
         b.addEventListener('click', function () {
           if (b.getAttribute('data-a') === 'start') self.start();
           else { if (confirm('清空所有复训进度？不可恢复。')) { store.set('mv.review', {}); self.state = {}; self.render(); } }
@@ -256,35 +253,69 @@
       this._slot.addEventListener('mv-grade', function (e) { self.grade(e.detail.ok); });
       this.render();
     }
-    _due() {
+    // 数据来源：window.MARVIS_DECKS = [{id,name,cards:[…]}]；兼容旧的 MARVIS_DECK
+    static readDecks() {
+      if (Array.isArray(window.MARVIS_DECKS) && window.MARVIS_DECKS.length) return window.MARVIS_DECKS;
+      if (Array.isArray(window.MARVIS_DECK) && window.MARVIS_DECK.length) {
+        return [{ id: 'all', name: '全部', cards: window.MARVIS_DECK }];
+      }
+      return [];
+    }
+    get deck() { return this.decks[this.deckIdx] || { cards: [] }; }
+    dueOf(d) {
       var t = today(), st = this.state;
-      return this.cards.filter(function (c) {
+      return ((d && d.cards) || []).filter(function (c) {
         var s = st[c.id]; return !s || !s.next || s.next <= t;
       });
     }
     render() {
-      var due = this._due();
+      var self = this;
+
+      var tabs = this.querySelector('.mv-rd-tabs');
+      if (this.decks.length > 1) {
+        tabs.innerHTML = this.decks.map(function (dk, i) {
+          var n = self.dueOf(dk).length;
+          return '<button class="mv-rd-tab' + (i === self.deckIdx ? ' on' : '') + '" data-d="' + i + '">' +
+            esc(dk.name || dk.id) + '<span class="n">' + n + '/' + ((dk.cards || []).length) + '</span></button>';
+        }).join('');
+        tabs.querySelectorAll('.mv-rd-tab').forEach(function (b) {
+          b.addEventListener('click', function () {
+            self.deckIdx = +b.getAttribute('data-d');
+            self.queue = []; self.idx = -1;
+            self.render();
+          });
+        });
+      } else {
+        tabs.innerHTML = '';
+      }
+
+      var dk = this.deck;
+      var due = this.dueOf(dk);
       this.querySelector('.mv-rd-stat').textContent =
-        '今日到期 ' + due.length + ' · 共 ' + this.cards.length + ' 张';
-      var slot = this._slot;
+        '今日到期 ' + due.length + ' · 本牌组 ' + ((dk.cards || []).length) + ' 个';
+
       if (this.idx < 0 || this.idx >= this.queue.length) {
-        slot.innerHTML = '<div class="mv-rd-empty">' +
-          (due.length ? '点「开始今日复训」，一次一张，先说后翻。' : '今天没有到期卡片。明天的量会在 0 点自动出现。') +
+        this._slot.innerHTML = '<div class="mv-rd-empty">' +
+          (due.length ? '点「开始今日复训」，一次一个母题，先说后翻。' : '今天没有到期内容。') +
           '</div>';
       } else {
         var c = this.queue[this.idx];
-        slot.innerHTML = '<flip-card gradable card-id="' + esc(c.id) + '" tag="' + esc(c.tag || '') +
-          '" q="' + esc(c.q) + '" a="' + esc(c.a) + '"></flip-card>';
+        this._slot.innerHTML =
+          '<flip-card gradable card-id="' + esc(c.id) + '" tag="' + esc(c.tag || '') +
+          '" q="' + esc(c.q) + '" a="' + esc(c.a) + '"></flip-card>' +
+          (c.href ? '<p class="mv-note" style="text-align:right"><a href="' + esc(c.href) +
+            '" style="color:var(--mv-accent)">打开母题页 →</a></p>' : '');
       }
+
       var cur = this.idx >= 0 ? this.queue[this.idx] : null;
-      var lvl = cur ? (this.state[cur.id] ? this.state[cur.id].idx || 0 : 0) : 0;
-      this.querySelector('.mv-rd-ladder').innerHTML = LADDER.map(function (d, i) {
-        return '<span class="mv-rd-step' + (i === Math.min(lvl, 4) && cur ? ' on' : '') + '">' + d + '天</span>';
+      var lvl = cur && this.state[cur.id] ? (this.state[cur.id].idx || 0) : 0;
+      this.querySelector('.mv-rd-ladder').innerHTML = LADDER.map(function (v, i) {
+        return '<span class="mv-rd-step' + (cur && i === Math.min(lvl, 4) ? ' on' : '') + '">' + v + '天</span>';
       }).join('') + '<span class="mv-rd-step" style="border:none;color:var(--mv-muted)">忘了归零重来</span>';
     }
     start() {
-      this.queue = this._due().slice(); this.idx = 0;
-      if (!this.queue.length) this.idx = -1;
+      this.queue = this.dueOf(this.deck).slice();
+      this.idx = this.queue.length ? 0 : -1;
       this.render();
     }
     grade(ok) {
@@ -374,6 +405,51 @@
     }
   }
 
+  // ---------- 8. collapse-panel 折叠分组 ----------
+  // <collapse-panel title="两层追问" open>…内容…</collapse-panel>
+  class CollapsePanel extends HTMLElement {
+    connectedCallback() {
+      if (this._built) return; this._built = true;
+      var title = this.getAttribute('title') || '展开';
+      var open = this.hasAttribute('open');
+      var body = this.innerHTML;
+      this.innerHTML =
+        '<div class="mv-cp' + (open ? ' is-open' : '') + '">' +
+          '<button class="mv-cp-head" type="button">' +
+            '<span>' + esc(title) + '</span><span class="mv-cp-mark"></span>' +
+          '</button>' +
+          '<div class="mv-cp-body">' + body + '</div>' +
+        '</div>';
+      var box = this.querySelector('.mv-cp');
+      this.querySelector('.mv-cp-head').addEventListener('click', function () {
+        box.classList.toggle('is-open');
+      });
+    }
+  }
+
+  // ---------- 9. figure-box 图容器 ----------
+  // <figure-box num="1" title="标题" note="说明">…svg…</figure-box>
+  class FigureBox extends HTMLElement {
+    connectedCallback() {
+      if (this._built) return; this._built = true;
+      var title = this.getAttribute('title') || '';
+      var note = this.getAttribute('note') || '';
+      var num = this.getAttribute('num') || '';
+      var body = this.innerHTML;
+      this.innerHTML =
+        '<figure class="mv-fb">' +
+          (title || num
+            ? '<figcaption class="mv-fb-cap">' +
+                (num ? '<span class="mv-fb-num">图 ' + esc(num) + '</span>' : '') +
+                '<span class="mv-fb-title">' + esc(title) + '</span>' +
+              '</figcaption>'
+            : '') +
+          '<div class="mv-fb-body">' + body + '</div>' +
+          (note ? '<div class="mv-fb-note">' + esc(note) + '</div>' : '') +
+        '</figure>';
+    }
+  }
+
   customElements.define('flip-card', FlipCard);
   customElements.define('timer-ring', TimerRing);
   customElements.define('check-list', CheckList);
@@ -381,6 +457,8 @@
   customElements.define('palace-map', PalaceMap);
   customElements.define('stat-bars', StatBars);
   customElements.define('metric-strip', MetricStrip);
+  customElements.define('collapse-panel', CollapsePanel);
+  customElements.define('figure-box', FigureBox);
 
   window.Marvis = { store: store, today: today, addDays: addDays, LADDER: LADDER };
 })();
