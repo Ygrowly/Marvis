@@ -1228,6 +1228,18 @@ document.querySelectorAll('.mv-qdone').forEach(function (b) {
 DIRTY_ATTR = re.compile(r'\s+data-page-[a-z-]+="[^"]*"')
 
 
+def prune_dir(d, expected):
+    """删掉上一轮构建留下的陈旧页面（页面/主线改名或内容下线时产生）"""
+    if not d.exists():
+        return []
+    gone = []
+    for p in d.glob("*.html"):
+        if p.name not in expected:
+            p.unlink()
+            gone.append(p.name)
+    return gone
+
+
 def cleanup_html():
     """清掉预览面板写回源文件的注入属性（否则会污染提交）"""
     n = 0
@@ -1382,6 +1394,20 @@ def main():
         print("  == %s（%d 主线 / %d 母题，已提炼 %d，必背题 %d）"
               % (md["page"], len(md["lines"]), len(md["topics"]), ready,
                  sum(1 for q in md["questions"] if "必背" in (q["pri"] or ""))))
+
+    # 清理陈旧页面：主线/母题改名后，上一轮生成的 html 会残留成死链
+    exp_topics = {"%s-%s.html" % (t["module"], t["stem"]) for t in topics}
+    exp_reviews = {rv["stem"] + ".html" for rv in reviews}
+    exp_modules = set()
+    for md in modules:
+        exp_modules.add("%s.html" % md["module"])
+        for ln in md["lines"]:
+            exp_modules.add(module_line_page(md, ln["no"]).split("/")[-1])
+    for _d, _exp in ((OUT_TOPICS, exp_topics), (OUT_REVIEWS, exp_reviews),
+                     (OUT_MODULES, exp_modules)):
+        _gone = prune_dir(_d, _exp)
+        if _gone:
+            print("  [清理陈旧页面] %s ×%d" % (_d.name, len(_gone)))
 
     cleaned = cleanup_html()
     if cleaned:
