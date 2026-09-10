@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 35 · 二叉树的中序遍历</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 35 · 二叉树的中序遍历</h1>
+    <p class="mv-topic-meta">关联 母题池-36道推导 · 其他树形母题 ｜ 正本 wiki/topics/算法/母题-35-二叉树中序遍历.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-35-二叉树中序遍历" tag="算法" q="二叉树三种遍历顺序怎么写，迭代版又怎么写？" a="左—根—右递归；迭代版用显式栈模拟递归的调用顺序。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：一切树题的地基。面试常追问迭代版和 Morris，用来看你对「显式栈替代递归」是否真的理解。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>左根右</li><li>递归形态</li><li>显式栈模拟</li><li>BST 有序性</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 迭代版为什么容易写错？</strong></p>
+<p class="mv-md-p">要显式维护「已经访问到哪一步」，用栈 + 当前指针两件状态</p>
+<p class="mv-md-p"><strong>2. BST 的中序遍历为什么是有序的？</strong></p>
+<p class="mv-md-p">左子树全小于根、右子树全大于根，中序恰好是升序</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 144 前序 / LC 145 后序（改访问顺序即可）</li><li>LC 102 层序遍历（换 BFS 队列）</li><li>LC 98 验证二叉搜索树（利用中序有序性）</li><li>进阶：Morris 遍历 O(1) 空间</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">树形结构的展开顺序：组织架构、目录树、分类体系的递归渲染都用中序/前序骨架。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：只写了递归版，未覆盖迭代版与复杂度随树形的变化</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">## 中序遍历顺序：</p>
+<pre class="mv-md-pre">左子树 → 当前节点 → 右子树</pre>
+<p class="mv-md-p">例如：</p>
+<pre class="mv-md-pre">1
+     \
+      2
+     /
+    3</pre>
+<p class="mv-md-p">中序遍历结果：</p>
+<pre class="mv-md-pre">[1, 3, 2]</pre>
+<p class="mv-md-p">完整代码：</p>
+<pre class="mv-md-pre">def inorder_traversal(root):
+    result = []
+
+    def traverse(node):
+        if not node:
+            return
+
+        traverse(node.left)
+        result.append(node.val)
+        traverse(node.right)
+
+    traverse(root)
+    return result</pre>
+<p class="mv-md-p">复杂度：</p>
+<pre class="mv-md-pre">时间：O(n)，每个节点访问一次
+空间：O(h)，取决于递归调用链的最大深度</pre>
+<p class="mv-md-p">其中：</p>
+<pre class="mv-md-pre">平衡二叉树：O(log n)
+退化成链表：O(n)</pre>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">遇空返回，按照“左—根—右”递归，每个节点的值在左子树遍历完成后加入结果。</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 03 · 最长连续序列</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 03 · 最长连续序列</h1>
+    <p class="mv-topic-meta">关联 母题-01-两数之和 · 母题-02-字母异位词分组 ｜ 正本 wiki/topics/算法/母题-03-最长连续序列.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-03-最长连续序列" tag="算法" q="无序数组里，如何做到 O(n) 求出最长连续数字序列？" a="集合去重，只从没有前驱的元素开始向后延伸，每段序列只被扫一次。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：考的是摊还分析——嵌套循环不等于 O(n²)。也是「用集合换时间」和「用起点判据剪枝」的典型。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>集合去重</li><li>判起点( x-1 不在集合 )</li><li>每段只扫一次</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 为什么总复杂度是 O(n) 而不是 O(n²)？</strong></p>
+<p class="mv-md-p">只有起点才触发内层延伸，每个数字在所有 while 中最多被访问一次，总次数 O(n)</p>
+<p class="mv-md-p"><strong>2. 有重复数字时会怎样？</strong></p>
+<p class="mv-md-p">集合天然去重，不影响结果</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 674 最长连续递增序列（要求下标连续，是另一套模型）</li><li>LC 594 最长和谐子序列</li><li>变体：要求返回序列本身而不只是长度</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">连续区间检测，例如订单号/流水号的连续性校验、批次号断号排查。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：一开始用「每个数字都往前找」的 O(n²) 思路，缺少起点判据</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">给定一个未排序的整数数组 <code class="mv-md-code">nums</code>，找出其中数字连续的最长序列长度。</p>
+<p class="mv-md-p">要求算法时间复杂度为 O(n)。</p>
+<pre class="mv-md-pre">输入：nums = [100, 4, 200, 1, 3, 2]
+输出：4
+解释：最长连续序列是 [1, 2, 3, 4]</pre>
+<p class="mv-md-p">注意：</p>
+<p class="mv-md-p">+  “连续”指数字连续，不要求它们在原数组中的位置连续。 +  数组中可能有重复数字。</p>
+<p class="mv-md-p">判断起点</p>
+<p class="mv-md-p">有重复数字</p>
+<p class="mv-md-p">每个数字都查找  n,n-1...1 o(n^2)</p>
+<pre class="mv-md-pre">def longest_consecutive(nums):
+    num_set=set(nums)
+    longest=0
+    for x in num_set:
+        if x-1 not in num_set:
+            current=x
+            length=1
+            while current+1 in num_set:
+                current+=1
+                length+=1
+            longest=max(longest,length)
+    return longest</pre>
+<p class="mv-md-p">内外两层：</p>
+<p class="mv-md-p">可以从内外两层理解：</p>
+<p class="mv-md-p">+  外层不变量：处理当前数字前，<code class="mv-md-code">longest</code> 是此前所有已处理序列起点所对应的最长序列长度。 +  内层不变量：每次进入 <code class="mv-md-code">while</code> 时，<code class="mv-md-code">x</code> 到 <code class="mv-md-code">current</code> 是一段完整连续序列，并且 <code class="mv-md-code">length = current - x + 1</code>。</p>
+<p class="mv-md-p">只从没有前驱的数字开始向后延申，使得每段连续序列只被完整扫描一次</p>
+<p class="mv-md-p">虽然单次 <code class="mv-md-code">while</code> 可能很长，但所有 <code class="mv-md-code">while</code> 的执行次数加起来不超过 n：</p>
+<p class="mv-md-p">+  建立集合：O(n) +  外层遍历：O(n) +  所有内层延伸合计：O(n)</p>
+<p class="mv-md-p">所以总复杂度是：</p>
+<p class="mv-md-p">O(n)+O(n)+O(n)=O(n)</p>
+<p class="mv-md-p">这种分析叫“总量分析”或“摊还分析”：不能只看到代码嵌套就直接相乘，要看内层操作在整个算法中总共执行多少次。</p>
+<p class="mv-md-p">虽然存在 <code class="mv-md-code">for</code> 嵌套 <code class="mv-md-code">while</code>，但只有序列起点才开始延伸，每个数字在所有 <code class="mv-md-code">while</code> 中最多被访问一次，因此所有内层循环的执行次数合计为 O(n)，总时间复杂度为 O(n)。</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">集合去重 - 找到没有前驱的起点 - 只从起点向后延申 - 每段序列只扫描一次</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

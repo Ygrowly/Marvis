@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 34 · LRU 缓存</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 34 · LRU 缓存</h1>
+    <p class="mv-topic-meta">关联 母题-33-合并K个有序链表 ｜ 正本 wiki/topics/算法/母题-34-LRU缓存.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-34-LRU缓存" tag="算法" q="如何同时做到 O(1) 查找和 O(1) 维护淘汰顺序？" a="哈希表负责定位、双向链表负责排序；访问或更新移到头部，超容量淘汰尾部。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：系统设计高频题，且能直接迁移到 Redis / 本地缓存 / 查询缓存的真实实现。纯考数据结构组合能力。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">图</h2>
+    <figure-box num="1" title="同一份缓存状态的两个视图" note="哈希表负责 O(1) 定位、双向链表负责 O(1) 调序，两者指向同一批 Node 实体。只删一边会留下幽灵节点——这就是&quot;两个结构是同一状态的两个视图&quot;的图。">
+<svg viewBox="0 0 680 292" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>LRU 缓存中哈希表与双向链表的关系</title>
+<desc>哈希表视图与链表视图指向同一批 Node 实体，两者必须同步增删，只删一边会留下幽灵节点。</desc>
+<defs>
+<marker id="fig1-lru-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="340" y="42" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">同一份缓存状态，两个视图</text>
+
+<rect x="36" y="80" width="176" height="96" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="52" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#444441">哈希表视图</text>
+<text x="52" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#5F5E5A">负责 O(1) 定位</text>
+<text x="52" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">1 → node₁</text>
+<text x="52" y="170" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">2 → node₂</text>
+
+<rect x="252" y="80" width="176" height="96" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="268" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#0C447C">Node 实体</text>
+<text x="268" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#185FA5">一份真实状态</text>
+<text x="268" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#0C447C">node₁ ⇄ node₂</text>
+
+<rect x="468" y="80" width="176" height="96" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="484" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#444441">链表视图</text>
+<text x="484" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#5F5E5A">负责 O(1) 调序</text>
+<text x="484" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">head ⇄ node₁</text>
+<text x="484" y="170" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">node₂ ⇄ tail</text>
+
+<path d="M214 128 L248 128" fill="none" stroke="#888780" stroke-width="1.5" marker-start="url(#fig1-lru-arrow)" marker-end="url(#fig1-lru-arrow)"/>
+<path d="M430 128 L464 128" fill="none" stroke="#888780" stroke-width="1.5" marker-start="url(#fig1-lru-arrow)" marker-end="url(#fig1-lru-arrow)"/>
+
+<rect x="36" y="210" width="608" height="56" rx="10" fill="#FCEBEB" stroke="#E24B4A" stroke-width="0.5"/>
+<text x="340" y="233" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#791F1F">只删链表 → 哈希表留下已淘汰节点 ｜ 只删哈希表 → 链表留下无效节点</text>
+<text x="340" y="253" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#A32D2D">两边必须同步增删</text>
+</svg>
+
+    </figure-box>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>哈希定位</li><li>双向链表排序</li><li>访问移到头</li><li>超容量删尾</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 为什么必须是双向链表？</strong></p>
+<p class="mv-md-p">要在 O(1) 内删除任意已知节点，需要同时拿到前驱和后继，单链表做不到</p>
+<p class="mv-md-p"><strong>2. 临界区在哪？</strong></p>
+<p class="mv-md-p">哈希表和链表是同一份状态的两个视图，必须同步增删，只删一边会留下幽灵节点</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 460 LFU 缓存（把「使用次数」也纳入淘汰判据，需要频次桶）</li><li>变体：要求支持过期时间 TTL（加一层时间轮或有序集合）</li><li>面试延伸：Redis 的近似 LRU 为什么不用严格链表</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">任何「既要快速命中、又要控制容量」的本地缓存；EnergyOps 的查询结果缓存与 RuleArena 的世界状态快照都可以用它做淘汰层。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：写过只删一边导致幽灵节点的版本；对「两个结构是同一状态的两个视图」没有自觉</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">## 实现一个缓存，要求：</p>
+<pre class="mv-md-pre">get(key)       # 查询，存在则变为最近使用
+put(key, val)  # 新增或更新，超过容量时删除最久未使用项</pre>
+<p class="mv-md-p">并且两种操作都要达到 <code class="mv-md-code">O(1)</code>。</p>
+<p class="mv-md-p">例如容量为 <code class="mv-md-code">2</code>：</p>
+<pre class="mv-md-pre">put(1, 1)  → {1}
+put(2, 2)  → {1, 2}
+get(1)     → 1 成为最近使用
+put(3, 3)  → 淘汰最久未使用的 2</pre>
+<p class="mv-md-p">组合后各自负责：</p>
+<pre class="mv-md-pre">哈希表：O(1) 根据 key 定位节点
+双向链表：O(1) 调整节点的使用顺序</pre>
+<p class="mv-md-p">之所以使用双向链表，是因为删除任意节点时，需要同时找到它的前驱和后继：</p>
+<pre class="mv-md-pre">node.prev.next = node.next
+node.next.prev = node.prev</pre>
+<p class="mv-md-p">单链表不能 <code class="mv-md-code">O(1)</code> 获得前驱节点。</p>
+<p class="mv-md-p">通常设置两个虚拟节点：</p>
+<pre class="mv-md-pre">head ⇄ 最近使用 ⇄ ... ⇄ 最久未使用 ⇄ tail</pre>
+<p class="mv-md-p">因此：</p>
+<pre class="mv-md-pre">访问已有节点 → 移动到 head 后面
+缓存已满     → 删除 tail 前面的节点</pre>
+<p class="mv-md-p">现在先完成两个基础操作。</p>
+<pre class="mv-md-pre">class Node:
+    def __init__(self, key=0, value=0):
+        self.key = key
+        self.value = value
+        self.prev = None
+        self.next = None
+
+
+class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = {}
+
+        self.head = Node()
+        self.tail = Node()
+
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def remove_node(self, node):
+        prev_node = node.prev
+        next_node = node.next
+
+        prev_node.next = next_node
+        next_node.prev = prev_node
+
+    def add_to_front(self, node):
+        first = self.head.next
+
+        node.prev = self.head
+        node.next = first
+        self.head.next = node
+        first.prev = node
+
+    def move_to_front(self, node):
+        self.remove_node(node)
+        self.add_to_front(node)
+
+    def get(self, key):
+        if key not in self.cache:
+            return -1
+
+        node = self.cache[key]
+        self.move_to_front(node)
+
+        return node.value
+
+    def put(self, key, value):
+        if key in self.cache:
+            node = self.cache[key]
+            node.value = value
+            self.move_to_front(node)
+            return
+
+        node = Node(key, value)
+        self.cache[key] = node
+        self.add_to_front(node)
+
+        if len(self.cache) &gt; self.capacity:
+            lru = self.tail.prev
+            self.remove_node(lru)
+            del self.cache[lru.key]</pre>
+<p class="mv-md-p">循环不变量：</p>
+<p class="mv-md-p">哈希表中的每个键都唯一对应链表中的一个真实节点；越靠近 <code class="mv-md-code">head</code> 使用时间越近，<code class="mv-md-code">tail.prev</code> 始终是最久未使用节点。</p>
+<p class="mv-md-p">复杂度：</p>
+<pre class="mv-md-pre">get：O(1)
+put：O(1)
+空间：O(capacity)</pre>
+<p class="mv-md-p">因为同一份缓存状态同时存在于两个结构中：</p>
+<pre class="mv-md-pre">双向链表：维护使用顺序
+哈希表：维护 key → node 的查询入口</pre>
+<p class="mv-md-p">只删链表，哈希表会留下已淘汰节点；只删哈希表，链表会留下无效节点。两边必须同步删除。</p>
+<p class="mv-md-p">母题 34 恢复脚本：</p>
+<p class="mv-md-p">哈希表负责定位，双向链表负责排序；访问或更新移到头部，新增也放头部，超容量淘汰尾部。</p>
+<pre class="mv-md-pre">get：查哈希表 → 移到头部 → 返回值
+put 已存在：更新值 → 移到头部
+put 不存在：新建 → 放到头部 → 超容量删尾部</pre>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

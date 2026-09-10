@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 06 · 三数之和</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 06 · 三数之和</h1>
+    <p class="mv-topic-meta">关联 母题-01-两数之和 · 母题-05-盛最多水的容器 ｜ 正本 wiki/topics/算法/母题-06-三数之和.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-06-三数之和" tag="算法" q="如何在 O(n²) 内枚举出所有不重复的三元组？" a="排序 → 固定第一个数 → 双指针找相反数 → 三层去重。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：把 O(n³) 暴力降维的标准套路。真正的难点不是双指针，是三层去重——这里最容易写错。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>排序</li><li>固定一个</li><li>双指针找相反数</li><li>三层去重</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 三层去重分别防的是什么？</strong></p>
+<p class="mv-md-p">固定数去重防重复搜索，左右指针去重防重复答案，排序前提保证有序可跳</p>
+<p class="mv-md-p"><strong>2. 为什么固定数只需和 i-1 比较？</strong></p>
+<p class="mv-md-p">排序后相同值相邻，比过了就不用再比</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 16 最接近的三数之和</li><li>LC 18 四数之和（再加一层循环 + 去重）</li><li>LC 15 三数之和</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">组合筛选类场景：先从候选里固定一个维度，再在剩余里找互补项。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：第一版直接 append 下标而不是数值；漏了左右指针的去重收缩</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">给定整数数组 <code class="mv-md-code">nums</code>，找出所有满足以下条件且不重复的三元组：</p>
+<p class="mv-md-p">nums[i]+nums[j]+nums[k]=0</p>
+<pre class="mv-md-pre">输入：[-1, 0, 1, 2, -1, -4]
+输出：[[-1, -1, 2], [-1, 0, 1]]</pre>
+<p class="mv-md-p">注意：</p>
+<p class="mv-md-p">+  三个下标必须不同； +  答案中不能包含重复三元组； +  三元组内部顺序不重要。</p>
+<pre class="mv-md-pre">def threeSum(nums):
+    res=[]
+    nums=sorted(nums)
+    for i in range(len(nums)):
+        left,right=i+1,len(nums)-1
+        while left&lt;right:
+            curr=nums[left]+nums[right]
+            if curr==-nums[i]:
+                res.append([i,left,right])
+                break
+            elif curr&lt;-nums[i]:
+                left+=1
+            elif curr&gt;-nums[i]:
+                right-=1
+    return res
+</pre>
+<p class="mv-md-p">去重：</p>
+<p class="mv-md-p">+ 固定数 + 移动指针，跳过相同数</p>
+<p class="mv-md-p">+ 避免相同固定数再次执行相同搜索 + 避免重复值组成相同三元组</p>
+<p class="mv-md-p">固定数去重，防止重复搜索；左右值去重，防止重复答案</p>
+<pre class="mv-md-pre">def three_sum(nums):
+    nums.sort()
+    res=[]
+    for i in range(len(nums)-2):
+        if nums[i]&gt;0:
+            break
+        if i&gt;0 and nums[i]==nums[i-1]:
+            continue
+        left,right=i+1,len(nums)-1
+        while left&lt;right:
+            total=nums[i]+nums[left]+nums[right]
+            if total&lt;0:
+                left+=1
+            elif total&gt;0:
+                right-=1
+            else:
+                res.append([nums[i],nums[left],nums[right]])
+                left+=1
+                right-=1
+                while left&lt;right and nums[left]==nums[left-1]:
+                    left+=1
+                while left&lt;right and nums[right]==nums[right+1]:
+                    right-=1
+    return res</pre>
+<p class="mv-md-p">排序 O(nlogn)</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">排序 - 固定第一个数 - 双指针寻找相反数 - 和小左移，和大右移 - 命中后记录数值并双向收缩 - 三层去重</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 05 · 盛最多水的容器</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 05 · 盛最多水的容器</h1>
+    <p class="mv-topic-meta">关联 母题-04-移动零 · 母题-06-三数之和 ｜ 正本 wiki/topics/算法/母题-05-盛最多水的容器.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-05-盛最多水的容器" tag="算法" q="两端向中间收缩时，凭什么保证不会漏掉最优解？" a="面积由宽度×短板决定，宽度只会变小，所以只能移动短板去赌一根更高的。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：双指针贪心的经典证明题。面试几乎一定会追问「为什么移动短板是对的」——答不出证明就等于没掌握。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>短板决定面积</li><li>宽度必然缩小</li><li>只能移动短板</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 证明移动短板不会漏解：被排除的那一端已经是短板，换任何另一端配它，宽度更小、短板不会更高</strong></p>
+<p class="mv-md-p"><span class="mv-topic-meta">答案见正文底稿</span></p>
+<p class="mv-md-p"><strong>2. 接雨水和这题的区别？</strong></p>
+<p class="mv-md-p">这题选两条线夹一个容器，接雨水是每根柱子头顶能存多少水</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 11 盛最多水的容器</li><li>LC 42 接雨水（不同模型：算每根柱子自己的贡献，用单调栈或前后缀最大值）</li><li>LC 167 两数之和 II（同为相向双指针）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">容量/吞吐评估中的瓶颈分析：整体能力由最短板决定，优化要盯短板。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：能写出代码但说不清「为什么移动短板是对的」</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">给定整数数组 <code class="mv-md-code">height</code>，每个元素表示一条竖线的高度。选择两条竖线，与横轴组成容器，求能够容纳水的最大面积。</p>
+<pre class="mv-md-pre">输入：height = [1,8,6,2,5,4,8,3,7]
+输出：49
+解释：选择下标 1 和 8，面积为 min(8,7) × (8-1) = 49</pre>
+<p class="mv-md-p">注意：容器不能倾斜。</p>
+<pre class="mv-md-pre">def mostwater(height):
+    res=0
+    left,right=0,len(height)-1
+    while left&lt;right:
+        curr=(right-left)*min(height[left],height[right])
+        res=max(res,curr)
+        if height[left]&lt;height[right]:
+            left+=1
+        else:
+            right-=1
+    return res</pre>
+<p class="mv-md-p">两坐标间的距离就是下标差，元素个数要+1</p>
+<p class="mv-md-p">每轮开始时，所有已经排除的边界都不可能与剩余柱子组成超过 <code class="mv-md-code">res</code> 的容器，因此最大答案要么已经在 <code class="mv-md-code">res</code> 中，要么仍在 <code class="mv-md-code">[left, right]</code> 范围内。</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">面积由”宽度 * 短板“决定，宽度必然缩小，因此只能移动短板，寻找更高的边界</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

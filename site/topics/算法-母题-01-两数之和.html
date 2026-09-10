@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 01 · 两数之和</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 01 · 两数之和</h1>
+    <p class="mv-topic-meta">关联 母题-02-字母异位词分组 · 母题-03-最长连续序列 ｜ 正本 wiki/topics/算法/母题-01-两数之和.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="算法/母题-01-两数之和" tag="算法" q="在一个数组里，如何用一次遍历找出满足「两数之和 = target」的那一对下标？" a="遍历时查补数、先查后存，保证不会拿当前元素和自己配对。"></flip-card>
+    <p class="mv-note" style="margin-top:10px">为什么重要：哈希表「以空间换时间」的第一课，也是面试开场题。考的不是能不能写出来，是能不能主动说出循环不变量。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>补数</li><li>先查后存</li><li>哈希表只存旧元素</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="两层追问（能答完才算出师）"><p class="mv-md-p"><strong>1. 数组已经有序时，还需要哈希表吗？</strong></p>
+<p class="mv-md-p">不需要，双指针可以把空间降到 O(1)，说出取舍</p>
+<p class="mv-md-p"><strong>2. 如果要返回所有不重复的数对，而不是任意一对？</strong></p>
+<p class="mv-md-p">排序 + 双指针 + 跳过重复值</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 167 两数之和 II（输入有序，改双指针 O(1) 空间）</li><li>LC 15 三数之和（见 [[母题-06-三数之和]]）</li><li>变体：求两数之差 / 两数之和最接近 target</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">凡是「找配对 / 找互补项」的场景都是这个模型，例如对账时找金额互补的两笔流水、幂等键去重前的配对判断。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：对循环不变量没有主动意识，需要被追问才说出来</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">算法中的“不变量”是：</p>
+<p class="mv-md-p">在循环每次开始处理 <code class="mv-md-code">nums[i]</code> 时，哈希表中只保存下标小于 <code class="mv-md-code">i</code>、也就是已经遍历过的元素及其下标。</p>
+<p class="mv-md-p">它描述的是：<strong>算法运行到任何一步，都必须成立的状态关系。</strong></p>
+<p class="mv-md-p">****</p>
+<h3 class="mv-md-h"><strong>为什么必须先检查，再记录？</strong></h3>
+<p class="mv-md-p"><strong>更准确的回答是：</strong></p>
+<p class="mv-md-p"><strong>为了保证查找到的补数来自之前的元素，避免当前元素与自己配对。</strong></p>
+<p class="mv-md-p">****</p>
+<pre class="mv-md-pre">def tow_sum(nums,target):
+   seen={}
+   for i,x in enumerate(nums):
+      need=target-x
+      if need in seen:
+         return [seen[need],i]
+      seen[x]=i
+    return []</pre>
+<p class="mv-md-p">****</p>
+<p class="mv-md-p">1. <strong>循环不变量：</strong></p>
+<p class="mv-md-p"><strong>处理 </strong><code class="mv-md-code"><strong>nums[i]</strong></code><strong> 之前，哈希表中只保存所有下标小于 </strong><code class="mv-md-code"><strong>i</strong></code><strong> 的已遍历元素及其下标。</strong></p>
+<p class="mv-md-p">2. <strong> 先查后存： </strong></p>
+<p class="mv-md-p"><strong>先在旧元素中寻找补数，再保存当前元素，可以保证两个下标不同，避免当前元素与自己匹配。</strong></p>
+<p class="mv-md-p">****</p>
+<p class="mv-md-p">母题 01「两数之和」通过。你的恢复脚本是：</p>
+<p class="mv-md-p">**两数求和 → 遍历时寻找补数 → 哈希表保存旧元素 → 先查后存 → 保证不与自己配对。</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
