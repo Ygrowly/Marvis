@@ -480,6 +480,16 @@ def slice_section(body, start_re, end_re=None):
     return rest
 
 
+def section_by_title(body, title):
+    """按二级标题里的关键词取一节。
+
+    用标题找而不是硬编码「第 N 节」——章节顺序调整时不会静默取空。
+    """
+    m = re.search(r"^##\s*[^\n]*%s[^\n]*$\n(.*?)(?=^##\s|\Z)"
+                  % re.escape(title), body, re.S | re.M)
+    return m.group(1) if m else ""
+
+
 def short_round(s):
     """「一面（61 分钟）」→「一面」"""
     m = re.match(r"^(一面|二面|三面|四面|终面|HR 面|HR面)", (s or "").strip())
@@ -836,7 +846,7 @@ def parse_module_card(path):
         summary = ""
 
     lines_ = []
-    for cells in parse_md_table(slice_section(body, r"^##\s*2\.", r"^##\s*3\.").splitlines()):
+    for cells in parse_md_table(section_by_title(body, "主线拆解").splitlines()):
         if len(cells) < 3 or not re.fullmatch(r"[一二三四五六七八九十]+", cells[0].strip()):
             continue
         lines_.append({
@@ -846,14 +856,14 @@ def parse_module_card(path):
         })
 
     topics = []
-    for cells in parse_md_table(slice_section(body, r"^##\s*3\.", r"^##\s*4\.").splitlines()):
+    for cells in parse_md_table(section_by_title(body, "母题清单").splitlines()):
         if len(cells) < 4 or not re.fullmatch(r"[A-Z]\d+", cells[0].strip()):
             continue
         topics.append({"id": cells[0].strip(), "name": cells[1].strip(),
                        "line": cells[2].strip(), "status": cells[3].strip()})
 
     questions = []
-    for cells in parse_md_table(slice_section(body, r"^##\s*4\.", r"^##\s*5\.").splitlines()):
+    for cells in parse_md_table(section_by_title(body, "题单").splitlines()):
         if len(cells) < 4 or not re.fullmatch(r"\d+", cells[0].strip()):
             continue
         # 列：# ｜ 题目 ｜ 归属主线 ｜ [母题] ｜ 优先级 ｜ 状态 ｜ 首验
@@ -864,17 +874,14 @@ def parse_module_card(path):
         questions.append({"no": cells[0].strip(), "q": cells[1].strip(),
                           "line": cells[2].strip(), "topic": topic, "pri": pri})
 
-    bridge, seen_b = [], False
-    for cells in parse_md_table(slice_section(body, r"^##\s*6\.", r"^##\s*7\.").splitlines()):
-        if len(cells) < 4:
-            continue
-        if "面试官问的" in cells[0]:
-            seen_b = True
+    bridge = []
+    for cells in parse_md_table(section_by_title(body, "方言桥").splitlines()):
+        if len(cells) < 4 or "面试官问的" in cells[0]:
             continue
         bridge.append(cells[:4])
 
     gate = [re.sub(r"^\s*-\s*\[[ xX]\]\s*", "", ln).strip()
-            for ln in slice_section(body, r"^##\s*7\.", r"^##\s*8\.").splitlines()
+            for ln in section_by_title(body, "验收门").splitlines()
             if re.match(r"^\s*-\s*\[[ xX]\]\s*\S", ln)]
 
     # 同目录下的母题卡（内容来源）
