@@ -265,7 +265,7 @@ PAGE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>
+<title>%%TITLE%%</title>
 <link rel="stylesheet" href="../_components/marvis.css">
 </head>
 <body class="mv-page">
@@ -273,17 +273,18 @@ PAGE = """<!DOCTYPE html>
   <a class="mv-back" href="../index.html">← 返回训练台</a>
 
   <div class="mv-topic-head">
-    <span class="mv-topic-module">{module}</span>
-    <h1 class="mv-topic-title">{title}</h1>
-    <p class="mv-topic-meta">{meta}</p>
+    <span class="mv-topic-module">%%MODULE%%</span>
+    <h1 class="mv-topic-title">%%TITLE%%</h1>
+    <p class="mv-topic-meta">%%META%%</p>
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
-    <flip-card gradable card-id="{key}" tag="{module}" q="{q}" a="{a}"></flip-card>
-    {importance}
+    <flip-card gradable card-id="%%KEY%%" tag="%%MODULE%%" q="%%Q%%" a="%%A%%"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    %%IMPORTANCE%%
   </div>
-{figures}{keywords}{expand}{body}
+%%FIGURES%%%%KEYWORDS%%%%EXPAND%%%%BODY%%
   <div class="mv-section">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
@@ -297,6 +298,13 @@ PAGE = """<!DOCTYPE html>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
 </body>
 </html>
 """
@@ -381,11 +389,22 @@ def render_topic(t):
     imp = ('<p class="mv-note" style="margin-top:10px">为什么重要：%s</p>' % esc(t["importance"])
            if t["importance"] else "")
 
-    return PAGE.format(
-        title=esc(t["title"]), module=esc(t["module"]), meta=meta,
-        key=attrs(t["key"]), q=attrs(t["question"]), a=attrs(t["conclusion"]),
-        importance=imp, figures=figures, keywords=keywords, expand=expand, body=body,
-    )
+    out = PAGE
+    for k, v in (
+        ("%%TITLE%%", esc(t["title"])),
+        ("%%MODULE%%", esc(t["module"])),
+        ("%%META%%", meta),
+        ("%%KEY%%", attrs(t["key"])),
+        ("%%Q%%", attrs(t["question"])),
+        ("%%A%%", attrs(t["conclusion"])),
+        ("%%IMPORTANCE%%", imp),
+        ("%%FIGURES%%", figures),
+        ("%%KEYWORDS%%", keywords),
+        ("%%EXPAND%%", expand),
+        ("%%BODY%%", body),
+    ):
+        out = out.replace(k, v)
+    return out
 
 
 # ---------------------------------------------------------------- main

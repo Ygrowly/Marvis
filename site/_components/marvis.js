@@ -222,6 +222,19 @@
   // ---------- 4. review-deck 间隔复训牌组（1-3-7-14-30） ----------
   // <review-deck src="#deck-data" title="今日复训"></review-deck>
   var LADDER = [1, 3, 7, 14, 30];
+
+  // 评分写回调度：训练台与母题页共用同一份状态
+  function gradeCard(cardId, ok) {
+    if (!cardId) return null;
+    var all = store.get('mv.review', {});
+    var s = all[cardId] || { idx: 0 };
+    if (ok) s.idx = (s.idx || 0) + 1; else s.idx = 0;
+    s.next = addDays(today(), LADDER[Math.min(Math.max(s.idx - 1, 0), LADDER.length - 1)]);
+    s.last = today();
+    all[cardId] = s;
+    store.set('mv.review', all);
+    return s;
+  }
   class ReviewDeck extends HTMLElement {
     connectedCallback() {
       if (this._built) return; this._built = true;
@@ -321,12 +334,8 @@
     grade(ok) {
       var c = this.queue[this.idx];
       if (!c) return;
-      var s = this.state[c.id] || { idx: 0 };
-      if (ok) s.idx = (s.idx || 0) + 1; else s.idx = 0;
-      s.next = addDays(today(), LADDER[Math.min(Math.max(s.idx - 1, 0), LADDER.length - 1)]);
-      s.last = today();
-      this.state[c.id] = s;
-      store.set('mv.review', this.state);
+      gradeCard(c.id, ok);
+      this.state = store.get('mv.review', {});
       this.idx++;
       this.render();
     }
@@ -460,5 +469,8 @@
   customElements.define('collapse-panel', CollapsePanel);
   customElements.define('figure-box', FigureBox);
 
-  window.Marvis = { store: store, today: today, addDays: addDays, LADDER: LADDER };
+  window.Marvis = {
+    store: store, today: today, addDays: addDays, LADDER: LADDER,
+    gradeCard: gradeCard,
+  };
 })();

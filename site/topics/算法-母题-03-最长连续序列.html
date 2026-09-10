@@ -19,6 +19,7 @@
   <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="算法/母题-03-最长连续序列" tag="算法" q="无序数组里，如何做到 O(n) 求出最长连续数字序列？" a="集合去重，只从没有前驱的元素开始向后延伸，每段序列只被扫一次。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：考的是摊还分析——嵌套循环不等于 O(n²)。也是「用集合换时间」和「用起点判据剪枝」的典型。</p>
   </div>
 
@@ -93,5 +94,12 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
 </body>
 </html>

@@ -19,6 +19,7 @@
   <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="算法/母题-35-二叉树中序遍历" tag="算法" q="二叉树三种遍历顺序怎么写，迭代版又怎么写？" a="左—根—右递归；迭代版用显式栈模拟递归的调用顺序。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：一切树题的地基。面试常追问迭代版和 Morris，用来看你对「显式栈替代递归」是否真的理解。</p>
   </div>
 
@@ -91,5 +92,12 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
 </body>
 </html>
