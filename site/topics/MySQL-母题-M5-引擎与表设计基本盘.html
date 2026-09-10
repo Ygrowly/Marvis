@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M5 · 引擎与表设计基本盘</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M5 · 引擎与表设计基本盘</h1>
+    <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M3-聚簇索引与回表 ｜ 正本 wiki/topics/MySQL/母题-M5-引擎与表设计基本盘.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">让你从零设计一张「任务表」——几十亿行、读写混合、以后还要按状态和时间捞任务。你会怎么选引擎、主键和字段类型？为什么不用 MyISAM？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="MySQL/母题-M5-引擎与表设计基本盘" tag="MySQL" q="MyISAM 和 InnoDB 差在哪？建表时主键、varchar/char、DATETIME/TIMESTAMP 该怎么选？" a="选 InnoDB 是因为它支持事务、行级锁和崩溃恢复，这是默认引擎的根本原因；表设计的三条硬规则是——主键用自增（保证顺序写、避免页分裂）、长度不定用 varchar、长度固定用 char、要自动更新和时区语义用 TIMESTAMP，要大范围日期用 DATETIME。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是**最高频、也最容易被轻视**的一类题。它不难，但答"知道"和答"选过"是两回事——面试官问它是为了确认：你建的表现在会不会埋雷（主键用 UUID 导致页分裂、时间字段选了 TIMESTAMP 结果 2038 年溢出）。**而且它是后面所有索引题的前置**：不懂 InnoDB 是索引组织表，就讲不清回表。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>事务</li><li>表锁 vs 行锁</li><li>非聚集索引 vs 索引组织表</li><li>自增主键防页分裂</li><li>变长 + 长度字节</li><li>4 字节受时区</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表（层级表的粒度与冗余设计、时间字段选型）；数驭穹图的元数据表（Schema 登记需要用大范围时间）。<strong>方言差异</strong>：PostgreSQL 是<strong>堆表</strong>，主键不是数据顺序，所以「自增主键防页分裂」这条在 PG 里不成立；PG 的对应实践是用 <code class="mv-md-code">identity</code> / <code class="mv-md-code">bigserial</code> 避免序列竞争，而表膨胀要靠 <strong>VACUUM</strong> 处理，与页分裂是两套机制。<strong>面试时不要把这两套混着说。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">引擎对比（三条硬差异）→ 为什么 InnoDB 成默认 → 主键为什么必须自增（页分裂）→ varchar vs char → DATETIME vs TIMESTAMP → 约束与范式（反范式的条件）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>表设计不是审美问题，是"写入路径顺不顺、存储紧不紧凑、以后改不改得动"的问题。</strong> 所有具体选择（引擎、主键、字段类型）都服务这三件事。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能对一个具体建表需求（引擎、主键、两个字段类型）给出选择并说出代价，且能说清「页分裂损失什么」。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、MyISAM vs InnoDB：差异只有三条硬的</h3>
+<table class="mv-table"><thead><tr><th>维度</th><th>MyISAM</th><th>InnoDB</th></tr></thead><tbody><tr><td>事务</td><td><strong>不支持</strong></td><td>支持（ACID）</td></tr><tr><td>锁粒度</td><td><strong>表级锁</strong>（写锁全表）</td><td>行级锁 + MVCC</td></tr><tr><td>崩溃恢复</td><td>不支持（靠 repair）</td><td><strong>redo/undo 保证 crash-safe</strong></td></tr><tr><td>索引结构</td><td>非聚集索引：索引文件与数据文件分离，叶子存<strong>物理地址</strong></td><td>索引组织表：主键即数据，二级索引叶子存<strong>主键值</strong>（要回表）</td></tr><tr><td>外键</td><td>不支持</td><td>支持</td></tr></tbody></table>
+<p class="mv-md-p"><strong>一条判断</strong>：写并发一上来，MyISAM 的表级锁会让写请求排队；加上没有事务和崩溃恢复，它只适合<strong>读多写少、且可以重建的数据</strong>（日志、统计中间表）。<strong>业务表一律 InnoDB。</strong></p>
+<p class="mv-md-p"><strong>顺带一个高频追问</strong>：「MyISAM 和 InnoDB 的 B+ 树实现差在哪？」答上表第四行——MyISAM 叶子存<strong>地址</strong>（还要再去数据文件捞一次），InnoDB 主键叶子存<strong>整行</strong>、二级索引叶子存<strong>主键</strong>。这一条正是 [[母题-M3-聚簇索引与回表]] 的起点。</p>
+<h3 class="mv-md-h">二、主键为什么强烈建议自增（这条最常被追问）</h3>
+<p class="mv-md-p">B+ 树的叶子按主键有序。所以：</p>
+<ul class="mv-md-ul"><li><strong>自增主键</strong>：新记录永远追加到最右边 → <strong>顺序写</strong>；写满就开新页，对已有数据几乎无影响。</li><li><strong>随机主键（UUID / 随机字符串）</strong>：新记录要插到中间 → 为保持有序得<strong>搬数据、触发页分裂</strong>；分裂还会让页填充率下降（碎片化），索引变得不紧凑，后续查询也变慢。</li></ul>
+<p class="mv-md-p"><strong>再加一条</strong>：二级索引的叶子存主键值，<strong>主键越长，所有二级索引越大</strong>。UUID 是 36 字节字符串，自增 BIGINT 是 8 字节——<strong>每建一个二级索引都在为主键长度重复付费</strong>。</p>
+<p class="mv-md-p mv-md-quote">什么时候可以不用自增？当业务<strong>没有天然自增键</strong>、且需要<strong>分布式唯一</strong>时（比如分库分表要全局唯一 ID），用雪花算法这类<strong>趋势递增</strong>的 ID——它保住了「大致有序」，比纯随机的 UUID 好得多。这是权衡，不是破例。</p>
+<h3 class="mv-md-h">三、varchar vs char</h3>
+<table class="mv-table"><thead><tr><th></th><th>char</th><th>varchar</th></tr></thead><tbody><tr><td>长度</td><td><strong>定长</strong>，不足用空格补齐</td><td><strong>变长</strong>，按实际长度分配</td></tr><tr><td>额外开销</td><td>无</td><td><strong>1–2 字节记录实际长度</strong></td></tr><tr><td>适用</td><td>长度固定：手机号、MD5(32)、性别、状态码</td><td>长度不确定：用户名、地址、备注</td></tr></tbody></table>
+<p class="mv-md-p"><strong>判断标准只有一句</strong>：长度是否真的固定。定长用 char 省了长度字节、比较也略快；但只要长度不确定，char 就会浪费空间（<code class="mv-md-code">char(10)</code> 存 <code class="mv-md-code">'a'</code> 也占 10 个字符）。</p>
+<p class="mv-md-p"><strong>一个坑</strong>：char 尾部会补空格，比较时可能表现出 <code class="mv-md-code">'a'</code> 与 <code class="mv-md-code">'a '</code> 的差异——<strong>别用 char 存会被拼接或比较的值</strong>。</p>
+<h3 class="mv-md-h">四、DATETIME vs TIMESTAMP</h3>
+<table class="mv-table"><thead><tr><th></th><th>DATETIME</th><th>TIMESTAMP</th></tr></thead><tbody><tr><td>存什么</td><td>字面的日期时间</td><td>Unix 时间戳（秒）</td></tr><tr><td>时区</td><td><strong>与时区无关</strong>（存什么就是什么）</td><td><strong>受时区影响</strong>（按会话时区换算）</td></tr><tr><td>字节</td><td>8</td><td>4</td></tr><tr><td>范围</td><td>1000–9999 年</td><td>1970–<strong>2038</strong></td></tr><tr><td>默认值</td><td>NULL</td><td>可 <code class="mv-md-code">CURRENT_TIMESTAMP</code>，支持自动更新</td></tr></tbody></table>
+<p class="mv-md-p"><strong>怎么选</strong>：需要<strong>跨时区</strong>或<strong>自动记录创建/更新时间</strong> → TIMESTAMP；需要<strong>大范围日期</strong>（生日、合同到期、业务上的远期时间）→ DATETIME。</p>
+<p class="mv-md-p"><strong>面试安全点</strong>：TIMESTAMP 有 <strong>2038 问题</strong>（4 字节存秒，2038-01-19 溢出）。被问到"为什么不用 TIMESTAMP 存所有时间"，这就是答案。</p>
+<h3 class="mv-md-h">五、约束、范式与三条删除语句</h3>
+<ul class="mv-md-ul"><li><strong>常用约束</strong>：主键（唯一且非空）、唯一（唯一但可有 NULL）、非空、默认值、外键、CHECK。<strong>主键和唯一的区别就是「是否允许 NULL」</strong>。</li><li><strong>三范式</strong>：1NF 列不可再分；2NF 非主键列完全依赖整个主键（针对联合主键）；3NF 非主键列之间不能有传递依赖。<strong>反范式的唯一理由是可测量的读性能</strong>——比如事实表冗余园区快照以避免一次 JOIN。<strong>先有执行计划，再谈反范式。</strong></li></ul>
+<table class="mv-table"><thead><tr><th>语句</th><th>类型</th><th>能回滚</th><th>删什么</th><th>速度</th></tr></thead><tbody><tr><td><code class="mv-md-code">DELETE</code></td><td>DML</td><td><strong>可以</strong></td><td>表结构留着，可带 WHERE 删部分行</td><td>慢（逐行）</td></tr><tr><td><code class="mv-md-code">TRUNCATE</code></td><td>DDL</td><td>不可以</td><td>清空全部行，结构保留</td><td>快（重建）</td></tr><tr><td><code class="mv-md-code">DROP</code></td><td>DDL</td><td>不可以</td><td><strong>表结构、数据、索引、权限全删</strong></td><td>最快</td></tr></tbody></table>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

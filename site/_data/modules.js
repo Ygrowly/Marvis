@@ -1,1 +1,1 @@
-window.MARVIS_MODULES = [{"module": "MySQL", "title": "MySQL 模块深挖卡", "href": "modules/MySQL.html", "lines": 7, "topics": 15, "ready": 4}, {"module": "PostgreSQL", "title": "PostgreSQL 模块深挖卡", "href": "modules/PostgreSQL.html", "lines": 7, "topics": 18, "ready": 0}];
+window.MARVIS_MODULES = [{"module": "MySQL", "title": "MySQL 模块深挖卡", "href": "modules/MySQL.html", "lines": 7, "topics": 17, "ready": 7}, {"module": "PostgreSQL", "title": "PostgreSQL 模块深挖卡", "href": "modules/PostgreSQL.html", "lines": 7, "topics": 19, "ready": 0}];
