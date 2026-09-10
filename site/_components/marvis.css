@@ -330,6 +330,15 @@ figure-box { display: block; }
   font-size: 12px; padding: 3px 10px; border-radius: 999px;
   background: var(--mv-surface-2); color: var(--mv-muted);
 }
+.mv-problem {
+  border-left: 3px solid var(--mv-accent);
+  background: var(--mv-surface);
+  border-radius: 0 var(--mv-radius-sm) var(--mv-radius-sm) 0;
+  padding: 13px 18px; font-size: 13px; line-height: 1.8;
+}
+.mv-problem > :first-child { margin-top: 0; }
+.mv-problem > :last-child { margin-bottom: 0; }
+
 .mv-md-h { font-size: 13px; font-weight: 500; margin: 16px 0 8px; }
 .mv-md-p { margin: 0 0 10px; }
 .mv-md-ul { margin: 0 0 10px; padding-left: 20px; }

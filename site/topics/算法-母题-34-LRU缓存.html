@@ -17,6 +17,11 @@
   </div>
 
   <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">实现一个容量固定的缓存，两个操作都要求 O(1)：<code class="mv-md-code">get(key)</code> 命中时返回并把该项标记为最近使用；<code class="mv-md-code">put(key, value)</code> 写入或更新，容量超限时淘汰最久未使用的项。</p></div>
+  </div>
+
+  <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="算法/母题-34-LRU缓存" tag="算法" q="如何同时做到 O(1) 查找和 O(1) 维护淘汰顺序？" a="哈希表负责定位、双向链表负责排序；访问或更新移到头部，超容量淘汰尾部。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>

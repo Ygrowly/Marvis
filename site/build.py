@@ -63,6 +63,14 @@ def grab(text, name):
     return re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
 
 
+def grab_block(text, name):
+    """抽 `**字段**：` 之后的整块内容（保留换行，可含代码块）"""
+    pat = (r"\*\*" + re.escape(name) + r"\*\*\s*[：:]\s*\n?"
+           r"(.*?)(?=\n\s*\*\*|\n\s*##|\n\s*---|\Z)")
+    m = re.search(pat, text, re.S)
+    return m.group(1).strip() if m else ""
+
+
 def grab_list(text, name):
     """抽 `**字段**` 之后的 `- ` 列表项"""
     idx = text.find("**" + name + "**")
@@ -210,6 +218,7 @@ def parse_topic(path):
         "src": path.relative_to(ROOT).as_posix(),
         "question": q,
         "conclusion": a,
+        "problem": grab_block(body, "题目"),
         "importance": grab(body, "为什么重要"),
         "keywords": [x.strip() for x in re.split(r"[/｜|·]", grab(body, "恢复关键词")) if x.strip()],
         "invariant": grab(body, "核心不变量 / 主线") or grab(body, "核心不变量"),
@@ -277,7 +286,7 @@ PAGE = """<!DOCTYPE html>
     <h1 class="mv-topic-title">%%TITLE%%</h1>
     <p class="mv-topic-meta">%%META%%</p>
   </div>
-
+%%PROBLEM%%
   <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="%%KEY%%" tag="%%MODULE%%" q="%%Q%%" a="%%A%%"></flip-card>
@@ -389,8 +398,14 @@ def render_topic(t):
     imp = ('<p class="mv-note" style="margin-top:10px">为什么重要：%s</p>' % esc(t["importance"])
            if t["importance"] else "")
 
+    problem = ""
+    if t["problem"]:
+        problem = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">题目</h2>\n'
+                   '    <div class="mv-problem">%s</div>\n  </div>\n' % md_to_html(t["problem"]))
+
     out = PAGE
     for k, v in (
+        ("%%PROBLEM%%", problem),
         ("%%TITLE%%", esc(t["title"])),
         ("%%MODULE%%", esc(t["module"])),
         ("%%META%%", meta),
@@ -408,6 +423,21 @@ def render_topic(t):
 
 
 # ---------------------------------------------------------------- main
+
+DIRTY_ATTR = re.compile(r'\s+data-page-[a-z-]+="[^"]*"')
+
+
+def cleanup_html():
+    """清掉预览面板写回源文件的注入属性（否则会污染提交）"""
+    n = 0
+    for p in SITE.rglob("*.html"):
+        txt = p.read_text(encoding="utf-8")
+        new = DIRTY_ATTR.sub("", txt)
+        if new != txt:
+            p.write_text(new, encoding="utf-8")
+            n += 1
+    return n
+
 
 def main():
     OUT_DATA.mkdir(parents=True, exist_ok=True)
@@ -477,6 +507,10 @@ def main():
         print("  -> %s（%s，追问 %d，变体 %d）"
               % (t["page"], "有图" if t["figures"] else "无图",
                  len(t["followups"]), len(t["variants"])))
+
+    cleaned = cleanup_html()
+    if cleaned:
+        print("清理预览注入属性：%d 个 html 文件" % cleaned)
 
 
 if __name__ == "__main__":
