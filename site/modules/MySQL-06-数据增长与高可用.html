@@ -31,7 +31,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">4 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">21</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q21" tag="MySQL" q="主从复制的原理？binlog 有哪几种格式？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">22</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q22" tag="MySQL" q="主从延迟的原因和缓解办法？读写分离读到旧数据怎么办？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">23</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q23" tag="MySQL" q="什么情况下才需要分库分表？分片键怎么选？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">24</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q24" tag="MySQL" q="连接池打满 / 数据库 CPU 飙高怎么排查？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">21</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q21" type="button">未掌握</button></div><flip-card card-id="MySQL-q21" tag="MySQL" q="主从复制的原理？binlog 有哪几种格式？" a="【M11】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">22</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q22" type="button">未掌握</button></div><flip-card card-id="MySQL-q22" tag="MySQL" q="主从延迟的原因和缓解办法？读写分离读到旧数据怎么办？" a="【M11】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">23</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M12</span><button class="mv-qdone" data-k="MySQL-q23" type="button">未掌握</button></div><flip-card card-id="MySQL-q23" tag="MySQL" q="什么情况下才需要分库分表？分片键怎么选？" a="【M12】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">24</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M12</span><button class="mv-qdone" data-k="MySQL-q24" type="button">未掌握</button></div><flip-card card-id="MySQL-q24" tag="MySQL" q="连接池打满 / 数据库 CPU 飙高怎么排查？" a="【M12】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-05-长事务.html">← 五 · 长事务</a><a class="mv-line-nav next" href="modules/MySQL-07-业务并发场景.html">七 · 业务并发场景 →</a></div>
@@ -44,6 +44,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
   t.addEventListener('input', function () {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
+});
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
 });
 </script>
 </body>

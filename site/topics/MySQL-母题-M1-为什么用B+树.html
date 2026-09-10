@@ -23,7 +23,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">主卡</h2>
-    <flip-card gradable card-id="MySQL/母题-M1-为什么用B+树" tag="MySQL" q="数据库索引为什么必须选择 B+ 树？这个选择的约束条件是什么？" a="B+ 树是**为磁盘 IO 次数最少**而设计的——非叶节点只存键让树变矮，叶子有序链表让范围查询不用回溯，于是查两千万行也只要 3 次 IO。"></flip-card>
+    <flip-card gradable card-id="MySQL/母题-M1-为什么用B+树" tag="MySQL" q="数据库索引为什么必须选择 B+ 树？这个选择的约束条件是什么？" a="B+ 树是为磁盘 IO 次数最少而设计的——非叶节点只存键让树变矮，叶子有序链表让范围查询不用回溯，于是查两千万行也只要 3 次 IO。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是索引所有问题的地基。答不出这一层，后面「为什么最左前缀」「为什么回表慢」「为什么索引失效」全是背结论；答得出，那些结论都能自己推出来。</p>
   </div>

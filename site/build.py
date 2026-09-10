@@ -118,6 +118,13 @@ def inline(s):
     return s
 
 
+def plain(s):
+    """flip-card 只接受纯文本属性，去掉 markdown 标记"""
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s or "")
+    s = re.sub(r"`([^`]+)`", r"\1", s)
+    return s.strip()
+
+
 def md_to_html(md):
     out, para, lst, code, in_code = [], [], [], [], False
 
@@ -415,8 +422,8 @@ def render_topic(t):
         ("%%MODULE%%", esc(t["module"])),
         ("%%META%%", meta),
         ("%%KEY%%", attrs(t["key"])),
-        ("%%Q%%", attrs(t["question"])),
-        ("%%A%%", attrs(t["conclusion"])),
+        ("%%Q%%", attrs(plain(t["question"]))),
+        ("%%A%%", attrs(plain(t["conclusion"]))),
         ("%%IMPORTANCE%%", imp),
         ("%%FIGURES%%", figures),
         ("%%KEYWORDS%%", keywords),
@@ -830,8 +837,13 @@ def parse_module_card(path):
     for cells in parse_md_table(slice_section(body, r"^##\s*4\.", r"^##\s*5\.").splitlines()):
         if len(cells) < 4 or not re.fullmatch(r"\d+", cells[0].strip()):
             continue
+        # 列：# ｜ 题目 ｜ 归属主线 ｜ [母题] ｜ 优先级 ｜ 状态 ｜ 首验
+        if len(cells) >= 7:
+            topic, pri = cells[3].strip(), cells[4].strip()
+        else:
+            topic, pri = "", cells[3].strip()
         questions.append({"no": cells[0].strip(), "q": cells[1].strip(),
-                          "line": cells[2].strip(), "pri": cells[3].strip()})
+                          "line": cells[2].strip(), "topic": topic, "pri": pri})
 
     bridge, seen_b = [], False
     for cells in parse_md_table(slice_section(body, r"^##\s*6\.", r"^##\s*7\.").splitlines()):
@@ -908,6 +920,28 @@ def _topic_state(md, tid):
     if not tc:
         return "none", None
     return ("live" if tc.get("status") == "integrated" else "draft"), tc
+
+
+def q_answer(md, topic_field):
+    """题卡背面：从对应母题自动装出面试口径答案（不另写一遍，避免与讲解重复）"""
+    ids = re.findall(r"M\d+", topic_field or "")
+    if not ids:
+        return ("这道题目前没有母题覆盖。\n\n"
+                "这正是「覆盖度校验」要暴露的：要么给它补一个母题，"
+                "要么明确降级为「了解」并写下理由。")
+    parts = []
+    for i in ids:
+        st, tc = _topic_state(md, i)
+        if not tc:
+            parts.append("【%s】讲解待提炼 —— 先回主线区把这道母题补上。" % i)
+            continue
+        parts.append("【%s】%s" % (i, plain(tc["conclusion"])))
+        detail = tc["skeleton"] or tc["invariant"]
+        if detail:
+            parts.append("展开：%s" % plain(detail))
+        if st != "live":
+            parts.append("（这道母题还是草稿，尚未通过验收）")
+    return "\n\n".join(parts)
 
 
 def render_module_index(md):
@@ -1024,12 +1058,18 @@ def render_module_line(md, ln, prev_ln, next_ln):
 
     drill = ""
     for q in qs:
+        tid = q.get("topic") or ""
+        chip = ('<span class="mv-chip ghost">%s</span>' % esc(q["pri"])) if q["pri"] else ""
+        if tid:
+            chip += '<span class="mv-chip ghost">%s</span>' % esc(tid)
         drill += ('<div class="mv-qitem"><div class="mv-qhead">'
-                  '<span class="mv-qid">%s</span><span class="mv-chip ghost">%s</span></div>'
+                  '<span class="mv-qid">%s</span>%s'
+                  '<button class="mv-qdone" data-k="%s-q%s" type="button">未掌握</button>'
+                  "</div>"
                   '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
-                  % (esc(q["no"]), esc(q["pri"]), attrs(md["module"]), attrs(q["no"]),
-                     attrs(md["module"]), attrs(q["q"]),
-                     attrs("先自己讲一遍，再回上面的母题区核对。")))
+                  % (esc(q["no"]), chip, esc(md["module"]), esc(q["no"]),
+                     attrs(md["module"]), attrs(q["no"]), attrs(md["module"]),
+                     attrs(plain(q["q"])), attrs(q_answer(md, tid))))
     if not drill:
         drill = '<p class="mv-note">这条主线还没有挂题。</p>'
 
@@ -1157,6 +1197,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
   t.addEventListener('input', function () {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
+});
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
 });
 </script>
 </body>

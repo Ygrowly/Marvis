@@ -31,7 +31,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">1 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">8</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q8" tag="MySQL" q="ACID 分别是怎么实现的？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">8</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M9</span><button class="mv-qdone" data-k="MySQL-q8" type="button">未掌握</button></div><flip-card card-id="MySQL-q8" tag="MySQL" q="ACID 分别是怎么实现的？" a="【M9】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-03-事务与锁.html">← 三 · 事务与锁</a><a class="mv-line-nav next" href="modules/MySQL-05-长事务.html">五 · 长事务 →</a></div>
@@ -44,6 +44,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
   t.addEventListener('input', function () {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
+});
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
 });
 </script>
 </body>

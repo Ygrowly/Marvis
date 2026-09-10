@@ -31,7 +31,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">5 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">9</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q9" tag="MySQL" q="四个隔离级别分别解决什么问题？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">10</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q10" tag="MySQL" q="MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">11</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q11" tag="MySQL" q="RR 下幻读怎么解决？快照读和当前读的区别？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">12</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q12" tag="MySQL" q="行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">13</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q13" tag="MySQL" q="死锁怎么产生、怎么排查、怎么避免？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">9</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M6</span><button class="mv-qdone" data-k="MySQL-q9" type="button">未掌握</button></div><flip-card card-id="MySQL-q9" tag="MySQL" q="四个隔离级别分别解决什么问题？" a="【M6】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">10</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M7</span><button class="mv-qdone" data-k="MySQL-q10" type="button">未掌握</button></div><flip-card card-id="MySQL-q10" tag="MySQL" q="MVCC 怎么实现？RR 和 RC 生成 ReadView 的时机差在哪？" a="【M7】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">11</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M7</span><button class="mv-qdone" data-k="MySQL-q11" type="button">未掌握</button></div><flip-card card-id="MySQL-q11" tag="MySQL" q="RR 下幻读怎么解决？快照读和当前读的区别？" a="【M7】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">12</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M8</span><button class="mv-qdone" data-k="MySQL-q12" type="button">未掌握</button></div><flip-card card-id="MySQL-q12" tag="MySQL" q="行锁、间隙锁、next-key lock 分别锁什么？什么时候锁全表？" a="【M8】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">13</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M8</span><button class="mv-qdone" data-k="MySQL-q13" type="button">未掌握</button></div><flip-card card-id="MySQL-q13" tag="MySQL" q="死锁怎么产生、怎么排查、怎么避免？" a="【M8】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-02-SQL 执行与优化.html">← 二 · SQL 执行与优化</a><a class="mv-line-nav next" href="modules/MySQL-04-日志与持久化.html">四 · 日志与持久化 →</a></div>
@@ -44,6 +44,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
   t.addEventListener('input', function () {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
+});
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
 });
 </script>
 </body>

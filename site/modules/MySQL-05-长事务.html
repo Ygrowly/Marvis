@@ -45,6 +45,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
 });
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
 </script>
 </body>
 </html>

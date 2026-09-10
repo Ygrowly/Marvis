@@ -31,7 +31,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">6 道 · 先说后翻</span></h2>
-    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">15</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q15" tag="MySQL" q="一条 SQL 从发送到返回经历了什么？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">16</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q16" tag="MySQL" q="explain 主要看哪些字段？type 从好到坏怎么排？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">17</span><span class="mv-chip ghost">必背</span></div><flip-card card-id="MySQL-q17" tag="MySQL" q="慢查询怎么定位和优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">18</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q18" tag="MySQL" q="深分页 `limit 1000000,10` 为什么慢？怎么优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">19</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q19" tag="MySQL" q="`count(*)` / `count(1)` / `count(列)` 的区别？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">20</span><span class="mv-chip ghost">理解</span></div><flip-card card-id="MySQL-q20" tag="MySQL" q="join 的驱动表怎么选？怎么优化？" a="先自己讲一遍，再回上面的母题区核对。"></flip-card></div>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">15</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M4</span><button class="mv-qdone" data-k="MySQL-q15" type="button">未掌握</button></div><flip-card card-id="MySQL-q15" tag="MySQL" q="一条 SQL 从发送到返回经历了什么？" a="【M4】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">16</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M4</span><button class="mv-qdone" data-k="MySQL-q16" type="button">未掌握</button></div><flip-card card-id="MySQL-q16" tag="MySQL" q="explain 主要看哪些字段？type 从好到坏怎么排？" a="【M4】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">17</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M5</span><button class="mv-qdone" data-k="MySQL-q17" type="button">未掌握</button></div><flip-card card-id="MySQL-q17" tag="MySQL" q="慢查询怎么定位和优化？" a="【M5】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">18</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M5</span><button class="mv-qdone" data-k="MySQL-q18" type="button">未掌握</button></div><flip-card card-id="MySQL-q18" tag="MySQL" q="深分页 limit 1000000,10 为什么慢？怎么优化？" a="【M5】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">19</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M5</span><button class="mv-qdone" data-k="MySQL-q19" type="button">未掌握</button></div><flip-card card-id="MySQL-q19" tag="MySQL" q="count(*) / count(1) / count(列) 的区别？" a="【M5】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">20</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M5</span><button class="mv-qdone" data-k="MySQL-q20" type="button">未掌握</button></div><flip-card card-id="MySQL-q20" tag="MySQL" q="join 的驱动表怎么选？怎么优化？" a="【M5】讲解待提炼 —— 先回主线区把这道母题补上。"></flip-card></div>
   </div>
 
   <div class="mv-nav"><a class="mv-line-nav" href="modules/MySQL-01-索引.html">← 一 · 索引</a><a class="mv-line-nav next" href="modules/MySQL-03-事务与锁.html">三 · 事务与锁 →</a></div>
@@ -44,6 +44,22 @@ document.querySelectorAll('.mv-ask-in').forEach(function (t) {
   t.addEventListener('input', function () {
     try { localStorage.setItem(k, t.value); } catch (e) {}
   });
+});
+
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
 });
 </script>
 </body>
