@@ -61,7 +61,9 @@ aliases: [MAP, 正本登记表, 主题地图]
 |---|---|---|
 | 算法 | `wiki/topics/算法/母题-NN-名称.md` | 索引 `wiki/topics/算法/00-算法母题索引.md`；底库 `母题池-36道推导` + `母题池-Hot100剩余22道` |
 | 算法题组（专题） | `wiki/topics/算法/母题组-乐元素面试与笔试P0.md` | — |
-| MySQL | `wiki/topics/MySQL/MySQL模块深挖卡.md` | — |
+| 后端基本盘（六模块） | `wiki/topics/后端基本盘路线图.md` | 模块卡落 `wiki/topics/{模块}/`；定位：AI/Agent 为主、后端为底盘 |
+| MySQL | `wiki/topics/MySQL/MySQL模块深挖卡.md` | **主线优先**：7 主线 → 14 母题 → 26 题覆盖度校验（2026-09-10 改版） |
+| Redis / 网络基础 / 并发锁 / 消息队列 / Linux 部署 | （待建，按 [[后端基本盘路线图]] 顺序推进） | 一次只开一个模块 |
 | Agent / RAG / Python / 系统设计 | （待建，按日课产出） | 现阶段以 `study/` 课程为底库 |
 
 ### 学习 · 精力 · 执行
