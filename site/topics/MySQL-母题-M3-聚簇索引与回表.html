@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -25,7 +26,7 @@
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M3-聚簇索引与回表" tag="MySQL" q="聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？" a="聚簇索引的叶子存整行数据，二级索引的叶子只存索引列 + 主键值；用二级索引查非索引列时必须「回表」再查一次聚簇索引——覆盖索引就是让需要的列全在二级索引里，从而免掉这次回表。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是**索引设计的最小闭环**。M1 讲树有多矮，M2 讲有序性怎么用，M3 讲**真正的成本在哪里**——树高只有 3 层，但回表可能是 100 次额外的随机 IO。答不出这层，就会以为「加了索引就快」。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>索引设计的最小闭环</strong>。M1 讲树有多矮，M2 讲有序性怎么用，M3 讲<strong>真正的成本在哪里</strong>——树高只有 3 层，但回表可能是 100 次额外的随机 IO。答不出这层，就会以为「加了索引就快」。</p>
   </div>
 
   <div class="mv-section">

@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -32,7 +33,7 @@ LIMIT 100;</pre>
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M2-联合索引与最左前缀" tag="MySQL" q="联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？" a="联合索引 (a, b, c) 的排序方式是先按 a 排、a 相同再按 b 排、b 相同再按 c 排；所以只有从最左列开始的连续前缀才能用上这份有序性。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：索引设计是后端最高频的追问点，而且它**从 M1 就能推出来**——索引是有序结构，「最左前缀」是这个有序性的直接后果。答得出成因，就不用背。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：索引设计是后端最高频的追问点，而且它<strong>从 M1 就能推出来</strong>——索引是有序结构，「最左前缀」是这个有序性的直接后果。答得出成因，就不用背。</p>
   </div>
 
   <div class="mv-section">

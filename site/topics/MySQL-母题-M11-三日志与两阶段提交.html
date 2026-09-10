@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -25,7 +26,7 @@
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M11-三日志与两阶段提交" tag="MySQL" q="redo / undo / binlog 各管什么？两阶段提交为什么必要？" a="三条日志各管一件事——undo 管回滚 + MVCC 旧版本，redo 管崩溃恢复（保证已提交不丢），binlog 管复制与时间点恢复；而两阶段提交存在的唯一理由，是让 redo 和 binlog 在逻辑上绝对一致——否则崩溃时会造出「主库有、从库没有」或「从库有、主库没有」的数据。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是**「会用数据库」和「懂数据库为什么不丢数据」的分界线**。它也是唯一一条能把原子性、持久性、主从复制三件事串起来的线——**答不出这条，前面讲的 ACID 就只是四个字母**。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「会用数据库」和「懂数据库为什么不丢数据」的分界线</strong>。它也是唯一一条能把原子性、持久性、主从复制三件事串起来的线——<strong>答不出这条，前面讲的 ACID 就只是四个字母</strong>。</p>
   </div>
 
   <div class="mv-section">

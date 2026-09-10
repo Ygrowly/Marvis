@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -25,7 +26,7 @@
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M4-索引代价与大表变更" tag="MySQL" q="索引不是免费的——它的代价是什么？大表上做结构变更，怎么才能不阻塞线上流量？" a="索引的代价是写放大 + 空间 + 优化器负担；大表变更的代价来自重建结构 + 拿元数据锁（MDL）——危险的不是 DDL 慢，而是它把后续所有查询都堵在队列里。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是「知识」和「工程」的分界线。知道索引能加速是课本，知道**加索引可能把库搞挂**才是生产经验。而且它是面试官区分"背过八股"和"动过线上库"的典型问题。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是「知识」和「工程」的分界线。知道索引能加速是课本，知道<strong>加索引可能把库搞挂</strong>才是生产经验。而且它是面试官区分"背过八股"和"动过线上库"的典型问题。</p>
   </div>
 
   <div class="mv-section">

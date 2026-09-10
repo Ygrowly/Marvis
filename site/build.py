@@ -311,6 +311,7 @@ PAGE = """<!DOCTYPE html>
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  %%MODULE_BACK%%
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">%%MODULE%%</span>
@@ -426,8 +427,12 @@ def render_topic(t):
     bits.append("正本 %s" % t["src"])
     meta = esc(" ｜ ".join(bits)).replace("[[", "").replace("]]", "")
 
-    imp = ('<p class="mv-note" style="margin-top:10px">为什么重要：%s</p>' % esc(t["importance"])
+    imp = ('<p class="mv-note" style="margin-top:10px">为什么重要：%s</p>' % inline(t["importance"])
            if t["importance"] else "")
+
+    mi = TOPIC_MODULE_INDEX.get(t["module"])
+    module_back = ('<a class="mv-back mv-back-2" href="../modules/%s.html">← %s 模块概览</a>'
+                   % (esc(mi), esc(t["module"]))) if mi else ""
 
     problem = ""
     if t["problem"]:
@@ -448,6 +453,7 @@ def render_topic(t):
         ("%%KEYWORDS%%", keywords),
         ("%%EXPAND%%", expand),
         ("%%BODY%%", body),
+        ("%%MODULE_BACK%%", module_back),
     ):
         out = out.replace(k, v)
     return out
@@ -903,6 +909,7 @@ def parse_module_card(path):
         "lines": lines_,
         "topics": topics,
         "questions": questions,
+        "projects": parse_projects(body),
         "bridge": bridge,
         "gate": gate,
         "cards": cards,
@@ -911,6 +918,10 @@ def parse_module_card(path):
 
 
 CN_INDEX = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+# 运行时登记（main 里填充）：母题 key -> 母题页路径；模块名 -> 模块概览页
+TOPIC_PAGES = {}
+TOPIC_MODULE_INDEX = {}
 
 
 def line_short(name):
@@ -929,6 +940,11 @@ def module_line_page(md, no):
     idx = CN_INDEX.get(no, 0)
     return "modules/%s-%02d-%s.html" % (md["module"], idx, line_short(
         next((l["name"] for l in md["lines"] if l["no"] == no), no)))
+
+
+def module_line_file(md, no):
+    """主线页文件名——模块页之间是同目录引用，不能再带 modules/ 前缀"""
+    return module_line_page(md, no).split("/")[-1]
 
 
 def _by_line(rows, key="line"):
@@ -970,6 +986,57 @@ def q_answer(md, topic_field):
     return "\n\n".join(parts)
 
 
+def parse_projects(body):
+    """第 5 节项目映射：每个 ### 小标题一块，收集「锚点」与项目符号条目"""
+    sec = section_by_title(body, "项目映射")
+    blocks, cur, item = [], None, None
+    for raw in sec.splitlines():
+        ln = raw.rstrip()
+        m = re.match(r"^###\s*(.+)$", ln.strip())
+        if m:
+            name = re.sub(r"^\d+(\.\d+)*\s*", "", m.group(1)).strip()
+            cur = {"name": name, "anchor": "", "items": []}
+            blocks.append(cur)
+            item = None
+            continue
+        if cur is None:
+            continue
+        t = ln.strip()
+        if not t or t.startswith(">"):
+            continue
+        m3 = re.match(r"^\*\*锚点\*\*[：:]\s*(.*)$", t)
+        if m3:
+            cur["anchor"] = m3.group(1).strip()
+            item = None
+            continue
+        m2 = re.match(r"^[-*]\s+\*\*(.+?)\*\*[：:]\s*(.*)$", t)
+        if m2:
+            item = {"label": m2.group(1).strip(), "text": m2.group(2).strip()}
+            cur["items"].append(item)
+            continue
+        if item is not None:      # 续行（含代码块）
+            item["text"] = "\n".join(
+                x.strip() for x in (item["text"] + "\n" + ln).splitlines())
+    return [b for b in blocks if b["items"] or b["anchor"]]
+
+
+def render_projects(md):
+    blocks = md.get("projects") or []
+    if not blocks:
+        return '<p class="mv-note">正本第 5 节还没有填项目映射。</p>'
+    out = []
+    for b in blocks:
+        inner = ""
+        if b["anchor"]:
+            inner += '<p class="mv-pj-anchor">锚点：%s</p>' % inline(b["anchor"])
+        for it in b["items"]:
+            inner += ('<div class="mv-pj-item"><b>%s</b>%s</div>'
+                      % (esc(it["label"]), md_to_html(it["text"])))
+        out.append('<collapse-panel title="%s">%s</collapse-panel>'
+                   % (esc(b["name"]), inner))
+    return "".join(out)
+
+
 def render_module_index(md):
     """模块概览页：几条主线、多少题、走到哪了"""
     tbl, qbl = _by_line(md["topics"]), _by_line(md["questions"])
@@ -994,7 +1061,7 @@ def render_module_index(md):
             '<span class="mv-line-st">母题 %d · 题 %d</span>'
             '<span class="mv-line-bar"><i style="width:%d%%"></i></span>'
             "</a>"
-            % (esc(module_line_page(md, ln["no"])), esc(ln["no"]),
+            % (esc(module_line_file(md, ln["no"])), esc(ln["no"]),
                esc(line_short(ln["name"])), esc(line_question(ln["name"])),
                len(arr), len(qs), pct)
         )
@@ -1015,6 +1082,7 @@ def render_module_index(md):
         ("%%NLIVE%%", str(n_live)),
         ("%%NDRAFT%%", str(n_draft)),
         ("%%ROWS%%", rows or '<p class="mv-note">还没有主线。</p>'),
+        ("%%PROJECTS%%", render_projects(md)),
         ("%%SRC%%", esc(md["key"])),
     ):
         out = out.replace(k, v)
@@ -1032,9 +1100,12 @@ def render_module_line(md, ln, prev_ln, next_ln):
         chip = {"live": '<span class="mv-chip">已掌握</span>',
                 "draft": '<span class="mv-chip warn">草稿 · 待验收</span>'}.get(
                     st, '<span class="mv-chip ghost">未提炼</span>')
+        cp = md["cards"].get(t["id"])
+        cpage = TOPIC_PAGES.get("%s/%s" % (md["module"], cp.stem)) if cp else ""
+        card_link = ('<a class="mv-mt-link" href="../%s">单卡 →</a>' % esc(cpage)) if cpage else ""
         head = ('<div class="mv-mt-head"><span class="mv-mt-id">%s</span>'
-                '<span class="mv-mt-name">%s</span>%s</div>'
-                % (esc(t["id"]), esc(t["name"]), chip))
+                '<span class="mv-mt-name">%s</span>%s%s</div>'
+                % (esc(t["id"]), esc(t["name"]), chip, card_link))
 
         if not tc:
             ctx = ('<p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p>'
@@ -1090,21 +1161,21 @@ def render_module_line(md, ln, prev_ln, next_ln):
     if not drill:
         drill = '<p class="mv-note">这条主线还没有挂题。</p>'
 
-    nav = ""
+    nav = '<a class="mv-line-nav" href="../index.html">训练台</a>'
     if prev_ln:
         nav += '<a class="mv-line-nav" href="%s">← %s · %s</a>' % (
-            esc(module_line_page(md, prev_ln["no"])), esc(prev_ln["no"]),
+            esc(module_line_file(md, prev_ln["no"])), esc(prev_ln["no"]),
             esc(line_short(prev_ln["name"])))
     if next_ln:
         nav += '<a class="mv-line-nav next" href="%s">%s · %s →</a>' % (
-            esc(module_line_page(md, next_ln["no"])), esc(next_ln["no"]),
+            esc(module_line_file(md, next_ln["no"])), esc(next_ln["no"]),
             esc(line_short(next_ln["name"])))
 
     out = MODULE_LINE_PAGE
     for k, v in (
         ("%%TITLE%%", esc(line_short(ln["name"]))),
         ("%%MODULE%%", esc(md["module"])),
-        ("%%INDEX%%", esc("modules/%s.html" % md["module"])),
+        ("%%INDEX%%", esc("%s.html" % md["module"])),
         ("%%NO%%", esc(ln["no"])),
         ("%%LEAD%%", inline(line_question(ln["name"])) or "—"),
         ("%%TRADEOFF%%", inline(ln["tradeoff"]) if ln["tradeoff"] else ""),
@@ -1160,6 +1231,11 @@ MODULE_INDEX_PAGE = """<!DOCTYPE html>
   <div class="mv-section">
     <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
     %%ROWS%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    %%PROJECTS%%
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
@@ -1263,6 +1339,20 @@ def main():
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     OUT_TOPICS.mkdir(parents=True, exist_ok=True)
 
+    # 有模块卡的模块名（母题页要据此回链模块概览，必须早于母题页渲染）
+    for d in MODULE_DIRS:
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in sorted(base.rglob("*.md")):
+            head = p.read_text(encoding="utf-8")[:600]
+            if "type: study-module" not in head:
+                continue
+            mm = re.search(r"^module:[ ]*(.+)$", head, re.M)
+            if mm:
+                nm = mm.group(1).split("/")[0].strip()
+                TOPIC_MODULE_INDEX[nm] = nm
+
     topics, seen_t = [], set()
     for d in TOPIC_DIRS:
         base = ROOT / d
@@ -1294,6 +1384,7 @@ def main():
                 seen_c.add(c["id"])
                 cards.append(c)
 
+    TOPIC_PAGES.update({t["key"]: t["page"] for t in topics})
     for t in topics:
         (OUT_TOPICS / ("%s-%s.html" % (t["module"], t["stem"]))).write_text(
             render_topic(t), encoding="utf-8")

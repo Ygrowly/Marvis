@@ -11,13 +11,47 @@
 ```text
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 今日保底（计时器在弹窗里）
+  modules/            模块学习页（build 生成，勿手改）：{模块}.html 概览 + {模块}-NN-{主线}.html 子页
   topics/             母题页（build 生成，勿手改）
+  reviews/            诊断页（build 生成，勿手改）
   PLAN.md             方案正本
   build.py            构建器：按格式选 adapter → 视图 + 牌组数据
   cards/              补充卡草稿区（::card 也可直接写进任何 md）
   figures/            图（.svg），md 里用 ::figure 引用
-  _data/              构建产物 decks.json（数据）/ decks.js（file:// 用）
+  _data/              构建产物 decks.json / modules.js / reviews.js（数据）+ .js（file:// 用）
   _components/        marvis.css + marvis.js，10 个原生 Web Components
+```
+
+## 页面导航（三层，双向可达）
+
+```text
+index.html（训练台）
+  ├─ modules/{模块}.html        模块概览：主线 + 一句话结论 + 边界 + 项目映射
+  │    └─ modules/{模块}-NN-….html   主线子页：母题（先答后看）+ 本主线题
+  │         └─ topics/{模块}-母题-….html  单卡视图（每个母题右上「单卡 →」）
+  ├─ topics/*.html              母题页（复训牌组里的卡也能直接点进）
+  └─ reviews/*.html             诊断页
+```
+
+**规则**：每个页面左上角都有返回链；主线子页顶部还有「训练台 / 上一条 / 下一条」。
+**新增页面必须接进这条链**——孤页等于死页。构建后跑一次死链检查（见下）。
+
+## 死链检查（改完 build 跑一次）
+
+```bash
+python - <<'PY'
+import re, pathlib, urllib.parse
+SITE = pathlib.Path("site")
+bad = []
+for p in sorted(SITE.rglob("*.html")):
+    for href in re.findall(r'href="([^"]+)"', p.read_text(encoding="utf-8")):
+        if href.startswith(("obsidian:", "http", "#", "mailto:", "data:")) or "+ " in href:
+            continue
+        t = urllib.parse.unquote(href.split("#")[0])
+        if t and not (p.parent / t).resolve().exists():
+            bad.append((str(p), href))
+print("✅ 无死链" if not bad else "\n".join("%s -> %s" % b for b in bad))
+PY
 ```
 
 ## 日常动线
@@ -27,7 +61,8 @@ site/
 | 早上 5–10 分钟 | 今日到期的母题，先说后翻，点过关/忘了 | `site/index.html` |
 | 白天 | 写笔记、讨论、推导 | Obsidian |
 | 讨论完 | `python site/build.py` | 终端 |
-| 要深看某个母题 | 从训练台点「打开母题页」，或直接开 `topics/*.html` | 母题页 |
+| 要系统学一个模块 | 训练台 → 模块概览 → 进某一条主线 | `modules/` |
+| 要深看某个母题 | 主线页里点「单卡 →」，或直接开 `topics/*.html` | 母题页 |
 | 面试前 | 计时器（弹窗）+ 一页纸作战卡 | `site/index.html` |
 
 ## 内容怎么进 html（三种来源）
@@ -65,6 +100,21 @@ A: 答案，可以换多行
 
 文件放 `site/figures/`。build 会把 SVG 内联进页面（多图时自动加 id 前缀防冲突）。
 流程：**md 里描述需要什么图 → AI 生成 svg → 人看图对不对**。人不需要会写 SVG。
+
+### 4. 模块卡 —— 生成模块学习页
+
+正本 `wiki/topics/{模块}/{模块}模块深挖卡.md`，按 `templates/模块深挖卡模板.md` 写。build 按**标题**取节（不是硬编码序号），产出：
+
+| 节 | 变成 |
+|---|---|
+| 一句话结论 / 模块边界 | 概览页顶部 |
+| 第 2 节 主线拆解 | 概览页的主线列表 → 每条一个子页 |
+| 第 3 节 母题清单 | 子页的母题块（配合 `母题-NN-*.md` 出讲解） |
+| 第 4 节 题单 | 按「归属主线」分发到各子页的题卡区 |
+| 第 5 节 项目映射 | 概览页底部（每个项目一个折叠块） |
+| 第 6 节 验收门 | 解析为清单（当前不在页面显示） |
+
+**用标题找节的原因**：硬编码「第 N 节」在章节顺序调整后会静默取空——不报错，只是悄悄失效，很难发现。
 
 ## 组件（10 个，已封顶）
 

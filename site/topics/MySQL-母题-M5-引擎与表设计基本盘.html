@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -25,7 +26,7 @@
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M5-引擎与表设计基本盘" tag="MySQL" q="MyISAM 和 InnoDB 差在哪？建表时主键、varchar/char、DATETIME/TIMESTAMP 该怎么选？" a="选 InnoDB 是因为它支持事务、行级锁和崩溃恢复，这是默认引擎的根本原因；表设计的三条硬规则是——主键用自增（保证顺序写、避免页分裂）、长度不定用 varchar、长度固定用 char、要自动更新和时区语义用 TIMESTAMP，要大范围日期用 DATETIME。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是**最高频、也最容易被轻视**的一类题。它不难，但答"知道"和答"选过"是两回事——面试官问它是为了确认：你建的表现在会不会埋雷（主键用 UUID 导致页分裂、时间字段选了 TIMESTAMP 结果 2038 年溢出）。**而且它是后面所有索引题的前置**：不懂 InnoDB 是索引组织表，就讲不清回表。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>最高频、也最容易被轻视</strong>的一类题。它不难，但答"知道"和答"选过"是两回事——面试官问它是为了确认：你建的表现在会不会埋雷（主键用 UUID 导致页分裂、时间字段选了 TIMESTAMP 结果 2038 年溢出）。<strong>而且它是后面所有索引题的前置</strong>：不懂 InnoDB 是索引组织表，就讲不清回表。</p>
   </div>
 
   <div class="mv-section">

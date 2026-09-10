@@ -9,6 +9,7 @@
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
@@ -25,7 +26,7 @@
     <h2 class="mv-section-title">主卡</h2>
     <flip-card gradable card-id="MySQL/母题-M12-崩溃恢复" tag="MySQL" q="崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？" a="恢复 = redo 重放 + undo 回滚：重启后从 check point 起把 redo 顺序重放（已落盘的页按 LSN 跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的事务回滚掉。判据来自两阶段提交留下的状态——redo 是 prepare 且 binlog 完整 → 提交；binlog 不完整 → 回滚。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：M11 讲的是「日志怎么写」，这一题讲的是「日志怎么被读回来用」——**一个系统可不可靠，不取决于它平时跑得多顺，而取决于它在任意一点断电后能不能自证状态**。这也是最容易被面试官用来分辨「背过两阶段提交」和「真的想通了」的一道题。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：M11 讲的是「日志怎么写」，这一题讲的是「日志怎么被读回来用」——<strong>一个系统可不可靠，不取决于它平时跑得多顺，而取决于它在任意一点断电后能不能自证状态</strong>。这也是最容易被面试官用来分辨「背过两阶段提交」和「真的想通了」的一道题。</p>
   </div>
 
   <div class="mv-section">
