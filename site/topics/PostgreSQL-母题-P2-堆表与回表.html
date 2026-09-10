@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P2 · 堆表与回表</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P2 · 堆表与回表</h1>
+    <p class="mv-topic-meta">关联 母题-P1-索引类型选型 · 母题-P3-部分索引与表达式索引 ｜ 正本 wiki/topics/PostgreSQL/母题-P2-堆表与回表.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一条 <code class="mv-md-code">WHERE device_id = ? AND stat_date &gt;= ?</code> 只返回 <code class="mv-md-code">device_id, stat_date</code> 的查询，同样的表结构在 MySQL 里可以做到「不回表」，在 PG 里为什么不一定？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="PostgreSQL/母题-P2-堆表与回表" tag="PostgreSQL" q="PG 是堆表，为什么索引查询要回表？Index Only Scan 靠什么成立？联合索引在 PG 也有最左前缀吗？" a="PG 的表是堆（一堆无序的数据页），所有索引都是二级索引，叶子存的是 ctid（指向物理位置），所以走索引只能拿到「行在哪」，取行必须再读堆——这就是回表。Index Only Scan 成立的条件不是「索引里有这些列」，而是「这些页的可见性映射说这些版本全可见」，因此它依赖 VACUUM 的维护。最左前缀在 PG 依然成立（B-tree 是有序结构），但联合索引叶子存的是所有列的值，所以它才可能不走堆。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>整个 PG 索引体系的起点</strong>，也是 MySQL 与 PG 最容易说反的地方。你三个项目全在 PG，如果讲不清「PG 表是堆、所有索引都是二级索引」，那么后面讲覆盖索引、讲索引代价、讲主键选型全都会带着 MySQL 的语义往下走——<strong>面试官一听就知道你在背另一本书</strong>。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>堆</li><li>无序数据页</li><li>所有索引都是二级索引</li><li>ctid</li><li>回表</li><li>visibility map + VACUUM</li><li>最左前缀</li><li>INCLUDE 列</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表（等值 + 范围的联合索引，最典型的 PG 查询形状）；数驭穹图的元数据检索。<strong>方言差异（面试安全底线）</strong>：MySQL 的表是<strong>索引组织表</strong>，主键查询不回表；PG 是<strong>堆表</strong>，<strong>所有</strong>查询都可能回表。被问覆盖索引时，<strong>先说「我项目里是 PG，机制是 X」，再说「MySQL 那边对应是 Y」</strong>——顺序反了就容易把两套混成一句。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">堆表长什么样 → 索引只能给位置，所以回表必然 → Index Only Scan 的判据是可见性映射 → 最左前缀依然成立但语义不同 → INCLUDE 列怎么用 → 落到项目查询</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>MySQL 的主键就是数据本身（索引组织表），PG 的索引只是「指向数据的路标」。</strong> 这一条决定了两边索引的一切行为差异：回表、主键选型、页分裂、覆盖索引的可行性。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能画一张「堆 + 索引 + ctid」的图讲清回表，能说出 Index Only Scan 依赖 visibility map / VACUUM，并能在 <code class="mv-md-code">EXPLAIN ANALYZE</code> 里指出 Heap Fetches。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、堆表：数据本身没有顺序</h3>
+<p class="mv-md-p">PG 的表由一堆<strong>数据页（8KB）</strong>组成，行按写入顺序散落在页里，<strong>行与行之间没有任何顺序保证</strong>。索引是<strong>另外一套文件</strong>，它把「某个值 → 行在哪」记录下来。</p>
+<pre class="mv-md-pre">表（堆）        ：一堆数据页，无序
+索引（B-tree）  ：有序，叶子存 (键值, ctid)
+ctid            ：(页号, 页内偏移) —— 物理位置</pre>
+<p class="mv-md-p">对比 InnoDB：InnoDB 的主键索引<strong>叶子就是整行数据</strong>（索引组织表），所以「按主键查」一次树查找就拿到数据。<strong>PG 没有这种结构，一次索引查找永远只能拿到位置。</strong></p>
+<h3 class="mv-md-h">二、所以回表是必然的</h3>
+<pre class="mv-md-pre">走索引：B-tree 查找 → 拿到 ctid（可能几十上百个）
+回表  ：按 ctid 逐个读堆页 → 拿到真正的行</pre>
+<p class="mv-md-p"><strong>成本模型的关键</strong>：树查找是 O(log N)，<strong>回表次数随命中行数线性增长</strong>，而且是随机 IO（ctid 不一定连续）。所以「命中 1000 行」比「命中 10 行」危险得多——<strong>这和 MySQL 是同一个道理，但 PG 里没有主键这条路可以绕过</strong>（InnoDB 至少主键查询不用回表）。</p>
+<h3 class="mv-md-h">三、Index Only Scan：判据是「可见性」，不是「列齐了」</h3>
+<p class="mv-md-p">这是最容易讲错的一处。PG 的「不回表扫描」<strong>不是</strong>因为索引里含了所有需要的列——即使列齐了，PG 也<strong>必须确认这一行的这个版本对当前事务可见</strong>，而这个信息存在堆页头部，不在索引里。</p>
+<p class="mv-md-p">解决办法是 <strong>visibility map</strong>：PG 用一个位图记录「这一页里的所有行对所有事务都可见」。</p>
+<pre class="mv-md-pre">visibility map 说该页全可见  →  可以直接用索引里的值，跳过堆   ← Index Only Scan
+该页有不可见版本（刚更新过） →  必须去堆确认可见性           ← 退化成普通 Index Scan</pre>
+<p class="mv-md-p"><strong>所以 Index Only Scan 的隐含条件是你一直在 VACUUM</strong>：更新/删除产生的死元组没被清理前，对应的页就不是「全可见」，Index Only Scan 会退化。<strong>被追问「为什么计划里明明是 Index Only Scan 但还是很慢」时，答案就是 Heap Fetches 很多</strong>（<code class="mv-md-code">EXPLAIN ANALYZE</code> 会直接显示这一项）。</p>
+<h3 class="mv-md-h">四、最左前缀在 PG 依然成立（但语义要讲清）</h3>
+<p class="mv-md-p">PG 的 B-tree 索引是<strong>有序结构</strong>，所以 <code class="mv-md-code">(a, b, c)</code> 依旧只能从最左列开始连续使用——<strong>这和 MySQL 是同一个道理，因为原因是同一个（有序性）</strong>。</p>
+<p class="mv-md-p">两处 PG 特有的差异：</p>
+<table class="mv-table"><thead><tr><th></th><th>MySQL</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>联合索引叶子存什么</td><td><strong>索引列 + 主键</strong></td><td><strong>索引列 + 全部索引列的值 + ctid</strong></td></tr><tr><td>后果</td><td>覆盖索引要凑巧包含主键</td><td><strong>更容易做到 Index Only Scan</strong>（叶子本来就有各列的值），但仍受可见性限制</td></tr><tr><td>额外列</td><td>只能靠扩展索引</td><td><strong><code class="mv-md-code">INCLUDE</code> 列</strong>：把「只为覆盖而加」的列挂在叶子，不参与排序</td></tr></tbody></table>
+<p class="mv-md-p"><strong><code class="mv-md-code">INCLUDE</code> 是 PG 一个很实用的点</strong>：<code class="mv-md-code">CREATE INDEX ... ON t (a, b) INCLUDE (c)</code> —— 排序与定位只用 <code class="mv-md-code">(a,b)</code>，<code class="mv-md-code">c</code> 只放在叶子里供 Index Only Scan 取用，<strong>不参与最左前缀规则</strong>。被问「怎么既保持索引键简洁又能覆盖」时这就是答案。</p>
+<h3 class="mv-md-h">五、落到你的项目查询</h3>
+<p class="mv-md-p">EnergyOps 的四层事实表按 <code class="mv-md-code">(device_id, energy_type, stat_date)</code> 建索引（等值在前、范围在后）。这条查询<strong>只返回 device_id / energy_type / stat_date，理论上可以走 Index Only Scan</strong>——但要成立，前提是这张表<strong>被正常 VACUUM</strong>（批量聚合会持续产生旧版本）。<strong>这是一个可以主动讲出来的取舍</strong>：聚合表更新频繁 → 可见性映射常年不干净 → 实际上拿不到 Index Only Scan，于是优化重心应该放在「减少扫描与回表行数」而不是「凑成覆盖索引」。</p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>
