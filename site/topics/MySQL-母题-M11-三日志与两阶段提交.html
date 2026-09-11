@@ -14,75 +14,163 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
     <h1 class="mv-topic-title">母题 M11 · 三日志与两阶段提交</h1>
-    <p class="mv-topic-meta">关联 母题-M12-崩溃恢复 · 母题-M10-锁与死锁 ｜ 正本 wiki/topics/MySQL/母题-M11-三日志与两阶段提交.md</p>
+    <p class="mv-topic-meta">关联 母题-M12-崩溃恢复 · 母题-M8-隔离级别与ACID · 母题-M9-MVCC · 母题-P11-WAL与checkpoint ｜ 正本 wiki/topics/MySQL/母题-M11-三日志与两阶段提交.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① WAL 换掉的是什么 ② 三条日志各属于哪一层 ③ 两份日志为什么必须捆在一起）· 读完约 10 分钟 · 需要先懂：[[母题-M8-隔离级别与ACID]]（A 靠 undo、D 靠 redo）</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">用户下单，接口返回「提交成功」。一秒后机器断电。重启后，这条订单还在吗？为什么？</p></div>
   </div>
 
-
-
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：为什么不能"改完直接写磁盘"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 两个约束同时成立【推导】</h4>
+<p class="mv-md-p">要回答"断电后订单还在吗"，先看数据库面临的两个约束：</p>
+<p class="mv-md-p">1. <strong>数据要最终落到磁盘</strong>（内存断电就没了） 2. <strong>提交返回的那一刻，修改就不能丢</strong>（这是"持久性"的定义）</p>
+<p class="mv-md-p"><strong>最朴素的做法</strong>是：<code class="mv-md-code">UPDATE</code> 一执行，就把数据页写回磁盘。<strong>但这行不通</strong>，原因只有一个字：<strong>慢</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 量化：慢在哪</h4>
+<p class="mv-md-p">【事实】磁盘的两种访问方式成本差得很远：</p>
+<table class="mv-table"><thead><tr><th>访问方式</th><th>机械盘</th><th>SSD</th></tr></thead><tbody><tr><td><strong>顺序写</strong></td><td>约 100–200 MB/s</td><td>几百 MB/s 到 GB/s</td></tr><tr><td><strong>随机写</strong></td><td>受寻道限制，约 100–200 次 IOPS × 4KB ≈ <strong>0.4–0.8 MB/s</strong></td><td>比顺序写慢，但没有寻道代价</td></tr></tbody></table>
+<p class="mv-md-p">【推导】机械盘上<strong>两者差 2–3 个数量级</strong>。而"把刚改的那一页写回去"<strong>是随机写</strong>（那一页在磁盘上的位置是散的）。</p>
+<p class="mv-md-p mv-md-quote"><strong>所以要换一个做法：把"随机写数据页"换成"顺序写日志"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.3 WAL 由此而来【事实】</h4>
+<p class="mv-md-p"><strong>WAL（Write-Ahead Logging，日志先行）</strong>：<strong>先写日志，再写数据页。</strong></p>
+<pre class="mv-md-pre">① 改内存（Buffer Pool）——快
+② 把"改了什么"顺序追加到 redo log —— 顺序写，快
+③ 提交时保证 redo 已落盘 —— 这一步成功，"提交"才成立
+④ 数据页什么时候写回磁盘，无所谓（后台慢慢刷）</pre>
+<p class="mv-md-p"><strong>WAL 一次拿到两样东西</strong>：</p>
+<ul class="mv-md-ul"><li><strong>性能</strong>：把随机写换成了顺序写（1.2 的量化）</li><li><strong>崩溃安全性</strong>：只要 ②③ 成功，<strong>内存里的修改就是可恢复的</strong></li></ul>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么数据库可以说"提交成功"而数据页还在内存里？</p>
+<p class="mv-md-p mv-md-quote"><strong>因为"安全"的标志不是"数据在磁盘上"，而是"修改这件事已经落盘了"。</strong></p>
+<h3 class="mv-md-h mv-md-h3">2. 三条日志：先各自介绍，再比较</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 undo log —— 前镜像【事实】</h4>
+<ul class="mv-md-ul"><li><strong>属于</strong>：InnoDB 引擎层</li><li><strong>记什么</strong>：<strong>数据修改之前的旧值</strong>（"改之前是什么样"）</li><li><strong>职责</strong>：<strong>回滚</strong>（原子性）+ <strong>给 MVCC 提供旧版本</strong>（[[母题-M9-MVCC]]）</li></ul>
+<p class="mv-md-p"><strong>两个职责共用同一份数据</strong>——因为"上一个版本"就是回滚要恢复的那个值。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 redo log —— 后镜像【事实】</h4>
+<ul class="mv-md-ul"><li><strong>属于</strong>：InnoDB 引擎层</li><li><strong>记什么</strong>：<strong>数据页的物理修改</strong>（"某数据页某偏移被改成了什么"）</li><li><strong>物理形态</strong>：<strong>固定大小、循环写</strong>，会覆盖旧内容</li><li><strong>职责</strong>：<strong>崩溃恢复</strong>（持久性）</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.3 binlog —— 逻辑日志【事实】</h4>
+<ul class="mv-md-ul"><li><strong>属于</strong>：<strong>Server 层</strong>（注意：不在 InnoDB 里，这是关键）</li><li><strong>记什么</strong>：<strong>逻辑操作</strong>（SQL 语句，或每行的前后镜像）</li><li><strong>物理形态</strong>：<strong>追加写</strong>，写满切新文件，<strong>不覆盖</strong></li><li><strong>职责</strong>：<strong>主从复制</strong> + <strong>时间点恢复</strong></li></ul>
+<h4 class="mv-md-h mv-md-h4">2.4 对照表</h4>
+<table class="mv-table"><thead><tr><th></th><th>undo</th><th>redo</th><th>binlog</th></tr></thead><tbody><tr><td>所属层</td><td>InnoDB</td><td>InnoDB</td><td><strong>Server</strong></td></tr><tr><td>内容</td><td>前镜像</td><td>后镜像（物理）</td><td>逻辑操作</td></tr><tr><td>文件形态</td><td>段/回滚段</td><td><strong>固定大小循环写</strong></td><td><strong>追加写，不覆盖</strong></td></tr><tr><td>职责</td><td>回滚 + MVCC 旧版本</td><td>崩溃恢复</td><td>复制 + 时间点恢复</td></tr></tbody></table>
+<p class="mv-md-p"><strong>换个说法更好记</strong>（放在工单/订单系统里）：</p>
+<ul class="mv-md-ul"><li>状态更新失败要能撤销 → <strong>undo</strong></li><li>更新成功但机器崩了不能丢 → <strong>redo</strong></li><li>主从同步和备份恢复 → <strong>binlog</strong></li></ul>
+<h4 class="mv-md-h mv-md-h4">2.5 一个高价值追问</h4>
+<p class="mv-md-p"><strong>「binlog 能不能单独保证 crash-safe？」</strong></p>
+<p class="mv-md-p">【推导】<strong>不能。</strong> 两个理由：</p>
+<p class="mv-md-p">1. 它<strong>不在 InnoDB 内部</strong>——它的写入时机与 redo 不同步； 2. 它<strong>不记录数据页的物理变化</strong>，没法用来把内存页恢复成正确状态。</p>
+<p class="mv-md-p"><strong>所以 binlog 必须和 redo 配合——而"配合"这件事本身有风险，于是有了两阶段提交。</strong></p>
+<h3 class="mv-md-h mv-md-h3">3. redo 的环形结构</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 两个指针【事实】</h4>
+<p class="mv-md-p">redo 文件是<strong>固定大小、循环写</strong>的，上面有两个位置：</p>
+<table class="mv-table"><thead><tr><th>指针</th><th>含义</th></tr></thead><tbody><tr><td><strong>write pos</strong></td><td>当前写到哪（不断前进）</td></tr><tr><td><strong>check point</strong></td><td><strong>已经被安全刷盘（脏页已落盘）的位置</strong></td></tr></tbody></table>
+<pre class="mv-md-pre">...[ check point ...... write pos ]......... 回到开头
+    ↑ 之前的日志可以复用        ↑ 之后的区域空闲
+    待刷盘的记录在这段区间里</pre>
+<h4 class="mv-md-h mv-md-h4">3.2 为什么是"循环写"而不是"无限追加"</h4>
+<p class="mv-md-p">【推导】<strong>因为 redo 只服务于"崩溃恢复到最新状态"这一个目的</strong>——一旦它记录的改动<strong>已经落到数据页上</strong>，这条 redo 就再也没用了，占的位置可以复用。</p>
+<p class="mv-md-p"><strong>注意这里和 binlog 的分工</strong>：binlog 要<strong>长期保留</strong>（做复制和时间点恢复），所以它追加写、不覆盖；<strong>redo 用完即弃，所以循环写。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>同一个系统里两种相反的文件形态，是因为两个目的不同。</strong> 这个对比能讲清楚，说明不是背的。</p>
+<h4 class="mv-md-h mv-md-h4">3.3 危险场景：write pos 追上 check point</h4>
+<p class="mv-md-p">【推导】如果 check point 长期不推进（脏页没刷出去），write pos 会绕上来<strong>追上 check point</strong>——此时<strong>没有空闲区域可写了</strong>。</p>
+<p class="mv-md-p"><strong>结果</strong>：写入被迫停下来等刷脏页，<strong>表现是"写入突然卡顿"</strong>。</p>
+<p class="mv-md-p"><strong>顺序必须是</strong>【推导】：</p>
+<pre class="mv-md-pre">先刷脏页  →  再推 check point  →  才释放这段空间</pre>
+<p class="mv-md-p"><strong>不能反过来</strong>——否则这段 redo 已经没了，而对应的脏页还没落盘，<strong>崩溃就丢数据</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">3.4 刷盘参数</h4>
+<p class="mv-md-p"><strong>redo 侧</strong> <code class="mv-md-code">innodb_flush_log_at_trx_commit</code>：</p>
+<table class="mv-table"><thead><tr><th>值</th><th>行为</th><th>代价</th></tr></thead><tbody><tr><td><strong>1（默认）</strong></td><td>每次提交都 <code class="mv-md-code">fsync</code></td><td>最安全，最慢</td></tr><tr><td>0</td><td>提交只写内存 buffer，后台每秒刷</td><td>最快，<strong>掉电丢最近 1 秒</strong></td></tr><tr><td>2</td><td>写 OS 缓存，不立刻 <code class="mv-md-code">fsync</code></td><td><strong>进程崩不丢，整机掉电会丢</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>binlog 侧</strong> <code class="mv-md-code">sync_binlog</code>：0 = 交给系统；N = 每 N 个事务刷一次；<strong>1 = 每次提交刷</strong>。</p>
+<p class="mv-md-p">【事实】<strong>生产上要金融级一致，就是「双一」</strong>：<code class="mv-md-code">innodb_flush_log_at_trx_commit=1</code> + <code class="mv-md-code">sync_binlog=1</code>。<strong>这意味着接口返回"提交成功"时，两份日志都已经真的在磁盘上了</strong>——这才是"断电不丢"的前提。</p>
+<h3 class="mv-md-h mv-md-h3">4. binlog 的三种格式</h3>
+<table class="mv-table"><thead><tr><th>格式</th><th>记什么</th><th>优点</th><th>风险</th></tr></thead><tbody><tr><td><strong>Statement</strong></td><td>原始 SQL 语句</td><td>日志小</td><td>含 <code class="mv-md-code">UUID()</code> / <code class="mv-md-code">NOW()</code> 等<strong>非确定函数</strong>会让从库算出不同结果 → <strong>主从漂移</strong></td></tr><tr><td><strong>Row</strong></td><td>每行修改前后的具体内容</td><td><strong>复制绝对精确</strong></td><td>日志量大（批量 <code class="mv-md-code">UPDATE</code> 会暴涨）</td></tr><tr><td><strong>Mixed</strong></td><td>自动判断，安全用 Statement、危险切 Row</td><td>平衡</td><td>判断逻辑需要理解</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>现在主流是 Row</strong>——数据安全优先于日志体积。Statement 只在"日志体积敏感 + SQL 确定"时才考虑。</p>
+<h3 class="mv-md-h mv-md-h3">5. 两阶段提交：为什么非它不可</h3>
+<h4 class="mv-md-h mv-md-h4">5.1 推导：问题出在"两份日志"</h4>
+<p class="mv-md-p">【推导】现在有<strong>两份都要写</strong>的日志：redo（InnoDB）和 binlog（Server）。<strong>它们不在一个组件里，没法用一个本地事务包住。</strong></p>
+<p class="mv-md-p">那么"两个写入"必然会有一个中间状态——<strong>如果正好在中间崩溃，两份日志就可能不一致</strong>。而不一致的后果是<strong>主从数据不同</strong>。</p>
+<figure-box num="两阶段提交的三步与两个崩溃点" title="" note="无论崩在哪一步，裁决依据都是 binlog 是否完整"><svg viewBox="0 0 680 288" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>两阶段提交的三步与两个崩溃点</title>
+<desc>两阶段提交把 redo 与 binlog 捆成原子操作；无论崩在哪一步，裁决依据都是 binlog 是否完整。</desc>
+<defs>
+<marker id="figtwo-phase-commit-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两阶段提交：三步 与 两个崩溃点</text>
+<rect x="56" y="52" width="168" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="140" y="76" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">① redo 置 prepare</text>
+<rect x="256" y="52" width="168" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="340" y="76" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">② binlog 落盘</text>
+<rect x="456" y="52" width="168" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="540" y="76" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">③ redo 置 commit</text>
+<path d="M226 76 L252 76" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figtwo-phase-commit-svg-arrow)"/>
+<path d="M426 76 L452 76" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figtwo-phase-commit-svg-arrow)"/>
+<text x="239" y="112" font-family="system-ui,sans-serif" font-size="12" fill="#501313" text-anchor="middle" dominant-baseline="central">✕ 崩在这</text>
+<text x="439" y="112" font-family="system-ui,sans-serif" font-size="12" fill="#501313" text-anchor="middle" dominant-baseline="central">✕ 崩在这</text>
+<rect x="56" y="128" width="284" height="80" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="74" y="148" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">若崩在 ① 与 ② 之间</text>
+<text x="74" y="170" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">binlog 不完整 → 回滚</text>
+<text x="74" y="190" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">主库、从库都没有这次更新</text>
+<rect x="340" y="128" width="284" height="80" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="358" y="148" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">若崩在 ② 与 ③ 之间</text>
+<text x="358" y="170" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">binlog 完整 → 提交</text>
+<text x="358" y="190" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">主库、从库都有这次更新</text>
+<rect x="56" y="224" width="568" height="44" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="74" y="246" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" dominant-baseline="central">裁决依据只有一件事：binlog 是否完整 —— 这就是两阶段提交存在的全部理由。</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">5.2 三步（实际是两个阶段 + 一次裁决）</h4>
+<pre class="mv-md-pre">① 【prepare】InnoDB 写完 redo，但把状态标成 prepare，不算提交
+② 【提交阶段】执行器写 binlog 并落盘
+③            binlog 落盘成功后，通知 InnoDB 把 redo 改成 commit</pre>
+<h4 class="mv-md-h mv-md-h4">5.3 反证：不用 2PC，两种顺序各有一个后果</h4>
+<p class="mv-md-p">【推导】假设不做两阶段提交，只是简单地把两次写按某个顺序做：</p>
+<table class="mv-table"><thead><tr><th>顺序</th><th>崩溃点</th><th>后果</th></tr></thead><tbody><tr><td><strong>先 redo 后 binlog</strong></td><td>redo 写完、binlog 没写就崩</td><td>重启后 redo 重放 → <strong>主库有这次更新</strong>；binlog 没有 → <strong>从库没有</strong> → <strong>主库多、从库少</strong></td></tr><tr><td><strong>先 binlog 后 redo</strong></td><td>binlog 写完、redo 没写就崩</td><td>InnoDB 认为未提交 → <strong>主库回滚</strong>；binlog 已记录 → <strong>从库执行了</strong> → <strong>从库多、主库少</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>两种顺序都会造出主从不一致</strong>——这就是不做 2PC 的必然后果。</p>
+<h4 class="mv-md-h mv-md-h4">5.4 一句话收口</h4>
+<p class="mv-md-p mv-md-quote">【推导】<strong>两阶段提交把两份日志"捆绑"成一个原子操作：要么都成功，要么都失败。</strong> 这是它唯一的存在理由——不是"规范要求这么做"，而是<strong>不做就一定会在崩溃窗口里造出主从不一致</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么不用两阶段提交，也"大多数时候没问题"？</p>
+<p class="mv-md-p mv-md-quote">因为<strong>崩溃窗口很窄</strong>，概率低。但<strong>它一定会发生</strong>——而数据库的可靠性要求不能建立在"概率低"上。</p>
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"binlog 能单独保证 crash-safe"</td><td>【推导】不能。它不在 InnoDB 内、不记物理页变化，必须靠 2PC 与 redo 配合</td></tr><tr><td>"redo 是无限的，会一直追加"</td><td>【事实】<strong>固定大小循环写</strong>，会覆盖；边界靠 check point 推进</td></tr><tr><td>"有 redo 就不需要 binlog"</td><td>【事实】职责不同：redo 只服务<strong>崩溃恢复</strong>（且用完即弃）；binlog 服务<strong>复制与时间点恢复</strong>（要长期保留）</td></tr><tr><td>"两阶段提交是为了保证 ACID"</td><td>【取舍】它保证的是<strong>两份日志的逻辑一致</strong>（进而保证主从一致）。ACID 里的 A 和 D 分别由 undo 和 redo 负责，不是 2PC 的职责</td></tr><tr><td>"刷盘参数设 0 最快，性能最好"</td><td>【取舍】是快，但<strong>掉电丢最近 1 秒</strong>。取舍标准是<strong>业务能不能容忍丢这 1 秒</strong>（埋点/日志能忍，涉及钱的不能），不是"哪个快选哪个"</td></tr><tr><td>"PG 也有 redo / undo / binlog 三套日志"</td><td>【事实】<strong>PG 只有 WAL 一套</strong>。旧版本留在堆里靠 VACUUM 回收，复制也靠 WAL——<strong>所以 PG 根本不存在"两份日志要协调"的问题，也就没有 prepare/commit 这套两阶段日志状态</strong>（[[母题-P11-WAL与checkpoint]]）</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q1" tag="MySQL" q="SSD 上单次 fsync 约 0.2 ms。生产配置 innodb_flush_log_at_trx_commit=1（每次提交 fsync）。&#10;问：单条连接串行提交的 TPS 上限是多少？MySQL 靠什么机制突破它？" a="上限 = 1 / 0.0002s = 约 5000 TPS&#10;瓶颈是 fsync 的等待，不是 CPU&#10;突破靠「组提交（group commit）」：把并发到达的多个事务的 fsync 合并成一次——10 个事务一起提交，只付一次 0.2ms，等效 TPS 提到约 5 万。&#10;【推论】这就是为什么&quot;双一&quot;配置在生产上可行：安全的代价被组提交摊薄了。反过来说，如果业务是&quot;单线程串行提交&quot;，双一的代价就是实打实的 5 倍性能损失。 取舍要看并发行不行。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q2" tag="MySQL" q="数据库在下面两个时刻断电，重启后分别是什么结果？对主从一致性各有什么影响？&#10;① 写完 redo（prepare）、binlog 还没写&#10;② binlog 已写完整、redo 还是 prepare" a="崩溃点 · redo 状态 · binlog 状态 · 恢复动作 · 一致性&#10;① · prepare · 不完整 · 回滚（undo） · 主库、从库都没有这次更新 → 一致&#10;② · prepare · 完整 · 提交（把 redo 改成 commit） · 主库、从库都有这次更新 → 一致&#10;两个窗口都收敛到一致——这正是两阶段提交的作用。&#10;关键：裁决依据只有一个——binlog 是否完整。 因为 binlog 完整就意味着&quot;这个事务已经对外宣布过成功了&quot;（binlog 是复制的源头），必须让它生效。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q3" tag="MySQL" q="redo 日志组总大小 4GB，业务写入速率约 100 MB/s（按 redo 生成量估）。&#10;问：多久会绕满一圈？ 这个数字对&quot;崩溃后要重放多少&quot;意味着什么？" a="绕一圈时间 = 4 GB ÷ 100 MB/s = 约 41 秒&#10;含义：check point 最多落后 41 秒的日志。崩溃重启时，最坏要从 41 秒前的位置开始重放（数据页落盘位点再靠后，实际重放量可能更小）&#10;【推论】redo 组的大小直接决定&quot;崩溃恢复时间上限&quot;：调大 redo 组 → 恢复时间上限变长但写入更不容易被 check point 追上；调小则相反。这是同一组参数的两面（[[母题-M12-崩溃恢复]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;既然 binlog 也记录了所有的修改，那只要保证 binlog 落盘就够了，redo log 可以省掉。&quot;" a="三处都错。&#10;1. binlog 不记物理页变化。 它是逻辑日志（SQL 或行前后镜像），没法用来把内存里的数据页恢复成正确状态——恢复需要知道&quot;哪个页的哪个偏移要变成什么&quot;。&#10;2. binlog 在 Server 层，不在 InnoDB 里。 它的写入时机与 InnoDB 的提交不是一件事，单独依赖它无法保证 InnoDB 内部状态一致。&#10;3. 职责不同：redo 服务崩溃恢复（用完即弃、循环写）；binlog 服务复制与时间点恢复（长期保留、追加写）。去掉任何一个都会塌掉一块能力。&#10;正确说法：redo 保证 InnoDB 能恢复到最新状态，binlog 保证复制和时间点恢复能工作，两阶段提交保证这两份日志逻辑一致。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都是关系数据库，所以都有 redo log、undo log 和 binlog，崩溃恢复的原理也一样。&quot;" a="&quot;都有三套日志&quot;是错的。&#10;PostgreSQL 只有一套 WAL。 它：&#10;旧版本留在堆里，靠 VACUUM 回收（没有独立 undo 表空间）&#10;复制也靠 WAL（流复制 / WAL 归档），不需要第二份逻辑日志&#10;【推导】由此推出一连串差异：&#10;MySQL · PostgreSQL&#10;日志套数 · redo + undo + binlog · WAL 一套&#10;有没有&quot;两份日志要协调&quot; · 有 → 需要两阶段提交 · 没有 → 不存在这个问题&#10;复制依赖 · binlog（逻辑） · WAL（物理）&#10;所以&quot;PG 也有 prepare/commit 两阶段日志状态&quot;是明确错误——那是 MySQL 为了协调两份日志才发明的东西。&#10;---"></flip-card></div></div>
   <div class="mv-section">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">redo / undo / binlog 各管什么？两阶段提交为什么必要？</p>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
-    <flip-card gradable card-id="MySQL/母题-M11-三日志与两阶段提交" tag="MySQL" q="redo / undo / binlog 各管什么？两阶段提交为什么必要？" a="三条日志各管一件事——undo 管回滚 + MVCC 旧版本，redo 管崩溃恢复（保证已提交不丢），binlog 管复制与时间点恢复；而两阶段提交存在的唯一理由，是让 redo 和 binlog 在逻辑上绝对一致——否则崩溃时会造出「主库有、从库没有」或「从库有、主库没有」的数据。"></flip-card>
+    <flip-card gradable card-id="MySQL/母题-M11-三日志与两阶段提交" tag="MySQL" q="redo / undo / binlog 各管什么？两阶段提交为什么必要？" a="三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「会用数据库」和「懂数据库为什么不丢数据」的分界线</strong>。它也是唯一一条能把原子性、持久性、主从复制三件事串起来的线——<strong>答不出这条，前面讲的 ACID 就只是四个字母</strong>。</p>
+    
   </div>
   <div class="mv-section">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion">三条日志各管一件事——<strong>undo 管回滚 + MVCC 旧版本，redo 管崩溃恢复（保证已提交不丢），binlog 管复制与时间点恢复</strong>；而<strong>两阶段提交存在的唯一理由，是让 redo 和 binlog 在逻辑上绝对一致</strong>——否则崩溃时会造出「主库有、从库没有」或「从库有、主库没有」的数据。</div>
+    <div class="mv-conclusion">三条日志各管一件事——<strong>undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）</strong>。用 <strong>WAL</strong> 把"随机写数据页"换成"顺序写日志"，同时拿到性能和崩溃安全性。而<strong>两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致</strong>——不做的话，两个崩溃窗口分别造出"主库多从库少"和"从库多主库少"。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>WAL 日志先行</li><li>undo 回滚</li><li>redo 循环写 + checkpoint</li><li>binlog 追加写</li><li>prepare → commit</li><li>逻辑一致</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>WAL 换掉随机写</li><li>顺序 vs 随机差 2–3 个数量级</li><li>undo 前镜像</li><li>redo 后台镜像</li><li>循环写</li><li>binlog 逻辑</li><li>追加写</li><li>Server 层</li><li>redo 用完即弃所以循环，binlog 长期保留所以追加</li><li>write pos 追上 check point = 写入卡顿</li><li>先刷页再推 check point</li><li>双一</li><li>prepare → binlog → commit</li><li>崩溃窗口 = 主从不一致</li><li>binlog 是否完整 = 唯一裁决依据</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的「15 分钟窗口 + 幂等补数」（重放与幂等的思路同源）；RuleArena 的「至少一次投递 + 幂等副作用」（<strong>消息队列做不出端到端 exactly-once，就像数据库单靠 binlog 做不出 crash-safe——都得靠幂等 + 权威查询兜底</strong>）。<strong>方言差异</strong>：PostgreSQL 只有 <strong>WAL 一套日志</strong>（没有 redo/undo/binlog 三套），旧版本直接留在堆里靠 VACUUM 回收——<strong>面试时不要把 MySQL 的三日志结构套到 PG 上</strong>。</p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么需要 WAL → 三日志分工（一句话 × 3）→ redo 的环形结构与刷盘参数 → binlog 的三种格式 → 两阶段提交的两个阶段 → 不做会怎样（两种顺序各一个后果）</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>先写日志，再写数据页（WAL）。</strong> 只要「修改这件事」已经顺序落盘，内存里的修改就是安全的——数据库用「顺序写日志」换掉了「随机写数据页」，这是所有崩溃恢复能力的地基。</p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上画完「两阶段提交 + 两个崩溃点各自后果」，并说清 undo / redo / binlog 各自的职责边界。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、为什么需要 WAL（Write-Ahead Logging）</h3>
-<p class="mv-md-p">修改数据时不直接改磁盘数据页（随机 IO 太慢），而是：</p>
-<pre class="mv-md-pre">改内存（Buffer Pool）→ 把"改了什么"顺序写入 redo log → 提交时保证 redo 落盘</pre>
-<p class="mv-md-p"><strong>只要 redo 落盘成功，这次修改就是安全的</strong>——即使数据页还没刷回磁盘时崩溃，重启后也能用 redo 把它重放回来。<strong>用顺序写换随机写，同时拿到崩溃安全性</strong>，这是 WAL 的全部价值。</p>
-<h3 class="mv-md-h mv-md-h3">二、三日志分工（必须能一句话说清）</h3>
-<table class="mv-table"><thead><tr><th>日志</th><th>所属层</th><th>记录什么</th><th>物理特性</th><th>核心职责</th></tr></thead><tbody><tr><td><strong>undo log</strong></td><td>InnoDB</td><td>数据修改<strong>前</strong>的旧值</td><td>—</td><td><strong>回滚</strong> + 给 MVCC 提供旧版本</td></tr><tr><td><strong>redo log</strong></td><td>InnoDB</td><td>数据页的<strong>物理</strong>修改（"某页某偏移写成什么"）</td><td><strong>固定大小、循环写</strong>，会覆盖</td><td><strong>崩溃恢复</strong>（持久性）</td></tr><tr><td><strong>binlog</strong></td><td><strong>Server 层</strong></td><td><strong>逻辑</strong>操作（SQL / 行变更前后镜像）</td><td><strong>追加写</strong>，写满切新文件，不覆盖</td><td><strong>主从复制</strong> + 时间点恢复</td></tr></tbody></table>
-<p class="mv-md-p">放到工单/订单系统里最好记：</p>
-<ul class="mv-md-ul"><li>状态更新失败要能撤销 → <strong>undo</strong></li><li>更新成功但机器崩了不能丢 → <strong>redo</strong></li><li>主从同步和备份恢复 → <strong>binlog</strong></li></ul>
-<p class="mv-md-p"><strong>一条高价值追问</strong>：「binlog 能不能单独保证 crash-safe？」——<strong>不能</strong>。它不在 InnoDB 内部，写入时机与 redo 不同步；单独依赖它，崩溃时会不一致。<strong>它必须靠两阶段提交与 redo 配合。</strong></p>
-<h3 class="mv-md-h mv-md-h3">三、redo 的环形结构与刷盘参数</h3>
-<p class="mv-md-p">redo 文件是<strong>固定大小、循环写</strong>的环形，两个指针：</p>
-<ul class="mv-md-ul"><li><strong>write pos</strong>：当前写到哪。</li><li><strong>check point</strong>：已经刷盘（脏页已落盘）的位置之后一格。</li></ul>
-<p class="mv-md-p"><code class="mv-md-code">write pos → check point</code> 之间是空闲区（可写新日志）；<code class="mv-md-code">check point → write pos</code> 之间是<strong>待刷盘</strong>的记录，<strong>如果不刷就会被新记录覆盖</strong>。危险场景就是「write pos 追上 check point」——此时必须停下来刷脏页，<strong>表现为写入卡顿</strong>。</p>
-<p class="mv-md-p"><strong>刷盘时机由 <code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 控制</strong>：</p>
-<table class="mv-table"><thead><tr><th>值</th><th>行为</th><th>代价</th></tr></thead><tbody><tr><td><strong>1（默认）</strong></td><td>每次提交都 fsync 落盘</td><td>最安全，最慢</td></tr><tr><td>0</td><td>提交只写内存 buffer，后台每秒刷</td><td>最快，掉电丢最近 1 秒事务</td></tr><tr><td>2</td><td>提交写入 OS 缓存，不立刻 fsync</td><td>进程崩不丢，<strong>整机掉电会丢</strong></td></tr></tbody></table>
-<p class="mv-md-p"><strong>binlog 侧对应 <code class="mv-md-code">sync_binlog</code></strong>：0 = 交给系统决定；N = 每 N 个事务刷一次；<strong>1 = 每次提交刷</strong>。生产要金融级一致就是 <strong><code class="mv-md-code">flush_log_at_trx_commit=1</code> + <code class="mv-md-code">sync_binlog=1</code></strong>，代价是吞吐下降。</p>
-<h3 class="mv-md-h mv-md-h3">四、binlog 的三种格式</h3>
-<table class="mv-table"><thead><tr><th>格式</th><th>记什么</th><th>优点</th><th>风险</th></tr></thead><tbody><tr><td><strong>Statement</strong></td><td>原始 SQL 语句</td><td>日志小</td><td>含 <code class="mv-md-code">UUID()</code> / <code class="mv-md-code">NOW()</code> 等非确定函数会导致<strong>主从漂移</strong></td></tr><tr><td><strong>Row</strong></td><td>每行修改前后的具体内容</td><td>复制绝对精确</td><td>日志量大（批量 UPDATE 会暴涨）</td></tr><tr><td><strong>Mixed</strong></td><td>自动判断，安全用 Statement、危险切 Row</td><td>平衡</td><td>判断逻辑需要理解</td></tr></tbody></table>
-<h3 class="mv-md-h mv-md-h3">五、两阶段提交：为什么非它不可</h3>
-<p class="mv-md-p">提交分两步：</p>
-<pre class="mv-md-pre">① 准备（Prepare）：InnoDB 写完 redo log，但状态标记为 prepare，不提交
-② 提交（Commit）：执行器写 binlog → binlog 落盘成功 → 通知 InnoDB 把 redo 改成 commit</pre>
-<p class="mv-md-p"><strong>如果不这么做，两种顺序各有一个后果：</strong></p>
-<table class="mv-table"><thead><tr><th>顺序</th><th>崩溃点</th><th>结果</th></tr></thead><tbody><tr><td>先写 redo，再写 binlog</td><td>redo 写完、binlog 没写就崩</td><td>重启后 redo 重放 → <strong>主库有这次更新</strong>；binlog 没有 → <strong>从库没有</strong>，主从多了/少了一次更新</td></tr><tr><td>先写 binlog，再写 redo</td><td>binlog 写完、redo 没写就崩</td><td>InnoDB 认为事务未提交 → <strong>主库回滚</strong>；binlog 已记录 → <strong>从库执行了</strong>，从库多出一次主库不存在的更新</td></tr></tbody></table>
-<p class="mv-md-p"><strong>一句话收口</strong>：两阶段提交把两份日志「捆绑」成原子操作，<strong>要么都成功，要么都失败</strong>——这就是它唯一的存在理由。</p>
-<hr class="mv-md-hr">
-    </collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>redo 循环写，为什么不怕覆盖掉还没刷盘的日志？</strong></strong></p>
+<p class="mv-md-p"><strong>check point 只在脏页真正刷盘后才前移</strong>；write pos 追上 check point 时<strong>必须停下来先刷脏页</strong>。顺序是"先刷页 → 再推 check point → 才释放空间"，<strong>不能反过来</strong>。</p>
+<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 设 0/2 能换多少性能？</strong></strong></p>
+<p class="mv-md-p"><strong>必须拿压测数据说话，不能凭感觉。</strong> SDD 时代 <code class="mv-md-code">fsync</code> 成本下降，1 与 2 的差距远小于机械盘时代，<strong>所以现在更多是直接上"双一"</strong>。这是"按业务定口径"而不是"按性能定口径"。</p>
+<p class="mv-md-p"><strong>3. <strong>binlog 有哪几种格式？生产用哪个？</strong></strong></p>
+<p class="mv-md-p">Statement / Row / Mixed；<strong>现在主流是 Row</strong>（数据安全优先），Statement 只在日志体积敏感且 SQL 确定时才考虑。</p>
+<p class="mv-md-p"><strong>4. <strong>redo log 是无限增长的吗？</strong></strong></p>
+<p class="mv-md-p">不是。固定大小循环写，边界靠 check point 推进。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「redo log 和 binlog 有什么不同？」——四条按顺序说完就是完整答案：<strong>所属层 / 内容（物理 vs 逻辑）/ 文件形态（循环写 vs 追加写）/ 职责（崩溃恢复 vs 复制）</strong></li><li>「什么是 WAL，好处是什么？」——日志先行；<strong>两个好处缺一不可</strong>：把随机写换成顺序写（性能）+ 提供崩溃恢复（可靠性）</li><li>「两阶段提交崩在中间会怎样？」——见 Q2 的两个窗口</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的「15 分钟窗口 + 幂等补数」——重放与幂等是同一个思路；RuleArena 的「至少一次投递 + 幂等副作用」——<strong>消息队列做不出端到端 exactly-once，就像数据库单靠 binlog 做不出 crash-safe，都得靠幂等 + 权威查询兜底</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"安全"的标志不是"数据在磁盘上"，而是"修改这件事已经落盘了"。</strong> 数据库用"顺序写日志"换掉"随机写数据页"——这一步同时给出了性能（顺序 vs 随机的量级差）和崩溃恢复能力（WAL）。而只要有两份日志，就必然需要一次裁决（2PC）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上画完「2PC 三步 + 两个崩溃点各自后果 + 裁决依据」，并说清 undo / redo / binlog 三者的职责边界与文件形态差异，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
   <div class="mv-section">
