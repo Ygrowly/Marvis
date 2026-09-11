@@ -1,0 +1,56 @@
+<svg viewBox="0 0 680 352" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>过期删除与内存淘汰：两个维度，触发条件不同</title>
+  <desc>过期删除由时间触发，作用于单个 key，解决「这个 key 到期了」；内存淘汰由空间触发，作用于全局，解决「内存满了谁走」。两者目的和时机都不一样，不能混谈。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">过期删除 与 内存淘汰：一个问「它该死了吗」，一个问「必须谁死」</text>
+
+  <!-- 左：过期删除 -->
+  <rect x="30" y="44" width="292" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="48" y="68" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#2C2C2A">过期删除（时间维度）</text>
+
+  <text x="48" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">触发</text>
+  <text x="104" y="92" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">这个 key 自己的 TTL 到了</text>
+  <text x="48" y="112" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">范围</text>
+  <text x="104" y="112" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">单个 key（与内存多少无关）</text>
+
+  <rect x="48" y="126" width="256" height="44" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="60" y="144" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">惰性删除</text>
+  <text x="60" y="161" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">访问到才检查 → 省 CPU；但没人访问就一直占内存</text>
+
+  <rect x="48" y="176" width="256" height="52" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="60" y="194" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">定期删除（补上一条的漏）</text>
+  <text x="60" y="211" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">每秒 10 次 × 随机抽 20 个；过期率 &gt; 25% 继续抽</text>
+  <text x="60" y="224" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">上限 25ms —— 抽样而非全扫，怕卡住主线程</text>
+
+  <!-- 右：内存淘汰 -->
+  <rect x="358" y="44" width="292" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="376" y="68" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#2C2C2A">内存淘汰（空间维度）</text>
+
+  <text x="376" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">触发</text>
+  <text x="432" y="92" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">内存达到 maxmemory</text>
+  <text x="376" y="112" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">范围</text>
+  <text x="432" y="112" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">全局（可以淘汰没设 TTL 的 key）</text>
+
+  <rect x="376" y="126" width="256" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="388" y="145" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">noeviction（默认）：满了直接写报错</text>
+
+  <rect x="376" y="162" width="256" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="388" y="181" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">volatile-*：只在「设了 TTL 的」key 里挑</text>
+
+  <rect x="376" y="198" width="256" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="388" y="217" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">allkeys-*：在所有 key 里挑</text>
+
+  <text x="376" y="238" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">算法四选一：random / ttl / lru / lfu</text>
+
+  <!-- 底部：陷阱 -->
+  <rect x="30" y="254" width="620" height="82" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="48" y="276" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">最容易踩的一个配置陷阱</text>
+  <text x="48" y="297" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">配了 volatile-lru，但业务里所有 key 都没设 TTL → 一个都挑不出来，行为等同于 noeviction。</text>
+  <text x="48" y="317" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">内存满时直接写报错，而报错时你不会想到「是淘汰策略选错了」。</text>
+
+  <defs>
+    <marker id="ar3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+  </defs>
+</svg>

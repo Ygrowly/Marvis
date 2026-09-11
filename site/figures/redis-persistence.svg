@@ -1,0 +1,73 @@
+<svg viewBox="0 0 680 396" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>RDB 与 AOF：记录「结果」还是记录「过程」</title>
+  <desc>左列 RDB 在某一时刻对内存做快照，落成二进制数据文件，恢复时直接加载；右列 AOF 把每条写命令追加进日志，恢复时逐条重放。两者的一切差异都来自「记数据」还是「记命令」这一个选择。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">RDB 与 AOF：记录「结果」还是记录「过程」</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">同一个目的（崩溃后把内存重建回来），两条完全不同的路线</text>
+
+  <!-- 左：RDB -->
+  <rect x="30" y="62" width="292" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="48" y="86" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#2C2C2A">RDB · 快照（记「结果」）</text>
+
+  <rect x="60" y="100" width="232" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="176" y="119" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">内存中全部数据</text>
+
+  <path d="M176 133 L176 149" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#ar)"/>
+  <text x="186" y="145" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">某一时刻 fork 子进程</text>
+
+  <rect x="60" y="152" width="232" height="30" rx="6" fill="#EFECE4" stroke="#D8D5CC"/>
+  <text x="176" y="171" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">dump.rdb（二进制数据）</text>
+
+  <path d="M176 185 L176 201" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#ar)"/>
+  <text x="186" y="197" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">恢复：直接加载</text>
+
+  <rect x="60" y="204" width="232" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="176" y="223" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">内存（一次性到位）</text>
+
+  <!-- 右：AOF -->
+  <rect x="358" y="62" width="292" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="376" y="86" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#2C2C2A">AOF · 日志（记「过程」）</text>
+
+  <rect x="388" y="100" width="232" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="504" y="119" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">内存中全部数据</text>
+
+  <path d="M504 133 L504 149" stroke="#BA7517" stroke-width="1.4" fill="none" marker-end="url(#ar2)"/>
+  <text x="514" y="145" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">每条写命令，执行后追加</text>
+
+  <rect x="388" y="152" width="232" height="30" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="504" y="171" font-family="system-ui,sans-serif" font-size="11.5" fill="#633806" text-anchor="middle">appendonly.aof（命令流）</text>
+
+  <path d="M504 185 L504 201" stroke="#BA7517" stroke-width="1.4" fill="none" marker-end="url(#ar2)"/>
+  <text x="514" y="197" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">恢复：逐条重放</text>
+
+  <rect x="388" y="204" width="232" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="504" y="223" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">内存（重放一遍才到位）</text>
+
+  <!-- 底部三条同指标对比 -->
+  <text x="30" y="284" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">同一个指标量出来，三处差异全都是那一个选择的结果</text>
+
+  <rect x="30" y="296" width="292" height="78" rx="8" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="48" y="318" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">文件大小</text>
+  <text x="48" y="337" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">小 —— 存的是数据本身</text>
+  <text x="48" y="361" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">恢复速度</text>
+  <text x="180" y="361" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">快（直接加载）</text>
+  <text x="48" y="381" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">丢多少</text>
+  <text x="180" y="381" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">丢两次快照之间</text>
+
+  <rect x="358" y="296" width="292" height="78" rx="8" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="376" y="318" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">文件大小</text>
+  <text x="376" y="337" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">大 —— 命令比数据冗余</text>
+  <text x="376" y="361" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">恢复速度</text>
+  <text x="508" y="361" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">慢（要重放）</text>
+  <text x="376" y="381" font-family="system-ui,sans-serif" font-size="11" fill="#6B6A65">丢多少</text>
+  <text x="508" y="381" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">最多 1 秒（everysec）</text>
+
+  <defs>
+    <marker id="ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>
