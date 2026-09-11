@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M6 · 一条 SQL 的执行链路</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M6 · 一条 SQL 的执行链路</h1>
+    <p class="mv-topic-meta">关联 母题-M7-慢查询与SQL优化手段 · 母题-M5-引擎与表设计基本盘 ｜ 正本 wiki/topics/MySQL/母题-M6-一条SQL的执行链路.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一条 <code class="mv-md-code">SELECT * FROM task WHERE status='PENDING' LIMIT 10</code> 从客户端发出到结果返回，中间经历了哪些步骤？每一步都可能因为什么变慢？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="MySQL/母题-M6-一条SQL的执行链路" tag="MySQL" q="MySQL 的 server 层和引擎层各管什么？优化器在做什么决定？" a="连接器（鉴权与连接管理）→ 分析器（词法/语法解析）→ 优化器（选索引、选 JOIN 顺序、生成执行计划）→ 执行器（按计划逐行调用引擎接口）→ InnoDB 引擎层（Buffer Pool、索引、事务）→ 返回。server 层管&quot;功能与计划&quot;，引擎层管&quot;数据怎么存怎么取&quot;；慢的根源通常只有三种——扫描行数多、回表次数多、JOIN 顺序错。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>"会用 SQL"和"能定位慢 SQL"的分界线</strong>。它同时是 M7 的前提——<strong>你必须先知道"慢可以慢在哪几层"，explain 里那些字段才有意义</strong>（<code class="mv-md-code">type</code> 是优化器选的访问方式、<code class="mv-md-code">rows</code> 是它的估算、<code class="mv-md-code">Extra</code> 是执行器阶段的附加动作）。<strong>背得出分层没用，能把"某一层慢"对应到"某个现象"才有用。</strong></p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>连接器</li><li>查询缓存（8.0 已移除）</li><li>分析器</li><li>优化器</li><li>执行器</li><li>Buffer Pool</li><li>server 层 vs 引擎层</li><li>三种慢源</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的 20 多秒链路——<strong>那不是单层问题，是"扫描行数（未限归属范围）+ 应用层 N+1 + 现算差分"三层叠加</strong>，所以优化也必须按层做；数驭穹图的查询成本控制（<strong>"先缩小业务范围再查"本质上就是帮优化器少做错误决定</strong>）。<strong>方言差异（面试安全底线）</strong>：PG 的执行链路里<strong>没有查询缓存</strong>（本来就没有），但<strong>统计信息体系更完整</strong>（扩展统计、直方图、pg_stat_statements）；MySQL 8.0 移除查询缓存、8.0.18 加了 <code class="mv-md-code">EXPLAIN ANALYZE</code>。<strong>"一条 SQL 怎么走"两边都要会，但字段名和工具名不能混。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">五层链路各一句 → 查询缓存为什么被移除 → 优化器在决定什么 → 三种慢源 → 与 explain 字段的对应关系</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>优化器是整条链路里唯一"做决定"的环节</strong>——它决定走哪个索引、按什么顺序 JOIN。<strong>所以"SQL 慢"的第一嫌疑人永远是"优化器做错了决定"，而它做错的原因通常是"估算不准"</strong>（这条直接连到 M7）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能不看资料说出五层链路，并把"慢在哪一层"对应到 explain 的具体字段。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、五层链路（每层一句话说清）</h3>
+<table class="mv-table"><thead><tr><th>层</th><th>做什么</th><th>可能因为什么出问题</th></tr></thead><tbody><tr><td><strong>连接器</strong></td><td>TCP 握手、鉴权、管理连接；长/短连接</td><td>连接数暴涨、鉴权慢（少见）；<strong>长连接要 <code class="mv-md-code">reset_connection</code> 释放内存</strong></td></tr><tr><td>~~查询缓存~~</td><td><strong>8.0 已移除</strong></td><td>——</td></tr><tr><td><strong>分析器</strong></td><td>词法/语法分析，生成解析树</td><td>语法错误（很快报错，不会是慢的原因）</td></tr><tr><td><strong>优化器</strong></td><td><strong>决定用哪个索引、按什么顺序 JOIN、是否用临时表/排序</strong></td><td><strong>估算错 → 选错索引 → 这是最常见的慢因</strong></td></tr><tr><td><strong>执行器</strong></td><td>按计划循环调用引擎接口，判断条件、返回结果</td><td><strong>逐行回表</strong>（覆盖索引能省掉，M3）</td></tr><tr><td><strong>InnoDB</strong></td><td>Buffer Pool 命中与否、加锁、写 undo/redo</td><td>缓存冷（随机 IO）、锁等待、日志刷盘</td></tr></tbody></table>
+<h3 class="mv-md-h">二、为什么"查询缓存"被移除了（常见追问）</h3>
+<p class="mv-md-p">缓存键是<strong>整条 SQL 文本</strong>，失效条件是<strong>这张表只要有一个更新就全部失效</strong>：</p>
+<ul class="mv-md-ul"><li>对<strong>更新频繁</strong>的表，命中率极低，还带来维护开销；</li><li><strong>"查一次缓存白拿"的收益 &lt; "每次更新都要清一堆缓存"的成本</strong>。</li></ul>
+<p class="mv-md-p"><strong>这条能推出一个通用结论</strong>：<strong>任何"以表为粒度整体失效"的缓存都会在写多的表上失效</strong>——这正是 EnergyOps 里"缓存一致性"那部分的设计依据（事务内写 Outbox / 版本缓存键，而不是"提交完顺手清缓存"）。</p>
+<h3 class="mv-md-h">三、优化器在决定什么（这是本题的核心）</h3>
+<table class="mv-table"><thead><tr><th>决定</th><th>依据</th><th>决定错了会怎样</th></tr></thead><tbody><tr><td><strong>用哪个索引</strong>（或者干脆不用）</td><td>统计信息里的区分度、扫描代价估算</td><td><strong>明明有索引却走全表</strong>（M2 里"索引失效的最后一类"）</td></tr><tr><td><strong>JOIN 顺序</strong>（谁做驱动表）</td><td>小表驱动大表原则 + 各自的过滤后行数</td><td><strong>大表驱动小表 → 循环次数爆炸</strong></td></tr><tr><td><strong>是否用临时表 / 文件排序</strong></td><td>排序数据量与内存限制</td><td><strong>filesort 落盘 → 慢一个数量级</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>判断"优化器选错了"的方法</strong>：<code class="mv-md-code">EXPLAIN</code> 里看 <code class="mv-md-code">key</code>（实际用的索引）与 <code class="mv-md-code">rows</code>（估算扫描行数）——<strong>估算行数和实际差很远时，就是统计信息/选择性出了问题</strong>（PG 的对应解法见 P7；MySQL 侧主要靠 <code class="mv-md-code">ANALYZE TABLE</code> 更新统计信息）。</p>
+<h3 class="mv-md-h">四、三种慢源（收口）</h3>
+<pre class="mv-md-pre">① 扫描行数多      → 索引没命中 / 选择性差 / 估算错
+② 回表次数多      → 二级索引没覆盖，命中的每一行都要回聚簇索引（M3）
+③ JOIN 顺序错     → 驱动表选错，循环次数爆炸</pre>
+<p class="mv-md-p"><strong>对应到 explain 的读法</strong>（M7 展开）：<code class="mv-md-code">type</code> 与 <code class="mv-md-code">rows</code> 对应 ①，<code class="mv-md-code">Extra</code> 里的 <code class="mv-md-code">Using index</code>（覆盖）/<code class="mv-md-code">Using filesort</code>（排序）/<code class="mv-md-code">Using temporary</code>（临时表）对应 ②③。</p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

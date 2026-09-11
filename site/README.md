@@ -57,17 +57,19 @@ PY
 ## 母题互链检查（新增母题卡后跑一次）
 
 母题卡之间的 `[[母题-XX-名称]]` 是**按文件名**引用的，所以**编号错位或名称不一致会导致静默失效**（Obsidian 里显示为未解析链接，页面上看不出来）。
+注意：**跨模块引用是允许的**（MySQL 卡可以引 PG 卡），所以检查要**全库搜索文件名**，不能只查本模块目录。
 
 ```bash
 python - <<'PY'
 import re, pathlib
-for mod in ("PostgreSQL", "MySQL"):
-    R = pathlib.Path("wiki/topics") / mod
-    files = {p.stem for p in R.glob("母题-*.md")}
-    bad = {m for p in R.glob("母题-*.md")
-           for m in re.findall(r"\[\[(母题-[^\]]+)\]\]", p.read_text(encoding="utf-8"))
-           if m not in files}
-    print(f"{mod}: {len(files)} 张卡 ->", "✅ 互链可对上" if not bad else "❌ %s" % sorted(bad))
+all_md = {p.stem: p for p in pathlib.Path("wiki/topics").rglob("母题-*.md")}
+print("母题卡总数:", len(all_md))
+bad = {}
+for p in all_md.values():
+    for m in re.findall(r"\[\[(母题-[^\]]+)\]\]", p.read_text(encoding="utf-8")):
+        if m not in all_md:
+            bad.setdefault(m, set()).add(p.stem)
+print("✅ 互链全部可对上" if not bad else "\n".join("❌ %s <- %s" % (k, ",".join(v)) for k, v in bad.items()))
 PY
 ```
 

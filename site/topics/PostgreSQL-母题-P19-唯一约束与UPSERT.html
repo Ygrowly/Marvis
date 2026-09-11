@@ -31,7 +31,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>唯一约束是原子防线</li><li>应用层幂等是优化</li><li>先查再插有竞态</li><li>幂等键基于业务身份（**不能用 ToolCallID 这类技术 ID**）</li><li>约束列必须 NOT NULL</li><li>`ON CONFLICT DO NOTHING` vs `DO UPDATE`</li><li>`excluded` 与条件覆盖</li><li>冲突也消耗序列值</li></ul>
+    <ul class="mv-kw"><li>唯一约束是原子防线</li><li>应用层幂等是优化</li><li>先查再插有竞态</li><li>幂等键基于业务身份（<strong>不能用 ToolCallID 这类技术 ID</strong>）</li><li>约束列必须 NOT NULL</li><li><code class="mv-md-code">ON CONFLICT DO NOTHING</code> vs <code class="mv-md-code">DO UPDATE</code></li><li><code class="mv-md-code">excluded</code> 与条件覆盖</li><li>冲突也消耗序列值</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
   </div>
 

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M8 · 隔离级别与 ACID</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M8 · 隔离级别与 ACID</h1>
+    <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M10-锁与死锁 · 母题-M11-三日志与两阶段提交 ｜ 正本 wiki/topics/MySQL/母题-M8-隔离级别与ACID.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">四个隔离级别各挡住哪个并发问题？ACID 四个字母分别靠什么机制实现？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="MySQL/母题-M8-隔离级别与ACID" tag="MySQL" q="四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？" a="并发三问题是脏读（读到未提交）、不可重复读（同一事务两次读不同值）、幻读（两次范围查询行数不同）；四个级别逐级递进——读未提交（全暴露）→ 读已提交（挡脏读）→ 可重复读（InnoDB 默认，再挡不可重复读，用间隙锁挡幻读）→ 串行化（读也加锁，全挡但并发最差）。ACID 的实现：A 原子性 = undo log；D 持久性 = redo log；I 隔离性 = 锁 + MVCC；C 一致性 = 前三者加上业务约束共同得到的结果。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是主线三的地基</strong>。它有一个几乎人人会答错一半的追问——<strong>"一致性由谁实现？"</strong> 答成"由隔离级别实现"或"由某个机制实现"都错了：<strong>C 是前三者 + 约束共同保证的结果，它自己不是独立机制</strong>。<strong>答对这一条，比背四个级别有用得多。</strong></p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>脏读</li><li>不可重复读</li><li>幻读</li><li>RC vs RR</li><li>快照读与当前读</li><li>undo=原子性</li><li>redo=持久性</li><li>锁+MVCC=隔离性</li><li><strong>一致性是结果不是机制</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>采集与聚合事务</strong>（"一组动作一起成败"——窗口幂等与补数）；RuleArena 的<strong>退款事务</strong>（10 步在同一事务里提交 + 唯一约束兜底——<strong>ACID 的 A/C 在这里的真实体现</strong>）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照 + 40001 重试</strong>。<strong>MySQL 的 RR 靠锁挡幻读；PG 没有间隙锁</strong>。<strong>两边的默认值、幻读处理方式、冲突表现全部不同——这是全库最容易说反的对照</strong>（PG 侧的对照表在 PostgreSQL 模块卡第 2 节）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">三个并发问题 → 四个级别逐级挡 → InnoDB 默认 RR（快照读 + 间隙锁挡幻读）→ ACID 逐条对应机制 → 一致性为什么不是独立机制</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>事务 = "一组动作一起成功或一起失败"。</strong> 这句话（raw 里的原话）比背 ACID 四个字有用——<strong>因为四个字母能从这一句推出来</strong>：一起成败需要 undo（能撤销）和 redo（不丢），并发下多个事务同时做，需要锁和 MVCC 分工，最后整体表现出"一致"。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能不看资料说清三个并发问题的区别、四个级别各自挡住什么，并能按"undo/redo/锁+MVCC/结果"回答 ACID。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、三个并发问题（先分清，级别才有的放矢）</h3>
+<table class="mv-table"><thead><tr><th>问题</th><th>定义</th><th>例子</th></tr></thead><tbody><tr><td><strong>脏读</strong></td><td>读到了<strong>别的事务还没提交</strong>的数据（它可能回滚）</td><td>读到 <code class="mv-md-code">status='DONE'</code>，但那个事务回滚了</td></tr><tr><td><strong>不可重复读</strong></td><td>同一事务内<strong>两次读同一行</strong>结果不同（中间有人改了并提交）</td><td>先读余额 100，再读变 80</td></tr><tr><td><strong>幻读</strong></td><td>同一事务内<strong>两次范围查询</strong>返回的行数不同（中间有人插入）</td><td>先查到 10 条，再查变 11 条</td></tr></tbody></table>
+<p class="mv-md-p"><strong>三者区别一句话</strong>：<strong>脏读关于"未提交"，不可重复读关于"同一行被改"，幻读关于"行数变化"。</strong></p>
+<h3 class="mv-md-h">二、四个级别逐级递进</h3>
+<table class="mv-table"><thead><tr><th>级别</th><th>挡住</th><th>没挡住</th></tr></thead><tbody><tr><td><strong>读未提交 RU</strong></td><td>——</td><td><strong>全都可能发生</strong>（读未提交数据）</td></tr><tr><td><strong>读已提交 RC</strong></td><td>脏读</td><td>不可重复读、幻读</td></tr><tr><td><strong>可重复读 RR（InnoDB 默认）</strong></td><td>脏读、不可重复读</td><td><strong>幻读（InnoDB 靠间隙锁挡住了大部分，见下）</strong></td></tr><tr><td><strong>串行化</strong></td><td>全部</td><td>——（读也加锁，并发最差）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>InnoDB 为什么默认 RR</strong>：历史原因（早期 RC 在复制场景下可能出现主从不一致），<strong>但更本质的是 RR + MVCC + 间隙锁的组合在"一致性"与"并发"之间取了一个工程上很划算的平衡</strong>。<strong>面试时能说"默认 RR 是历史 + 权衡，不是唯一正确"就比死记强。</strong></p>
+<h3 class="mv-md-h">三、RR 下幻读怎么挡住（一半靠 MVCC，一半靠锁）</h3>
+<p class="mv-md-p">这是本题最容易说错的地方。<strong>RR 并不是"完全解决幻读"</strong>：</p>
+<ul class="mv-md-ul"><li><strong>快照读</strong>（普通 <code class="mv-md-code">SELECT</code>）：靠 <strong>MVCC</strong>——事务开始时定住快照，<strong>后面就算别人插入并提交，快照读也看不到</strong> → <strong>不会幻读</strong>；</li><li><strong>当前读</strong>（<code class="mv-md-code">SELECT ... FOR UPDATE</code>、<code class="mv-md-code">UPDATE</code>、<code class="mv-md-code">DELETE</code>）：<strong>必须读最新版本</strong>，MVCC 帮不上 → 靠 <strong>next-key lock（记录锁 + 间隙锁）</strong> 锁住范围，<strong>阻止别人在范围内插入</strong> → <strong>也不幻读</strong>。</li></ul>
+<p class="mv-md-p"><strong>所以准确说法是</strong>：<strong>InnoDB 的 RR 在"快照读"下靠 MVCC、在"当前读"下靠 next-key lock，两种读都不幻读</strong>——<strong>但两种读混用的场景仍可能出现"看起来像幻读"的现象</strong>（先用快照读看到 10 行，再 <code class="mv-md-code">UPDATE</code> 时行数变了，因为当前读看到了新数据）。<strong>这个细节能讲清，说明真的理解了两套机制。</strong></p>
+<h3 class="mv-md-h">四、ACID 逐条对应机制（本题核心）</h3>
+<table class="mv-table"><thead><tr><th>字母</th><th>靠什么实现</th><th>一句话</th></tr></thead><tbody><tr><td><strong>A 原子性</strong></td><td><strong>undo log</strong></td><td>改错了/回滚了，<strong>用 undo 恢复原状</strong>——"改之前的备份"</td></tr><tr><td><strong>D 持久性</strong></td><td><strong>redo log</strong></td><td>提交过但数据页没落盘，崩溃后<strong>用 redo 重放补上</strong></td></tr><tr><td><strong>I 隔离性</strong></td><td><strong>锁 + MVCC</strong></td><td>写写用锁排队，读写靠 MVCC 不互相堵</td></tr><tr><td><strong>C 一致性</strong></td><td><strong>前三者 + 约束 + 业务校验</strong></td><td><strong>它不是独立机制，是结果</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>C 那一行必须展开说</strong>：一致性 = <strong>事务把数据库从一个合法状态带到另一个合法状态</strong>。它需要：<strong>A 保证这组动作要么全做要么全不做</strong>、<strong>D 保证不丢</strong>、<strong>I 保证并发下互相看不见对方的中间状态</strong>、<strong>再加上数据库约束（唯一/外键/CHECK）和业务校验</strong>。<strong>所以"一致性靠什么实现"的标准答案是"前三者共同作用 + 约束"，而不是某一个组件。</strong></p>
+<p class="mv-md-p"><strong>这个结构可以直接迁移</strong>：RuleArena 的幂等设计里"业务校验 + 数据库约束都要有"（P19）是同一句话在另一处的重述——<strong>业务校验给清晰错误，约束防并发穿透，一致性是两者加事务共同的结果。</strong></p>
+<h3 class="mv-md-h">五、raw 里那句核心（值得记住）</h3>
+<p class="mv-md-p mv-md-quote"><strong>事务保证一起成败，锁保证修改别打架，MVCC 保证读写别互相堵死。</strong></p>
+<p class="mv-md-p"><strong>三句对应三块</strong>：undo（一起成败的一部分）+ redo（不丢）、锁（写写）、MVCC（读写）。<strong>背下这句，整个主线三的骨架就有了。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M13 · 长事务为什么危险</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M13 · 长事务为什么危险</h1>
+    <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M10-锁与死锁 · 母题-M15-数据增长治理 ｜ 正本 wiki/topics/MySQL/母题-M13-长事务为什么危险.md</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一个只做 <code class="mv-md-code">SELECT</code>、什么都没改的事务，挂了两个小时不结束。它会带来什么问题？</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主卡</h2>
+    <flip-card gradable card-id="MySQL/母题-M13-长事务为什么危险" tag="MySQL" q="长事务为什么危险？不只是持锁久——它到底坏了什么？" a="长事务最可怕的隐患是拖住旧版本数据的清理——MVCC 的普通读依赖 undo 里的旧版本，事务不结束，purge 线程就不敢清那些它还可能要读的版本 → undo 膨胀、历史链越来越长 → 回滚成本更高、快照读沿链回溯更慢、锁持有更久 → 系统整体越来越沉。加上持锁久这一层，两条危害叠加。只读事务同样有害（手动关了 autocommit 忘了提交，是最常见的真实事故形态）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>raw 里这句"很多人知道不太好，但说不清楚到底坏在哪"就是这道题的价值</strong>——<strong>它考的是你能不能从 MVCC 机制推导出长事务的完整危害链</strong>，而不是背一句"长事务不好"。<strong>而且它有一个反直觉点：只读事务同样危险。</strong> <strong>这条和 PG 的 P14 几乎是同构的</strong>——两边的机制都指向"长事务按住旧版本不让回收"。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">恢复关键词</h2>
+    <ul class="mv-kw"><li>拖住 undo 清理</li><li>历史链变长</li><li>回滚成本更高</li><li><strong>只读事务也危险</strong></li><li>autocommit 意外关闭</li><li>事务里不放 RPC</li><li><code class="mv-md-code">innodb_trx</code> 监控</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的月度结算</strong>（跨多表多步，事务边界最容易画大——<strong>"事务里不做外部调用"在这里最值钱</strong>）；RuleArena 的<strong>Worker 长任务</strong>（<strong>事务只包数据库动作，Checkpoint 之外不做 IO</strong>）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 长事务 → undo 膨胀 + 持锁久；PG 长事务 → 表膨胀 + 阻塞 VACUUM + 事务 ID 回卷风险（P15）</strong>。<strong>两边都要"短事务"，但症状与监控指标不同</strong>——<strong>这是"机制同源、症状不同"的最佳案例。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">危害一：拖住旧版本清理（从 MVCC 推导）→ 危害二：持锁久 → 只读事务为什么也危险 → 工程规避清单 → 怎么监控</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>长事务最可怕的不是"执行久"，而是它会持续占着数据库资源，让整个系统越来越难受。</strong>（raw 原话）——<strong>它不是"慢"，是"按住资源的柄"。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能从 MVCC 推导出"长事务拖住清理"的完整链条，能说出五条规避纪律，并指出只读事务为什么也危险。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">正文底稿</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h">原理分解</h3>
+<h3 class="mv-md-h">一、危害一：拖住旧版本清理（从 M9 直接推导）</h3>
+<p class="mv-md-p">M9 讲过：<strong>快照读要沿 undo 版本链回溯找可见版本</strong>。</p>
+<p class="mv-md-p"><strong>关键问题</strong>：<strong>旧版本什么时候能删？</strong></p>
+<pre class="mv-md-pre">purge 线程清理 undo 的前提：
+   没有任何 ReadView 还需要它
+     ↓
+而 ReadView 是事务级的（RR 下整个事务一个）
+     ↓
+所以：一个长事务开着 → 它的 ReadView 一直在 → 链上它之前的旧版本都不能清</pre>
+<p class="mv-md-p"><strong>于是</strong>：</p>
+<pre class="mv-md-pre">undo 清理跟不上
+  → 历史链越来越长
+  → 快照读沿链回溯的步数变多（读变慢）
+  → 回滚成本更高（要撤销的更多）
+  → 系统整体越来越沉</pre>
+<p class="mv-md-p"><strong>这条链值得完整背下来</strong>——<strong>它把 M9 的机制变成了 M13 的后果</strong>，是"会 MVCC"和"会运维"的分界线。</p>
+<h3 class="mv-md-h">二、危害二：持锁久</h3>
+<p class="mv-md-p">事务里如果有 <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">FOR UPDATE</code>，<strong>锁会一直持有到事务结束</strong>：</p>
+<pre class="mv-md-pre">事务越长 → 锁持有越久 → 其他事务排队越久 → 死锁概率越高（M10）</pre>
+<p class="mv-md-p"><strong>注意这两条危害的来源不同</strong>：<strong>一条来自 MVCC（对读的影响），一条来自锁（对写的影响）</strong>——<strong>长事务是两条路同时变坏。</strong></p>
+<h3 class="mv-md-h">三、只读事务为什么也危险（最容易被忽略）</h3>
+<p class="mv-md-p"><strong>因为回收看的是 ReadView，不是"这个事务做了什么"</strong>：</p>
+<pre class="mv-md-pre">很多人以为只有写事务才会造成问题。
+其实只读事务如果一直不结束，在一致性读场景下，同样可能拖住旧版本清理。</pre>
+<p class="mv-md-p"><strong>最常见的真实形态</strong>（raw 原话）：<strong>手动关了 autocommit，跑了一个查询，结果忘了提交或结束</strong>。</p>
+<pre class="mv-md-pre">SET autocommit = 0;
+SELECT ...;        -- 开了一个事务（隐式 BEGIN）
+-- 然后连接挂着，什么都没做
+                   ← 这个事务可能挂好几个小时</pre>
+<p class="mv-md-p"><strong>这种连接在监控上很不起眼（CPU 低、几乎无查询），但它在按住回收边界。</strong> <strong>PG 那边对应的形态是 <code class="mv-md-code">idle in transaction</code>（P14）</strong>——<strong>两边是同一类事故，只是监控指标不同。</strong></p>
+<h3 class="mv-md-h">四、工程规避清单（raw 的五条，全部照背）</h3>
+<pre class="mv-md-pre">① 事务里只放必须的数据库动作
+② 不要把外部 RPC / 网络调用放进事务
+③ 不要把复杂业务计算放进事务
+④ 批量更新尽量分批做
+⑤ 大查询和导出要格外注意事务边界</pre>
+<p class="mv-md-p"><strong>第 ② ③ 条是同一类错误</strong>：<strong>把"外部系统的响应时间"绑进了"事务的持有时间"</strong>——外部一抖，事务就长。<strong>RuleArena 里"事务只包数据库操作、Checkpoint 不当业务事实"是同一个纪律</strong>（P19 的对照）。</p>
+<h3 class="mv-md-h">五、怎么监控</h3>
+<table class="mv-table"><thead><tr><th>看什么</th><th>用途</th></tr></thead><tbody><tr><td><code class="mv-md-code">information_schema.innodb_trx</code> 的 <code class="mv-md-code">trx_started</code></td><td><strong>运行时间最长的事务</strong>——回收边界的直接代理</td></tr><tr><td><code class="mv-md-code">SHOW PROCESSLIST</code></td><td>长时间处于 <code class="mv-md-code">Sleep</code> 状态的连接（可能是 <code class="mv-md-code">idle in transaction</code> 的 MySQL 版）</td></tr><tr><td>undo 表空间大小 / 历史链长度相关指标</td><td>膨胀程度</td></tr></tbody></table>
+<p class="mv-md-p"><strong>面试加分点</strong>：<strong>能说出"我盯的是最老事务的 trx_started，因为回收边界由最老的 ReadView 决定"</strong>——<strong>这和 PG 侧"盯最老事务的 xmin"（P14）是同一句话</strong>，<strong>两套数据库，同一条原理。</strong></p>
+<hr class="mv-md-hr">
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

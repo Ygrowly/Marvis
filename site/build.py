@@ -379,7 +379,7 @@ def render_topic(t):
         keywords = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">恢复关键词</h2>\n'
                     '    <ul class="mv-kw">%s</ul>\n'
                     '    <p class="mv-note">卡住时靠这几个词重建整条链。</p>\n  </div>\n'
-                    % "".join("<li>%s</li>" % esc(k) for k in t["keywords"]))
+                    % "".join("<li>%s</li>" % inline(k) for k in t["keywords"]))
 
     panels = []
     if t["followups"]:
