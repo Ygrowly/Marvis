@@ -1455,6 +1455,100 @@ def cleanup_html():
     return n
 
 
+# ---------------------------------------------------------------- 面经手册 → 牌组
+
+INTERVIEW_MANUAL = "wiki/interview/面经-字节AI-Agent.md"
+
+
+def _subsec(sec, title):
+    """取三级小节：### <title>... 到下一个 ### 之间"""
+    m = re.search(r"^###\s*[^\n]*%s[^\n]*$\n(.*?)(?=^###\s|^##\s|\Z)"
+                  % re.escape(title), sec, re.S | re.M)
+    return m.group(1).strip() if m else ""
+
+
+def card_text(md):
+    """卡片背面用：去引用号/列表号/标题号；表格行折成「a · b」；不留 markdown 标记。
+
+    注意列表号必须要求后跟空白（`[-*+]\\s+`）——写成字符类会把 `**加粗**` 的首个星号吃掉。
+    """
+    lines = []
+    for ln in (md or "").splitlines():
+        s = ln.strip()
+        if not s:
+            lines.append("")
+            continue
+        if s.startswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            cells = [c for c in cells if c and not re.fullmatch(r":?-{2,}:?", c)]
+            if cells:
+                lines.append(" · ".join(cells))
+            continue
+        s = re.sub(r"^>\s*", "", s)
+        s = re.sub(r"^[-*+]\s+", "", s)
+        s = re.sub(r"^#{1,6}\s*", "", s)
+        lines.append(s)
+    return plain("\n".join(lines)).strip()
+
+
+def parse_interview_manual():
+    """把面试手册拆成可练的牌组。
+
+    来源格式：
+      ## N. 母题 XX：<问题>  → 取「15 秒」「60 秒标准回答」做主卡
+      ## 20. 三个项目的定向回答卡 → 取每个 ### 小节做项目口述卡
+    小节缺失就跳过，不报错——不因为格式不全卡住整条流水线。
+    """
+    p = ROOT / INTERVIEW_MANUAL
+    if not p.exists():
+        return []
+    body = split_front(p.read_text(encoding="utf-8"))[1]
+    parts = re.split(r"^##\s+\d+\.\s+([^\n]+)$", body, flags=re.M)
+
+    topics, projects = [], []
+    for i in range(1, len(parts) - 1, 2):
+        title, sec = parts[i].strip(), parts[i + 1]
+        if "母题" in title and "：" in title:
+            no, name = title.split("：", 1)
+            num = re.search(r"\d+", no)
+            long_ = _subsec(sec, "60 秒标准回答") or _subsec(sec, "60 秒版本")
+            if not long_:
+                continue
+            short = _subsec(sec, "15 秒")
+            back = card_text(long_)
+            if short:
+                back = card_text(short) + "\n\n" + back
+            topics.append({
+                "id": "ai-%s" % (num.group(0) if num else len(topics) + 1),
+                "q": plain(name), "a": back, "tag": "AI/Agent",
+                "src": INTERVIEW_MANUAL,
+            })
+        elif "项目" in title and "定向" in title:
+            for m in re.finditer(r"^###\s+([^\n]+)$", sec, re.M):
+                head = m.group(1).strip()
+                if "：" not in head:
+                    continue
+                proj, variant = head.split("：", 1)
+                proj = re.sub(r"^\d+(\.\d+)*\s*", "", proj).strip()
+                chunk = sec[m.end():]
+                nxt = re.search(r"^###\s", chunk, re.M)
+                if nxt:
+                    chunk = chunk[:nxt.start()]
+                projects.append({
+                    "id": "proj-%s" % proj.lower(),
+                    "q": "讲一遍 %s（%s）" % (proj, variant.strip()),
+                    "a": card_text(chunk), "tag": "项目口述",
+                    "src": INTERVIEW_MANUAL,
+                })
+
+    decks = []
+    if topics:
+        decks.append({"id": "ai", "name": "AI 母题", "cards": topics})
+    if projects:
+        decks.append({"id": "project", "name": "项目口述", "cards": projects})
+    return decks
+
+
 def main():
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     OUT_TOPICS.mkdir(parents=True, exist_ok=True)
@@ -1562,6 +1656,7 @@ def main():
                        "tag": t["module"], "href": t["page"], "src": t["src"]}
                       for t in live],
         })
+    decks.extend(parse_interview_manual())
     if cards:
         decks.append({
             "id": "extra", "name": "补充卡",
