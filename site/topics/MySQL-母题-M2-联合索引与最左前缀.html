@@ -14,81 +14,162 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
     <h1 class="mv-topic-title">母题 M2 · 联合索引与最左前缀</h1>
-    <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M3-聚簇索引与回表 ｜ 正本 wiki/topics/MySQL/母题-M2-联合索引与最左前缀.md</p>
+    <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M3-聚簇索引与回表 · 母题-M7-慢查询与SQL优化手段 ｜ 正本 wiki/topics/MySQL/母题-M2-联合索引与最左前缀.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① 索引的价值是少扫行 ② 字典序是什么 ③ 范围列截断的准确含义）· 读完约 10 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]（索引是有序结构）</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
-    <div class="mv-problem"><p class="mv-md-p">任务表要支持这样一条调度 SQL：</p>
+    <div class="mv-problem"><p class="mv-md-p">任务表要支持这条调度 SQL：</p>
 <pre class="mv-md-pre">SELECT id, status, next_retry_time, priority
 FROM task
 WHERE status = 'PENDING'
   AND next_retry_time &lt;= NOW()
 ORDER BY priority DESC, id ASC
 LIMIT 100;</pre>
-<p class="mv-md-p">联合索引该怎么建？为什么 <code class="mv-md-code">(a, b, c)</code> 能用上 <code class="mv-md-code">a=1</code> 和 <code class="mv-md-code">a=1 AND b=2</code>，却用不上单独 <code class="mv-md-code">b=2</code>？</p></div>
+<p class="mv-md-p">联合索引该怎么建？为什么 <code class="mv-md-code">(a, b, c)</code> 能用上 <code class="mv-md-code">a = 1</code> 和 <code class="mv-md-code">a = 1 AND b = 2</code>，却用不上单独 <code class="mv-md-code">b = 2</code>？</p></div>
   </div>
 
-
-
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引的价值只有一个——少扫</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 先固定唯一指标</h4>
+<p class="mv-md-p">[[母题-M1-为什么用B+树]] 已经推出：磁盘索引的成本就是 IO 次数。但那条结论只说到了<strong>定位</strong>。</p>
+<p class="mv-md-p">真实查询读的不是一行，是一段。所以本卡把指标再推进一步：</p>
+<p class="mv-md-p mv-md-quote">【推导】<strong>一条查询的成本 = 扫过的索引项数 + 回表次数。</strong> 这两个数都是「行数」的函数，不是「树高」的函数。</p>
+<p class="mv-md-p"><strong>为什么要先说这个</strong>：树高永远是 3 层（M1 算过），它对任何查询都一样，所以它解释不了"为什么换个索引顺序就快 30 倍"。<strong>能解释的是扫了多少行、回了多少次表。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"索引让查询从全表扫变成 3 次 IO"这句话，在真实查询里基本不成立？</p>
+<h4 class="mv-md-h mv-md-h4">1.2 有序性能被用来做三件事【推导】</h4>
+<p class="mv-md-p">索引是排好序的，这份有序性只有三种用法：</p>
+<table class="mv-table"><thead><tr><th>用法</th><th>靠什么</th><th>效果</th></tr></thead><tbody><tr><td><strong>定位</strong></td><td>二分找到起点</td><td>不用从头扫</td></tr><tr><td><strong>截断</strong></td><td>扫到条件不满足就停</td><td>不用扫到末尾</td></tr><tr><td><strong>免排序</strong></td><td>读出来天然有序</td><td>省掉 <code class="mv-md-code">filesort</code></td></tr></tbody></table>
+<p class="mv-md-p"><strong>三件事共享同一个前提：</strong> 满足条件的记录必须<strong>在索引里连着排</strong>。一旦不连续，"扫到不满足就停"就失效——因为后面可能还有满足的。</p>
+<p class="mv-md-p mv-md-quote"><strong>这就是最左前缀的全部由来。</strong> 后面三节都在讲这一句话。</p>
+<h3 class="mv-md-h mv-md-h3">2. 联合索引是一片什么形状的数据</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 字典序（lexicographic order）是什么【事实】</h4>
+<p class="mv-md-p"><strong>定义</strong>：多列排序时，<strong>先按第一列排；第一列相同的，再按第二列排；以此类推。</strong></p>
+<p class="mv-md-p">它就是我们排电话簿的方式：先按姓排，姓相同的再按名排。<strong>不是"三个列各自有序"，而是"逐层细分"。</strong></p>
+<p class="mv-md-p">索引 <code class="mv-md-code">(status, next_retry_time, priority)</code> 的真实形状：</p>
+<pre class="mv-md-pre">status='DONE'     ┐
+status='PENDING'  ├─ 大段：先按 status 分成几块
+status='RUNNING'  ┘
+   ↓ 每一块内部
+next_retry_time 递增
+   ↓ 每一个 next_retry_time 值内部
+priority 递增</pre>
+<figure-box num="联合索引是一个逐层细分的连续序列" title="" note="status 等值切出一个连续段，段内 next_retry_time 有序；段与段之间无序"><svg viewBox="0 0 680 312" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>联合索引的字典序与最左前缀</title>
+<desc>索引 (status, next_retry_time) 按字典序排成一条线；status 等值切出一个连续区间，单独用 next_retry_time 找不到连续区间。</desc>
+<defs>
+<marker id="figcomposite-order-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="34" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">索引 (status, next_retry_time) 的叶子层 —— 按字典序排成一条线</text>
+<rect x="40" y="50" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="140" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">status = 'PENDING'</text>
+<text x="140" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<rect x="240" y="50" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="340" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">status = 'RUNNING'</text>
+<text x="340" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<rect x="440" y="50" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="540" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">status = 'DONE'</text>
+<text x="540" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<path d="M46 122 L234 122" stroke="#BA7517" stroke-width="1.5" fill="none" marker-start="url(#figcomposite-order-svg-arrow)" marker-end="url(#figcomposite-order-svg-arrow)"/>
+<text x="140" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">status = 'PENDING' 命中一个连续区间，扫完就能停</text>
+<path d="M40 172 L640 172" stroke="#A32D2D" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#figcomposite-order-svg-arrow)"/>
+<text x="40" y="192" font-family="system-ui,sans-serif" font-size="12" fill="#501313" dominant-baseline="central">单独用 next_retry_time 范围查：每段内部有序，段与段之间无序 → 找不到一个连续区间</text>
+<rect x="40" y="214" width="600" height="78" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="60" y="238" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">最左前缀不是一条规则，是「有序区间必须连续」的后果</text>
+<text x="60" y="260" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">按 (a, b) 排好序后：a 的等值条件切出一个连续段，段内 b 有序 → 两个条件都省 IO</text>
+<text x="60" y="280" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">只用 b：每个 a 段里各有一段，段之间不连续 → 只能逐段扫，等于没省</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">2.2 由此得到「可定位区间」</h4>
+<p class="mv-md-p"><strong>定义</strong>：一个查询条件，如果能确定<strong>索引里的某一段连续区间必然包含全部结果、且区间外必然没有</strong>，就说它<strong>能确定一个可定位区间</strong>。</p>
+<p class="mv-md-p">一旦有区间：起点二分（O(log N)），然后<strong>顺序扫到区间末尾就停</strong>——扫描量 = 区间长度，而不是全表。</p>
+<p class="mv-md-p"><strong>量化的对照</strong>（1000 万行，<code class="mv-md-code">status</code> 三个值均匀分布，<code class="mv-md-code">next_retry_time &lt;= NOW()</code> 命中约 100 万行）：</p>
+<table class="mv-table"><thead><tr><th>索引</th><th>扫描情况</th><th>扫过的索引项</th></tr></thead><tbody><tr><td><code class="mv-md-code">(status, next_retry_time)</code></td><td>status 切出约 333 万行的连续段 → 段内再按 time 二分到起点</td><td><strong>约 3.3 万</strong></td></tr><tr><td><code class="mv-md-code">(next_retry_time, status)</code></td><td>time 范围切出约 100 万行的连续段 → 段内再筛 status</td><td><strong>约 100 万</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>同样的字段、同样的条件，只是顺序不同，扫描量差约 30 倍。</strong> 字段顺序不是风格问题，是成本问题。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 为什么"局部有序"等于"无序"</h4>
+<p class="mv-md-p">关键在 2.1 那张图的<strong>段与段之间</strong>。</p>
+<p class="mv-md-p"><code class="mv-md-code">next_retry_time</code> 在每个 <code class="mv-md-code">status</code> 段内递增，但 <strong><code class="mv-md-code">DONE</code> 段的第一条可能比 <code class="mv-md-code">PENDING</code> 段的最后一条还早</strong>。所以从全局看，<code class="mv-md-code">next_retry_time</code> 是<strong>乱序</strong>的。</p>
+<p class="mv-md-p mv-md-quote">【推导】<strong>单独用 <code class="mv-md-code">next_retry_time</code> 查，找不到任何连续区间</strong>——满足条件的记录散落在每一个 status 段里，只能逐段扫（或者干脆全索引扫描）。</p>
+<p class="mv-md-p"><strong>这就是"用不上索引"的准确含义</strong>：不是报错，是退化成"扫描量 ≈ 全部"。</p>
+<h3 class="mv-md-h mv-md-h3">3. 最左前缀：把结论一条条推出来</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 四种条件逐个判</h4>
+<p class="mv-md-p">拿索引 <code class="mv-md-code">(a, b, c)</code>：</p>
+<table class="mv-table"><thead><tr><th>查询条件</th><th>能用上</th><th>为什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">a = 1</code></td><td>✅ 定位</td><td>所有 <code class="mv-md-code">a=1</code> 的记录在索引里连续</td></tr><tr><td><code class="mv-md-code">a = 1 AND b = 2</code></td><td>✅ 定位</td><td>连续段内继续细分，仍然是连续的</td></tr><tr><td><code class="mv-md-code">a = 1 AND b = 2 AND c = 3</code></td><td>✅ 精确定位</td><td>三层细分，直接命中</td></tr><tr><td><code class="mv-md-code">a = 1 AND c = 3</code></td><td>⚠️ 部分</td><td>能用 a 切段；<strong>c 缩小不了扫描范围</strong>，但能减少回表（见 3.3）</td></tr><tr><td><code class="mv-md-code">b = 2</code>（单独）</td><td>❌</td><td>b 只在每个 a 段内有序，全局无序</td></tr><tr><td><code class="mv-md-code">c = 3</code>（单独）</td><td>❌</td><td>同上，而且是最小范围</td></tr></tbody></table>
+<p class="mv-md-p"><strong>规律一句话</strong>：<strong>从最左列开始、连续不断的那一段，才能用来缩小扫描范围（定位 + 截断）。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 为什么 <code class="mv-md-code">WHERE b = 2 AND a = 1</code> 和反过来写没区别【事实】</h4>
+<p class="mv-md-p"><strong>优化器会重排条件。</strong> 联合索引的匹配看的是<strong>列集合</strong>，不是 SQL 里的书写顺序。</p>
+<p class="mv-md-p">所以"把等值条件写前面"这种说法，对人读有用，对执行计划没用。<strong>能决定顺序的是索引定义，不是 SQL 文本。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.3 范围列截断：一句必须说准的话</h4>
+<p class="mv-md-p">拿 <code class="mv-md-code">(a, b, c)</code> 和 <code class="mv-md-code">a = 1 AND b &gt; 5 AND c = 3</code>：</p>
+<pre class="mv-md-pre">a = 1        → 切出一个连续段
+b &gt; 5        → 段内二分到起点，然后顺序扫到段尾      ← 扫描范围到这里的确定
+c = 3        → 扫描过程中逐个判断                      ← 缩小不了范围</pre>
+<p class="mv-md-p">【推导】<strong>范围列之后的列，失去的是"缩小扫描范围"的能力，没有失去"过滤"的能力。</strong></p>
+<p class="mv-md-p">MySQL 5.6+ 的<strong>索引下推（ICP, Index Condition Pushdown）</strong>正是做这件事：把 <code class="mv-md-code">c = 3</code> 的判断<strong>下推到索引层</strong>，不满足的索引项<strong>直接不回表</strong>。</p>
+<p class="mv-md-p"><strong>所以对"范围后面的列"，准确的说法是</strong>：</p>
+<table class="mv-table"><thead><tr><th>说法</th><th>对不对</th></tr></thead><tbody><tr><td>"范围列后面的索引列全部失效"</td><td>❌ 过度简化</td></tr><tr><td>"范围列后面的列不能缩小扫描范围，但可以在索引层过滤、减少回表"</td><td>✅</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】ICP 能省回表，但<strong>省不掉扫描</strong>——<code class="mv-md-code">b &gt; 5</code> 范围内的每个索引项还是要读一遍。<strong>所以"扫描量"永远是第一位的，ICP 是第二位的优化。</strong></p>
+<h3 class="mv-md-h mv-md-h3">4. 字段顺序怎么定（围绕执行路径，不围绕字段热度）</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 三条规则</h4>
+<p class="mv-md-p">1. <strong>等值列在前</strong> —— 等值条件切出的段最短，越早切段，后面所有步骤的基数越小。 2. <strong>范围列尽量靠后</strong> —— 它之后的列失去缩小范围的能力，所以别把还想用来定位的列排在它后面。 3. <strong>排序列接在最后</strong> —— 让 <code class="mv-md-code">ORDER BY</code> 直接吃索引的有序性，避免 <code class="mv-md-code">filesort</code>。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 第 3 条的边界（容易答错）</h4>
+<p class="mv-md-p"><code class="mv-md-code">ORDER BY</code> 能不能免掉排序，取决于<strong>扫描结果是否天然有序</strong>：</p>
+<table class="mv-table"><thead><tr><th>查询</th><th>能否免 filesort</th></tr></thead><tbody><tr><td><code class="mv-md-code">WHERE a = 1 AND b = 2 ORDER BY c</code></td><td>✅ 能。a、b 都是等值 → 落在连续段内，c 递增</td></tr><tr><td><code class="mv-md-code">WHERE a = 1 ORDER BY b, c</code></td><td>✅ 能。同一 a 段内 b 递增、b 相同则 c 递增</td></tr><tr><td><code class="mv-md-code">WHERE a = 1 AND b &gt; 5 ORDER BY c</code></td><td>❌ <strong>不能</strong>。会扫过多个不同的 b 值，c 只在<strong>每个 b 内部</strong>有序 → 全局无序</td></tr><tr><td><code class="mv-md-code">WHERE a = 1 AND b &gt; 5 ORDER BY b, c</code></td><td>✅ 能。先按 b 排再按 c 排，正好是索引顺序</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>判据不是"有没有范围列"，而是"扫描结果在索引顺序上是不是单调的"。</strong> 范围列本身不破坏排序，<strong>范围列之后的列</strong>被 <code class="mv-md-code">ORDER BY</code> 单独使用才破坏排序。</p>
+<h4 class="mv-md-h mv-md-h4">4.3 回到那条调度 SQL</h4>
+<pre class="mv-md-pre">WHERE status = 'PENDING' AND next_retry_time &lt;= NOW()
+ORDER BY priority DESC, id ASC
+LIMIT 100</pre>
+<p class="mv-md-p">按规则推：</p>
+<table class="mv-table"><thead><tr><th>列</th><th>角色</th><th>放哪</th></tr></thead><tbody><tr><td><code class="mv-md-code">status</code></td><td>等值</td><td>第一位（切出最短的段）</td></tr><tr><td><code class="mv-md-code">next_retry_time</code></td><td>范围</td><td>第二位（它之后的列失去定位能力）</td></tr><tr><td><code class="mv-md-code">priority</code></td><td>排序</td><td>第三位 —— <strong>但 <code class="mv-md-code">priority DESC</code> 与索引的 <code class="mv-md-code">ASC</code> 方向相反，且扫描跨多个 time 值，所以仍会出现 <code class="mv-md-code">filesort</code></strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>【取舍】这里没有完美解</strong>，只能在两种代价里选：</p>
+<ul class="mv-md-ul"><li>索引 <code class="mv-md-code">(status, next_retry_time, priority)</code>：扫描量最小（约 3.3 万），但要 <code class="mv-md-code">filesort</code> 排 100 行后再取 100 条 → <strong>排序对象是 3.3 万行，代价大</strong></li><li>拆成两步：先用索引取主键集合，再在应用层/子查询里排 → 复杂度上去了</li></ul>
+<p class="mv-md-p"><strong>还有一个更常见的做法</strong>：把 <code class="mv-md-code">priority</code> 提前，改成 <code class="mv-md-code">(status, priority, next_retry_time)</code>。这样排序免费，但 <code class="mv-md-code">next_retry_time</code> 的范围条件就缩小不了范围了——<strong>这时候要看哪一边的选择度高</strong>。选哪个取决于数据分布，<strong>面试时能把这两个方案的代价说清楚，比背一个"标准答案"更有价值</strong>。</p>
+<h3 class="mv-md-h mv-md-h3">5. 失效场景（含"优化器主动放弃"）</h3>
+<table class="mv-table"><thead><tr><th>场景</th><th>为什么失效</th></tr></thead><tbody><tr><td>列上做函数 / 运算：<code class="mv-md-code">WHERE YEAR(created_at) = 2026</code></td><td>破坏了「按列原值有序」这个前提——索引里没有 <code class="mv-md-code">YEAR(created_at)</code> 的顺序</td></tr><tr><td>隐式类型转换：<code class="mv-md-code">WHERE phone = 13800138000</code>（phone 是 varchar）</td><td>等价于对列做了类型转换，同上</td></tr><tr><td>前导模糊：<code class="mv-md-code">LIKE '%abc'</code></td><td>前缀不定，无法定位区间起点</td></tr><tr><td><code class="mv-md-code">OR</code> 里有一个非索引列</td><td>两边都要全表扫，索引那一半白做</td></tr><tr><td><code class="mv-md-code">!=</code> / <code class="mv-md-code">NOT IN</code></td><td>命中区间过于分散，"可定位区间"退化成多个小段，加起来接近全表</td></tr><tr><td><strong>选择度太低</strong></td><td><strong>优化器算过成本后主动放弃索引，走全表</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>最后一条最容易误判</strong>：索引失效不一定是写法错了。像 <code class="mv-md-code">status</code> 只有 3 个值，走索引要"扫 1/3 的索引 + 回表 1/3 的行"，而全表扫是顺序读——<strong>优化器的成本模型会选后者，这是正确的决定。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以"为什么这条 SQL 没走索引"的第一问不是"写法有什么问题"，而是"这个条件的区分度够不够"。</strong></p>
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"范围列后面的索引列全失效"</td><td>【推导】准确说是<strong>失去缩小扫描范围的能力</strong>，但仍可通过 ICP 在索引层过滤、减少回表</td></tr><tr><td>"WHERE 的条件顺序会影响索引匹配"</td><td>【事实】不会。优化器重排条件，看的是列集合</td></tr><tr><td>"索引列越多越好"</td><td>【取舍】每加一列都会让索引变宽、写入变慢（见 [[母题-M4-索引代价与大表变更]]）。<strong>联合索引的收益来自"一条索引服务多条查询"，不是来自列多</strong></td></tr><tr><td>"建了索引优化器就会用"</td><td>【取舍】选择度低时它会主动放弃。<strong>先问区分度，再问写法</strong></td></tr><tr><td>"前缀索引可以替代联合索引"</td><td>【取舍】前缀索引让索引变窄，但<strong>丢掉了完整有序性</strong>，不能用于精确的定位与排序</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q1" tag="MySQL" q="1000 万行，status 三个值均匀分布，next_retry_time &lt;= NOW() 命中约 100 万行。查询 WHERE status = ? AND next_retry_time &lt;= ?。索引 (status, next_retry_time) 和 (next_retry_time, status) 分别要扫多少索引项？差多少倍？" a="- (status, next_retry_time)：status 等值切出约 1000万/3 ≈ 333 万行的连续段，段内按 time 二分到起点，只扫满足 time 条件的那部分 → 约 3.3 万项&#10;- (next_retry_time, status)：time 范围在最外层，切出约 100 万行（所有 time 满足的），段内再逐项判断 status → 约 100 万项&#10;- 差约 30 倍。 字段顺序在成本上是有量级差异的。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q2" tag="MySQL" q="索引 (a, b, c)，查询 SELECT id FROM t WHERE a = 1 AND c = 3（id 是主键）。三列各自能起什么作用？" a="- a = 1：切出连续段，能定位&#10;- b：完全用不上（中间断开，条件里没有它，无法继续细分）&#10;- c = 3：不能缩小扫描范围（因为 b 断了），但可以在索引层过滤 —— SELECT id 且 id 就是主键，所以二级索引叶子已含 id，这个查询本身就是覆盖的，ICP 的作用体现在减少了不必要的索引项读取&#10;关键结论：a = 1 AND c = 3 扫的是&quot;整个 a=1 段&quot;，而 a = 1 AND b = 2 AND c = 3 扫的是&quot;段内一个点&quot;——中间那一列有没有，差别是段长和点的差别。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q3" tag="MySQL" q="索引 (a, b, c)，下面哪个 ORDER BY 可以免掉 filesort？" a="① WHERE a = 1 ORDER BY b, c ② WHERE a = 1 AND b &gt; 5 ORDER BY c ③ WHERE a = 1 AND b &gt; 5 ORDER BY b, c&#10;- ① 可以。a 等值 → 落在同一连续段，段内按 b、c 递增，正好是 ORDER BY b, c&#10;- ② 不可以。会扫过多个不同的 b 值，c 只在每个 b 内部有序 → 全局乱序&#10;- ③ 可以。先 b 后 c，正好等于索引顺序，扫描过程本身就是有序的&#10;判据是&quot;扫描结果在索引顺序上是否单调&quot;，不是&quot;有没有范围列&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q4" tag="MySQL" q="下面这段话哪里不准确？" a="&gt; &quot;索引 (a, b, c) 上，只要查询里出现了范围条件，范围列后面的索引列就全部失效了。&quot;&#10;&quot;全部失效&quot;是过度简化。 顺序没有错（范围列后面的列确实不能用来缩小扫描范围），但漏了两件事：&#10;1. 过滤还在：c = 3 仍然可以在索引层判断（ICP），不满足的索引项直接不回表；&#10;2. 扫描和过滤是两件事：ICP 省的是回表，省不掉扫描——范围内的索引项还是要读。&#10;准确说法：范围列之后的列失去定位能力，保留过滤能力。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q5" tag="MySQL" q="下面这段话哪里错了？" a="&gt; &quot;尽量把区分度高的条件写在 WHERE 的最前面，这样容易用上索引。&quot;&#10;后半句错了：优化器会重排条件，WHERE 的书写顺序对执行计划没有影响。 决定顺序的是索引定义。&#10;前半句的方向是对的但对象错了——区分度决定的是&quot;该不该建索引、该把哪一列放索引最左&quot;，不是 SQL 里的书写位置。&#10;顺带一个反直觉点：区分度太低（如 status 只有 3 个值）时，优化器会主动放弃索引走全表——因为扫 1/3 索引再回表 1/3 的行，比顺序全表扫更贵。&quot;没走索引&quot;不一定是写法问题。&#10;---"></flip-card></div></div>
   <div class="mv-section">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？</p>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
-    <flip-card gradable card-id="MySQL/母题-M2-联合索引与最左前缀" tag="MySQL" q="联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？" a="联合索引 (a, b, c) 的排序方式是先按 a 排、a 相同再按 b 排、b 相同再按 c 排；所以只有从最左列开始的连续前缀才能用上这份有序性。"></flip-card>
+    <flip-card gradable card-id="MySQL/母题-M2-联合索引与最左前缀" tag="MySQL" q="联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？" a="联合索引 (a, b, c) 是按字典序排的——先按 a、a 相同按 b、b 相同按 c。所以只有从最左列开始的连续前缀才能确定一个&quot;可定位区间&quot;，从而缩小扫描范围；中间的列断开，后面的列就只能过滤、不能定位。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：索引设计是后端最高频的追问点，而且它<strong>从 M1 就能推出来</strong>——索引是有序结构，「最左前缀」是这个有序性的直接后果。答得出成因，就不用背。</p>
+    
   </div>
   <div class="mv-section">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion">联合索引 <code class="mv-md-code">(a, b, c)</code> 的排序方式是<strong>先按 a 排、a 相同再按 b 排、b 相同再按 c 排</strong>；所以只有从最左列开始的连续前缀才能用上这份有序性。</div>
+    <div class="mv-conclusion">联合索引 <code class="mv-md-code">(a, b, c)</code> 是按<strong>字典序</strong>排的——先按 a、a 相同按 b、b 相同按 c。所以只有<strong>从最左列开始的连续前缀</strong>才能确定一个"可定位区间"，从而缩小扫描范围；中间的列断开，后面的列就只能过滤、不能定位。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>有序性</li><li>连续前缀</li><li>等值在前范围在后</li><li>排序列收尾</li><li>少扫少回表少排序</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>字典序逐层细分</li><li>可定位区间必须连续</li><li>扫描量 = 区间长度</li><li>局部有序 = 全局无序</li><li>等值在前范围靠后</li><li>范围列之后失去定位保留过滤（ICP）</li><li>选择度低优化器主动放弃</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">WHERE b = 2 AND a = 1</code> 和 <code class="mv-md-code">WHERE a = 1 AND b = 2</code> 有区别吗？</strong></strong></p>
-<p class="mv-md-p">没有。优化器会重排条件，<strong>索引匹配看的是列集合，不是书写顺序</strong>。</p>
-<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">a = 1 AND c = 3</code> 能用上 <code class="mv-md-code">(a, b, c)</code> 吗？</strong></strong></p>
-<p class="mv-md-p"><code class="mv-md-code">a</code> 能用（定位区间），<code class="mv-md-code">c</code> 用不上（被中间断开的 <code class="mv-md-code">b</code> 阻断）。但如果是 <code class="mv-md-code">a = 1 AND b = 2 AND c = 3</code>，三列都能用。</p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 <code class="mv-md-code">WHERE b = 2</code> 用不上 <code class="mv-md-code">(a, b, c)</code>？</strong></strong></p>
+<p class="mv-md-p">因为 b 在每个 a 段内有序、段之间无序，找不到一个包含全部结果的连续区间。<strong>"用不上"准确含义是退化成扫描量≈全部，不是报错。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>范围列后面的列到底还能不能用？</strong></strong></p>
+<p class="mv-md-p">能过滤（ICP），不能定位。省回表，不省扫描。</p>
+<p class="mv-md-p"><strong>3. <strong><code class="mv-md-code">(a, b)</code> 和 <code class="mv-md-code">(b, a)</code> 该选哪个？</strong></strong></p>
+<p class="mv-md-p">看去重后的基数（选择度）和查询比例。等值列在前能让切出的段最短；但如果业务里 <code class="mv-md-code">b</code> 才是高频等值且区分度高，两个顺序的收益就会反转。<strong>这是数据分布问题，不是规则问题。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>为什么 <code class="mv-md-code">status</code> 这种列建了索引也不走？</strong></strong></p>
+<p class="mv-md-p">选择度太低，优化器算成本后主动放弃。<strong>先看区分度，再看写法。</strong></p>
 </collapse-panel>
-    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li><code class="mv-md-code">(a, b, c)</code> 和 <code class="mv-md-code">(c, b, a)</code> 在什么查询下效果不同？（围绕高频路径，不是数量）</li><li>索引下推（Index Condition Pushdown）是什么？（5.6+ 优化：在索引层就过滤掉不满足的行，减少回表）</li><li>覆盖索引能不能绕过最左前缀？（不能，它解决的是回表，不是有序性）</li></ul></collapse-panel>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表联合索引、数驭穹图的元数据检索。任何「任务调度 + 按优先级取批」的场景——这几乎是所有后台系统的标配。</p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">索引是有序结构 → 联合索引的排序规则 → 最左前缀是这个规则的后果 → 字段顺序的四条经验 → 失效的典型场景</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p">索引的价值只有一条——<strong>让 MySQL 少扫数据、少回表、少排序</strong>。联合索引的字段顺序，是围绕这条 SQL 的执行路径决定的，不是围绕「哪些字段经常出现」决定的。</p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填】</p><p class="mv-md-p"><strong>通过证据</strong>：白纸上能推一遍「为什么单独 b 用不上」，并对一条真实 SQL 说出索引顺序与理由。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、最左前缀的成因（一次推完）</h3>
-<p class="mv-md-p">索引本身就是一份<strong>排好序的数据</strong>。<code class="mv-md-code">(status, next_retry_time, priority)</code> 的排序规则是：</p>
-<pre class="mv-md-pre">先按 status 排  →  status 相同再按 next_retry_time 排  →  再相同才按 priority 排</pre>
-<p class="mv-md-p">所以：</p>
-<table class="mv-table"><thead><tr><th>查询条件</th><th>能否用索引</th><th>原因</th></tr></thead><tbody><tr><td><code class="mv-md-code">status = 'PENDING'</code></td><td>✅</td><td>命中最左列</td></tr><tr><td><code class="mv-md-code">status = ? AND next_retry_time &lt;= ?</code></td><td>✅</td><td>连续前缀</td></tr><tr><td><code class="mv-md-code">next_retry_time &lt;= ?</code>（单独）</td><td>❌</td><td><code class="mv-md-code">next_retry_time</code> 只在「同 status 内」有序，全局无序</td></tr><tr><td><code class="mv-md-code">priority = 3</code>（单独）</td><td>❌</td><td>只在最小范围内有序</td></tr></tbody></table>
-<p class="mv-md-p"><strong>一句话</strong>：<code class="mv-md-code">b</code> 是「局部有序、全局无序」的，所以只用 <code class="mv-md-code">b</code> 查等于在无序数据里找。</p>
-<h3 class="mv-md-h mv-md-h3">二、字段顺序的四条经验（来自素材）</h3>
-<p class="mv-md-p">围绕<strong>执行路径</strong>设计，不是围绕字段热度：</p>
-<p class="mv-md-p">1. <strong>等值过滤列放前面</strong> —— 等值条件能一次定位到一个连续区间 2. <strong>范围列要谨慎</strong> —— 范围条件会<strong>截断</strong>后面的列，<code class="mv-md-code">a = ? AND b &gt; ? AND c = ?</code> 里 <code class="mv-md-code">c</code> 用不上索引 3. <strong>排序列尽量接在后面</strong> —— 让 <code class="mv-md-code">ORDER BY</code> 直接吃索引的有序性，避免 <code class="mv-md-code">Using filesort</code> 4. <strong>目标始终是</strong>：少扫、少回表、少排序</p>
-<h3 class="mv-md-h mv-md-h3">三、回到那条调度 SQL</h3>
-<pre class="mv-md-pre">WHERE status = 'PENDING' AND next_retry_time &lt;= NOW()
-ORDER BY priority DESC, id ASC
-LIMIT 100</pre>
-<p class="mv-md-p">按上面的规则推：</p>
-<ul class="mv-md-ul"><li><code class="mv-md-code">status</code> 是等值 → 放最前</li><li><code class="mv-md-code">next_retry_time</code> 是范围 → 放第二位（它会截断后面）</li><li><code class="mv-md-code">priority</code> 是排序列 → 接在范围列后面，<strong>能用上一部分有序性</strong>（同一 <code class="mv-md-code">next_retry_time</code> 区间内仍是排好的）</li><li>若 <code class="mv-md-code">priority</code> 无法完全靠索引排序，<code class="mv-md-code">Extra</code> 里会出现 <code class="mv-md-code">Using filesort</code></li></ul>
-<p class="mv-md-p"><strong>注意</strong>：范围列之后的有序性只在「范围内部」有效，这是这条 SQL 是否出现 filesort 的关键——<strong>不要背「范围列后面全失效」，那是过度简化</strong>。</p>
-<h3 class="mv-md-h mv-md-h3">四、索引失效的典型场景</h3>
-<table class="mv-table"><thead><tr><th>场景</th><th>为什么失效</th></tr></thead><tbody><tr><td>列上做函数 / 运算：<code class="mv-md-code">WHERE YEAR(created_at) = 2026</code></td><td>破坏了「按列原值有序」这个前提</td></tr><tr><td>隐式类型转换：字符串列 <code class="mv-md-code">WHERE phone = 13800138000</code></td><td>相当于对列做了类型转换</td></tr><tr><td>前导模糊：<code class="mv-md-code">LIKE '%abc'</code></td><td>前缀不定，无法定位有序区间的起点</td></tr><tr><td><code class="mv-md-code">OR</code> 连接的条件里有非索引列</td><td>只能全表扫再合并</td></tr><tr><td><code class="mv-md-code">!=</code> / <code class="mv-md-code">NOT IN</code></td><td>命中区间过于分散，优化器判断扫索引不如全表</td></tr><tr><td>选择度太低（如 <code class="mv-md-code">status</code> 只有 3 个值）</td><td>优化器主动放弃索引走全表</td></tr></tbody></table>
-<p class="mv-md-p"><strong>最后一条最容易被忽略</strong>：索引失效不一定是「写法错了」，可能是<strong>优化器算过成本后主动不选</strong>。</p>
-    </collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li><code class="mv-md-code">(a, b, c)</code> 与 <code class="mv-md-code">(c, b, a)</code> 在什么查询下效果不同？（围绕高频执行路径，不围绕字段个数）</li><li>索引下推（ICP）和覆盖索引的区别？（ICP 减少<strong>回表次数</strong>，覆盖索引<strong>免掉回表</strong>）</li><li>覆盖索引能不能绕过最左前缀？（不能。它解决的是回表，不是有序性）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表联合索引、数驭穹图的元数据检索、RuleArena 的"按状态取一批待重试任务"——<strong>任何"任务调度 + 按优先级取批"的场景都长这样</strong>，因为后台系统的标配查询就是"等值状态 + 时间范围 + 排序 + LIMIT"。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">成本指标是扫过的行数（不是树高）→ 字典序是什么 → 可定位区间 → 最左前缀是这个要求的后果 → 四种条件逐个判 → 范围列截断的准确说法（失去定位、保留 ICP 过滤）→ 字段顺序三条规则 + 排序的边界 → 失效场景（含优化器主动放弃）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引的有序性只有三种用法——定位、截断、免排序，三者共享同一个前提：满足条件的记录在索引里连续。</strong> 字段顺序就是在"让哪段连续"上做取舍。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上推出「字典序 → 可定位区间必须连续 → 最左前缀」，并对一条真实 SQL 说出索引顺序与两端代价，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
   <div class="mv-section">
