@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redis 模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">Redis 模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/Redis/Redis模块深挖卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>20</b> 道题（<b>9</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>2</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="Redis-01-它为什么快、五种结构各解决什么问题.html"><span class="mv-line-no">一</span><span class="mv-line-name">它为什么快、五种结构各解决什么问题</span><span class="mv-line-q">同一个需求该用哪个结构，底层凭什么撑住</span><span class="mv-line-st">母题 1 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-02-数据怎么不丢.html"><span class="mv-line-no">二</span><span class="mv-line-name">数据怎么不丢</span><span class="mv-line-q">断电、宕机、内存满了分别怎么办</span><span class="mv-line-st">母题 1 · 题 4</span><span class="mv-line-bar"><i style="width:0%"></i></span></a><a class="mv-line-row" href="Redis-03-缓存怎么用不出事故.html"><span class="mv-line-no">三</span><span class="mv-line-name">缓存怎么用不出事故</span><span class="mv-line-q">和 DB 的一致性、三类经典事故、热点与冷启动</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>缓存加速读取</strong>（园区/表/指标的元数据）；<strong>写路径用 Outbox 而不是"提交完顺手删 Redis"</strong></li><li>解决什么问题：<strong>缓存是派生数据，DB 才是权威</strong> —— 这条定位决定了"不一致时以谁为准"</li><li>踩过的坑：【待填 —— 提示：缓存里存的是"元数据"还是"业务事实"？两者对一致性的要求完全不同。】</li><li>决策与取舍：【待填 —— 提示：为什么用 Outbox 而不是"提交完顺手删 Redis"？（关键：PG 提交与 Redis 删除<strong>不可能构成同一个 ACID 事务</strong>）】</li><li>对应母题：【R3】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>权限与语义层的缓存</strong>（口径、指标、粒度这类读多写少的数据）；<strong>限流与短期去重</strong></li><li>解决什么问题：<strong>权限相关的数据能不能缓存？</strong> —— 能，但<strong>必须有明确的失效路径</strong>（权限变了要能立刻失效，否则是安全问题不是性能问题）</li><li>踩过的坑：【待填 —— 提示：权限相关的缓存，改权限时怎么保证立刻生效？TTL 够吗？】</li><li>决策与取舍：【待填 —— 提示：哪些数据可以容忍几分钟的不一致，哪些一秒都不能容忍？这个分界线是怎么划的？】</li><li>对应母题：【R3】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>短期去重 / 限流 / lease 归属</strong>（<code class="mv-md-code">study/09</code> 明确写了"Redis 用 Cache Aside、限流或短期去重，但不把缓存当最终事实"）</li><li>解决什么问题：<strong>动作有副作用，所以 Redis 只能做"辅助判断"，不能做"最终裁决"</strong> —— 最终裁决必须是 DB 的约束或条件更新</li><li>踩过的坑：【待填 —— 提示：如果用 Redis 做"任务是否已处理"的判断，Redis 挂了会怎样？（会不会重复处理）】</li><li>决策与取舍：【待填 —— 提示：为什么"短期状态"可以放 Redis，"任务状态"不行？】</li><li>对应母题：【R3】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

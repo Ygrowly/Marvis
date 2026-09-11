@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 R3 · 缓存一致性与三类经典事故</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Redis.html">← Redis 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Redis</span>
+    <h1 class="mv-topic-title">母题 R3 · 缓存一致性与三类经典事故</h1>
+    <p class="mv-topic-meta">关联 母题-R1-Redis数据结构与选型 · 母题-M11-三日志与两阶段提交 · 母题-P19-唯一约束与UPSERT ｜ 正本 wiki/topics/Redis/母题-R3-缓存一致性与三类事故.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 缓存是派生数据，DB 是权威 ② 为什么做不到强一致 ③ 三类事故的峰值怎么算）· 读完约 10 分钟 · 需要先懂：[[母题-R1-Redis数据结构与选型]]</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">缓存和数据库不一致怎么办？<strong>缓存穿透、击穿、雪崩</strong>分别是什么，怎么防？</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先定"谁是权威"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 缓存是派生数据【事实】</h4>
+<p class="mv-md-p"><strong>这句话是本卡的地基</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>数据库是权威状态，缓存只是它的一份派生副本。</strong></p>
+<p class="mv-md-p">【推导】<strong>这个定位直接推出三件事</strong>：</p>
+<p class="mv-md-p">1. <strong>不一致时以 DB 为准</strong> —— 不是"谁新信谁"，而是<strong>结构上就规定了 DB 是真相</strong> 2. <strong>缓存可以丢</strong> —— 缓存挂了要能从 DB 重建（所以缓存<strong>不是</strong>可用性的单点，<strong>但</strong>它会变成"性能的单点"） 3. <strong>不必追求强一致</strong> —— 派生副本追求强一致，等于给系统加一条永远达不成的目标</p>
+<h4 class="mv-md-h mv-md-h4">1.2 为什么做不到强一致【推导】</h4>
+<p class="mv-md-p">【推导】要强一致，就得让"改 DB"和"改缓存"<strong>一起成功或一起失败</strong>——也就是一个事务。</p>
+<p class="mv-md-p"><strong>但它们是两个独立的系统</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>DB</th><th>Redis</th></tr></thead><tbody><tr><td>事务范围</td><td>自己的事务</td><td>自己的原子操作</td></tr><tr><td>跨系统事务</td><td><strong>没有</strong>（除非上分布式事务，代价极高）</td><td>同左</td></tr></tbody></table>
+<p class="mv-md-p"><strong>所以你只能做到"最终一致"</strong>——问题不是"能不能做到强一致"，而是：</p>
+<p class="mv-md-p mv-md-quote">【取舍】<strong>你允许多大的不一致窗口？窗口里读到旧数据，会不会造成业务事故？</strong></p>
+<p class="mv-md-p"><strong>这句话是本卡唯一真正需要判断的地方</strong>——技术手段都是现成的，<strong>难的是定口径</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"缓存和数据库保证强一致"这个目标本身就是不成立的？</p>
+<h3 class="mv-md-h mv-md-h3">2. 写路径的几种写法（先各自介绍，再比较）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 写法 A：先删缓存，再写 DB【事实】</h4>
+<pre class="mv-md-pre">① DEL cache
+② UPDATE db</pre>
+<p class="mv-md-p"><strong>问题</strong>：① 和 ② 之间有窗口，此时<strong>另一个请求读缓存未命中 → 从 DB 读到旧值 → 写回缓存</strong>。结果：<strong>缓存里是旧值，而且可能长期留着。</strong></p>
+<p class="mv-md-p"><strong>所以这个顺序是错的。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 写法 B：先写 DB，再删缓存（Cache Aside）【事实】</h4>
+<pre class="mv-md-pre">① UPDATE db
+② DEL cache</pre>
+<p class="mv-md-p"><strong>这是主流做法。</strong> 【推导】<strong>为什么它比 A 好</strong>：把"写 DB"放在前面，<strong>并发读最坏也只是读到旧值一次</strong>，而不是把旧值<strong>写进缓存长期保留</strong>。</p>
+<p class="mv-md-p"><strong>它唯一的缺口</strong>：② 失败了（Redis 抖动、网络超时）→ <strong>缓存里是旧值，直到 TTL 到期</strong>。</p>
+<p class="mv-md-p">【取舍】<strong>所以必须配一条兜底</strong>：要么<strong>给 TTL</strong>（让脏数据自己过期），要么<strong>有重试/对账</strong>（发现不一致能修回来）。<strong>没有 TTL 又没有对账的 Cache Aside，就是埋雷。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.3 更新缓存 vs 删除缓存</h4>
+<p class="mv-md-p">【推导】<strong>为什么"删"比"更新"好</strong>：</p>
+<ul class="mv-md-ul"><li><strong>更新</strong>：每次都要算新值并写缓存；如果这个值是聚合出来的（比如榜单），<strong>算出来的新值可能马上又过期</strong>，白算</li><li><strong>删除</strong>：不动缓存内容，<strong>下次谁读谁来重建</strong>（懒加载）—— <strong>只在真有人读的时候才付重建成本</strong></li></ul>
+<p class="mv-md-p"><strong>代价</strong>：删除后紧跟一次读取会"未命中 → 查 DB"（这就是击穿的成因之一）。</p>
+<h4 class="mv-md-h mv-md-h4">2.4 延迟双删 / Outbox / CDC【取舍】</h4>
+<table class="mv-table"><thead><tr><th>做法</th><th>做法</th><th>适用</th></tr></thead><tbody><tr><td><strong>延迟双删</strong></td><td>写 DB 前后各删一次（第二次延迟几百毫秒）</td><td>缓解 A 的窗口，<strong>但延迟时间靠猜</strong>，不解决根本</td></tr><tr><td><strong>Outbox</strong></td><td>把"要失效缓存"这件事<strong>和业务改动写在同一个 DB 事务里</strong>，再由后台任务去执行失效</td><td><strong>要可靠性时用这个</strong></td></tr><tr><td><strong>CDC</strong></td><td>订阅 DB 的变更日志（binlog / WAL）驱动失效</td><td>链路复杂，但<strong>完全不侵入业务</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>Outbox 的想法值得记牢</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"改 DB"和"删缓存"做不到同一个事务，那就把"删缓存"这件事变成一条 DB 记录——它先和业务改动同一个事务落库，再异步执行。</strong></p>
+<p class="mv-md-p"><strong>这把"跨系统原子性"问题转化成了"我自己的事一定要做"的问题</strong>，而后者是可以用本地事务保证的。</p>
+<p class="mv-md-p">【事实】<strong>EnergyOps 用的就是这个思路</strong>——<strong>不用"提交完顺手删 Redis"，因为 PG 的提交和 Redis 的删除不可能构成同一个 ACID 事务</strong>。</p>
+<h3 class="mv-md-h mv-md-h3">3. 三类经典事故</h3>
+<figure-box num="穿透 击穿 雪崩的区别与对策" title="" note="三者都是&quot;缓存没挡住请求&quot;，区别在为什么没挡住"><svg viewBox="0 0 680 338" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>缓存穿透 击穿 雪崩的区别与对策</title>
+<desc>三者都是缓存没挡住请求，区别在原因：查不存在的键、单个热点键刚过期、大批键同时过期。</desc>
+<defs>
+<marker id="figcache-problems-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">三者都叫「缓存没挡住」，但原因和药方完全不同</text>
+<rect x="40" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">穿透</text>
+<text x="58" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">查一个「不存在」的键</text>
+<text x="58" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">缓存没有，DB 也没有</text>
+<text x="58" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 每次请求都落到 DB</text>
+<path d="M56 162 L212 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="58" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="58" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">空值也缓存（短 TTL）</text>
+<text x="58" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">布隆过滤器前置拦截</text>
+<rect x="246" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="264" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">击穿</text>
+<text x="264" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">一个「热点键」刚过期</text>
+<text x="264" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">大量并发同时未命中</text>
+<text x="264" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 同时去查 DB</text>
+<path d="M262 162 L418 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="264" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="264" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">互斥重建（只放一个进）</text>
+<text x="264" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">逻辑过期，后台异步刷新</text>
+<rect x="452" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="470" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">雪崩</text>
+<text x="470" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">「一大批键」同时过期</text>
+<text x="470" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">或者 Redis 整体故障</text>
+<text x="470" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 全量请求打到 DB</text>
+<path d="M468 162 L624 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="470" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="470" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">TTL 加随机抖动</text>
+<text x="470" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">多级缓存 ＋ 限流降级</text>
+<rect x="40" y="270" width="600" height="48" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" dominant-baseline="central">共同点：都是「缓存没挡住请求」。区别只在为什么没挡住 —— 不存在 / 单个热点 / 一大批同时。</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">3.1 各自的定义【事实】</h4>
+<table class="mv-table"><thead><tr><th>事故</th><th>根因</th><th>现象</th></tr></thead><tbody><tr><td><strong>穿透</strong></td><td>查的键<strong>根本不存在</strong>，缓存和 DB 都没有</td><td>每个请求都落到 DB，<strong>且永远不命中</strong></td></tr><tr><td><strong>击穿</strong></td><td><strong>一个</strong>热点键刚好过期</td><td>大量并发<strong>同时</strong>发现未命中 → 同时查 DB</td></tr><tr><td><strong>雪崩</strong></td><td><strong>一大批</strong>键同一时刻过期，或 Redis 整体故障</td><td><strong>全量</strong>请求打到 DB</td></tr></tbody></table>
+<p class="mv-md-p"><strong>最简记法</strong>：</p>
+<pre class="mv-md-pre">穿透 = 不存在
+击穿 = 一个热点没了
+雪崩 = 一大批同时没了</pre>
+<h4 class="mv-md-h mv-md-h4">3.2 对策（每条都对应根因）</h4>
+<table class="mv-table"><thead><tr><th>事故</th><th>对策</th><th>为什么有效</th></tr></thead><tbody><tr><td><strong>穿透</strong></td><td><strong>空值也缓存</strong>（短 TTL）</td><td>让"不存在"也有缓存命中，不再落到 DB</td></tr><tr><td></td><td><strong>布隆过滤器前置</strong></td><td><strong>在缓存之前</strong>就判断"这个键一定不存在"，直接挡掉</td></tr><tr><td><strong>击穿</strong></td><td><strong>互斥重建</strong>（single-flight）：只放一个请求去查 DB，其他等待或读旧值</td><td>把 N 个并发压成 1 个</td></tr><tr><td></td><td><strong>逻辑过期</strong>：缓存不设真实 TTL，值里带过期时间；发现过期就<strong>异步重建</strong>，期间返回旧值</td><td>用"短暂返回旧值"换"DB 不被冲"</td></tr><tr><td><strong>雪崩</strong></td><td><strong>TTL 加随机抖动</strong></td><td>把"同一秒过期"摊成"一段时间内陆续过期"</td></tr><tr><td></td><td><strong>多级缓存</strong>（本地 + Redis）</td><td>减少 Redis 整体故障的影响面</td></tr><tr><td></td><td><strong>限流降级</strong></td><td>DB 是最后一道防线，<strong>必须能扛住"缓存全挂"的流量</strong>（或直接拒绝）</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>三类事故的共同根因是一句话</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"缓存没挡住请求，于是请求全落到 DB。"</strong></p>
+<p class="mv-md-p"><strong>而 DB 的容量是有限的</strong>——所以对策的本质都是<strong>"控制落到 DB 的请求量"</strong>，而不是"把缓存修好"。</p>
+<h3 class="mv-md-h mv-md-h3">4. 还有三个容易被忘掉的工程问题</h3>
+<table class="mv-table"><thead><tr><th>问题</th><th>是什么</th><th>处理</th></tr></thead><tbody><tr><td><strong>热 key</strong></td><td>单个键的访问量极大，<strong>集中在一个分片上</strong></td><td>本地缓存、key 打散（加随机后缀分片）、读写分离</td></tr><tr><td><strong>big value</strong></td><td>单个值太大（几十 KB 到几 MB）</td><td>拆分成多个键、压缩、改用 Hash 分字段取；<strong>大 key 的 <code class="mv-md-code">DEL</code> 会卡住单线程</strong>（[[母题-R1-Redis数据结构与选型]]）</td></tr><tr><td><strong>跨租户 key 设计</strong></td><td>多租户共用一套 Redis</td><td>key 带租户前缀、<strong>权限隔离</strong>、避免同名前缀互相淘汰</td></tr></tbody></table>
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"先删缓存再写 DB 可以保证一致"</td><td>【推导】<strong>错的，而且比反过来更糟</strong>：中间的读会把旧值<strong>写回缓存长期保留</strong>（2.1）</td></tr><tr><td>"缓存和 DB 可以用事务保证强一致"</td><td>【推导】<strong>不可能</strong>——两个独立系统没有共同事务。<strong>目标是"最终一致 + 可接受的不一致窗口"</strong></td></tr><tr><td>"有了缓存就不怕 DB 挂了"</td><td>【取舍】缓存平时<strong>替你挡住了流量</strong>；一旦缓存整体故障，<strong>全部流量会瞬间倒向 DB</strong> —— 这正是雪崩的第二种成因。<strong>所以必须准备限流降级</strong></td></tr><tr><td>"给所有 key 设一样的 TTL 最省事"</td><td>【推导】<strong>这正是雪崩的成因</strong>。TTL 要加<strong>随机抖动</strong></td></tr><tr><td>"缓存永不过期就没事了"</td><td>【取舍】永不过期意味着<strong>永远不会自愈</strong>——一旦写入不一致，脏数据留到永远。<strong>TTL 是兜底，不是可选项</strong></td></tr><tr><td>"空值缓存会浪费内存，不如不做"</td><td>【取舍】短 TTL 的空值缓存<strong>正是为了防穿透</strong>；成本是一个短命的小 key，收益是 DB 不被无效请求打</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q1" tag="Redis" q="10 万个 key 在同一时刻被创建，TTL 都设 3600 秒。&#10;问：它们会在什么时候过期？如果给 TTL 加 0–600 秒的随机抖动，过期请求的峰值从多少降到多少？" a="不加抖动：10 万个 key 在同一秒过期 → 那一秒 DB 突然收到 约 10 万 QPS（如果这些 key 都有人在读）&#10;加 0–600 秒抖动：过期时间散布在 600 秒的窗口里 → 峰值 = 100,000 / 600 ≈ 167 QPS&#10;峰值降低约 600 倍。&#10;【推论】加抖动是一行代码的事，但不做就是一次事故。 这就是&quot;雪崩&quot;最典型的成因——不是有人攻击，而是自己的代码把过期时间对齐了。&#10;波动提醒：如果这 10 万个 key 是&quot;每天凌晨批量预热&quot;生成的，那它们天然会在同一秒过期——这种场景必须加抖动。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q2" tag="Redis" q="下面三个现象分别属于穿透、击穿还是雪崩？各自的直接对策是什么？&#10;① 有人用 id=-1、id=99999999 这类不存在的 ID 高频请求接口&#10;② 首页那一个商品缓存刚过期，一瞬间数据库 CPU 打满&#10;③ 服务重启后批量预热了缓存，2 小时后数据库周期性挨打" a="现象 · 类型 · 对策&#10;① 不存在的 ID · 穿透（键根本不存在） · 空值缓存（短 TTL）+ 布隆过滤器前置&#10;② 单个热 key 刚过期 · 击穿 · 互斥重建（只放一个请求去查 DB）/ 逻辑过期&#10;③ 批量预热的 key 同时到期 · 雪崩 · TTL 加随机抖动 + 多级缓存 + 限流降级&#10;【注意③】它暴露了一条容易忽略的规律：批量预热 = 批量同时过期。所以&quot;批量写入缓存&quot;的代码，必须同时&quot;批量加抖动&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q3" tag="Redis" q="一个热点 key 承载 10 万 QPS。某时刻它过期了，此时并发请求全部未命中。后端 DB 的上限是 5000 QPS。&#10;问：不用保护会发生什么？加了&quot;互斥重建&quot;之后，DB 收到多少请求？" a="不保护：10 万 QPS 全部落到 DB → 是 DB 上限的 20 倍 → 大概率把 DB 打挂（而 DB 一旦挂了，所有接口都受影响，不只是这个 key）&#10;加互斥重建：只有一个请求被放行去查 DB，其他请求等待它重建完成或直接读旧值 → DB 压力从 10 万降到 约 1&#10;【推论】这就是&quot;单个热点键能打挂整个系统&quot;的机制——它不是因为请求多，而是因为&quot;同时发现未命中&quot;。 加锁/互斥的成本，远低于 DB 挂掉的成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q4" tag="Redis" q="下面这段话哪里错了？&#10;&quot;缓存一致性很好解决：写数据的时候先删缓存、再更新数据库，这样读请求就会去数据库拿最新的。&quot;" a="这个顺序是错的，而且比反过来更糟。&#10;问题出在 ① 和 ② 之间的窗口：&#10;``&#10;T1: 线程 A 删除缓存&#10;T2: 线程 B 读缓存 → 未命中 → 从 DB 读到【旧值】&#10;T3: 线程 A 更新 DB（现在 DB 是新值了）&#10;T4: 线程 B 把【旧值】写回缓存     ← 脏数据被写进缓存&#10;`&#10;结果：缓存里留着旧值，而且可能长期留着（如果没设 TTL）。&#10;正确做法是反过来（Cache Aside）：&#10;`&#10;① UPDATE db&#10;② DEL cache&#10;``&#10;这样并发读最坏只是读到一次旧值，而不会把旧值写进缓存长期保留。&#10;【补充】即便用了正确顺序，仍有缺口：② 失败时缓存就是脏的。所以必须配 TTL 兜底，或者上 Outbox 保证&quot;删缓存&quot;这件事一定会被执行。（EnergyOps 用的就是后者。）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;只要引入 Redis，系统的可用性就更好了，因为数据库挂的时候缓存还能扛。&quot;" a="这句话把&quot;平时&quot;和&quot;故障时&quot;搞反了——引入缓存反而增加了一个故障面。&#10;平时：缓存替你挡住了大部分读流量，DB 很轻松。✅&#10;缓存整体故障时：被挡住的那部分流量会瞬间全部倒向 DB。假设原本 10 万 QPS 里 95% 由缓存承接，缓存一挂 → DB 瞬间要接 10 万 QPS（原来只接 5000）。结果往往不是&quot;降级仍可用&quot;，而是&quot;DB 被连锁打挂&quot;。&#10;【推论】所以必须准备两件事：&#10;1. 限流降级：DB 是最后一道防线，要能主动拒绝请求（宁可拒绝一部分，也不要全挂）&#10;2. 多级缓存 / 本地缓存：Redis 挂了还有一层本地缓存顶着&#10;准确说法：缓存提升的是&quot;平时的吞吐&quot;，它把故障风险从&quot;缓存的可用性&quot;转嫁成了&quot;DB 的抗冲击能力&quot;——所以缓存故障必须专门演练。&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">缓存怎么和 DB 保持一致？三类经典事故各自的根因与对策是什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Redis/母题-R3-缓存一致性与三类事故" tag="Redis" q="缓存怎么和 DB 保持一致？三类经典事故各自的根因与对策是什么？" a="数据库是权威状态，缓存是它的派生副本——两个独立系统没有共同事务，所以只能追求&quot;最终一致 + 可接受的不一致窗口&quot;。写路径用 Cache Aside（先写 DB 再删缓存），删除失败要靠 TTL 兜底或 Outbox 保证（EnergyOps 用 Outbox，因为 PG 提交与 Redis 删除不可能构成同一个事务）。三类事故的共同根因是&quot;缓存没挡住请求&quot;：穿透 = 键不存在（空值缓存 / 布隆过滤器）、击穿 = 一个热点过期（互斥重建 / 逻辑过期）、雪崩 = 一大批同时过期（TTL 加抖动 / 多级缓存 / 限流降级）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>数据库是权威状态，缓存是它的派生副本</strong>——两个独立系统<strong>没有共同事务</strong>，所以只能追求"最终一致 + 可接受的不一致窗口"。写路径用 <strong>Cache Aside（先写 DB 再删缓存）</strong>，删除失败要靠 <strong>TTL 兜底或 Outbox 保证</strong>（EnergyOps 用 Outbox，因为 <strong>PG 提交与 Redis 删除不可能构成同一个事务</strong>）。三类事故的共同根因是"<strong>缓存没挡住请求</strong>"：<strong>穿透 = 键不存在</strong>（空值缓存 / 布隆过滤器）、<strong>击穿 = 一个热点过期</strong>（互斥重建 / 逻辑过期）、<strong>雪崩 = 一大批同时过期</strong>（<strong>TTL 加抖动</strong> / 多级缓存 / 限流降级）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>缓存是派生数据</li><li>DB 权威</li><li>没有跨系统事务所以做不到强一致</li><li>判据是"允许多大的不一致窗口"</li><li>先写 DB 再删缓存</li><li><strong>删缓存失败要有兜底（TTL 或 Outbox）</strong></li><li>删比更新好（懒加载）</li><li>穿透=不存在、击穿=一个热点、雪崩=一大批</li><li>空值缓存 + 布隆</li><li>互斥重建</li><li><strong>TTL 加抖动</strong></li><li>DB 是最后一道防线要能限流</li><li>缓存故障会把流量倒给 DB</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>先删缓存还是先写 DB？</strong></strong></p>
+<p class="mv-md-p"><strong>先写 DB 再删缓存</strong>。反过来会让"并发读把旧值写回缓存并长期保留"。</p>
+<p class="mv-md-p"><strong>2. <strong>删缓存失败了怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>TTL 兜底</strong>（让脏数据自己过期）+ <strong>重试/对账</strong>；要可靠性就上 <strong>Outbox</strong>（把"删缓存"和业务改动写进同一个本地事务）。</p>
+<p class="mv-md-p"><strong>3. <strong>为什么删除缓存而不是更新缓存？</strong></strong></p>
+<p class="mv-md-p"><strong>懒加载</strong>：只在真有人读时才付重建成本；聚合值（如榜单）尤其不该每次写都重算。</p>
+<p class="mv-md-p"><strong>4. <strong>击穿和雪崩怎么区分？</strong></strong></p>
+<p class="mv-md-p"><strong>击穿是"一个热点键"，雪崩是"一大批同时失效"</strong>。对策也因此不同：击穿靠<strong>互斥重建</strong>，雪崩靠<strong>TTL 抖动</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>缓存和 DB 能强一致吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不能</strong>（没有共同事务）。能做的是"最终一致 + 明确的不一致窗口 + 对账"。</p>
+<p class="mv-md-p"><strong>6. <strong>为什么项目里用 Outbox 而不是顺手删缓存？</strong></strong></p>
+<p class="mv-md-p"><strong>因为 PG 的提交和 Redis 的删除不可能构成同一个 ACID 事务</strong>。把"删缓存"变成一条 DB 记录，才能用本地事务保证"这件事一定会做"。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「什么时候不该加缓存？」——写多读少、强一致要求高（如余额扣减）、数据量小且 DB 本来就快</li><li>「缓存预热怎么做才不出事故？」——<strong>预热就要加 TTL 抖动</strong>（Q2 的 ③），否则预热即埋雷</li><li>「多级缓存怎么保持一致？」——<strong>逐级 TTL 递减 + 失效从最上层开始广播</strong>；或者接受"本地缓存有更长的窗口"</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的 Outbox</strong>（本卡最直接的项目证据：<strong>为什么不用"提交完顺手删 Redis"</strong>）；<strong>RuleArena 的短期去重与限流</strong>（<strong>Redis 只能做辅助判断，最终裁决必须是 DB 的约束或条件更新</strong>——把这条讲清楚，就同时回答了"Redis 挂了会不会重复处理"）；<strong>数驭穹图</strong> 的口径/权限缓存（<strong>权限必须先想清失效路径</strong>：权限变了要能立刻失效，这是安全问题不是性能问题）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">缓存是派生数据、DB 是权威 → 为什么做不到强一致（没有跨系统事务）→ 四种写路径的对比（先删的坑 / Cache Aside / 删 vs 更新 / Outbox 与 CDC）→ 三类事故的定义与对策（按根因配药）→ 热 key / big value / 跨租户 key → 缓存故障时 DB 要能限流降级</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>缓存的价值是"用可接受的不一致，换吞吐与延迟"。</strong> 一旦把缓存当权威状态、或追求强一致，就同时失去了它的价值和它的安全边界。所以判断任何一个缓存方案，先问两件事：<strong>这是派生数据吗？能容忍多大的不一致窗口？</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"为什么做不到强一致"并给出不一致窗口的判据；能按根因区分三类事故并对症下药；能<strong>算出</strong> TTL 抖动把峰值降多少；能说清 Outbox 解决的是什么问题，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

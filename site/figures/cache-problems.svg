@@ -1,0 +1,39 @@
+<svg viewBox="0 0 680 338" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>缓存穿透 击穿 雪崩的区别与对策</title>
+<desc>三者都是缓存没挡住请求，区别在原因：查不存在的键、单个热点键刚过期、大批键同时过期。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">三者都叫「缓存没挡住」，但原因和药方完全不同</text>
+<rect x="40" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">穿透</text>
+<text x="58" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">查一个「不存在」的键</text>
+<text x="58" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">缓存没有，DB 也没有</text>
+<text x="58" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 每次请求都落到 DB</text>
+<path d="M56 162 L212 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="58" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="58" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">空值也缓存（短 TTL）</text>
+<text x="58" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">布隆过滤器前置拦截</text>
+<rect x="246" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="264" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">击穿</text>
+<text x="264" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">一个「热点键」刚过期</text>
+<text x="264" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">大量并发同时未命中</text>
+<text x="264" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 同时去查 DB</text>
+<path d="M262 162 L418 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="264" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="264" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">互斥重建（只放一个进）</text>
+<text x="264" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">逻辑过期，后台异步刷新</text>
+<rect x="452" y="44" width="188" height="210" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="470" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">雪崩</text>
+<text x="470" y="96" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">「一大批键」同时过期</text>
+<text x="470" y="120" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">或者 Redis 整体故障</text>
+<text x="470" y="144" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">→ 全量请求打到 DB</text>
+<path d="M468 162 L624 162" stroke="#BA7517" stroke-width="0.5" stroke-dasharray="3 3" fill="none"/>
+<text x="470" y="184" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">对策</text>
+<text x="470" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">TTL 加随机抖动</text>
+<text x="470" y="232" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">多级缓存 ＋ 限流降级</text>
+<rect x="40" y="270" width="600" height="48" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" dominant-baseline="central">共同点：都是「缓存没挡住请求」。区别只在为什么没挡住 —— 不存在 / 单个热点 / 一大批同时。</text>
+</svg>
