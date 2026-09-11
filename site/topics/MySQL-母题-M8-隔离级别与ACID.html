@@ -14,67 +14,144 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
     <h1 class="mv-topic-title">母题 M8 · 隔离级别与 ACID</h1>
-    <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M10-锁与死锁 · 母题-M11-三日志与两阶段提交 ｜ 正本 wiki/topics/MySQL/母题-M8-隔离级别与ACID.md</p>
+    <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M10-锁与死锁 · 母题-M11-三日志与两阶段提交 · 母题-P8-隔离级别与读一致性 ｜ 正本 wiki/topics/MySQL/母题-M8-隔离级别与ACID.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① 事务的唯一前提 ② ACID 是推出来的不是背的 ③ 隔离级别是一条取舍谱系）· 读完约 9 分钟 · 需要先懂：无</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">四个隔离级别各挡住哪个并发问题？ACID 四个字母分别靠什么机制实现？</p></div>
   </div>
 
-
-
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：事务只有一句话</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 定义【事实】</h4>
+<p class="mv-md-p"><strong>事务 = 一组动作，一起成功或一起失败。</strong></p>
+<p class="mv-md-p">就这一句。<strong>没有"必须满足 ACID"这种前提</strong>——ACID 是从这一句<strong>推出来的</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 从这一句推出 ACID</h4>
+<p class="mv-md-p">推四步：</p>
+<p class="mv-md-p"><strong>① 要能"一起失败" → 必须能撤销 → 需要 undo（前镜像）</strong></p>
+<p class="mv-md-p">【推导】部分成功必须能退回去，所以写入之前要记下"<strong>改之前是什么样</strong>"。这就是 undo log 的职责。</p>
+<p class="mv-md-p"><strong>② 要能"一起成功"在这之后不丢 → 必须能重放 → 需要 redo（后镜像）</strong></p>
+<p class="mv-md-p">【推导】事务说"提交成功"，但数据页可能还在内存里。此时断电，需要一个"<strong>改成什么样</strong>"的记录，重启后重放补上。这是 redo log 的职责。</p>
+<p class="mv-md-p"><strong>③ 并发下多个事务同时在跑 → 需要两种分工</strong></p>
+<p class="mv-md-p">【推导】并发只分两种关系：</p>
+<ul class="mv-md-ul"><li><strong>写与写</strong>：会互相覆盖 → <strong>必须排队</strong> → 用<strong>锁</strong></li><li><strong>读与写</strong>：读不需要改变数据 → <strong>不必排队</strong> → 用 <strong>MVCC</strong> 让读去看一个"旧版本"</li></ul>
+<p class="mv-md-p"><strong>④ 前三步都做完，整体就表现出"从合法状态到合法状态" → 这就是一致性</strong></p>
+<p class="mv-md-p">【推导】<strong>一致性不是第四件事，是前三件事的结果。</strong> 它还需要数据库约束（唯一、外键、CHECK）和业务校验兜底——但那些是"额外加固"，不是"单独的机制"。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"一致性靠什么实现"这句话本身就问得不准确？</p>
+<p class="mv-md-p mv-md-quote">【结论】<strong>A = undo｜D = redo｜I = 锁 + MVCC｜C = 前三者 + 约束共同得到的结果。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>撤销看前镜像，恢复看后镜像。</strong></p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">【事实】数据库界把这个四要素结构称为 ACID。</p>
+<h3 class="mv-md-h mv-md-h3">2. 并发会出什么问题</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 三个现象【事实】</h4>
+<table class="mv-table"><thead><tr><th>现象</th><th>定义</th><th>例子</th></tr></thead><tbody><tr><td><strong>脏读</strong></td><td>读到了别人<strong>还没提交</strong>的数据（它可能回滚）</td><td>读到 <code class="mv-md-code">status='DONE'</code>，但那个事务后来回滚了</td></tr><tr><td><strong>不可重复读</strong></td><td>同一事务内<strong>两次读同一行</strong>，结果不同</td><td>先读余额 100，再读变 80</td></tr><tr><td><strong>幻读</strong></td><td>同一事务内<strong>两次范围查询</strong>，行数不同</td><td>先查到 10 条，再查变 11 条</td></tr></tbody></table>
+<p class="mv-md-p"><strong>三者的区别在"变的是什么"</strong>：</p>
+<ul class="mv-md-ul"><li>脏读 → 变的是<strong>数据的提交状态</strong></li><li>不可重复读 → 变的是<strong>同一行的值</strong></li><li>幻读 → 变的是<strong>结果集的成员（行数）</strong></li></ul>
+<p class="mv-md-p">【推导】<strong>这个区分不是文字游戏</strong>：不可重复读可以用"锁住那一行"解决；幻读锁不住——<strong>因为要防的是"还不存在的行"</strong>，所以它必须靠另一套机制（间隙锁，见 M10）。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 为什么会有这些问题</h4>
+<p class="mv-md-p">根子上只有一个原因：<strong>并发事务的执行顺序不确定，而你看见的东西取决于"你在哪一刻看"。</strong></p>
+<p class="mv-md-p">【推导】所以解决思路只有两条：</p>
+<p class="mv-md-p">1. <strong>让读看到固定的某一刻</strong> → 快照（MVCC 路线） 2. <strong>让冲突的操作排队</strong> → 锁（串行化路线）</p>
+<p class="mv-md-p"><strong>四个隔离级别，就是这两条路线的不同配比。</strong></p>
+<h3 class="mv-md-h mv-md-h3">3. 四个级别：一条单调的取舍谱系</h3>
+<figure-box num="四个隔离级别是一条取舍谱系" title="" note="越往右挡住的异常越多、并发越低；InnoDB 默认取中间的可重复读"><svg viewBox="0 0 680 208" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>四个隔离级别的取舍谱系</title>
+<desc>从读未提交到串行化，挡住的异常越来越多，并发度越来越低；InnoDB 默认取可重复读。</desc>
+<defs>
+<marker id="figisolation-spectrum-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="110" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读未提交</text>
+<text x="110" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">挡 0 个 · 全暴露</text>
+<rect x="193" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="263" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读已提交</text>
+<text x="263" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">挡脏读</text>
+<rect x="346" y="36" width="141" height="58" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="416" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">可重复读（InnoDB 默认）</text>
+<text x="416" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">挡脏读 · 不可重复读</text>
+<rect x="499" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="569" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">串行化</text>
+<text x="569" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">全挡，但最慢</text>
+<text x="40" y="108" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">并发更高 · 异常更多</text>
+<text x="640" y="108" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="end" dominant-baseline="central">一致性更强 · 并发更低</text>
+<path d="M40 120 L646 120" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figisolation-spectrum-svg-arrow)"/>
+<rect x="40" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="110" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">完全无保护</text>
+<text x="110" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">会读到别人未提交的数据</text>
+<rect x="193" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="263" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">每次读都可能变</text>
+<text x="263" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">同一事务两次读不一致</text>
+<rect x="346" y="136" width="141" height="52" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="416" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">间隙锁会挡住插入</text>
+<text x="416" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">锁范围可能远大于你要的行</text>
+<rect x="499" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="569" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读也要加锁</text>
+<text x="569" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">并发最差，更容易死锁</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">3.1 逐级挡住什么【事实】</h4>
+<table class="mv-table"><thead><tr><th>级别</th><th>挡住</th><th>没挡住</th></tr></thead><tbody><tr><td><strong>读未提交 RU</strong></td><td>——</td><td>全都会发生</td></tr><tr><td><strong>读已提交 RC</strong></td><td>脏读</td><td>不可重复读、幻读</td></tr><tr><td><strong>可重复读 RR</strong>（InnoDB 默认）</td><td>脏读、不可重复读</td><td>幻读（在 MySQL 里被间隙锁额外挡住，见 4）</td></tr><tr><td><strong>串行化</strong></td><td>全部</td><td>——</td></tr></tbody></table>
+<p class="mv-md-p"><strong>这个表的规律</strong>：<strong>每一级都是一次"用并发换正确性"的交换</strong>，不是"越严格越好"。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 唯一指标：读写冲突面</h4>
+<p class="mv-md-p">要比较级别，必须<strong>用同一个指标</strong>。取"<strong>任意两个并发请求会互相阻塞的概率</strong>"（按请求对估算）：</p>
+<p class="mv-md-p">假设真实负载里 <strong>读占 90%、写占 10%</strong>：</p>
+<table class="mv-table"><thead><tr><th>情况</th><th>谁参与互斥</th><th>冲突面</th></tr></thead><tbody><tr><td><strong>无 MVCC</strong>（读加 S 锁、写加 X 锁，S 与 X 互斥）</td><td>读-写、写-写</td><td>2 × 0.9 × 0.1 = <strong>约 18%</strong></td></tr><tr><td><strong>有 MVCC</strong>（读不加锁）</td><td>只剩写-写</td><td>0.1 × 0.1 = <strong>约 1%</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>MVCC 的价值不是"更快"，是"把读从冲突里摘出去"。</strong> 读占比越高，收益越大——报表型、列表型负载收益最明显。</p>
+<p class="mv-md-p"><strong>同一把尺子量四个级别</strong>：</p>
+<table class="mv-table"><thead><tr><th>级别</th><th>读要不要参与排队</th></tr></thead><tbody><tr><td>RU / RC / RR（快照读）</td><td><strong>不参与</strong>（MVCC 兜住）</td></tr><tr><td>串行化</td><td><strong>参与</strong>（普通 <code class="mv-md-code">SELECT</code> 也要加 S 锁）→ 冲突面回到约 18%</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>串行化的代价，本质是把 MVCC 挣来的那 17 个百分点又还回去了。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.3 为什么 InnoDB 默认 RR【取舍】</h4>
+<p class="mv-md-p">两个理由，<strong>两个都要说，只答一个会显得是背的</strong>：</p>
+<p class="mv-md-p">1. <strong>历史原因</strong>：早期 RC 在 binlog 为 statement 格式时，主从可能执行出不同结果（RR 的间隙锁恰好压住了这类不确定性）。 2. <strong>工程权衡</strong>：RR + MVCC + 间隙锁的组合，在"一致性够用"与"并发不塌"之间取了一个划算的点。</p>
+<p class="mv-md-p"><strong>准确说法是</strong>：<strong>默认 RR 是历史 + 权衡的结果，不是"RR 唯一正确"。</strong> PostgreSQL 默认就是 RC，而且不靠间隙锁——两边都活得很好（[[母题-P8-隔离级别与读一致性]]）。</p>
+<h3 class="mv-md-h mv-md-h3">4. RR 下的幻读：一半靠 MVCC，一半靠锁</h3>
+<p class="mv-md-p">先把两个读定义清楚【事实】：</p>
+<table class="mv-table"><thead><tr><th></th><th>什么操作</th><th>用什么</th></tr></thead><tbody><tr><td><strong>快照读</strong></td><td>普通 <code class="mv-md-code">SELECT</code></td><td><strong>MVCC + 快照</strong>（不加锁）</td></tr><tr><td><strong>当前读</strong></td><td><code class="mv-md-code">SELECT ... FOR UPDATE</code> / <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">DELETE</code> / <code class="mv-md-code">INSERT</code></td><td><strong>读最新版本 + 加锁</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>幻读的准确说法</strong>，靠这一对概念分开讲：</p>
+<ul class="mv-md-ul"><li><strong>快照读下不幻读</strong>：RR 的快照在事务第一次读时定住，<strong>别人后面插的行根本不在快照里</strong>；</li><li><strong>当前读下也不幻读</strong>：必须读最新版本，MVCC 帮不上，<strong>靠 next-key lock 锁住范围阻止插入</strong>（M10）；</li><li><strong>两者混用时会"看起来像幻读"</strong>：先用快照读看到 10 行，接着 <code class="mv-md-code">UPDATE</code>（当前读）时发现是 11 行——<strong>这是两套机制各干各的正常结果，不是 bug。</strong></li></ul>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"RR 完全解决了幻读"这句话是错的？</p>
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"一致性由隔离级别实现"</td><td>【推导】C 是<strong>结果</strong>：A（undo）+ D（redo）+ I（锁+MVCC）+ 约束共同得到，<strong>没有独立的一致性机制</strong></td></tr><tr><td>"RR 完全解决了幻读"</td><td>【推导】快照读靠 MVCC、当前读靠间隙锁，<strong>两种读都不幻读，但混用时会出现"看起来像幻读"</strong>；说"完全解决"是漏了机制</td></tr><tr><td>"隔离级别越高越好"</td><td>【取舍】串行化把读也拉进排队，冲突面从约 1% 回到约 18%（3.2 的估算）</td></tr><tr><td>"MVCC 是 RR 专属"</td><td>【事实】MVCC 是 InnoDB 的基础能力，<strong>RC 下同样生效</strong>，只是快照刷新得更勤（M9）</td></tr><tr><td>"MySQL 和 PG 默认隔离级别一样"</td><td>【事实】<strong>MySQL 默认 RR，PG 默认 RC</strong>。这是最容易被抓住的方言错误——两边连"怎么处理幻读"都不是一套（[[母题-P8-隔离级别与读一致性]]）</td></tr><tr><td>"写写冲突时 MySQL 会报错让我重试"</td><td>【取舍】MySQL 的哲学是<strong>排队等锁</strong>；PG 在 RR 以上会<strong>报序列化失败（40001）让你重试</strong>。"冲突就等"和"冲突就报错"是两种代价模型</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q1" tag="MySQL" q="一个服务的负载里读占 90%、写占 10%。分别估算&quot;读加锁&quot;和&quot;读靠 MVCC 不加锁&quot;两种情况下，并发请求互相阻塞的比例。" a="（按请求对估算，只计数互斥的组合）：&#10;读加锁（S 与 X 互斥）：互斥组合是 读-写 + 写-写 → 2 × 0.9 × 0.1 + 0.1 × 0.1 = 约 19%&#10;读靠 MVCC（读不参与）：互斥组合只剩 写-写 → 0.1 × 0.1 = 约 1%&#10;降低约一个数量级。 口径提醒：这是只按请求类型占比估的粗略模型，真实系统还要看访问同一份数据的倾斜度（热点行会把概率显著推高）。&#10;这个算式的意义：MVCC 的收益不是&quot;更快&quot;，是&quot;把读从冲突里摘出去&quot;——读占比越高收益越大。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q2" tag="MySQL" q="事务 A 依次执行：① BEGIN ② SELECT balance FROM account WHERE id=1（读到 100）③ 事务 B 执行 UPDATE account SET balance=80 WHERE id=1 并 COMMIT ④ A 再执行一次同样的 SELECT。&#10;分别在 RC 和 RR 下，第 ④ 步读到什么？" a="RC：读到 80。RC 每条语句生成一个新的 ReadView，所以能看到 B 刚提交的结果 → 出现不可重复读。&#10;RR：读到 100。RR 在第一次快照读时定住 ReadView 并复用，B 的提交不在这个快照里 → 可重复读。&#10;关键差别只有一个：ReadView 是不是每条语句重新生成。这就是&quot;可重复读&quot;的全部实现（M9 展开）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q3" tag="MySQL" q="要同时满足&quot;回滚能撤销&quot;和&quot;提交后断电不丢&quot;，最少需要哪几个日志组件？各自记的是&quot;改之前&quot;还是&quot;改成什么&quot;？" a="需求 · 组件 · 记什么&#10;回滚能撤销（原子性） · undo log · 改之前的镜像（前镜像）&#10;提交后不丢（持久性） · redo log · 改成什么样（后镜像）&#10;两个都需要，不能省。 记忆点：撤销看前镜像，恢复看后镜像。&#10;【补充】InnoDB 还有一个 binlog，那是 Server 层的归档日志（用于复制和恢复）。它不负责 A 也不负责 D，但它的存在带来一个新问题——两份日志要一致，于是有了两阶段提交（[[母题-M11-三日志与两阶段提交]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;数据库的一致性是通过隔离级别实现的，所以隔离级别越高，一致性越强。&quot;" a="两处都错。&#10;1. &quot;一致性由隔离级别实现&quot; —— C 不是独立机制，它是 A（undo）+ D（redo）+ I（锁与 MVCC）+ 数据库约束共同作用的结果。隔离级别只负责 I 这一项。&#10;2. &quot;隔离级别越高一致性越强&quot; —— 隔离级别提高的是并发正确性，不是&quot;一致性&quot;这个整体属性。而且它有代价：串行化会把读也拉进排队（Q1 的模型里冲突面从约 1% 回到约 19%）。&#10;准确说法：一致性是&quot;事务把数据库从一个合法状态带到另一个合法状态&quot;，它靠 A、D、I 加上约束共同保证；隔离级别只是其中 I 的档位。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都默认使用可重复读，两边处理幻读的方式也一样。&quot;" a="两句都错。&#10;1. 默认值不同：MySQL 默认 RR，PostgreSQL 默认 RC。&#10;2. 幻读处理机制不同：MySQL 用 next-key lock（间隙锁）&quot;挡住&quot;插入；PostgreSQL 根本没有间隙锁，它靠快照 + 在必要时报序列化失败让应用重试。&#10;这两条是面试安全底线——把 MySQL 的语义套到 PG 上（或反过来）是明确错误，一说出来就暴露只在一边工作过。PG 侧的对照见 [[母题-P8-隔离级别与读一致性]] 和 [[母题-P10-无间隙锁与锁变体]]。&#10;---"></flip-card></div></div>
   <div class="mv-section">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？</p>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
-    <flip-card gradable card-id="MySQL/母题-M8-隔离级别与ACID" tag="MySQL" q="四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？" a="并发三问题是脏读（读到未提交）、不可重复读（同一事务两次读不同值）、幻读（两次范围查询行数不同）；四个级别逐级递进——读未提交（全暴露）→ 读已提交（挡脏读）→ 可重复读（InnoDB 默认，再挡不可重复读，用间隙锁挡幻读）→ 串行化（读也加锁，全挡但并发最差）。ACID 的实现：A 原子性 = undo log；D 持久性 = redo log；I 隔离性 = 锁 + MVCC；C 一致性 = 前三者加上业务约束共同得到的结果。"></flip-card>
+    <flip-card gradable card-id="MySQL/母题-M8-隔离级别与ACID" tag="MySQL" q="四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？" a="事务就是&quot;一组动作一起成败&quot;。A 靠 undo（前镜像）、D 靠 redo（后镜像）、I 靠锁管写写 + MVCC 管读写、C 是前三者加约束共同得到的结果——它不是独立机制。 并发三问题是脏读、不可重复读、幻读，四个隔离级别逐级挡住它们，越严格并发越低。InnoDB 默认 RR，靠 MVCC 挡快照读的幻读、靠间隙锁挡当前读的幻读。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是主线三的地基</strong>。它有一个几乎人人会答错一半的追问——<strong>"一致性由谁实现？"</strong> 答成"由隔离级别实现"或"由某个机制实现"都错了：<strong>C 是前三者 + 约束共同保证的结果，它自己不是独立机制</strong>。<strong>答对这一条，比背四个级别有用得多。</strong></p>
+    
   </div>
   <div class="mv-section">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion">并发三问题是<strong>脏读（读到未提交）、不可重复读（同一事务两次读不同值）、幻读（两次范围查询行数不同）</strong>；四个级别逐级递进——<strong>读未提交（全暴露）→ 读已提交（挡脏读）→ 可重复读（InnoDB 默认，再挡不可重复读，用间隙锁挡幻读）→ 串行化（读也加锁，全挡但并发最差）</strong>。<strong>ACID 的实现：A 原子性 = undo log；D 持久性 = redo log；I 隔离性 = 锁 + MVCC；C 一致性 = 前三者加上业务约束共同得到的结果。</strong></div>
+    <div class="mv-conclusion">事务就是"一组动作一起成败"。<strong>A 靠 undo（前镜像）、D 靠 redo（后镜像）、I 靠锁管写写 + MVCC 管读写、C 是前三者加约束共同得到的结果——它不是独立机制。</strong> 并发三问题是脏读、不可重复读、幻读，四个隔离级别逐级挡住它们，越严格并发越低。<strong>InnoDB 默认 RR，靠 MVCC 挡快照读的幻读、靠间隙锁挡当前读的幻读。</strong></div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>脏读</li><li>不可重复读</li><li>幻读</li><li>RC vs RR</li><li>快照读与当前读</li><li>undo=原子性</li><li>redo=持久性</li><li>锁+MVCC=隔离性</li><li><strong>一致性是结果不是机制</strong></li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>一起成败</li><li>撤销看前镜像、恢复看后镜像</li><li>undo=A、redo=D、锁+MVCC=I</li><li><strong>一致性是结果不是机制</strong></li><li>脏读=未提交</li><li>不可重复读=同一行</li><li>幻读=行数</li><li>RC 挡脏读、RR 再加不可重复读</li><li>快照读 vs 当前读</li><li>默认 RR 是历史+权衡</li><li>MySQL RR vs PG RC</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>采集与聚合事务</strong>（"一组动作一起成败"——窗口幂等与补数）；RuleArena 的<strong>退款事务</strong>（10 步在同一事务里提交 + 唯一约束兜底——<strong>ACID 的 A/C 在这里的真实体现</strong>）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照 + 40001 重试</strong>。<strong>MySQL 的 RR 靠锁挡幻读；PG 没有间隙锁</strong>。<strong>两边的默认值、幻读处理方式、冲突表现全部不同——这是全库最容易说反的对照</strong>（PG 侧的对照表在 PostgreSQL 模块卡第 2 节）。</p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">三个并发问题 → 四个级别逐级挡 → InnoDB 默认 RR（快照读 + 间隙锁挡幻读）→ ACID 逐条对应机制 → 一致性为什么不是独立机制</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>事务 = "一组动作一起成功或一起失败"。</strong> 这句话（raw 里的原话）比背 ACID 四个字有用——<strong>因为四个字母能从这一句推出来</strong>：一起成败需要 undo（能撤销）和 redo（不丢），并发下多个事务同时做，需要锁和 MVCC 分工，最后整体表现出"一致"。</p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能不看资料说清三个并发问题的区别、四个级别各自挡住什么，并能按"undo/redo/锁+MVCC/结果"回答 ACID。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、三个并发问题（先分清，级别才有的放矢）</h3>
-<table class="mv-table"><thead><tr><th>问题</th><th>定义</th><th>例子</th></tr></thead><tbody><tr><td><strong>脏读</strong></td><td>读到了<strong>别的事务还没提交</strong>的数据（它可能回滚）</td><td>读到 <code class="mv-md-code">status='DONE'</code>，但那个事务回滚了</td></tr><tr><td><strong>不可重复读</strong></td><td>同一事务内<strong>两次读同一行</strong>结果不同（中间有人改了并提交）</td><td>先读余额 100，再读变 80</td></tr><tr><td><strong>幻读</strong></td><td>同一事务内<strong>两次范围查询</strong>返回的行数不同（中间有人插入）</td><td>先查到 10 条，再查变 11 条</td></tr></tbody></table>
-<p class="mv-md-p"><strong>三者区别一句话</strong>：<strong>脏读关于"未提交"，不可重复读关于"同一行被改"，幻读关于"行数变化"。</strong></p>
-<h3 class="mv-md-h mv-md-h3">二、四个级别逐级递进</h3>
-<table class="mv-table"><thead><tr><th>级别</th><th>挡住</th><th>没挡住</th></tr></thead><tbody><tr><td><strong>读未提交 RU</strong></td><td>——</td><td><strong>全都可能发生</strong>（读未提交数据）</td></tr><tr><td><strong>读已提交 RC</strong></td><td>脏读</td><td>不可重复读、幻读</td></tr><tr><td><strong>可重复读 RR（InnoDB 默认）</strong></td><td>脏读、不可重复读</td><td><strong>幻读（InnoDB 靠间隙锁挡住了大部分，见下）</strong></td></tr><tr><td><strong>串行化</strong></td><td>全部</td><td>——（读也加锁，并发最差）</td></tr></tbody></table>
-<p class="mv-md-p"><strong>InnoDB 为什么默认 RR</strong>：历史原因（早期 RC 在复制场景下可能出现主从不一致），<strong>但更本质的是 RR + MVCC + 间隙锁的组合在"一致性"与"并发"之间取了一个工程上很划算的平衡</strong>。<strong>面试时能说"默认 RR 是历史 + 权衡，不是唯一正确"就比死记强。</strong></p>
-<h3 class="mv-md-h mv-md-h3">三、RR 下幻读怎么挡住（一半靠 MVCC，一半靠锁）</h3>
-<p class="mv-md-p">这是本题最容易说错的地方。<strong>RR 并不是"完全解决幻读"</strong>：</p>
-<ul class="mv-md-ul"><li><strong>快照读</strong>（普通 <code class="mv-md-code">SELECT</code>）：靠 <strong>MVCC</strong>——事务开始时定住快照，<strong>后面就算别人插入并提交，快照读也看不到</strong> → <strong>不会幻读</strong>；</li><li><strong>当前读</strong>（<code class="mv-md-code">SELECT ... FOR UPDATE</code>、<code class="mv-md-code">UPDATE</code>、<code class="mv-md-code">DELETE</code>）：<strong>必须读最新版本</strong>，MVCC 帮不上 → 靠 <strong>next-key lock（记录锁 + 间隙锁）</strong> 锁住范围，<strong>阻止别人在范围内插入</strong> → <strong>也不幻读</strong>。</li></ul>
-<p class="mv-md-p"><strong>所以准确说法是</strong>：<strong>InnoDB 的 RR 在"快照读"下靠 MVCC、在"当前读"下靠 next-key lock，两种读都不幻读</strong>——<strong>但两种读混用的场景仍可能出现"看起来像幻读"的现象</strong>（先用快照读看到 10 行，再 <code class="mv-md-code">UPDATE</code> 时行数变了，因为当前读看到了新数据）。<strong>这个细节能讲清，说明真的理解了两套机制。</strong></p>
-<h3 class="mv-md-h mv-md-h3">四、ACID 逐条对应机制（本题核心）</h3>
-<table class="mv-table"><thead><tr><th>字母</th><th>靠什么实现</th><th>一句话</th></tr></thead><tbody><tr><td><strong>A 原子性</strong></td><td><strong>undo log</strong></td><td>改错了/回滚了，<strong>用 undo 恢复原状</strong>——"改之前的备份"</td></tr><tr><td><strong>D 持久性</strong></td><td><strong>redo log</strong></td><td>提交过但数据页没落盘，崩溃后<strong>用 redo 重放补上</strong></td></tr><tr><td><strong>I 隔离性</strong></td><td><strong>锁 + MVCC</strong></td><td>写写用锁排队，读写靠 MVCC 不互相堵</td></tr><tr><td><strong>C 一致性</strong></td><td><strong>前三者 + 约束 + 业务校验</strong></td><td><strong>它不是独立机制，是结果</strong></td></tr></tbody></table>
-<p class="mv-md-p"><strong>C 那一行必须展开说</strong>：一致性 = <strong>事务把数据库从一个合法状态带到另一个合法状态</strong>。它需要：<strong>A 保证这组动作要么全做要么全不做</strong>、<strong>D 保证不丢</strong>、<strong>I 保证并发下互相看不见对方的中间状态</strong>、<strong>再加上数据库约束（唯一/外键/CHECK）和业务校验</strong>。<strong>所以"一致性靠什么实现"的标准答案是"前三者共同作用 + 约束"，而不是某一个组件。</strong></p>
-<p class="mv-md-p"><strong>这个结构可以直接迁移</strong>：RuleArena 的幂等设计里"业务校验 + 数据库约束都要有"（P19）是同一句话在另一处的重述——<strong>业务校验给清晰错误，约束防并发穿透，一致性是两者加事务共同的结果。</strong></p>
-<h3 class="mv-md-h mv-md-h3">五、raw 里那句核心（值得记住）</h3>
-<p class="mv-md-p mv-md-quote"><strong>事务保证一起成败，锁保证修改别打架，MVCC 保证读写别互相堵死。</strong></p>
-<p class="mv-md-p"><strong>三句对应三块</strong>：undo（一起成败的一部分）+ redo（不丢）、锁（写写）、MVCC（读写）。<strong>背下这句，整个主线三的骨架就有了。</strong></p>
-<hr class="mv-md-hr">
-    </collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 A 是 undo、D 是 redo，不能反过来？</strong></strong></p>
+<p class="mv-md-p"><strong>undo 记前镜像，所以能撤销</strong>；<strong>redo 记后镜像，所以能重放</strong>。撤销要把数据往回变，重放要把数据往前推。<strong>一句话：撤销看前面，恢复看后面。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>RR 下两个事务同时 <code class="mv-md-code">UPDATE</code> 同一行会怎样？</strong></strong></p>
+<p class="mv-md-p"><strong>排队等锁</strong>（MySQL 的哲学是"冲突就等"），不是报错。如果等待成环就死锁，InnoDB 会检测并<strong>回滚代价较小的那个事务</strong>（M10）。</p>
+<p class="mv-md-p"><strong>3. <strong>串行化下还死锁吗？</strong></strong></p>
+<p class="mv-md-p"><strong>更容易</strong>。读也加 S 锁，锁的持有面更大、成环机会更多。缓解靠<strong>统一加锁顺序 + 缩短事务</strong>（M10）。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么报表查询在 MySQL 下不会互相锁？</strong></strong></p>
+<p class="mv-md-p">普通 <code class="mv-md-code">SELECT</code> 是快照读，<strong>不加锁</strong>。但它<strong>会持有 ReadView</strong>，长查询因此变成"长事务"的一种，拖住 undo 回收（[[母题-M13-长事务为什么危险]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「RC 和 RR 的差别到底在哪一层？」——<strong>ReadView 生成时机</strong>，别的全一样（M9）</li><li>「MySQL 为什么默认 RR，PG 为什么默认 RC？」——两种<strong>代价模型</strong>：MySQL 用锁"挡住"冲突，PG 用快照 + 报错"检测"冲突。<strong>不要用"哪个更好"回答</strong></li><li>「MySQL 的 RR 里幻读到底解决了吗？」——分快照读/当前读回答（见 Q5 与第 4 节）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>采集与聚合事务</strong>——"一组动作一起成败"就是窗口幂等与补数的理论基础；RuleArena 的<strong>退款事务</strong>（10 步在同一事务里提交 + 唯一约束兜底）是 A 与 C 的真实体现——<strong>业务校验给清晰错误，数据库约束防并发穿透，两者一起才是"一致"</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">事务的唯一前提 → 四步推出 ACID（特别点明 C 是结果）→ 三个并发问题及其区别（未提交 / 同一行 / 行数）→ 四个级别逐级挡 + 用"读写冲突面"这个统一指标说代价 → 为什么默认 RR（历史 + 权衡，不是唯一正确）→ RR 的幻读靠两套机制 → 方言（PG 默认 RC、没有间隙锁）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>事务 = "一组动作一起成功或一起失败"。</strong> ACID 不是四条并列的规矩，而是从这一句推出来的四步：要能撤销（undo）、要能不丢（redo）、并发下要分工（锁管写写、MVCC 管读写）、最后整体表现为一致。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能不看资料说清三个并发问题的区别、四个级别各自挡住什么，并<strong>按"undo / redo / 锁+MVCC / 结果"回答 ACID</strong>；能说清默认 RR 是历史 + 权衡，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
   <div class="mv-section">
