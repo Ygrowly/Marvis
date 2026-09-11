@@ -411,8 +411,17 @@ def attrs(s):
 
 
 def parse_quiz(md):
-    """自测段格式：**Q1（计算）**：题干  接着 **A1**：答案（可多行）"""
-    items, cur = [], None
+    """自测段格式：**Q1（计算）**：题干  接着 **A1**：答案
+
+    **题干和答案都允许多行**——选项 ①②③、引用段落都算题干。
+    分割点是 **An** 那一行本身，不是题干的第一行。
+    （曾经的 bug：把 A 标记之前的行都当成答案，于是选项和引用被翻到了卡背。）
+    """
+    items, cur, in_answer = [], None, False
+
+    def clean(s):
+        return re.sub(r"^>\s*", "", s).strip()
+
     for raw in md.splitlines():
         line = raw.strip()
         mq = re.match(r"^\*\*Q(\d+)\s*(?:[（(]([^）)]*)[）)])?\*\*\s*[：:]?\s*(.*)$", line)
@@ -420,19 +429,24 @@ def parse_quiz(md):
             if cur:
                 items.append(cur)
             cur = {"no": mq.group(1), "kind": (mq.group(2) or "").strip(),
-                   "q": mq.group(3).strip(), "a": []}
+                   "q": [clean(mq.group(3))], "a": []}
+            in_answer = False
             continue
         if cur is None:
             continue
         ma = re.match(r"^\*\*A\d+\*\*\s*[：:]?\s*(.*)$", line)
         if ma:
-            cur["a"].append(ma.group(1).strip())
-        elif line:
-            cur["a"].append(line)
+            in_answer = True
+            cur["a"].append(clean(ma.group(1)))
+            continue
+        if not line:
+            continue
+        (cur["a"] if in_answer else cur["q"]).append(clean(line))
     if cur:
         items.append(cur)
     for it in items:
-        it["a"] = chr(10).join(x for x in it["a"] if x).strip()
+        it["q"] = "\n".join(x for x in it["q"] if x).strip()
+        it["a"] = "\n".join(x for x in it["a"] if x).strip()
     return [it for it in items if it["q"] and it["a"]]
 
 
@@ -528,7 +542,7 @@ def render_topic(t):
                        '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
                        % (esc(it["no"]), esc(it["kind"] or "自测"),
                           attrs(t["key"]), attrs(it["no"]), esc(t["module"]),
-                          attrs(plain(it["q"])), attrs(plain(it["a"]))))
+                          attrs(card_text(it["q"])), attrs(card_text(it["a"]))))
         quiz = ('<div class="mv-section">'
                 '<h2 class="mv-section-title">二 · 自测 '
                 '<span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2>'

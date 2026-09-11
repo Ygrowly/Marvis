@@ -94,7 +94,7 @@ flip-card { display: block; perspective: 1400px; }
   font-size: 0.8125rem; color: var(--mv-muted); letter-spacing: .04em;
   text-transform: uppercase; margin-bottom: 0.625rem;
 }
-.mv-fc-q { font-size: 1.0625rem; font-weight: 600; line-height: 1.65; margin: 0; }
+.mv-fc-q { font-size: 1.0625rem; font-weight: 600; line-height: 1.65; margin: 0; white-space: pre-wrap; }
 .mv-fc-a { font-size: 1rem; line-height: 1.8; margin: 0; white-space: pre-wrap; }
 .mv-fc-hint {
   margin-top: auto; padding-top: 0.875rem; font-size: 0.8125rem; color: var(--mv-muted);
