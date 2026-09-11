@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二 · 数据怎么从服务端到客户端</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="网络基础.html">← 网络基础 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">网络基础 · 主线 二</span>
+    <h1 class="mv-topic-title">数据怎么从服务端到客户端</h1>
+    <p class="mv-topic-meta">这条线在回答：轮询 / SSE / WebSocket 各解决什么</p>
+  </div>
+  <p class="mv-line-lead">单向够用就选简单的 vs 双向能力值不值得多一套协议</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">N2</span><span class="mv-mt-name">SSE 是长连接吗；和 WebSocket、长轮询的本质区别是什么，该怎么选</span><span class="mv-chip warn">草稿 · 待验收</span></div><p class="mv-mt-q">SSE 是长连接吗？三种推送方式该怎么选？</p><collapse-panel title="题目背景"><p class="mv-md-p">通过 SSE 推送长任务的进度，SSE 是什么？<strong>是长连接吗？</strong> 和 WebSocket、长轮询的本质区别是什么？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>SSE 是基于 HTTP 的长连接</strong>——客户端发一次请求，服务端保持响应不结束，以 <code class="mv-md-code">text/event-stream</code> 持续单向推送，自带断线重连（<code class="mv-md-code">Last-Event-ID</code>）与事件 ID，<strong>跑在普通 HTTP 上所以过网关不用额外改造</strong>。它和长轮询的区别是"服务端按住请求 vs 客户端反复发"；和 WebSocket 的区别是"<strong>单向且复用 HTTP</strong> vs <strong>双向但要协议升级</strong>"。<strong>选型判据是两个问题：要不要双向？要事件流还是只要最新状态？</strong></p><ul class="mv-kw"><li>长连接</li><li>无状态</li><li>双向 是三个**正交**维度</li><li>SSE 是长连接不是短连接</li><li>`text</li><li>event-stream`</li><li>单向</li><li>`Last-Event-ID` 提供续推</li><li>跑在 HTTP 上是最大工程优势</li><li>代理要关缓冲</li><li>要发心跳</li><li>HTTP1.1 下独占一条连接（同域 6 条）</li><li>重连 ≠ 不漏事件</li><li>选型看"客户端要什么"不是"哪个先进"</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>"连接开多久""记不记得你""谁能主动发"是三个互不决定的维度。</strong> 把这三个分开，SSE 那道题就不会答错；把这三个分开，选型也就变成了两个二选一的问题。</p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>SSE 和 WebSocket 到底怎么选？</strong></strong></p><p class="mv-md-p">先问"客户端要不要主动发"。<strong>只需要服务端推（进度、通知、LLM 逐字输出）就用 SSE</strong>，工程成本低得多；<strong>要双向（协作、游戏、实时输入）才上 WebSocket</strong>。</p><p class="mv-md-p"><strong>2. <strong>SSE 断线了会怎样？</strong></strong></p><p class="mv-md-p">浏览器<strong>自动重连</strong>，并带上 <code class="mv-md-code">Last-Event-ID</code>。但要真正"不漏事件"，<strong>服务端必须按这个 ID 续推</strong>，或者让客户端重连后拉一次全量状态校准。</p><p class="mv-md-p"><strong>3. <strong>为什么 SSE 适合 LLM 逐字输出？</strong></strong></p><p class="mv-md-p">它就是"<strong>持续的单向事件流</strong>"，且能复用现有 HTTP 网关与鉴权。<strong>这正是 EnergyOps 里推长任务进度、以及大部分大模型产品流式输出的做法。</strong></p><p class="mv-md-p"><strong>4. <strong>长轮询还有什么场景在用它？</strong></strong></p><p class="mv-md-p">【取舍】需要"服务端推"但<strong>中间件完全不支持长连接</strong>时的兜底；或者<strong>兼容性要求极高</strong>的旧环境。<strong>现代系统里它更多是被 SSE 替代。</strong></p></collapse-panel><p class="mv-note">正本：wiki/topics/网络/母题-N2-SSE与推送模型.md</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">5 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">8</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">N2</span><button class="mv-qdone" data-k="网络基础-q8" type="button">未掌握</button></div><flip-card card-id="网络基础-q8" tag="网络基础" q="短轮询、长轮询分别是什么，各有什么问题" a="【N2】SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？&#10;&#10;展开：三个正交维度（破掉&quot;HTTP 无状态所以 SSE 不是长连接&quot;）→ 四种做法各是什么（短轮询/长轮询/SSE/WebSocket）→ 决策树两个问题 → SSE 精确定义四个技术点 → 生产三个坑（代理缓冲 / 心跳 / 连接配额）→ 断线重连要配事件 ID → 回到 Agent 长任务：三条判据都指向 SSE&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">9</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">N2</span><button class="mv-qdone" data-k="网络基础-q9" type="button">未掌握</button></div><flip-card card-id="网络基础-q9" tag="网络基础" q="SSE 是什么？是长连接吗" a="【N2】SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？&#10;&#10;展开：三个正交维度（破掉&quot;HTTP 无状态所以 SSE 不是长连接&quot;）→ 四种做法各是什么（短轮询/长轮询/SSE/WebSocket）→ 决策树两个问题 → SSE 精确定义四个技术点 → 生产三个坑（代理缓冲 / 心跳 / 连接配额）→ 断线重连要配事件 ID → 回到 Agent 长任务：三条判据都指向 SSE&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">10</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">N2</span><button class="mv-qdone" data-k="网络基础-q10" type="button">未掌握</button></div><flip-card card-id="网络基础-q10" tag="网络基础" q="SSE 与 WebSocket 的本质区别" a="【N2】SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？&#10;&#10;展开：三个正交维度（破掉&quot;HTTP 无状态所以 SSE 不是长连接&quot;）→ 四种做法各是什么（短轮询/长轮询/SSE/WebSocket）→ 决策树两个问题 → SSE 精确定义四个技术点 → 生产三个坑（代理缓冲 / 心跳 / 连接配额）→ 断线重连要配事件 ID → 回到 Agent 长任务：三条判据都指向 SSE&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">11</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">N2</span><button class="mv-qdone" data-k="网络基础-q11" type="button">未掌握</button></div><flip-card card-id="网络基础-q11" tag="网络基础" q="SSE 在生产里有哪些坑（代理缓冲 / 心跳 / 断线重连）" a="【N2】SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？&#10;&#10;展开：三个正交维度（破掉&quot;HTTP 无状态所以 SSE 不是长连接&quot;）→ 四种做法各是什么（短轮询/长轮询/SSE/WebSocket）→ 决策树两个问题 → SSE 精确定义四个技术点 → 生产三个坑（代理缓冲 / 心跳 / 连接配额）→ 断线重连要配事件 ID → 回到 Agent 长任务：三条判据都指向 SSE&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">12</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">N2</span><button class="mv-qdone" data-k="网络基础-q12" type="button">未掌握</button></div><flip-card card-id="网络基础-q12" tag="网络基础" q="为什么 Agent 的长任务进度推送选 SSE 而不是 WebSocket" a="【N2】SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？&#10;&#10;展开：三个正交维度（破掉&quot;HTTP 无状态所以 SSE 不是长连接&quot;）→ 四种做法各是什么（短轮询/长轮询/SSE/WebSocket）→ 决策树两个问题 → SSE 精确定义四个技术点 → 生产三个坑（代理缓冲 / 心跳 / 连接配额）→ 断线重连要配事件 ID → 回到 Agent 长任务：三条判据都指向 SSE&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="网络基础-01-一次请求怎么走完.html">← 一 · 一次请求怎么走完</a><a class="mv-line-nav next" href="网络基础-03-怎么同时扛住很多连接.html">三 · 怎么同时扛住很多连接 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

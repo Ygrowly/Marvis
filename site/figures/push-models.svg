@@ -1,0 +1,38 @@
+<svg viewBox="0 0 680 304" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>服务端推送方式怎么选</title>
+<desc>按「需要双向还是单向」「要持续事件流还是只要最新状态」两个问题分流到 WebSocket、轮询或 SSE。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">服务端推送怎么选：两个问题就分流完了</text>
+<rect x="40" y="100" width="150" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="115" y="118" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">要把数据给客户端</text>
+<text x="115" y="136" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">先问两个问题</text>
+<rect x="250" y="44" width="200" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="350" y="62" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">需要「双向」实时通信？</text>
+<text x="350" y="80" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">客户端也要随时发东西</text>
+<rect x="490" y="44" width="150" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="565" y="70" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">WebSocket</text>
+<rect x="250" y="110" width="200" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="350" y="128" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">只要「最新状态」？</text>
+<text x="350" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">不看历史过程</text>
+<rect x="490" y="110" width="150" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="565" y="128" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">轮询 / 状态查询</text>
+<text x="565" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">最简单，够用就别升级</text>
+<rect x="250" y="176" width="200" height="52" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="350" y="194" font-family="system-ui,sans-serif" font-size="12" fill="#412402" text-anchor="middle" dominant-baseline="central">要「持续的事件流」？</text>
+<text x="350" y="212" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">单向、按事件推</text>
+<rect x="490" y="176" width="150" height="52" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="565" y="194" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">SSE</text>
+<text x="565" y="212" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">跑在 HTTP 上</text>
+<path d="M190 122 L246 70" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<path d="M190 126 L246 136" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<path d="M190 130 L246 202" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<path d="M452 70 L486 70" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<path d="M452 136 L486 136" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<path d="M452 202 L486 202" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<rect x="40" y="240" width="600" height="44" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="262" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" dominant-baseline="central">判据不是「哪个更先进」，而是「客户端要双向还是单向、要事件流还是只要最新状态」。</text>
+</svg>
