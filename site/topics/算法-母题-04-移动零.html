@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-05-盛最多水的容器 · 母题-06-三数之和 ｜ 正本 wiki/topics/算法/母题-04-移动零.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一个整型数组，把所有 0 移到数组末尾，同时保持非零元素的相对顺序。要求原地操作，不得复制新数组。</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="算法/母题-04-移动零" tag="算法" q="如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？" a="快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：快慢指针的最简形态，一切「原地改造数组」问题的母题。写起来简单，但讲清不变量才是得分点。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>快指针找目标</li><li>慢指针指写入位</li><li>交换而非覆盖</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>快指针找目标</li><li>慢指针指写入位</li><li>交换而非覆盖</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 为什么用交换而不是直接覆盖？</strong></p>
 <p class="mv-md-p">交换顺带把零挤到尾部，省掉一趟补零</p>
 <p class="mv-md-p"><strong>2. slow 到底是「下一个写入位」还是「最前面等待替换的零」？</strong></p>
@@ -48,7 +57,7 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
 <p class="mv-md-p">给定数组 <code class="mv-md-code">nums</code>，将所有 <code class="mv-md-code">0</code> 移动到数组末尾，同时保持非零元素的相对顺序。要求原地修改数组。</p>
 <pre class="mv-md-pre">输入：[0, 1, 0, 3, 12]

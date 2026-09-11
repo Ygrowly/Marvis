@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-04-移动零 · 母题-06-三数之和 ｜ 正本 wiki/topics/算法/母题-05-盛最多水的容器.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一个高度数组 <code class="mv-md-code">height</code>，任选两条竖线作为容器两侧壁，容量 = 两壁间距 × 较矮那根的高度。求能装下的最大容量。</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">两端向中间收缩时，凭什么保证不会漏掉最优解？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="算法/母题-05-盛最多水的容器" tag="算法" q="两端向中间收缩时，凭什么保证不会漏掉最优解？" a="面积由宽度×短板决定，宽度只会变小，所以只能移动短板去赌一根更高的。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：双指针贪心的经典证明题。面试几乎一定会追问「为什么移动短板是对的」——答不出证明就等于没掌握。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>短板决定面积</li><li>宽度必然缩小</li><li>只能移动短板</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">面积由宽度×短板决定，宽度只会变小，所以只能移动短板去赌一根更高的。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>短板决定面积</li><li>宽度必然缩小</li><li>只能移动短板</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 证明移动短板不会漏解：被排除的那一端已经是短板，换任何另一端配它，宽度更小、短板不会更高</strong></p>
 <p class="mv-md-p"><span class="mv-topic-meta">答案见正文底稿</span></p>
 <p class="mv-md-p"><strong>2. 接雨水和这题的区别？</strong></p>
@@ -48,7 +57,7 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
 <p class="mv-md-p">给定整数数组 <code class="mv-md-code">height</code>，每个元素表示一条竖线的高度。选择两条竖线，与横轴组成容器，求能够容纳水的最大面积。</p>
 <pre class="mv-md-pre">输入：height = [1,8,6,2,5,4,8,3,7]

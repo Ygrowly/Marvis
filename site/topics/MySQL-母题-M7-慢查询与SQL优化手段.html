@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-M6-一条SQL的执行链路 · 母题-M3-聚簇索引与回表 · 母题-M2-联合索引与最左前缀 ｜ 正本 wiki/topics/MySQL/母题-M7-慢查询与SQL优化手段.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">线上有条 SQL 偶尔 20 多秒。你按什么顺序定位？深分页 <code class="mv-md-code">LIMIT 1000000, 10</code> 为什么慢，怎么改？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">慢查询怎么定位？常见的 SQL 优化手段有哪些？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M7-慢查询与SQL优化手段" tag="MySQL" q="慢查询怎么定位？常见的 SQL 优化手段有哪些？" a="定位按三步走——慢查询日志（找出来）→ EXPLAIN 看计划（type / key / rows / Extra）→ 确认扫描行数与回表。优化手段围绕&quot;少扫、少回、少排&quot;三件事：覆盖索引、最左前缀设计、索引下推（ICP）、深分页用游标定位或延迟关联、小表驱动大表、count(*) 走最小索引。特别的一条：索引失效不一定是写法错——可能是优化器估算后主动放弃（这是最容易漏的一类）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是面试里"给一个真实案例"最容易出彩的题</strong>——因为它能同时展示：定位方法（有章法）、优化手段（有清单）、以及<strong>"索引失效不一定是写法错"这种反直觉判断</strong>。EnergyOps 的 20.4s → 2.8s 就是这条线的真实案例，<strong>必须能讲成"按顺序定位、按优先级动手"，而不是"我们加了个索引"</strong>。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>慢查询日志 long_query_time</li><li>explain 的 type 与 rows</li><li>覆盖索引</li><li>索引下推 ICP</li><li>延迟关联（先查 id 再回表）</li><li>深分页</li><li>小表驱动大表</li><li>优化器主动放弃索引</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">定位按三步走——<strong>慢查询日志（找出来）→ <code class="mv-md-code">EXPLAIN</code> 看计划（<code class="mv-md-code">type</code> / <code class="mv-md-code">key</code> / <code class="mv-md-code">rows</code> / <code class="mv-md-code">Extra</code>）→ 确认扫描行数与回表</strong>。优化手段围绕<strong>"少扫、少回、少排"</strong>三件事：<strong>覆盖索引、最左前缀设计、索引下推（ICP）、深分页用游标定位或延迟关联、小表驱动大表、<code class="mv-md-code">count(*)</code> 走最小索引</strong>。<strong>特别的一条：索引失效不一定是写法错——可能是优化器估算后主动放弃</strong>（这是最容易漏的一类）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>慢查询日志 long_query_time</li><li>explain 的 type 与 rows</li><li>覆盖索引</li><li>索引下推 ICP</li><li>延迟关联（先查 id 再回表）</li><li>深分页</li><li>小表驱动大表</li><li>优化器主动放弃索引</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的 20.4s → 2.8s（本场主战场，口径见模块卡第 5 节：必须补齐样本数/并发/硬件/统计窗口）</strong>；数驭穹图的查询成本控制（<strong>每改一处都要 explain 验证 + 固定数据集对比，不能"感觉快了"</strong>）。<strong>方言差异（面试安全底线）</strong>：PG 的对应工具是 <strong><code class="mv-md-code">pg_stat_statements</code>（按总耗时排序）+ <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>（真执行）</strong>，还能看 <code class="mv-md-code">Heap Fetches</code>；MySQL 靠<strong>慢查询日志 + <code class="mv-md-code">EXPLAIN</code></strong>（8.0.18+ 才有 <code class="mv-md-code">EXPLAIN ANALYZE</code>）。<strong><code class="mv-md-code">Using index</code> 在 MySQL 里表示覆盖索引，在 PG 里对应的是 <code class="mv-md-code">Index Only Scan</code>——名字完全不同，别串。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">定位三步 → explain 四个字段怎么读 → 优化手段清单（按"少扫少回少排"归类）→ 深分页专讲 → 优化器主动放弃 → 优化优先级</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>所有 SQL 优化都在做同一件事：让"扫过的行"尽量等于"要返回的行"。</strong> 两者差距越大越慢——<strong>差距来自"没命中的扫描"（该过滤的没提前过滤）和"白拿的回表"（取回了不用的列）</strong>。<strong>所以每一种手段都能归到这两类里。</strong></p></collapse-panel>
@@ -44,16 +53,16 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、定位三步（有章法，不是"打开 explain 看看"）</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、定位三步（有章法，不是"打开 explain 看看"）</h3>
 <pre class="mv-md-pre">① 慢查询日志（long_query_time）→ 把问题 SQL 抓出来，先按出现频率 × 单次耗时排优先级
 ② EXPLAIN 看计划 → 判断问题类型
 ③ 按类型动手 → 再 explain 验证，最后压测确认</pre>
 <p class="mv-md-p"><strong>explain 四个字段的读法</strong>：</p>
 <table class="mv-table"><thead><tr><th>字段</th><th>看什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">type</code></td><td>访问方式，从好到坏：<code class="mv-md-code">system &gt; const &gt; eq_ref &gt; ref &gt; range &gt; index &gt; ALL</code>。<strong><code class="mv-md-code">ALL</code> = 全表扫，<code class="mv-md-code">index</code> = 扫全索引（比 ALL 好一点点，也危险）</strong></td></tr><tr><td><code class="mv-md-code">key</code></td><td>实际用的索引。<strong><code class="mv-md-code">possible_keys</code> 有但 <code class="mv-md-code">key</code> 为 NULL → 优化器主动放弃了</strong>（见第五节）</td></tr><tr><td><code class="mv-md-code">rows</code></td><td><strong>估算扫描行数</strong>——与实际差很远时说明统计信息/选择性有问题</td></tr><tr><td><code class="mv-md-code">Extra</code></td><td><code class="mv-md-code">Using index</code>（覆盖，好）/ <code class="mv-md-code">Using filesort</code>（额外排序）/ <code class="mv-md-code">Using temporary</code>（临时表）/ <code class="mv-md-code">Using index condition</code>（下推生效，M2 提过）</td></tr></tbody></table>
-<h3 class="mv-md-h">二、优化手段清单（按"少扫少回少排"归类）</h3>
+<h3 class="mv-md-h mv-md-h3">二、优化手段清单（按"少扫少回少排"归类）</h3>
 <p class="mv-md-p"><strong>少扫（让过滤更早发生）</strong></p>
 <ul class="mv-md-ul"><li><strong>最左前缀设计</strong>：等值列在前、范围列在后（M2）；</li><li><strong>范围查询能缩就缩</strong>：<code class="mv-md-code">LIMIT</code> 之外，能用 <code class="mv-md-code">id &gt; ?</code> 定位就不要按偏移量扫；</li><li><strong>不要 <code class="mv-md-code">SELECT *</code></strong>：列少了，优化器才可能选覆盖索引。</li></ul>
 <p class="mv-md-p"><strong>少回（让索引自己回答完）</strong></p>
@@ -61,7 +70,7 @@
 <p class="mv-md-p"><strong>少排（避免额外排序与临时表）</strong></p>
 <ul class="mv-md-ul"><li><strong>让索引顺序匹配 <code class="mv-md-code">ORDER BY</code></strong>（索引本身有序，天然省 filesort）；</li><li><strong>小表驱动大表</strong>：<code class="mv-md-code">in</code> / <code class="mv-md-code">exists</code> 的选择、JOIN 的驱动表顺序；</li><li><strong><code class="mv-md-code">GROUP BY</code> 尽量走索引列</strong>，避免临时表。</li></ul>
 <p class="mv-md-p"><strong>几个"知道就行"的点</strong>：<code class="mv-md-code">count(*)</code> ≈ <code class="mv-md-code">count(1)</code> &gt; <code class="mv-md-code">count(列)</code>（要判空）；<strong><code class="mv-md-code">count(*)</code> 没有专门的优化捷径，InnoDB 是真数</strong>（MyISAM 才有行数缓存——但业务表不该用 MyISAM）。</p>
-<h3 class="mv-md-h">三、深分页：<code class="mv-md-code">LIMIT 1000000, 10</code> 为什么慢</h3>
+<h3 class="mv-md-h mv-md-h3">三、深分页：<code class="mv-md-code">LIMIT 1000000, 10</code> 为什么慢</h3>
 <p class="mv-md-p"><strong>它不是"取 10 行"，而是"取前 1000010 行，丢掉前 100 万行"</strong>——<strong>扫描与回表量等于偏移量</strong>，所以越翻越慢。</p>
 <p class="mv-md-p"><strong>两种解法</strong>：</p>
 <p class="mv-md-p"><strong>① 游标定位（首选）</strong>：记住上一页最后一条的排序键，下一页用条件跳过去：</p>
@@ -70,13 +79,13 @@
 <pre class="mv-md-pre">SELECT t.* FROM task t
 JOIN (SELECT id FROM task ORDER BY id LIMIT 1000000, 10) s ON t.id = s.id;</pre>
 <p class="mv-md-p"><strong>子查询走覆盖索引（只扫索引，不回表）</strong>，<strong>回表只发生在最后 10 行上</strong>——<strong>把"100 万次回表"降成"10 次回表"</strong>。</p>
-<h3 class="mv-md-h">四、优化器主动放弃索引（最容易被漏掉的一类）</h3>
+<h3 class="mv-md-h mv-md-h3">四、优化器主动放弃索引（最容易被漏掉的一类）</h3>
 <p class="mv-md-p"><strong>现象</strong>：索引存在、条件也该走索引，explain 却显示 <code class="mv-md-code">key = NULL</code>、全表扫。</p>
 <p class="mv-md-p"><strong>原因</strong>：优化器<strong>估算过成本</strong>——当它判断"走索引 + 大量回表"比"顺序扫全表"更贵时，<strong>主动放弃索引是正确行为</strong>。典型触发：</p>
 <ul class="mv-md-ul"><li>二级索引命中比例过高（比如要取 30% 的行）；</li><li>统计信息过期（行数/区分度估错）；</li><li>条件是表达式/函数/隐式类型转换（M2 的失效清单）。</li></ul>
 <p class="mv-md-p"><strong>所以排查顺序是</strong>：<strong>先看是不是"写法问题"（失效清单），再看是不是"成本判断"</strong>——<strong>后者改法不是改 SQL，而是</strong> ① <code class="mv-md-code">ANALYZE TABLE</code> 更新统计信息，② 用 <code class="mv-md-code">FORCE INDEX</code> 验证"走了索引确实更快"（确认判断确实错了再强推），③ 或者接受全表扫（命中比例高时它就是对的）。</p>
 <p class="mv-md-p"><strong>这一条的价值</strong>：<strong>它把"索引失效"从"背清单"升级成"理解优化器的成本模型"</strong>。</p>
-<h3 class="mv-md-h">五、优化优先级（收口，面试必背）</h3>
+<h3 class="mv-md-h mv-md-h3">五、优化优先级（收口，面试必背）</h3>
 <pre class="mv-md-pre">① 先缩小业务范围（别把不相关的行扫进来）
 ② 再修 JOIN 逻辑与 N+1
 ③ 再建/改索引（含覆盖索引、下推）

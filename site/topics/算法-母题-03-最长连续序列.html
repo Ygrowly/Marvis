@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-01-两数之和 · 母题-02-字母异位词分组 ｜ 正本 wiki/topics/算法/母题-03-最长连续序列.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一个未排序的整数数组，找出其中最长的连续序列长度（数值连续即可，不要求在原数组中相邻）。要求 O(n)。</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">无序数组里，如何做到 O(n) 求出最长连续数字序列？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="算法/母题-03-最长连续序列" tag="算法" q="无序数组里，如何做到 O(n) 求出最长连续数字序列？" a="集合去重，只从没有前驱的元素开始向后延伸，每段序列只被扫一次。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：考的是摊还分析——嵌套循环不等于 O(n²)。也是「用集合换时间」和「用起点判据剪枝」的典型。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>集合去重</li><li>判起点( x-1 不在集合 )</li><li>每段只扫一次</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">集合去重，只从没有前驱的元素开始向后延伸，每段序列只被扫一次。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>集合去重</li><li>判起点( x-1 不在集合 )</li><li>每段只扫一次</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 为什么总复杂度是 O(n) 而不是 O(n²)？</strong></p>
 <p class="mv-md-p">只有起点才触发内层延伸，每个数字在所有 while 中最多被访问一次，总次数 O(n)</p>
 <p class="mv-md-p"><strong>2. 有重复数字时会怎样？</strong></p>
@@ -48,7 +57,7 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
 <p class="mv-md-p">给定一个未排序的整数数组 <code class="mv-md-code">nums</code>，找出其中数字连续的最长序列长度。</p>
 <p class="mv-md-p">要求算法时间复杂度为 O(n)。</p>

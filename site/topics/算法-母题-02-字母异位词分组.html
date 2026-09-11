@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-01-两数之和 · 母题-03-最长连续序列 ｜ 正本 wiki/topics/算法/母题-02-字母异位词分组.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一个字符串数组，把互为字母异位词的字符串归到同一组（字母种类与数量完全相同、顺序无关）。返回所有分组。</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何把一组元素按「等价特征」归到同一组？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="算法/母题-02-字母异位词分组" tag="算法" q="如何把一组元素按「等价特征」归到同一组？" a="把每个元素映射成一个可哈希的标准化键，再用键做分组。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：迁移价值极高：任何「分组 / 去重 / 归一化」问题都是这个模型。面试常从这里考哈希键的设计能力。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>等价特征</li><li>可哈希键</li><li>排序元组 或 26 位频次数组</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">把每个元素映射成一个可哈希的标准化键，再用键做分组。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>等价特征</li><li>可哈希键</li><li>排序元组 或 26 位频次数组</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 排序键和计数键怎么选？</strong></p>
 <p class="mv-md-p">字符集固定（26 个小写字母）用计数键更优，字符集大或含 Unicode 用排序键更稳</p>
 <p class="mv-md-p"><strong>2. 为什么列表不能直接当字典键？</strong></p>
@@ -48,11 +57,11 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
 <p class="mv-md-p">你的核心方向对了：<strong>把异位词转换成相同的分组标识，再用哈希表分组</strong>。当前主要有三个断点：</p>
 <p class="mv-md-p">1. 混用了“排序字符”和“字符计数”两种方案。 2. Python 的字典不能作为另一个字典的键。 3. 分组结果应该是字符串列表，不能直接对字符串做 <code class="mv-md-code">+=</code>。</p>
-<h3 class="mv-md-h">逐项纠正</h3>
+<h3 class="mv-md-h mv-md-h3">逐项纠正</h3>
 <p class="mv-md-p">1. 判断方法：</p>
 <p class="mv-md-p">可以将两个字符串排序，排序结果相同就是字母异位词。</p>
 <p class="mv-md-p">2. 分组标识：</p>

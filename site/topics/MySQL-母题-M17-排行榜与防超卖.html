@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-M16-乐观锁与悲观锁 · 母题-M10-锁与死锁 · 母题-P19-唯一约束与UPSERT ｜ 正本 wiki/topics/MySQL/母题-M17-排行榜与防超卖.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">① 产品要给开心消消乐每个关卡加一个排行榜（DAU 2000 万），让玩家看到自己排名——结合 AI 做个设计。② 高并发扣体力/扣库存怎么防超卖？（<strong>A24 是 9.9 全场最低分模块（10 分）：没给出成型方案、防作弊完全没提</strong>）</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">排行榜用 MySQL 还是 Redis，为什么？高并发扣减怎么防超卖？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M17-排行榜与防超卖" tag="MySQL" q="排行榜用 MySQL 还是 Redis，为什么？高并发扣减怎么防超卖？" a="排行榜用 Redis ZSet（成员按 score 有序，ZREVRANK / ZREVRANGE 都是 O(logN)，天然就是排行榜）；MySQL 不适合（排名需要 COUNT(*) 统计比自己分高的行数，代价 O(N)，且高频更新排序索引压力大）。同分先到者优先 → 复合分数：score = 分数 × 10^10 + (MAX_TS - 通关时间戳)。防超卖三条路：① 数据库原子扣减（UPDATE ... SET n=n-1 WHERE id=? AND n&gt;0，影响行数判断）、② 乐观锁（version 条件更新，M16）、③ Redis 预扣 + 异步落库（最终一致）。判据：强一致用数据库原子更新；高并发削峰用 Redis 前置、DB 兜底。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是"场景设计题"的样板卡</strong>——它考的不是知识点，而是<strong>"拿到模糊需求后的章法"</strong>（澄清 → 拆解 → 方案 → 风险 → 指标）。<strong>9.9 那次的失败链是：假设错（以为消消乐是单机）→ 被否（提分享）→ 澄清不系统 → 长时间空白 → 没有成型方案</strong>。<strong>这张卡就是修复：把"排行榜"变成一道可以闭卷重放的母题</strong>——<strong>它同时覆盖场景设计方法论 + 技术选型 + 高并发扣减三个考点，性价比极高。</strong></p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>ZSet 跳表</li><li>复合分数</li><li>ZREVRANK</li><li>只存 Top N</li><li>原子扣减 <code class="mv-md-code">WHERE n&gt;0</code></li><li>乐观锁</li><li><strong>Redis 预扣 + 异步落库</strong></li><li>最终一致</li><li>场景题六步</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>排行榜用 Redis ZSet</strong>（成员按 score 有序，<code class="mv-md-code">ZREVRANK</code> / <code class="mv-md-code">ZREVRANGE</code> 都是 O(logN)，天然就是排行榜）；<strong>MySQL 不适合</strong>（排名需要 <code class="mv-md-code">COUNT(*)</code> 统计比自己分高的行数，代价 O(N)，且高频更新排序索引压力大）。<strong>同分先到者优先 → 复合分数</strong>：<code class="mv-md-code">score = 分数 × 10^10 + (MAX_TS - 通关时间戳)</code>。<strong>防超卖三条路</strong>：<strong>① 数据库原子扣减</strong>（<code class="mv-md-code">UPDATE ... SET n=n-1 WHERE id=? AND n&gt;0</code>，影响行数判断）、<strong>② 乐观锁（version 条件更新，M16）</strong>、<strong>③ Redis 预扣 + 异步落库（最终一致）</strong>。<strong>判据：强一致用数据库原子更新；高并发削峰用 Redis 前置、DB 兜底。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>ZSet 跳表</li><li>复合分数</li><li>ZREVRANK</li><li>只存 Top N</li><li>原子扣减 <code class="mv-md-code">WHERE n&gt;0</code></li><li>乐观锁</li><li><strong>Redis 预扣 + 异步落库</strong></li><li>最终一致</li><li>场景题六步</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>乐元素这类游戏公司的场景题（本卡就是按 9.9 真题做的修复）</strong>；EnergyOps 的<strong>异常告警聚合</strong>（Top N + 近似统计同构）；RuleArena 的<strong>预算与候选上限</strong>（计数扣减 + 唯一约束防重复）。<strong>方言差异（面试安全底线）</strong>：<strong>排行榜在两边的答案一致（该用 Redis 就用 Redis，数据库选型不改变这个结论）</strong>；<strong>防超卖在 PG 里同样用条件更新（P18），语法一致</strong>；<strong>差别在 PG 连接模型下并发上限更低（P17），所以"Redis 前置削峰"在 PG 架构里更必要</strong>。<strong>这条能体现"同一条原理在不同架构下的不同权重"。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">六步章法 → 排行榜选型与复合分数 → 2000 万 DAU 的工程问题（热点 key / 削峰 / 名次近似 / 持久化）→ 游戏特性（防作弊 / 弱联网）→ 防超卖三条路 → 指标与降级</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>场景题的第一动作是澄清，不是给方案。</strong> ——<strong>9.9 那次丢分的一半在"没问够"（榜单范围、更新频率、防作弊全没问），另一半才是技术</strong>。<strong>技术选型（MySQL vs Redis）反而是这张卡里最容易的部分。</strong></p></collapse-panel>
@@ -44,10 +53,10 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、场景题六步（先背这个，再背技术）</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、场景题六步（先背这个，再背技术）</h3>
 <pre class="mv-md-pre">① 澄清（开口前先问 10 秒）：排名依据？榜单范围（全服/好友/Top N）？更新频率？
                           展示字段？历史榜/周榜？防作弊？规模？
 ② 拆解：规模估算（2000 万 DAU × 千级关卡 → 不可能全量存排名）
@@ -56,13 +65,13 @@
 ⑤ 指标：写入 QPS、查榜 P99、内存占用、裁剪耗时
 ⑥ 降级：Redis 挂了怎么办</pre>
 <p class="mv-md-p"><strong>9.9 那次的澄清对照</strong>（复盘里的 ✅/❌ 清单）：<strong>问了排名依据、展示字段、规模；没问榜单范围、更新频率、历史榜、防作弊</strong>——<strong>把这张清单背下来，下次第一分钟就不会空白</strong>。</p>
-<h3 class="mv-md-h">二、排行榜选型：为什么是 Redis ZSet</h3>
+<h3 class="mv-md-h mv-md-h3">二、排行榜选型：为什么是 Redis ZSet</h3>
 <table class="mv-table"><thead><tr><th></th><th>Redis ZSet</th><th>MySQL</th></tr></thead><tbody><tr><td>排名查询</td><td><code class="mv-md-code">ZREVRANK</code> <strong>O(logN)</strong></td><td><strong><code class="mv-md-code">COUNT(*) WHERE score &gt; ?</code>，O(N)</strong>（或加冗余排名字段，但更新代价高）</td></tr><tr><td>榜单读取</td><td><code class="mv-md-code">ZREVRANGE</code> 直接取 Top N</td><td><code class="mv-md-code">ORDER BY score DESC LIMIT N</code>（索引可以，但更新热点行代价高）</td></tr><tr><td>更新</td><td><code class="mv-md-code">ZADD</code> O(logN)</td><td>高频 <code class="mv-md-code">UPDATE</code> 同一行 → 行锁热点（M10）</td></tr><tr><td>底层</td><td><strong>跳表 + 哈希表</strong>（既能按 member 查 score，又能按 score 范围查）</td><td>B+ 树</td></tr></tbody></table>
 <p class="mv-md-p"><strong>同分按时间早的优先 → 复合分数</strong>（这是 9.9 标答里最巧的一步）：</p>
 <pre class="mv-md-pre">score = 分数 × 10^10 + (MAX_TS − 通关时间戳)
         分数越高越大；同分时时间越早（MAX_TS - ts 越大）排名越高</pre>
 <p class="mv-md-p"><strong>一句话解释</strong>：<strong>把两个排序维度压进一个可比较的数字</strong>——<strong>避免"先按分数排、再按时间排"的两级查询</strong>。</p>
-<h3 class="mv-md-h">三、2000 万 DAU 下的工程问题（答到这层才像服务端）</h3>
+<h3 class="mv-md-h mv-md-h3">三、2000 万 DAU 下的工程问题（答到这层才像服务端）</h3>
 <pre class="mv-md-pre">① 热点 key：热门关卡集中在少数 key → 按"关卡+区服/分片"拆，或本地缓存 + 异步刷新
 ② 写入削峰：通关上报是尖峰 → 消息队列异步落榜，前端先返回"计算中"
 ③ 名次不必实时精确：非头部玩家用"分数段桶计数"近似名次，精确 ZREVRANK 留给头部
@@ -71,10 +80,10 @@
 ⑤ 持久化：Redis 只是热层，冷数据定时落 DB；Redis 挂了可从 DB 重建
 ⑥ 活动榜：带过期时间的 key（EXPIRE），活动结束自动清理</pre>
 <p class="mv-md-p"><strong>第 ③ 条是"名次近似"</strong>——<strong>2000 万 DAU 下大多数玩家的名次并不需要精确到个位</strong>（"你超过了 97% 的玩家"），<strong>这是把 O(logN) 精确查询留给头部、用 O(1) 近似服务长尾的取舍</strong>。<strong>这一条是 9.9 标答里的亮点，值得单独背。</strong></p>
-<h3 class="mv-md-h">四、游戏特性（乐元素面试官最想听的）</h3>
+<h3 class="mv-md-h mv-md-h3">四、游戏特性（乐元素面试官最想听的）</h3>
 <ul class="mv-md-ul"><li><strong>防作弊</strong>：<strong>消消乐是弱联网玩法，客户端上报的分数必须校验</strong>——步数下限、最短通关时长、关键操作日志回放；<strong>异常分数进人工审核队列，不直接入榜</strong>；</li><li><strong>弱联网容错</strong>：离线通关本地缓存，联网后补报，<strong>用"玩家 ID + 关卡 + 时间戳"做幂等，避免重复提交刷榜</strong>（<strong>这就是 P19 的幂等键思想在游戏场景的落点</strong>）；</li><li><strong>活动榜时效</strong>：EXPIRE 自动清理。</li></ul>
 <p class="mv-md-p"><strong>"防作弊没提"是 9.9 那次被明确点名的缺口</strong>——<strong>游戏公司的场景题里这是必答项</strong>。</p>
-<h3 class="mv-md-h">五、防超卖三条路</h3>
+<h3 class="mv-md-h mv-md-h3">五、防超卖三条路</h3>
 <p class="mv-md-p"><strong>① 数据库原子扣减（最简单、强一致）</strong></p>
 <pre class="mv-md-pre">UPDATE stock SET num = num - 1
 WHERE id = :id AND num &gt; 0;
@@ -85,7 +94,7 @@ WHERE id = :id AND num &gt; 0;
 <pre class="mv-md-pre">请求 → Redis DECR（原子）→ 扣成功才进队列 → 异步落 DB
                 ↓ 扣成负数 → 回滚/拒绝</pre>
 <p class="mv-md-p"><strong>代价</strong>：<strong>最终一致</strong>（Redis 与 DB 有窗口）、<strong>要处理重复消费与对账</strong>（P19 的幂等键 + 唯一约束兜底）。<strong>判据</strong>：<strong>强一致（钱）→ 数据库原子更新；高并发（秒杀、体力）→ Redis 前置 + DB 兜底</strong>。</p>
-<h3 class="mv-md-h">六、指标与降级</h3>
+<h3 class="mv-md-h mv-md-h3">六、指标与降级</h3>
 <ul class="mv-md-ul"><li><strong>指标</strong>：写入 QPS、查榜 P99、Redis 内存占用、裁剪任务耗时、<strong>超卖告警（库存对账）</strong>；</li><li><strong>降级</strong>：<strong>Redis 不可用时返回 DB 快照或"榜单维护中"，绝不让排行榜拖垮主玩法</strong>——<strong>"排行榜挂了不能影响游戏本体"是这一题的底线判断</strong>。</li></ul>
 <hr class="mv-md-hr">
     </collapse-panel>

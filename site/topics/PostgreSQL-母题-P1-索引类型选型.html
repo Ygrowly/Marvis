@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-P2-堆表与回表 · 母题-P3-部分索引与表达式索引 ｜ 正本 wiki/topics/PostgreSQL/母题-P1-索引类型选型.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">一张表要同时支撑两种查询——按 <code class="mv-md-code">status</code> 等值过滤，和在 <code class="mv-md-code">tags</code> 数组里做「包含」判断。你只有一次建索引的机会，先建哪个？另一类查询怎么办？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">为什么 PG 默认是 B-tree？GIN / GiST / BRIN / Hash 各在什么查询形状下才该用？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="PostgreSQL/母题-P1-索引类型选型" tag="PostgreSQL" q="为什么 PG 默认是 B-tree？GIN / GiST / BRIN / Hash 各在什么查询形状下才该用？" a="默认 B-tree 是因为它覆盖最广的查询形状（等值、范围、排序、前缀）；其余类型各自绑定一种形状——GIN 管「多值包含」（数组 / JSONB / 全文），GiST 管「几何与近邻 / 范围重叠」，BRIN 管「物理有序的大表按范围扫」，Hash 只管等值。选型判据是「这个查询用的什么操作符」，不是「哪个更快」。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是 <strong>PG 与 MySQL 最显眼的一处差异</strong>。MySQL 基本上是「B+ 树 + 少量特例」，PG 是<strong>索引类型动物园</strong>——面试官问 PG 索引，考的从来不是记住几个缩写，而是<strong>你会不会按查询形状选型</strong>。答成「都建 B-tree」会立刻暴露没在 PG 上做过真实优化。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>操作符类别（operator class）</li><li>B-tree 等值+范围+排序</li><li>GIN 多值包含</li><li>GiST 几何近邻</li><li>BRIN 块级摘要</li><li>Hash 只等值</li><li>与部分索引组合</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">默认 B-tree 是因为它<strong>覆盖最广的查询形状</strong>（等值、范围、排序、前缀）；其余类型各自绑定一种形状——<strong>GIN 管「多值包含」</strong>（数组 / JSONB / 全文），<strong>GiST 管「几何与近邻 / 范围重叠」</strong>，<strong>BRIN 管「物理有序的大表按范围扫」</strong>，<strong>Hash 只管等值</strong>。选型判据是<strong>「这个查询用的什么操作符」</strong>，不是「哪个更快」。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>操作符类别（operator class）</li><li>B-tree 等值+范围+排序</li><li>GIN 多值包含</li><li>GiST 几何近邻</li><li>BRIN 块级摘要</li><li>Hash 只等值</li><li>与部分索引组合</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">数驭穹图的<strong>元数据检索</strong>（Schema / 目录字段常有 JSON 结构，GIN 主战场）；RuleArena 的<strong>规则与场景标签</strong>（多标签包含查询）。<strong>方言差异（面试安全底线）</strong>：MySQL 里没有 GIN / GiST / BRIN 这套东西，它对应的是「全文索引 / 空间索引」这类特例，而<strong>多值包含在 MySQL 里通常要靠生成列或拆表解决</strong>——<strong>不要把「JSONB 用 GIN」这套说法套到 MySQL 上</strong>，那是 PG 的机制。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">默认为什么是 B-tree（覆盖面）→ 四种类型的组织方式与对应操作符 → 回到题目做选择 → 各自的代价与边界 → 一句判据收尾</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引是「按某种方式重新组织或摘要数据」的结构，它能回答哪类查询，由它的组织方式决定。</strong> 所以选型的第一句话永远是——<strong>这个查询用的是哪个操作符</strong>；第二句话才是——<strong>代价是什么</strong>。</p></collapse-panel>
@@ -44,20 +53,20 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、B-tree 为什么是默认</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、B-tree 为什么是默认</h3>
 <p class="mv-md-p">因为它同时支持这些，而绝大多数业务查询落在这里面：</p>
 <table class="mv-table"><thead><tr><th>能力</th><th>例子</th></tr></thead><tbody><tr><td>等值</td><td><code class="mv-md-code">WHERE status = 'RUNNING'</code></td></tr><tr><td>范围</td><td><code class="mv-md-code">WHERE created_at &gt;= ? AND created_at &lt; ?</code></td></tr><tr><td>排序</td><td><code class="mv-md-code">ORDER BY updated_at DESC</code>（可直接用索引序，省一次 sort）</td></tr><tr><td>前缀匹配</td><td><code class="mv-md-code">WHERE name LIKE 'abc%'</code>（<strong>前缀</strong>才行，<code class="mv-md-code">%abc</code> 不行）</td></tr><tr><td>唯一性</td><td><code class="mv-md-code">UNIQUE</code>、主键约束的底层</td></tr></tbody></table>
 <p class="mv-md-p"><strong>覆盖面最广 → 所以是默认。</strong> 这句话比任何类型清单都重要：默认不是「最好」，是「最不容易选错」。</p>
-<h3 class="mv-md-h">二、四种类型：组织方式决定它能回答什么</h3>
+<h3 class="mv-md-h mv-md-h3">二、四种类型：组织方式决定它能回答什么</h3>
 <table class="mv-table"><thead><tr><th>类型</th><th>怎么组织</th><th>擅长回答</th><th>典型场景</th></tr></thead><tbody><tr><td><strong>B-tree</strong></td><td>有序树，键 → 位置</td><td>等值 / 范围 / 排序 / 前缀</td><td>90% 的普通索引</td></tr><tr><td><strong>GIN</strong></td><td>倒排：<strong>值 → 出现位置集合</strong></td><td><strong>多值包含</strong>（<code class="mv-md-code">@&gt;</code>、<code class="mv-md-code">&amp;&amp;</code>、<code class="mv-md-code">@@</code>）</td><td>JSONB、数组、全文检索</td></tr><tr><td><strong>GiST</strong></td><td>可扩展的平衡树，节点存<strong>包围盒 / 范围摘要</strong></td><td>几何相交、近邻（<code class="mv-md-code">&lt;-&gt;</code>）、范围重叠</td><td>地理位置、区间、模糊匹配</td></tr><tr><td><strong>BRIN</strong></td><td>只存<strong>每个数据块的最小/最大值摘要</strong></td><td>大表按<strong>物理有序</strong>列做范围扫</td><td>时序表按时间追加写</td></tr><tr><td><strong>Hash</strong></td><td>哈希表，只存哈希 → 位置</td><td><strong>只有</strong> <code class="mv-md-code">=</code></td><td>几乎用不上（B-tree 也能等值，还多给排序）</td></tr></tbody></table>
 <p class="mv-md-p"><strong>关键在 GIN 那一行</strong>：B-tree 的键是「整行的某个值」，所以 <code class="mv-md-code">tags = '{a,b}'</code> 这种整值比较能用，但 <code class="mv-md-code">tags @&gt; '{a}'</code>（包含 a）用不了——因为 B-tree 不知道 <code class="mv-md-code">{a,b}</code> 里有没有 <code class="mv-md-code">a</code>。<strong>GIN 把每个元素单独建成一个键，所以「包含」变成了「按元素查」</strong>。这就是它适合 JSONB / 数组的根本原因，而不是「GIN 比较高级」。</p>
-<h3 class="mv-md-h">三、回到题目</h3>
+<h3 class="mv-md-h mv-md-h3">三、回到题目</h3>
 <ul class="mv-md-ul"><li><code class="mv-md-code">status</code> 等值 → <strong>B-tree</strong>；如果 <code class="mv-md-code">status</code> 只有少量「活跃值」高频被查，直接用<strong>部分索引</strong>（见 P3）更省。</li><li><code class="mv-md-code">tags</code> 包含判断 → <strong>GIN</strong>（<code class="mv-md-code">GIN (tags)</code>）。</li></ul>
 <p class="mv-md-p"><strong>给「只有一次机会」的答案</strong>：先建 B-tree 的 <code class="mv-md-code">status</code>（它服务的是最高频、最便宜的那类查询），再评估 tags 查询的频率——如果 tags 查询不是热点，就不该为它付 GIN 的写入代价。<strong>「先建哪个」这个问题本身在考你知不知道 GIN 更贵。</strong></p>
-<h3 class="mv-md-h">四、代价与边界（不说这段就等于没选型）</h3>
+<h3 class="mv-md-h mv-md-h3">四、代价与边界（不说这段就等于没选型）</h3>
 <table class="mv-table"><thead><tr><th>类型</th><th>主要代价</th></tr></thead><tbody><tr><td>B-tree</td><td>写放大、空间；更新频繁时页分裂</td></tr><tr><td><strong>GIN</strong></td><td><strong>写入代价明显更高</strong>（一次写入要更新多个倒排项），常有 pending list / fastupdate 机制缓冲；体积也更大</td></tr><tr><td>GiST</td><td>可能是<strong>有损</strong>的（需要回表复核），构建较慢</td></tr><tr><td>BRIN</td><td><strong>只对物理有序有效</strong>——数据一旦乱序（更新、VACUUM FULL 后顺序变化），摘要会退化到「每块范围都覆盖全表」，索引形同虚设</td></tr><tr><td>Hash</td><td>不支持范围与排序，不能做唯一约束，崩溃安全性历史上也有问题</td></tr></tbody></table>
 <p class="mv-md-p"><strong>所以判据是两句话</strong>：① 查询用的操作符，只有这个类型的 operator class 支持；② 加上它以后，写入路径能不能承受。<strong>只说①不说②，是教科书答案；两句都说，才是做过线上的人。</strong></p>
 <hr class="mv-md-hr">

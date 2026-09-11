@@ -26,8 +26,8 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
-    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M13</span><span class="mv-mt-name">长事务为什么危险（不只是持锁久）</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/MySQL-母题-M13-长事务为什么危险.html">单卡 →</a></div><p class="mv-mt-q">长事务为什么危险？不只是持锁久——它到底坏了什么？</p><collapse-panel title="题目背景"><p class="mv-md-p">一个只做 <code class="mv-md-code">SELECT</code>、什么都没改的事务，挂了两个小时不结束。它会带来什么问题？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：长事务最可怕的隐患是<strong>拖住旧版本数据的清理</strong>——MVCC 的普通读依赖 undo 里的旧版本，<strong>事务不结束，purge 线程就不敢清那些它还可能要读的版本</strong> → <strong>undo 膨胀、历史链越来越长 → 回滚成本更高、快照读沿链回溯更慢、锁持有更久</strong> → <strong>系统整体越来越沉</strong>。<strong>加上持锁久这一层，两条危害叠加</strong>。<strong>只读事务同样有害</strong>（手动关了 autocommit 忘了提交，是最常见的真实事故形态）。</p><ul class="mv-kw"><li>拖住 undo 清理</li><li>历史链变长</li><li>回滚成本更高</li><li>**只读事务也危险**</li><li>autocommit 意外关闭</li><li>事务里不放 RPC</li><li>`innodb_trx` 监控</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>长事务最可怕的不是"执行久"，而是它会持续占着数据库资源，让整个系统越来越难受。</strong>（raw 原话）——<strong>它不是"慢"，是"按住资源的柄"。</strong></p><h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、危害一：拖住旧版本清理（从 M9 直接推导）</h3>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M13</span><span class="mv-mt-name">长事务为什么危险（不只是持锁久）</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/MySQL-母题-M13-长事务为什么危险.html">单卡 →</a></div><p class="mv-mt-q">长事务为什么危险？不只是持锁久——它到底坏了什么？</p><collapse-panel title="题目背景"><p class="mv-md-p">一个只做 <code class="mv-md-code">SELECT</code>、什么都没改的事务，挂了两个小时不结束。它会带来什么问题？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：长事务最可怕的隐患是<strong>拖住旧版本数据的清理</strong>——MVCC 的普通读依赖 undo 里的旧版本，<strong>事务不结束，purge 线程就不敢清那些它还可能要读的版本</strong> → <strong>undo 膨胀、历史链越来越长 → 回滚成本更高、快照读沿链回溯更慢、锁持有更久</strong> → <strong>系统整体越来越沉</strong>。<strong>加上持锁久这一层，两条危害叠加</strong>。<strong>只读事务同样有害</strong>（手动关了 autocommit 忘了提交，是最常见的真实事故形态）。</p><ul class="mv-kw"><li>拖住 undo 清理</li><li>历史链变长</li><li>回滚成本更高</li><li>**只读事务也危险**</li><li>autocommit 意外关闭</li><li>事务里不放 RPC</li><li>`innodb_trx` 监控</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>长事务最可怕的不是"执行久"，而是它会持续占着数据库资源，让整个系统越来越难受。</strong>（raw 原话）——<strong>它不是"慢"，是"按住资源的柄"。</strong></p><h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、危害一：拖住旧版本清理（从 M9 直接推导）</h3>
 <p class="mv-md-p">M9 讲过：<strong>快照读要沿 undo 版本链回溯找可见版本</strong>。</p>
 <p class="mv-md-p"><strong>关键问题</strong>：<strong>旧版本什么时候能删？</strong></p>
 <pre class="mv-md-pre">purge 线程清理 undo 的前提：
@@ -43,11 +43,11 @@
   → 回滚成本更高（要撤销的更多）
   → 系统整体越来越沉</pre>
 <p class="mv-md-p"><strong>这条链值得完整背下来</strong>——<strong>它把 M9 的机制变成了 M13 的后果</strong>，是"会 MVCC"和"会运维"的分界线。</p>
-<h3 class="mv-md-h">二、危害二：持锁久</h3>
+<h3 class="mv-md-h mv-md-h3">二、危害二：持锁久</h3>
 <p class="mv-md-p">事务里如果有 <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">FOR UPDATE</code>，<strong>锁会一直持有到事务结束</strong>：</p>
 <pre class="mv-md-pre">事务越长 → 锁持有越久 → 其他事务排队越久 → 死锁概率越高（M10）</pre>
 <p class="mv-md-p"><strong>注意这两条危害的来源不同</strong>：<strong>一条来自 MVCC（对读的影响），一条来自锁（对写的影响）</strong>——<strong>长事务是两条路同时变坏。</strong></p>
-<h3 class="mv-md-h">三、只读事务为什么也危险（最容易被忽略）</h3>
+<h3 class="mv-md-h mv-md-h3">三、只读事务为什么也危险（最容易被忽略）</h3>
 <p class="mv-md-p"><strong>因为回收看的是 ReadView，不是"这个事务做了什么"</strong>：</p>
 <pre class="mv-md-pre">很多人以为只有写事务才会造成问题。
 其实只读事务如果一直不结束，在一致性读场景下，同样可能拖住旧版本清理。</pre>
@@ -57,14 +57,14 @@ SELECT ...;        -- 开了一个事务（隐式 BEGIN）
 -- 然后连接挂着，什么都没做
                    ← 这个事务可能挂好几个小时</pre>
 <p class="mv-md-p"><strong>这种连接在监控上很不起眼（CPU 低、几乎无查询），但它在按住回收边界。</strong> <strong>PG 那边对应的形态是 <code class="mv-md-code">idle in transaction</code>（P14）</strong>——<strong>两边是同一类事故，只是监控指标不同。</strong></p>
-<h3 class="mv-md-h">四、工程规避清单（raw 的五条，全部照背）</h3>
+<h3 class="mv-md-h mv-md-h3">四、工程规避清单（raw 的五条，全部照背）</h3>
 <pre class="mv-md-pre">① 事务里只放必须的数据库动作
 ② 不要把外部 RPC / 网络调用放进事务
 ③ 不要把复杂业务计算放进事务
 ④ 批量更新尽量分批做
 ⑤ 大查询和导出要格外注意事务边界</pre>
 <p class="mv-md-p"><strong>第 ② ③ 条是同一类错误</strong>：<strong>把"外部系统的响应时间"绑进了"事务的持有时间"</strong>——外部一抖，事务就长。<strong>RuleArena 里"事务只包数据库操作、Checkpoint 不当业务事实"是同一个纪律</strong>（P19 的对照）。</p>
-<h3 class="mv-md-h">五、怎么监控</h3>
+<h3 class="mv-md-h mv-md-h3">五、怎么监控</h3>
 <table class="mv-table"><thead><tr><th>看什么</th><th>用途</th></tr></thead><tbody><tr><td><code class="mv-md-code">information_schema.innodb_trx</code> 的 <code class="mv-md-code">trx_started</code></td><td><strong>运行时间最长的事务</strong>——回收边界的直接代理</td></tr><tr><td><code class="mv-md-code">SHOW PROCESSLIST</code></td><td>长时间处于 <code class="mv-md-code">Sleep</code> 状态的连接（可能是 <code class="mv-md-code">idle in transaction</code> 的 MySQL 版）</td></tr><tr><td>undo 表空间大小 / 历史链长度相关指标</td><td>膨胀程度</td></tr></tbody></table>
 <p class="mv-md-p"><strong>面试加分点</strong>：<strong>能说出"我盯的是最老事务的 trx_started，因为回收边界由最老的 ReadView 决定"</strong>——<strong>这和 PG 侧"盯最老事务的 xmin"（P14）是同一句话</strong>，<strong>两套数据库，同一条原理。</strong></p>
 <hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M13-长事务为什么危险.md</p></div>

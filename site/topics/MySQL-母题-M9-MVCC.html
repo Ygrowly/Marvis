@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-M8-隔离级别与ACID · 母题-M10-锁与死锁 · 母题-M11-三日志与两阶段提交 ｜ 正本 wiki/topics/MySQL/母题-M9-MVCC.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">RR 下为什么"两次一样的 <code class="mv-md-code">SELECT</code> 结果一样"？这个快照是什么时候定的？和 PG 的实现差在哪？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">MVCC 怎么实现？RR 与 RC 生成 ReadView 的时机差在哪？幻读到底怎么解决？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M9-MVCC" tag="MySQL" q="MVCC 怎么实现？RR 与 RC 生成 ReadView 的时机差在哪？幻读到底怎么解决？" a="MVCC = 多版本 + ReadView。InnoDB 的旧版本存在 undo log 版本链里（每行带 trx_id 事务 ID 和 roll_pointer 指向旧版本），读的时候用一个 ReadView（记录生成时刻的活跃事务列表 + 低水位/高水位）沿着版本链找第一个对自己可见的版本。RC 与 RR 的唯一差别是 ReadView 的生成时机：RC 每条语句生成一次，RR 整个事务第一次快照读时生成一次——这一个时机差异，就是&quot;可重复读&quot;的全部实现。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是主线三里机制密度最高的一道</strong>，也是<strong>"背结论"和"能推导"的分水岭</strong>——因为 <strong>RC 和 RR 的全部差别就一个时机</strong>，答得出这一条，四个隔离级别的行为就都能自己推出来。<strong>而且它是 P13（PG 版 MVCC）的对照面</strong>：两边"版本放哪"不同，导致所有后续行为不同。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>undo 版本链</li><li>trx_id</li><li>roll_pointer</li><li>ReadView</li><li>m_ids</li><li>低水位</li><li>高水位</li><li><strong>RC 每语句 vs RR 每事务</strong></li><li>快照读 vs 当前读</li><li>幻读一半靠 MVCC 一半靠锁</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>MVCC = 多版本 + ReadView</strong>。InnoDB 的旧版本存在 <strong>undo log 版本链</strong>里（每行带 <code class="mv-md-code">trx_id</code> 事务 ID 和 <code class="mv-md-code">roll_pointer</code> 指向旧版本），读的时候用一个 <strong>ReadView</strong>（记录生成时刻的活跃事务列表 + 低水位/高水位）<strong>沿着版本链找第一个对自己可见的版本</strong>。<strong>RC 与 RR 的唯一差别是 ReadView 的生成时机：RC 每条语句生成一次，RR 整个事务第一次快照读时生成一次</strong>——这一个时机差异，就是"可重复读"的全部实现。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>undo 版本链</li><li>trx_id</li><li>roll_pointer</li><li>ReadView</li><li>m_ids</li><li>低水位</li><li>高水位</li><li><strong>RC 每语句 vs RR 每事务</strong></li><li>快照读 vs 当前读</li><li>幻读一半靠 MVCC 一半靠锁</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena 的任务认领</strong>——<strong>条件更新是当前读，不受 MVCC 快照影响，所以它看到的是最新状态</strong>（这正是它能防重复认领的原因之一）；EnergyOps 的<strong>报表查询</strong>（长查询 + RR = 长时间持有的 ReadView，M13 的风险来源）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 的版本在 undo log 里，靠 purge 线程自动回收；PG 的版本留在堆里，靠 VACUUM 回收</strong>。<strong>PG 没有 undo log、没有 ReadView（用 xmin/xmax + 快照）；MySQL 没有 VACUUM</strong>。<strong>两边的 MVCC 是两套实现，只有"快照决定可见性"这一条原理是共通的。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么需要多版本（读写互不堵）→ 版本链的结构 → ReadView 的三个字段与可见性判断 → RC/RR 只差生成时机 → 快照读 vs 当前读 → 幻读的真相</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"可见性"是按快照判定的，而快照的粒度由隔离级别决定。</strong> 这一句同时解释了 MySQL 的 RC/RR 差别（P8）和 PG 的语句/事务快照差别——<strong>两边机制不同，但"快照决定可见性"这条原理完全一致。</strong></p></collapse-panel>
@@ -44,20 +53,20 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、为什么需要多版本（raw 里那句最实在的解释）</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、为什么需要多版本（raw 里那句最实在的解释）</h3>
 <p class="mv-md-p">如果<strong>所有读都去抢锁</strong>，系统并发会很差。MVCC 的核心价值：</p>
 <p class="mv-md-p mv-md-quote"><strong>普通查询走快照读，读一个一致版本，而不是非得去抢当前正在被别人改的那份数据。</strong></p>
 <p class="mv-md-p">raw 里把它压成两句话：<strong>当前读偏"我要最新，还可能要加锁"；快照读偏"我要一个一致版本，别跟写全撞上"。</strong></p>
-<h3 class="mv-md-h">二、版本链的结构</h3>
+<h3 class="mv-md-h mv-md-h3">二、版本链的结构</h3>
 <p class="mv-md-p">每一行数据带着两个隐藏字段：</p>
 <table class="mv-table"><thead><tr><th>字段</th><th>含义</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">trx_id</code></strong></td><td>最近一次修改（插入/更新）它的事务 ID</td></tr><tr><td><strong><code class="mv-md-code">roll_pointer</code></strong></td><td>指向 <strong>undo log 里上一个版本</strong></td></tr></tbody></table>
 <p class="mv-md-p">于是<strong>一行数据的所有历史版本通过 <code class="mv-md-code">roll_pointer</code> 串成一条链</strong>（存在 undo log 里）：</p>
 <pre class="mv-md-pre">当前版本 (trx_id=105) → 旧版本 (trx_id=98) → 更旧 (trx_id=90) → ...</pre>
 <p class="mv-md-p"><strong>注意与 PG 的对照（这里是两边最容易说反的地方）</strong>：<strong>MySQL 的旧版本在 undo log 里，数据页上只有当前版本；PG 的旧版本直接留在堆里</strong>。<strong>这决定了两边回收方式的差别</strong>（MySQL purge 线程自动清 undo；PG 靠 VACUUM，P13）。</p>
-<h3 class="mv-md-h">三、ReadView：可见性怎么判</h3>
+<h3 class="mv-md-h mv-md-h3">三、ReadView：可见性怎么判</h3>
 <p class="mv-md-p">ReadView 里关键是这几样：</p>
 <table class="mv-table"><thead><tr><th>字段</th><th>含义</th></tr></thead><tbody><tr><td><code class="mv-md-code">m_ids</code></td><td>生成 ReadView 时<strong>还活跃（未提交）</strong>的事务 ID 列表</td></tr><tr><td><code class="mv-md-code">min_trx_id</code></td><td><code class="mv-md-code">m_ids</code> 里最小的（低水位）</td></tr><tr><td><code class="mv-md-code">max_trx_id</code></td><td><strong>下一个</strong>将分配的事务 ID（高水位）</td></tr><tr><td><code class="mv-md-code">creator_trx_id</code></td><td>当前事务自己的 ID</td></tr></tbody></table>
 <p class="mv-md-p"><strong>对某个版本的 <code class="mv-md-code">trx_id</code>，判定规则（简化）</strong>：</p>
@@ -68,10 +77,10 @@ min_trx_id &lt;= trx_id &lt; max_trx_id
     在 m_ids 里（当时还没提交）→ 不可见 → 沿 roll_pointer 找更旧版本
     不在（当时已提交）         → 可见</pre>
 <p class="mv-md-p"><strong>不可见就顺着 <code class="mv-md-code">roll_pointer</code> 往前找，直到找到一个可见的版本</strong>——<strong>这就是"快照读"的全部实现。</strong></p>
-<h3 class="mv-md-h">四、RC 与 RR：只差一个时机</h3>
+<h3 class="mv-md-h mv-md-h3">四、RC 与 RR：只差一个时机</h3>
 <table class="mv-table"><thead><tr><th></th><th>ReadView 生成时机</th><th>后果</th></tr></thead><tbody><tr><td><strong>RC</strong></td><td><strong>每条 SELECT 语句</strong>都生成一个新的</td><td>能看到别人刚提交的 → <strong>不可重复读</strong></td></tr><tr><td><strong>RR</strong></td><td><strong>整个事务第一次快照读时</strong>生成一次，之后复用</td><td>整个事务看到同一份 → <strong>可重复读</strong></td></tr></tbody></table>
 <p class="mv-md-p"><strong>这就是"可重复读"的全部实现</strong>——<strong>不是靠锁，是靠"快照不再刷新"。</strong> <strong>理解了这一点，四个隔离级别的行为都能自己推出来，不用背。</strong></p>
-<h3 class="mv-md-h">五、快照读 vs 当前读（幻读的真相）</h3>
+<h3 class="mv-md-h mv-md-h3">五、快照读 vs 当前读（幻读的真相）</h3>
 <table class="mv-table"><thead><tr><th></th><th>什么操作</th><th>用什么</th></tr></thead><tbody><tr><td><strong>快照读</strong></td><td>普通 <code class="mv-md-code">SELECT</code></td><td><strong>MVCC + ReadView</strong>（不加锁）</td></tr><tr><td><strong>当前读</strong></td><td><code class="mv-md-code">SELECT ... FOR UPDATE</code> / <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">DELETE</code> / <code class="mv-md-code">INSERT</code></td><td><strong>读最新版本 + 加锁</strong>（<code class="mv-md-code">X</code> 锁 / 间隙锁，M10）</td></tr></tbody></table>
 <p class="mv-md-p"><strong>所以幻读的准确说法是</strong>：</p>
 <ul class="mv-md-ul"><li><strong>快照读下</strong>：RR 的快照不变，<strong>看不到后来插入的行</strong> → 不幻读；</li><li><strong>当前读下</strong>：<strong>必须读最新版本</strong>，MVCC 帮不上 → 靠 <strong>next-key lock 锁住范围</strong>，阻止别人插入 → 也不幻读；</li><li><strong>两种读混用时</strong>：先用快照读看到 10 行，再 <code class="mv-md-code">UPDATE</code>（当前读）时行数变了——<strong>这是"看起来像幻读"的正常现象</strong>，<strong>不是 bug</strong>。</li></ul>

@@ -125,7 +125,9 @@ def plain(s):
     return s.strip()
 
 
-def md_to_html(md):
+def md_to_html(md, figmap=None, used=None):
+    """markdown 转 html。figmap 非空时，正文里的 ::figure 行会就地渲染成图。"""
+    figmap = figmap or {}
     out, para, lst, code, in_code = [], [], [], [], False
 
     def flush_para():
@@ -160,6 +162,19 @@ def md_to_html(md):
                                    "</tr>" for r in rows[1:]) +
                            "</tbody></table>")
             continue
+        fm = FIGURE_RE.match(raw.strip())
+        if fm:
+            flush_para(); flush_list()
+            _name = fm.group("file")
+            _f = figmap.get(_name)
+            if _f:
+                if used is not None:
+                    used.add(_name)
+                out.append('<figure-box num="%s" title="%s" note="%s">%s</figure-box>'
+                           % (attrs(_f["title"]), "", attrs(_f["note"]),
+                              prefix_svg_ids(_f["svg"],
+                                             "fig" + re.sub(r"\W+", "-", _name))))
+            continue
         if raw.startswith("```"):
             if not in_code:
                 flush_para(); flush_list(); code, in_code = [], True
@@ -173,14 +188,17 @@ def md_to_html(md):
         if not raw.strip():
             flush_para(); flush_list()
             continue
-        if raw.strip() in ("---", "***"):
+        if re.fullmatch(r"[-*_]{3,}", raw.strip()):
             flush_para(); flush_list()
             out.append('<hr class="mv-md-hr">')
             continue
-        m = re.match(r"^#{2,4}\s+(.+)$", raw)
+        m = re.match(r"^(#{2,5})\s+(.+)$", raw)
         if m:
             flush_para(); flush_list()
-            out.append('<h3 class="mv-md-h">' + inline(m.group(1)) + "</h3>")
+            _lv = len(m.group(1))
+            _tag = "h3" if _lv <= 3 else "h4"
+            out.append('<%s class="mv-md-h mv-md-h%d">%s</%s>'
+                       % (_tag, _lv, inline(m.group(2)), _tag))
             continue
         if re.match(r"^\s*[-*]\s+\S", raw):
             flush_para()
@@ -219,7 +237,7 @@ def parse_topic(path):
     if not q or not a:
         return None
 
-    figures = []
+    figures, figmap, used_figs = [], {}, set()
     for line in body.splitlines():
         fm = FIGURE_RE.match(line.strip())
         if not fm:
@@ -229,15 +247,27 @@ def parse_topic(path):
             print("  [warn] 图不存在，已跳过：%s (%s)" % (fm.group("file"), path.name))
             continue
         rest = [x.strip() for x in (fm.group("rest") or "").split("|")]
+        _rec = {
+            "file": fm.group("file"),
+            "svg": fpath.read_text(encoding="utf-8"),
+            "title": rest[0] if len(rest) > 0 else "",
+            "note": rest[1] if len(rest) > 1 else "",
+        }
+        figmap[fm.group("file")] = _rec
+        figures.append(_rec)
+        continue
         figures.append({
             "svg": fpath.read_text(encoding="utf-8"),
             "title": rest[0] if len(rest) > 0 else "",
             "note": rest[1] if len(rest) > 1 else "",
         })
 
+    lesson_md = section_by_title(body, "一、教材") or section_by_title(body, "教材")
+    quiz_md = section_by_title(body, "二、自测") or section_by_title(body, "自测")
+
     mbody = ""
     mb = re.search(r"\n---\s*\n(.*?)(?=\n##\s*二、|\Z)", body, re.S)
-    if mb:
+    if mb and not lesson_md:
         mbody = mb.group(1).strip()
 
     return {
@@ -260,7 +290,10 @@ def parse_topic(path):
         "transfer": grab(body, "可迁移场景"),
         "breakpoint": grab(body, "本次断点"),
         "evidence": grab(body, "通过证据"),
-        "figures": figures,
+        "guide": grab(body, "导读"),
+        "lesson_html": md_to_html(lesson_md, figmap, used_figs) if lesson_md else "",
+        "quiz": parse_quiz(quiz_md),
+        "figures": [f for f in figures if f["file"] not in used_figs],
         "body_html": md_to_html(mbody) if mbody else "",
         "page": "topics/%s-%s.html" % (module, stem),
     }
@@ -318,14 +351,26 @@ PAGE = """<!DOCTYPE html>
     <h1 class="mv-topic-title">%%TITLE%%</h1>
     <p class="mv-topic-meta">%%META%%</p>
   </div>
+%%GUIDE%%
 %%PROBLEM%%
+%%LESSON%%
+%%QUIZ%%
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">%%Q%%</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="%%KEY%%" tag="%%MODULE%%" q="%%Q%%" a="%%A%%"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     %%IMPORTANCE%%
   </div>
-%%FIGURES%%%%KEYWORDS%%%%EXPAND%%%%BODY%%
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">%%CONCLUSION%%</div>
+    %%KEYWORDS%%
+  </div>
+%%FIGURES%%%%EXPAND%%%%BODY%%
   <div class="mv-section">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
@@ -365,6 +410,32 @@ def attrs(s):
              .replace('"', "&quot;").replace("\n", "&#10;"))
 
 
+def parse_quiz(md):
+    """自测段格式：**Q1（计算）**：题干  接着 **A1**：答案（可多行）"""
+    items, cur = [], None
+    for raw in md.splitlines():
+        line = raw.strip()
+        mq = re.match(r"^\*\*Q(\d+)\s*(?:[（(]([^）)]*)[）)])?\*\*\s*[：:]?\s*(.*)$", line)
+        if mq:
+            if cur:
+                items.append(cur)
+            cur = {"no": mq.group(1), "kind": (mq.group(2) or "").strip(),
+                   "q": mq.group(3).strip(), "a": []}
+            continue
+        if cur is None:
+            continue
+        ma = re.match(r"^\*\*A\d+\*\*\s*[：:]?\s*(.*)$", line)
+        if ma:
+            cur["a"].append(ma.group(1).strip())
+        elif line:
+            cur["a"].append(line)
+    if cur:
+        items.append(cur)
+    for it in items:
+        it["a"] = chr(10).join(x for x in it["a"] if x).strip()
+    return [it for it in items if it["q"] and it["a"]]
+
+
 def render_topic(t):
     figures = ""
     for i, f in enumerate(t["figures"], 1):
@@ -376,9 +447,8 @@ def render_topic(t):
 
     keywords = ""
     if t["keywords"]:
-        keywords = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">恢复关键词</h2>\n'
-                    '    <ul class="mv-kw">%s</ul>\n'
-                    '    <p class="mv-note">卡住时靠这几个词重建整条链。</p>\n  </div>\n'
+        keywords = ('\n    <ul class="mv-kw" style="margin-top:1.25rem">%s</ul>\n'
+                    '    <p class="mv-note">卡住时靠这几个词重建整条链。</p>\n'
                     % "".join("<li>%s</li>" % inline(k) for k in t["keywords"]))
 
     panels = []
@@ -412,12 +482,12 @@ def render_topic(t):
     expand = ""
     if panels:
         expand = ('\n  <div class="mv-section">\n'
-                  '    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>\n'
+                  '    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>\n'
                   "    " + "\n    ".join(panels) + "\n  </div>\n")
 
     body = ""
     if t["body_html"]:
-        body = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">正文底稿</h2>\n'
+        body = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">讲解</h2>\n'
                 '    <collapse-panel title="展开推导 / 代码 / 原始素材">\n%s\n    </collapse-panel>\n  </div>\n'
                 % t["body_html"])
 
@@ -439,8 +509,36 @@ def render_topic(t):
         problem = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">题目</h2>\n'
                    '    <div class="mv-problem">%s</div>\n  </div>\n' % md_to_html(t["problem"]))
 
+    guide = ('<p class="mv-guide">%s</p>' % inline(t["guide"])) if t.get("guide") else ""
+
+    lesson = ""
+    if t.get("lesson_html"):
+        lesson = ('<div class="mv-section">'
+                  '<h2 class="mv-section-title">一 · 教材 '
+                  '<span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2>'
+                  '<div class="mv-lesson">%s</div></div>' % t["lesson_html"])
+
+    quiz = ""
+    if t.get("quiz"):
+        _cards = ""
+        for it in t["quiz"]:
+            _cards += ('<div class="mv-qitem"><div class="mv-qhead">'
+                       '<span class="mv-qid">Q%s</span>'
+                       '<span class="mv-chip ghost">%s</span></div>'
+                       '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
+                       % (esc(it["no"]), esc(it["kind"] or "自测"),
+                          attrs(t["key"]), attrs(it["no"]), esc(t["module"]),
+                          attrs(plain(it["q"])), attrs(plain(it["a"]))))
+        quiz = ('<div class="mv-section">'
+                '<h2 class="mv-section-title">二 · 自测 '
+                '<span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2>'
+                '%s</div>' % _cards)
+
     out = PAGE
     for k, v in (
+        ("%%GUIDE%%", guide),
+        ("%%LESSON%%", lesson),
+        ("%%QUIZ%%", quiz),
         ("%%PROBLEM%%", problem),
         ("%%TITLE%%", esc(t["title"])),
         ("%%MODULE%%", esc(t["module"])),
@@ -448,6 +546,7 @@ def render_topic(t):
         ("%%KEY%%", attrs(t["key"])),
         ("%%Q%%", attrs(plain(t["question"]))),
         ("%%A%%", attrs(plain(t["conclusion"]))),
+        ("%%CONCLUSION%%", inline(t["conclusion"])),
         ("%%IMPORTANCE%%", imp),
         ("%%FIGURES%%", figures),
         ("%%KEYWORDS%%", keywords),
@@ -690,12 +789,13 @@ def render_review(rv):
             gorder.append(k)
         groups[k].append(it)
 
-    panels, heat_groups = [], []
+    panels, heat_groups, weak_all = [], [], []
     for rnd, mod in gorder:
         arr = groups[(rnd, mod)]
         scored = [x for x in arr if x["total"] is not None]
         avg = (sum(x["total"] for x in scored) / len(scored)) if scored else 0
         heat_groups.append(("%s · %s" % (rnd, mod_label(mod)), arr, avg))
+        weak_all.extend(scored)
 
         inner = ""
         for it in arr:
@@ -713,19 +813,38 @@ def render_review(rv):
                 abody = '<p class="mv-md-p">面试官真正想听：%s</p>' % inline(it["want"])
             else:
                 abody = '<p class="mv-md-p mv-topic-meta">本报告未附标准答案。</p>'
+            answer_panel = ('<collapse-panel title="标准答案 / 口述稿（先自己答，再看）">%s</collapse-panel>'
+                            % abody)
             inner += (
-                '<div class="mv-qitem">'
+                '<div class="mv-qitem" id="q-%s">'
                 '<div class="mv-qhead"><span class="mv-qid">%s</span>'
                 '<span class="mv-qtime">%s</span>%s</div>'
-                '<flip-card card-id="review-%s" tag="%s" q="%s" a="%s"></flip-card>'
+                '<div class="mv-qtext">%s</div>'
+                '%s'
                 '</div>'
-                % (esc(it["id"]), esc(it["time"]), chips,
-                   attrs(it["id"]) + "-" + attrs(rv["stem"])[:12],
-                   attrs(it["type"] or "面试题"),
-                   attrs(it["q"]), attrs(_strip_tags(abody)))
+                % (esc(it["id"]), esc(it["id"]), esc(it["time"]), chips,
+                   inline(it["q"]), answer_panel)
             )
-        panels.append('<collapse-panel title="%s · %s · 平均 %.1f（%d 题）">%s</collapse-panel>'
+        panels.append('<collapse-panel title="%s · %s · 平均 %.1f（%d 题）" open>%s</collapse-panel>'
                       % (esc(rnd), esc(mod), avg, len(arr), inner))
+
+    # 低分题 Top：总分 ≤12 的题按分升序取前 5，前置到最显眼的位置
+    weak = sorted([x for x in weak_all if x["total"] <= 12], key=lambda x: x["total"])[:5]
+    weak_html = ""
+    if weak:
+        rows = ""
+        for it in weak:
+            rows += ('<a class="mv-weak-row" href="#q-%s">'
+                     '<span class="mv-qid">%s</span>'
+                     '<span class="mv-chip">%g/25</span>'
+                     '<span class="mv-weak-q">%s</span>'
+                     '<span class="mv-chip warn">%s</span>'
+                     '<span class="mv-weak-go">跳到该题 →</span></a>'
+                     % (esc(it["id"]), esc(it["id"]), it["total"],
+                        esc(it["q"]), esc(it["cause"] or "—")))
+        weak_html = ('\n  <div class="mv-section">\n'
+                     '    <h2 class="mv-section-title">先改这些 · 低分题 Top <span class="mv-topic-meta">点题号跳到对应题的答案</span></h2>\n'
+                     '    %s\n  </div>\n' % rows)
 
     missing = ""
     for mm in rv["missing"]:
@@ -751,6 +870,7 @@ def render_review(rv):
         ("%%TITLE%%", esc(rv["title"])),
         ("%%META%%", meta_line),
         ("%%SUMMARY%%", rv["summary"]),
+        ("%%WEAK%%", weak_html),
         ("%%HEAT%%", heat_svg(heat_groups)),
         ("%%TOTAL%%", str(len(rv["items"]))),
         ("%%PANELS%%", "".join(panels)),
@@ -795,14 +915,14 @@ REVIEW_PAGE = """<!DOCTYPE html>
     <h2 class="mv-section-title">总评</h2>
     <div class="mv-problem">%%SUMMARY%%</div>
   </div>
-
+%%WEAK%%
   <div class="mv-section">
     <h2 class="mv-section-title">分数分布 <span class="mv-topic-meta">共 %%TOTAL%% 题 · 颜色越深分越高 · 悬停看题号与归因</span></h2>
     <figure-box num="1" title="各模块逐题得分与平均分（满分 25）">%%HEAT%%</figure-box>
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">逐题（按模块）<span class="mv-topic-meta">先说后翻</span></h2>
+    <h2 class="mv-section-title">逐题（按模块）<span class="mv-topic-meta">题干直接可见 · 答案先自答再展开</span></h2>
     %%PANELS%%
   </div>
 

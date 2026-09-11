@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-P12-流复制与逻辑复制 · 母题-P13-MVCC与可见性 ｜ 正本 wiki/topics/PostgreSQL/母题-P11-WAL与checkpoint.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">MySQL 有 redo / undo / binlog 三套日志，PG 只有一套 WAL。它是怎么保证「提交过的不丢」的？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="PostgreSQL/母题-P11-WAL与checkpoint" tag="PostgreSQL" q="WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？" a="WAL 是「先写日志、再改数据页」：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；提交时靠 fsync 保证这个事务的 WAL 已经落盘（synchronous_commit = on），所以崩溃后能用 WAL 把已提交的改动重放出来。checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」——它不影响正确性，只影响崩溃后要重放多久。PG 不需要 undo，是因为旧版本本来就留在堆里（P13），不靠日志回滚。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 的七处差异」里最容易被追问到底的一处</strong>。表面问题只是「PG 用什么日志」，但<strong>深一层会问到「那它为什么不需要 undo」</strong>——答案在 MVCC（P13），<strong>所以这两道题是一对，答不上 P13 就讲不透 P11。</strong></p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>预写日志（先日志后数据页）</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li>checkpoint 推进恢复起点</li><li>checkpoint 频率的两面</li><li>full_page_writes（检查点后首写整页）</li><li>恢复从最近 checkpoint 开始</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>WAL 是「先写日志、再改数据页」</strong>：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；<strong>提交时靠 <code class="mv-md-code">fsync</code> 保证这个事务的 WAL 已经落盘</strong>（<code class="mv-md-code">synchronous_commit = on</code>），所以崩溃后能用 WAL 把已提交的改动重放出来。<strong>checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」</strong>——它不影响正确性，只影响<strong>崩溃后要重放多久</strong>。PG 不需要 undo，是因为<strong>旧版本本来就留在堆里</strong>（P13），不靠日志回滚。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>预写日志（先日志后数据页）</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li>checkpoint 推进恢复起点</li><li>checkpoint 频率的两面</li><li>full_page_writes（检查点后首写整页）</li><li>恢复从最近 checkpoint 开始</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>幂等补数</strong>（「重放不产生副作用」和 WAL 重放是同一个思路：<strong>先判断是否已做过</strong>）；RuleArena 的<strong>Checkpoint 与崩溃恢复</strong>（同样是「任务进度」和「业务事实」分开存——<strong>PG 这里也把「恢复起点」和「数据安全」分开了，是同一个设计原则</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 是 <strong>redo（崩溃恢复）+ undo（回滚与 MVCC）+ binlog（复制与时间点恢复）</strong>三套；PG 只有 <strong>WAL</strong>一套。<strong>注意不要说「PG 的 WAL 相当于 MySQL 的 redo log」——WAL 同时承担了 redo、部分 binlog（通过逻辑解码）的功能，而 undo 那部分职能被 MVCC 结构替代了。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么需要 WAL（顺序写换随机写 + 崩溃安全）→ WAL 怎么保证已提交不丢 → checkpoint 在做什么 → 为什么 PG 只有一套日志（不需要 undo）→ <code class="mv-md-code">synchronous_commit</code> 的取舍 → 生产怎么配</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>WAL 管「已提交的能不能重放出来」（正确性），checkpoint 管「重放要从多久之前开始」（恢复时间）。</strong> 两件事，<strong>但它们由同一组参数牵动</strong>——checkpoint 越勤，恢复越快，常态 IO 压力越大。</p></collapse-panel>
@@ -44,10 +53,10 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、为什么需要 WAL</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、为什么需要 WAL</h3>
 <p class="mv-md-p">修改数据时不直接改磁盘数据页（随机 IO 太慢），而是：</p>
 <pre class="mv-md-pre">改内存（shared_buffers 里的数据页）
   + 把「改了什么」顺序追加到 WAL
@@ -57,11 +66,11 @@
 数据页留在内存，稍后由后台批量刷盘</pre>
 <p class="mv-md-p"><strong>两个收益</strong>：① <strong>把随机写换成顺序写</strong>（写入性能）；② <strong>只要 WAL 落盘，即使数据页没刷、机器立刻断电，重启后也能重放出来</strong>（崩溃安全）。</p>
 <p class="mv-md-p"><strong>关键在「提交时 fsync 的是 WAL，不是数据页」</strong>——这就是「提交很快但数据页还没落盘」却依然安全的原因。</p>
-<h3 class="mv-md-h">二、<code class="mv-md-code">synchronous_commit</code>：唯一承诺的落盘点</h3>
+<h3 class="mv-md-h mv-md-h3">二、<code class="mv-md-code">synchronous_commit</code>：唯一承诺的落盘点</h3>
 <table class="mv-table"><thead><tr><th>值</th><th>语义</th><th>丢什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">on</code>（默认）</td><td>提交时等本事务 WAL <strong>fsync 完成</strong>才返回成功</td><td>不丢已提交事务</td></tr><tr><td><code class="mv-md-code">off</code></td><td>提交不等 fsync，让后台尽快刷</td><td><strong>可能丢最近若干毫秒「已提交」的事务</strong></td></tr><tr><td><code class="mv-md-code">local</code> / <code class="mv-md-code">remote_apply</code> 等</td><td>与复制相关（见 P12）</td><td>取决于复制配置</td></tr></tbody></table>
 <p class="mv-md-p"><strong>必须讲清的一点</strong>：<code class="mv-md-code">off</code> 丢的是「<strong>已经向客户端返回成功、但 WAL 还没落盘</strong>」的那部分——<strong>这是唯一一个「数据库告诉成功了却可能丢」的配置</strong>。所以：</p>
 <ul class="mv-md-ul"><li><strong>钱、订单、状态机等路径</strong>：必须 <code class="mv-md-code">on</code>；</li><li><strong>批量导入、可重建的埋点数据</strong>：可以临时 <code class="mv-md-code">off</code> 换吞吐，但<strong>要在业务层知道这件事</strong>，不是"顺手关了"。</li></ul>
-<h3 class="mv-md-h">三、checkpoint 在做什么</h3>
+<h3 class="mv-md-h mv-md-h3">三、checkpoint 在做什么</h3>
 <pre class="mv-md-pre">checkpoint 触发
   ↓
 把「某个 LSN 之前」的所有脏页刷到磁盘
@@ -72,14 +81,14 @@
 <p class="mv-md-p"><strong>所以 checkpoint 的收益是「恢复时间」</strong>，不是数据安全。</p>
 <p class="mv-md-p"><strong>它带来一个必须知道的副作用——<code class="mv-md-code">full_page_writes</code></strong>：因为刷盘是「按页」但不是原子的（可能半页写失败），所以 <strong>checkpoint 之后对这些页的第一次修改，WAL 里要记整页内容</strong>（而不是「某偏移改了某个值」）。后果是：</p>
 <ul class="mv-md-ul"><li><strong>checkpoint 越勤 → 「首写整页」发生得越频繁 → WAL 体积反而更大</strong>；</li><li>所以「把 checkpoint 调很勤以缩短恢复时间」会<strong>用 WAL 写放大和 IO 抖动换恢复速度</strong>——这是 PG 调优里一个经典的两难。</li></ul>
-<h3 class="mv-md-h">四、为什么 PG 只有一套日志（不需要 undo）</h3>
+<h3 class="mv-md-h mv-md-h3">四、为什么 PG 只有一套日志（不需要 undo）</h3>
 <p class="mv-md-p">MySQL 需要 undo 有两个原因：① 事务回滚；② 给 MVCC 提供旧版本。</p>
 <p class="mv-md-p"><strong>PG 两个都不需要日志层面的 undo</strong>：</p>
 <ul class="mv-md-ul"><li><strong>旧版本</strong>：PG 的 <code class="mv-md-code">UPDATE</code> 是「写新版本 + 标记旧版本」（P13），<strong>旧版本本来就在堆里</strong>，读的时候按快照挑版本，不需要去 undo log 里拼；</li><li><strong>回滚</strong>：未提交事务的改动在崩溃恢复/回滚时，靠「这个版本的 <code class="mv-md-code">xmin</code> 属于一个未提交事务」判定为不可见即可，<strong>并且由 VACUUM 清掉</strong>。</li></ul>
 <p class="mv-md-p"><strong>代价</strong>：旧版本占用空间、必须靠 <strong>VACUUM</strong> 回收——<strong>于是「PG 没有 undo」这件事，直接解释了三件现象</strong>：</p>
 <p class="mv-md-p">1. 为什么 PG 会<strong>表膨胀</strong>（P14）； 2. 为什么有 <strong>VACUUM 与事务 ID 回卷</strong>这种 MySQL 不存在的运维风险（P15）； 3. 为什么 <strong>长事务在 PG 里格外危险</strong>（它按住了快照，让回收停摆）。</p>
 <p class="mv-md-p"><strong>这条是整条主线五的入口。</strong></p>
-<h3 class="mv-md-h">五、生产怎么配（说这段才像做过线上）</h3>
+<h3 class="mv-md-h mv-md-h3">五、生产怎么配（说这段才像做过线上）</h3>
 <pre class="mv-md-pre">① 关键写路径：synchronous_commit = on（默认，别动）
 ② checkpoint 频率：先看 pg_stat_bgwriter 的 checkpoint 频率与刷盘量，
    再决定是放宽 checkpoint 间隔（减 IO 抖动）还是收紧（减恢复时间）

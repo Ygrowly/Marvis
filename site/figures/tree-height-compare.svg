@@ -1,0 +1,25 @@
+<svg viewBox="0 0 680 230" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>三种索引结构在 2000 万行下的树高与 IO 次数</title>
+<desc>统一用定位一行需要几次 IO 比较：红黑树扇出 2、树高约 24；B 树非叶存数据、扇出约 16、树高约 6 且范围查询需回溯；B+ 树非叶只存键、扇出约 1170、树高 3。</desc>
+
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">结构</text>
+<text x="180" y="26" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">扇出</text>
+<text x="290" y="26" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">定位一行需要几次 IO（2000 万行）</text>
+
+<text x="40" y="65" font-family="system-ui,sans-serif" font-size="13" fill="var(--color-text-primary)" dominant-baseline="central">红黑树</text>
+<text x="180" y="65" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">扇出 2（二叉）</text>
+<rect x="290" y="52" width="270" height="26" rx="6" fill="#BA7517"/>
+<text x="572" y="65" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-primary)" dominant-baseline="central">24 次</text>
+
+<text x="40" y="113" font-family="system-ui,sans-serif" font-size="13" fill="var(--color-text-primary)" dominant-baseline="central">B 树</text>
+<text x="180" y="113" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">扇出 约 16</text>
+<rect x="290" y="100" width="68" height="26" rx="6" fill="#BA7517"/>
+<text x="370" y="113" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-primary)" dominant-baseline="central">6 次，且范围查询要回溯</text>
+
+<text x="40" y="161" font-family="system-ui,sans-serif" font-size="13" fill="var(--color-text-primary)" dominant-baseline="central">B+ 树</text>
+<text x="180" y="161" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">扇出 约 1170</text>
+<rect x="290" y="148" width="34" height="26" rx="6" fill="#0F6E56"/>
+<text x="336" y="161" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-primary)" dominant-baseline="central">3 次，范围查询顺链表</text>
+
+<text x="40" y="200" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">树高 = log 扇出（行数）。三条柱用同一个指标衡量，差异才可比</text>
+</svg>

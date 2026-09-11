@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-P3-部分索引与表达式索引 · 母题-P15-VACUUM与事务ID回卷 ｜ 正本 wiki/topics/PostgreSQL/母题-P4-索引代价与在线建索引.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">线上 8000 万行的表要加一个索引。你直接执行 <code class="mv-md-code">CREATE INDEX idx_x ON big_table (col)</code>。会发生什么？换成 <code class="mv-md-code">CREATE INDEX CONCURRENTLY</code> 就安全了吗？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">索引的代价是什么（PG 版）？CREATE INDEX CONCURRENTLY 有什么坑，失败了怎么办？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="PostgreSQL/母题-P4-索引代价与在线建索引" tag="PostgreSQL" q="索引的代价是什么（PG 版）？CREATE INDEX CONCURRENTLY 有什么坑，失败了怎么办？" a="PG 里索引的代价有三项——写放大 / 空间 / VACUUM 与缓存压力（第三项是 PG 特有的，也是它在索引数量上比 MySQL 更保守的原因）；CREATE INDEX CONCURRENTLY 做到了不长时间阻塞写入，代价是不能在事务里跑、要扫两遍表所以更慢、失败会留下 INVALID 索引——那个索引不报错、但照样占空间并拖慢写入，必须手动 DROP 再重建。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：MySQL 那边这条主线的关键词是「MDL 连锁」；<strong>PG 这边换成了另一套机制</strong>——不阻塞写、但会留下<strong>静默的 INVALID 索引</strong>。这是同一个问题的两种形态，<strong>能不能分别讲清，是判断你有没有真的在两套库上操作过的分水岭</strong>。而且它承接 P3：<strong>索引不是越多越好，PG 里还多一条理由。</strong></p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>写放大</li><li>空间</li><li>vacuum 压力</li><li>CONCURRENTLY 不能在事务内</li><li>两遍扫描</li><li>INVALID 索引</li><li>幂等重建脚本</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">PG 里索引的代价有三项——<strong>写放大 / 空间 / VACUUM 与缓存压力</strong>（第三项是 PG 特有的，也是它在索引数量上比 MySQL 更保守的原因）；<code class="mv-md-code">CREATE INDEX CONCURRENTLY</code> 做到了<strong>不长时间阻塞写入</strong>，代价是<strong>不能在事务里跑、要扫两遍表所以更慢、失败会留下 INVALID 索引</strong>——那个索引<strong>不报错、但照样占空间并拖慢写入，必须手动 DROP 再重建</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>写放大</li><li>空间</li><li>vacuum 压力</li><li>CONCURRENTLY 不能在事务内</li><li>两遍扫描</li><li>INVALID 索引</li><li>幂等重建脚本</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena / EnergyOps 的表结构演进（都在 PG 上）；数驭穹图的元数据表变更。<strong>方言差异（面试安全底线）</strong>：MySQL 的在线 DDL 是 <code class="mv-md-code">ALGORITHM=INPLACE, LOCK=NONE</code> + pt-osc / gh-ost 影子表；PG 是 <code class="mv-md-code">CONCURRENTLY</code>。<strong>两边共同的坑是「失败留下的中间态」</strong>——MySQL 是 MDL 排队，PG 是 INVALID 索引。<strong>能把两边的「静默风险」各说一句，这道题就满分。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">索引的三项代价（PG 版）→ 直接建索引会堵什么 → CONCURRENTLY 的机制 → 三个坑 → 失败后的正确处理 → 工程流程</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>在线变更安全的判据不是「它快不快」，而是「失败之后系统停在一个什么状态、以及这个状态是否可见」。</strong> MySQL 的答案是「看不见的队列堵住一切」，PG 的答案是「看得见但不报错的无效索引」——<strong>两次都是「静默」最危险。</strong></p></collapse-panel>
@@ -44,13 +53,13 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、索引的三项代价（PG 版，第三项是重点）</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、索引的三项代价（PG 版，第三项是重点）</h3>
 <table class="mv-table"><thead><tr><th>代价</th><th>表现</th></tr></thead><tbody><tr><td><strong>写放大</strong></td><td>每次 <code class="mv-md-code">INSERT</code> 要在堆里插行并更新<strong>每一个</strong>索引；PG 的 MVCC 让 <code class="mv-md-code">UPDATE</code> = 插入新版本 + 标记旧版本，<strong>所以一次更新会同时写堆和所有索引</strong></td></tr><tr><td><strong>空间</strong></td><td>索引独立文件，叶子存键值 + ctid；联合索引叶子存<strong>所有索引列的值</strong>（比 InnoDB 只存主键更大）</td></tr><tr><td><strong>VACUUM 与缓存压力</strong></td><td>每个索引都是一棵要清理的树：<strong>autovacuum 要遍历的索引页变多、清理变慢、膨胀更难被自动控制</strong>；同时索引页争抢 shared_buffers</td></tr></tbody></table>
 <p class="mv-md-p"><strong>第三项是回答「PG 里索引是不是越多越好」的关键</strong>。MySQL 的答案通常停在「写放大 + 空间」；<strong>PG 必须多一句「它让 VACUUM 更难跟上」</strong>——这句话直接连到 P15（表膨胀）。</p>
-<h3 class="mv-md-h">二、直接建索引会堵什么</h3>
+<h3 class="mv-md-h mv-md-h3">二、直接建索引会堵什么</h3>
 <p class="mv-md-p">普通 <code class="mv-md-code">CREATE INDEX</code> 会<strong>在整张表上持有一个较轻的锁（SHARE）</strong>：它允许其他会话<strong>读</strong>，但<strong>阻塞所有写入</strong>（<code class="mv-md-code">INSERT</code> / <code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">DELETE</code>）。</p>
 <p class="mv-md-p">对 8000 万行的表，这意味着：</p>
 <pre class="mv-md-pre">建索引耗时（分钟级到小时级）
@@ -61,19 +70,19 @@
   ↓
 上层接口开始超时 → 雪崩</pre>
 <p class="mv-md-p"><strong>机制和 MySQL 完全不同（PG 没有 MDL 那套连锁，这里是直接的写锁），但后果一样：不是 DDL 本身慢，是它把后面的写入堵成一条越来越长的队。</strong></p>
-<h3 class="mv-md-h">三、CONCURRENTLY 怎么做到不阻塞</h3>
+<h3 class="mv-md-h mv-md-h3">三、CONCURRENTLY 怎么做到不阻塞</h3>
 <p class="mv-md-p">它把建索引拆成<strong>多遍扫描 + 状态机</strong>，中间不持长锁：</p>
 <p class="mv-md-p">1. 第一遍：登记一个「待构建」的索引（很快，短锁）； 2. 扫描已有数据、填充索引； 3. 第二遍扫描：把构建期间新产生/修改的行补进去； 4. 校验并标记为有效。</p>
 <p class="mv-md-p"><strong>代价与坑，全在这套流程里：</strong></p>
 <table class="mv-table"><thead><tr><th>坑</th><th>说明</th></tr></thead><tbody><tr><td><strong>不能在事务块里执行</strong></td><td>它需要跨多个事务/多遍扫描，所以 <code class="mv-md-code">BEGIN ... CREATE INDEX CONCURRENTLY ... COMMIT</code> 会直接报错。<strong>迁移脚本里最常见的翻车点。</strong></td></tr><tr><td><strong>更慢、占用更多资源</strong></td><td>扫两遍表、等待所有并发事务结束；期间 CPU / IO / WAL 压力显著上升，<strong>必须避开业务高峰</strong>。</td></tr><tr><td><strong>失败会留下 INVALID 索引</strong></td><td>这一步没有回滚——<strong>失败后索引对象仍然存在，只是标记为 invalid</strong>。</td></tr><tr><td><strong>等待期可能很长</strong></td><td>它要等所有可能看到这张表的旧事务结束；<strong>有长事务在跑时会一直等</strong>（长事务在这条主线里又以另一种方式出现）。</td></tr></tbody></table>
-<h3 class="mv-md-h">四、INVALID 索引：为什么它不是「无害的垃圾」</h3>
+<h3 class="mv-md-h mv-md-h3">四、INVALID 索引：为什么它不是「无害的垃圾」</h3>
 <p class="mv-md-p">这是这一题最值得讲透的地方，因为它<strong>静默</strong>：</p>
 <ul class="mv-md-ul"><li>它<strong>不满足唯一性/约束</strong>（<code class="mv-md-code">UNIQUE</code> 用 CONCURRENTLY 建失败后，唯一性其实没有生效）；</li><li>它<strong>不会被查询使用</strong>（优化器忽略 invalid 索引）；</li><li>但它<strong>仍然被写入维护</strong>——每次 <code class="mv-md-code">INSERT</code> / <code class="mv-md-code">UPDATE</code> 都要更新它 → <strong>纯负债</strong>；</li><li>而且它会<strong>占用空间</strong>、拖慢 VACUUM。</li></ul>
 <p class="mv-md-p"><strong>所以「失败了怎么办」的标准答案是</strong>：先查有没有 invalid 索引（<code class="mv-md-code">pg_index.indisvalid = false</code>），然后 <code class="mv-md-code">DROP INDEX CONCURRENTLY</code>（<strong>也要带 CONCURRENTLY，否则 DROP 本身要拿锁</strong>）再重建。</p>
 <pre class="mv-md-pre">-- 找出无效索引
 SELECT c.relname FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
 WHERE NOT i.indisvalid;</pre>
-<h3 class="mv-md-h">五、工程流程（说这段才像做过线上）</h3>
+<h3 class="mv-md-h mv-md-h3">五、工程流程（说这段才像做过线上）</h3>
 <pre class="mv-md-pre">① 先在低峰窗口确认没有长事务（有就跑不了/要等很久）
 ② 检查是否有同类索引已经存在（避免重复）
 ③ 用 CONCURRENTLY 建，脚本里带超时与重试

@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M2-联合索引与最左前缀 ｜ 正本 wiki/topics/MySQL/母题-M3-聚簇索引与回表.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">同一条 SQL，有时加个索引就快 10 倍，有时加了却没用。<code class="mv-md-code">EXPLAIN</code> 出来怎么看它到底走了没走索引、慢在哪？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M3-聚簇索引与回表" tag="MySQL" q="聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？" a="聚簇索引的叶子存整行数据，二级索引的叶子只存索引列 + 主键值；用二级索引查非索引列时必须「回表」再查一次聚簇索引——覆盖索引就是让需要的列全在二级索引里，从而免掉这次回表。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>索引设计的最小闭环</strong>。M1 讲树有多矮，M2 讲有序性怎么用，M3 讲<strong>真正的成本在哪里</strong>——树高只有 3 层，但回表可能是 100 次额外的随机 IO。答不出这层，就会以为「加了索引就快」。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>索引组织表</li><li>主键即数据</li><li>回表 = 二次查找</li><li>覆盖索引</li><li>Using index</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">聚簇索引的叶子存<strong>整行数据</strong>，二级索引的叶子只存<strong>索引列 + 主键值</strong>；用二级索引查非索引列时必须「回表」再查一次聚簇索引——<strong>覆盖索引就是让需要的列全在二级索引里，从而免掉这次回表</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>索引组织表</li><li>主键即数据</li><li>回表 = 二次查找</li><li>覆盖索引</li><li>Using index</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然覆盖索引能免回表，为什么不全表都建宽索引？</strong></strong></p>
 <p class="mv-md-p">索引要跟着写入一起维护：越宽的索引写入越慢、占空间越多；且索引数量多会干扰优化器选择。<strong>覆盖是给热点查询的，不是给全表的。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">rows</code> 很小就一定快吗？</strong></strong></p>
@@ -50,10 +59,10 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、两种索引的结构差异</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、两种索引的结构差异</h3>
 <p class="mv-md-p"><strong>聚簇索引（clustered index）= 主键索引</strong></p>
 <pre class="mv-md-pre">叶子节点 = 完整的一行数据（id, status, next_retry_time, priority, ...）</pre>
 <p class="mv-md-p">所以 InnoDB 里「按主键查」是最快的——<strong>一次 B+ 树定位就拿到整行</strong>。</p>
@@ -62,7 +71,7 @@
 例：(status, next_retry_time) 的叶子 → (status, next_retry_time, id)</pre>
 <p class="mv-md-p">注意：二级索引<strong>必须</strong>带上主键值，否则找不到对应的行。这也解释了两个常见现象：</p>
 <ul class="mv-md-ul"><li>主键越短，所有二级索引都越小</li><li>用非主键做聚簇代价很高（所以 InnoDB 固定用主键）</li></ul>
-<h3 class="mv-md-h">二、回表：那一次被忽略的额外查找</h3>
+<h3 class="mv-md-h mv-md-h3">二、回表：那一次被忽略的额外查找</h3>
 <pre class="mv-md-pre">-- 有索引 (status, next_retry_time)
 SELECT id, status, next_retry_time, priority
 FROM task
@@ -70,7 +79,7 @@ WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();</pre>
 <p class="mv-md-p">执行过程：</p>
 <p class="mv-md-p">1. 走二级索引 <code class="mv-md-code">(status, next_retry_time)</code> 定位到满足条件的索引项 → 拿到 <code class="mv-md-code">id</code> 2. <code class="mv-md-code">priority</code> <strong>不在</strong>二级索引里 → 拿 <code class="mv-md-code">id</code> 回聚簇索引再查一次，取出整行 3. 第 2 步就是<strong>回表</strong>，每条命中行都要做一次</p>
 <p class="mv-md-p"><strong>这就是为什么「命中 1000 行」比「命中 10 行」危险得多</strong>：树高始终 3 层，但回表次数随命中行数线性增长。</p>
-<h3 class="mv-md-h">三、覆盖索引：让索引自己回答完</h3>
+<h3 class="mv-md-h mv-md-h3">三、覆盖索引：让索引自己回答完</h3>
 <p class="mv-md-p">把查询要用的列都放进索引，就不需要回表了：</p>
 <pre class="mv-md-pre">-- 索引改成 (status, next_retry_time, priority)
 SELECT id, status, next_retry_time, priority   -- id 本来就在二级索引里
@@ -78,7 +87,7 @@ FROM task
 WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();</pre>
 <p class="mv-md-p"><code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">Extra</code> 里出现 <strong><code class="mv-md-code">Using index</code></strong>，就是走了覆盖索引。</p>
 <p class="mv-md-p">代价：索引变宽、写入变慢、占用空间。<strong>不是所有查询都值得覆盖</strong>，热点查询值得。</p>
-<h3 class="mv-md-h">四、EXPLAIN 只看四个字段</h3>
+<h3 class="mv-md-h mv-md-h3">四、EXPLAIN 只看四个字段</h3>
 <table class="mv-table"><thead><tr><th>字段</th><th>看什么</th><th>好 / 坏的信号</th></tr></thead><tbody><tr><td><code class="mv-md-code">type</code></td><td>访问类型</td><td>好 → 坏：<code class="mv-md-code">const</code> &gt; <code class="mv-md-code">eq_ref</code> &gt; <code class="mv-md-code">ref</code> &gt; <code class="mv-md-code">range</code> &gt; <code class="mv-md-code">index</code> &gt; <code class="mv-md-code">ALL</code>；出现 <code class="mv-md-code">ALL</code> 就是全表扫</td></tr><tr><td><code class="mv-md-code">key</code></td><td>实际用了哪个索引</td><td>是 <code class="mv-md-code">NULL</code> 说明没走索引；和预期不一致要看 <code class="mv-md-code">possible_keys</code></td></tr><tr><td><code class="mv-md-code">rows</code></td><td>预估扫描行数</td><td>越小越好；这个值是估算，不是精确值</td></tr><tr><td><code class="mv-md-code">Extra</code></td><td>额外动作</td><td><code class="mv-md-code">Using index</code> 好（覆盖）；<strong><code class="mv-md-code">Using filesort</code> / <code class="mv-md-code">Using temporary</code> 是明确的优化信号</strong></td></tr></tbody></table>
 <p class="mv-md-p">素材里那句话可以当口诀用：<strong>出现 <code class="mv-md-code">Using filesort</code> 或 <code class="mv-md-code">Using temporary</code>，基本就说明这条 SQL 还有优化空间。</strong></p>
     </collapse-panel>

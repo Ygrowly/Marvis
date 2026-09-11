@@ -17,6 +17,7 @@
     <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M3-聚簇索引与回表 ｜ 正本 wiki/topics/MySQL/母题-M2-联合索引与最左前缀.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">任务表要支持这样一条调度 SQL：</p>
@@ -29,21 +30,29 @@ LIMIT 100;</pre>
 <p class="mv-md-p">联合索引该怎么建？为什么 <code class="mv-md-code">(a, b, c)</code> 能用上 <code class="mv-md-code">a=1</code> 和 <code class="mv-md-code">a=1 AND b=2</code>，却用不上单独 <code class="mv-md-code">b=2</code>？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M2-联合索引与最左前缀" tag="MySQL" q="联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？" a="联合索引 (a, b, c) 的排序方式是先按 a 排、a 相同再按 b 排、b 相同再按 c 排；所以只有从最左列开始的连续前缀才能用上这份有序性。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：索引设计是后端最高频的追问点，而且它<strong>从 M1 就能推出来</strong>——索引是有序结构，「最左前缀」是这个有序性的直接后果。答得出成因，就不用背。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>有序性</li><li>连续前缀</li><li>等值在前范围在后</li><li>排序列收尾</li><li>少扫少回表少排序</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">联合索引 <code class="mv-md-code">(a, b, c)</code> 的排序方式是<strong>先按 a 排、a 相同再按 b 排、b 相同再按 c 排</strong>；所以只有从最左列开始的连续前缀才能用上这份有序性。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>有序性</li><li>连续前缀</li><li>等值在前范围在后</li><li>排序列收尾</li><li>少扫少回表少排序</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">WHERE b = 2 AND a = 1</code> 和 <code class="mv-md-code">WHERE a = 1 AND b = 2</code> 有区别吗？</strong></strong></p>
 <p class="mv-md-p">没有。优化器会重排条件，<strong>索引匹配看的是列集合，不是书写顺序</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">a = 1 AND c = 3</code> 能用上 <code class="mv-md-code">(a, b, c)</code> 吗？</strong></strong></p>
@@ -57,26 +66,26 @@ LIMIT 100;</pre>
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、最左前缀的成因（一次推完）</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、最左前缀的成因（一次推完）</h3>
 <p class="mv-md-p">索引本身就是一份<strong>排好序的数据</strong>。<code class="mv-md-code">(status, next_retry_time, priority)</code> 的排序规则是：</p>
 <pre class="mv-md-pre">先按 status 排  →  status 相同再按 next_retry_time 排  →  再相同才按 priority 排</pre>
 <p class="mv-md-p">所以：</p>
 <table class="mv-table"><thead><tr><th>查询条件</th><th>能否用索引</th><th>原因</th></tr></thead><tbody><tr><td><code class="mv-md-code">status = 'PENDING'</code></td><td>✅</td><td>命中最左列</td></tr><tr><td><code class="mv-md-code">status = ? AND next_retry_time &lt;= ?</code></td><td>✅</td><td>连续前缀</td></tr><tr><td><code class="mv-md-code">next_retry_time &lt;= ?</code>（单独）</td><td>❌</td><td><code class="mv-md-code">next_retry_time</code> 只在「同 status 内」有序，全局无序</td></tr><tr><td><code class="mv-md-code">priority = 3</code>（单独）</td><td>❌</td><td>只在最小范围内有序</td></tr></tbody></table>
 <p class="mv-md-p"><strong>一句话</strong>：<code class="mv-md-code">b</code> 是「局部有序、全局无序」的，所以只用 <code class="mv-md-code">b</code> 查等于在无序数据里找。</p>
-<h3 class="mv-md-h">二、字段顺序的四条经验（来自素材）</h3>
+<h3 class="mv-md-h mv-md-h3">二、字段顺序的四条经验（来自素材）</h3>
 <p class="mv-md-p">围绕<strong>执行路径</strong>设计，不是围绕字段热度：</p>
 <p class="mv-md-p">1. <strong>等值过滤列放前面</strong> —— 等值条件能一次定位到一个连续区间 2. <strong>范围列要谨慎</strong> —— 范围条件会<strong>截断</strong>后面的列，<code class="mv-md-code">a = ? AND b &gt; ? AND c = ?</code> 里 <code class="mv-md-code">c</code> 用不上索引 3. <strong>排序列尽量接在后面</strong> —— 让 <code class="mv-md-code">ORDER BY</code> 直接吃索引的有序性，避免 <code class="mv-md-code">Using filesort</code> 4. <strong>目标始终是</strong>：少扫、少回表、少排序</p>
-<h3 class="mv-md-h">三、回到那条调度 SQL</h3>
+<h3 class="mv-md-h mv-md-h3">三、回到那条调度 SQL</h3>
 <pre class="mv-md-pre">WHERE status = 'PENDING' AND next_retry_time &lt;= NOW()
 ORDER BY priority DESC, id ASC
 LIMIT 100</pre>
 <p class="mv-md-p">按上面的规则推：</p>
 <ul class="mv-md-ul"><li><code class="mv-md-code">status</code> 是等值 → 放最前</li><li><code class="mv-md-code">next_retry_time</code> 是范围 → 放第二位（它会截断后面）</li><li><code class="mv-md-code">priority</code> 是排序列 → 接在范围列后面，<strong>能用上一部分有序性</strong>（同一 <code class="mv-md-code">next_retry_time</code> 区间内仍是排好的）</li><li>若 <code class="mv-md-code">priority</code> 无法完全靠索引排序，<code class="mv-md-code">Extra</code> 里会出现 <code class="mv-md-code">Using filesort</code></li></ul>
 <p class="mv-md-p"><strong>注意</strong>：范围列之后的有序性只在「范围内部」有效，这是这条 SQL 是否出现 filesort 的关键——<strong>不要背「范围列后面全失效」，那是过度简化</strong>。</p>
-<h3 class="mv-md-h">四、索引失效的典型场景</h3>
+<h3 class="mv-md-h mv-md-h3">四、索引失效的典型场景</h3>
 <table class="mv-table"><thead><tr><th>场景</th><th>为什么失效</th></tr></thead><tbody><tr><td>列上做函数 / 运算：<code class="mv-md-code">WHERE YEAR(created_at) = 2026</code></td><td>破坏了「按列原值有序」这个前提</td></tr><tr><td>隐式类型转换：字符串列 <code class="mv-md-code">WHERE phone = 13800138000</code></td><td>相当于对列做了类型转换</td></tr><tr><td>前导模糊：<code class="mv-md-code">LIKE '%abc'</code></td><td>前缀不定，无法定位有序区间的起点</td></tr><tr><td><code class="mv-md-code">OR</code> 连接的条件里有非索引列</td><td>只能全表扫再合并</td></tr><tr><td><code class="mv-md-code">!=</code> / <code class="mv-md-code">NOT IN</code></td><td>命中区间过于分散，优化器判断扫索引不如全表</td></tr><tr><td>选择度太低（如 <code class="mv-md-code">status</code> 只有 3 个值）</td><td>优化器主动放弃索引走全表</td></tr></tbody></table>
 <p class="mv-md-p"><strong>最后一条最容易被忽略</strong>：索引失效不一定是「写法错了」，可能是<strong>优化器算过成本后主动不选</strong>。</p>
     </collapse-panel>

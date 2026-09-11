@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-34-LRU缓存 · 冲刺包 A2（TopK） ｜ 正本 wiki/topics/算法/母题-33-合并K个有序链表.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定 k 条已经升序排列的链表，把它们合并成一条升序链表并返回。</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何从 k 个有序序列里，持续取出当前的最小值？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="算法/母题-33-合并K个有序链表" tag="算法" q="如何从 k 个有序序列里，持续取出当前的最小值？" a="最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：多路归并的母题，外部排序、多路日志合并、TopK 归并都用它。还考堆的工程细节（Python 元组比较陷阱）。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>k 路归并</li><li>最小堆维护候选</li><li>弹一个补一个</li><li>counter 防元组比较</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>k 路归并</li><li>最小堆维护候选</li><li>弹一个补一个</li><li>counter 防元组比较</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 堆和分治怎么选？</strong></p>
 <p class="mv-md-p">复杂度相同，堆代码短、适合流式；分治不需要额外堆、适合静态数据</p>
 <p class="mv-md-p"><strong>2. Python 里 (val, node) 直接入堆为什么会报 TypeError？</strong></p>
@@ -48,7 +57,7 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
 <p class="mv-md-p">##</p>
 <pre class="mv-md-pre">lists = [

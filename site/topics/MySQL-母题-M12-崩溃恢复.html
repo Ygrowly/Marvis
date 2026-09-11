@@ -17,26 +17,35 @@
     <p class="mv-topic-meta">关联 母题-M11-三日志与两阶段提交 · 母题-M8-隔离级别与ACID ｜ 正本 wiki/topics/MySQL/母题-M12-崩溃恢复.md</p>
   </div>
 
+
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">数据库在「事务提交到一半」时断电。重启后它怎么知道哪些事务该重做、哪些该回滚？会不会把已经提交的又回滚掉？</p></div>
   </div>
 
+
+
   <div class="mv-section">
-    <h2 class="mv-section-title">主卡</h2>
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
     <flip-card gradable card-id="MySQL/母题-M12-崩溃恢复" tag="MySQL" q="崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？" a="恢复 = redo 重放 + undo 回滚：重启后从 check point 起把 redo 顺序重放（已落盘的页按 LSN 跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的事务回滚掉。判据来自两阶段提交留下的状态——redo 是 prepare 且 binlog 完整 → 提交；binlog 不完整 → 回滚。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">在这里练也可以，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：M11 讲的是「日志怎么写」，这一题讲的是「日志怎么被读回来用」——<strong>一个系统可不可靠，不取决于它平时跑得多顺，而取决于它在任意一点断电后能不能自证状态</strong>。这也是最容易被面试官用来分辨「背过两阶段提交」和「真的想通了」的一道题。</p>
   </div>
-
   <div class="mv-section">
-    <h2 class="mv-section-title">恢复关键词</h2>
-    <ul class="mv-kw"><li>redo 重放幂等</li><li>LSN 比较</li><li>undo 回滚未提交</li><li>prepare 状态判据</li><li>binlog 完整性</li><li>双一配置</li></ul>
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">恢复 = <strong>redo 重放 + undo 回滚</strong>：重启后从 check point 起把 redo 顺序重放（已落盘的页按 LSN 跳过，所以重放幂等），把<strong>已提交</strong>的事务补上；再用 undo 把<strong>未提交</strong>的事务回滚掉。<strong>判据来自两阶段提交留下的状态</strong>——redo 是 <code class="mv-md-code">prepare</code> 且 binlog 完整 → 提交；binlog 不完整 → 回滚。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>redo 重放幂等</li><li>LSN 比较</li><li>undo 回滚未提交</li><li>prepare 状态判据</li><li>binlog 完整性</li><li>双一配置</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">展开（默认收起，不进复训调度）</h2>
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>幂等补数</strong>（窗口重跑不会重复计费，和 redo 重放是同一个"先判断是否已做过"的模式）；RuleArena 的<strong>Worker 崩溃恢复</strong>（<code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code> 的「崩溃位置矩阵」几乎就是这张状态表的业务版：调用前 / 请求已发未提交 / 事务已提交未返回 / Checkpoint 落后，各自怎么恢复）。<strong>方言差异</strong>：PostgreSQL 只有 WAL，恢复靠<strong>重放 WAL + 回滚未提交元组</strong>，也做 checkpoint；但<strong>没有 prepare/commit 两阶段日志状态这套东西</strong>（因为不存在 redo 与 binlog 两份日志要协调）——PG 的复制靠 WAL 归档/流复制，不依赖第二份逻辑日志。<strong>这是 MySQL 与 PG 最容易被说反的地方之一。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">崩溃后的三个问题 → redo 的重放规则（为什么幂等）→ undo 回滚谁 → prepare 状态怎么当判据 → binlog 完整性的边界 → 为什么生产要「双一」</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>恢复的正确性不靠"猜",靠"日志状态"</strong>。每一个事务在崩溃瞬间都只有三种可能——还没开始、已经提交、提交到一半（prepare）。<strong>规范状态机让前两种无歧义，第三种由两阶段提交给出唯一裁决。</strong></p></collapse-panel>
@@ -44,24 +53,24 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title">正文底稿</h2>
+    <h2 class="mv-section-title">讲解</h2>
     <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h">原理分解</h3>
-<h3 class="mv-md-h">一、崩溃瞬间，一个事务只有三种状态</h3>
+<h3 class="mv-md-h mv-md-h2">原理分解</h3>
+<h3 class="mv-md-h mv-md-h3">一、崩溃瞬间，一个事务只有三种状态</h3>
 <table class="mv-table"><thead><tr><th>崩溃时的状态</th><th>数据页</th><th>日志</th><th>恢复动作</th></tr></thead><tbody><tr><td>还没提交</td><td>可能已改内存</td><td>redo 里没有 commit / binlog 没写</td><td><strong>undo 回滚</strong></td></tr><tr><td>已经提交</td><td>可能还没落盘</td><td>redo 已 commit、binlog 已完整</td><td><strong>redo 重放补上</strong></td></tr><tr><td>提交到一半</td><td>不确定</td><td>redo 是 <code class="mv-md-code">prepare</code>，binlog <strong>可能完整也可能不完整</strong></td><td><strong>看 binlog 裁决</strong> ← 这题的题眼</td></tr></tbody></table>
 <p class="mv-md-p"><strong>所以恢复算法只回答三件事</strong>：哪些该重做？哪些该回滚？怎么保证重做不会做两遍？</p>
-<h3 class="mv-md-h">二、redo 重放：为什么重放两次也不会出错</h3>
+<h3 class="mv-md-h mv-md-h3">二、redo 重放：为什么重放两次也不会出错</h3>
 <p class="mv-md-p">redo 记录的是「某数据页某偏移被改成了什么值」，而且<strong>每个数据页头部都存着自己的 LSN（日志序列号）</strong>。</p>
 <pre class="mv-md-pre">重放一条 redo 前：比较 页的 LSN 与 该条 redo 的 LSN
   页.LSN &gt;= redo.LSN  →  这条改动已经落盘了，跳过
   页.LSN &lt;  redo.LSN  →  需要应用，把它写进内存页</pre>
 <p class="mv-md-p"><strong>这就是重放幂等的来源</strong>——不是靠"只做一次"的锁，而是靠<strong>"已经做过就认得出"的状态标记</strong>。恢复中断后再次重启，可以继续从断点重放，不会重复应用。</p>
 <p class="mv-md-p mv-md-quote">这个思路值得迁移到任何重放系统里：<strong>幂等不是"不去做"，是"做之前能判断是否已做过"。</strong> RuleArena 里的 ActionReceipt 就是这个模式在业务层的翻版。</p>
-<h3 class="mv-md-h">三、undo 回滚未提交的事务</h3>
+<h3 class="mv-md-h mv-md-h3">三、undo 回滚未提交的事务</h3>
 <p class="mv-md-p">redo 重放结束后，内存里已经包含了「已提交」和「提交到一半但还没裁决」的修改。此时：</p>
 <ul class="mv-md-ul"><li><strong>已提交</strong> → 保留（就是它该在的状态）。</li><li><strong>未提交</strong> → 用 undo log 把改动<strong>反向撤销</strong>，恢复成修改前的样子。</li></ul>
 <p class="mv-md-p"><strong>注意顺序</strong>：一定是<strong>先 redo 重放、再 undo 回滚</strong>。反过来会在「提交了但数据页未落盘」的场景里丢数据。</p>
-<h3 class="mv-md-h">四、题眼：prepare 状态怎么裁决（两阶段提交的收尾）</h3>
+<h3 class="mv-md-h mv-md-h3">四、题眼：prepare 状态怎么裁决（两阶段提交的收尾）</h3>
 <p class="mv-md-p">redo 里状态是 <code class="mv-md-code">prepare</code> 的事务，InnoDB 自己<strong>无法判断该提交还是回滚</strong>——因为决定权在 binlog：</p>
 <pre class="mv-md-pre">redo = prepare
    ├─ binlog 完整（该事务的 binlog 记录已写完，可校验）
@@ -71,7 +80,7 @@
 <p class="mv-md-p"><strong>为什么这么判？</strong> 因为两阶段提交的顺序是「写 redo（prepare）→ 写 binlog → 改 redo 为 commit」。所以：</p>
 <ul class="mv-md-ul"><li><strong>binlog 完整 = 第二步成功了 = 这个事务对外已经宣布过成功</strong>，必须让它生效（否则从库执行了、主库却没有）。</li><li><strong>binlog 不完整 = 第二步没成功 = 这个事务从未对外宣布</strong>，必须回滚（否则主库有效、从库却没有）。</li></ul>
 <p class="mv-md-p"><strong>这就是「崩溃恢复」和「主从一致性」在同一个机制上收口的地方</strong>——不是两套逻辑，是一套。</p>
-<h3 class="mv-md-h">五、生产配置：为什么主库都配「双一」</h3>
+<h3 class="mv-md-h mv-md-h3">五、生产配置：为什么主库都配「双一」</h3>
 <table class="mv-table"><thead><tr><th>参数</th><th>值</th><th>作用</th></tr></thead><tbody><tr><td><code class="mv-md-code">innodb_flush_log_at_trx_commit</code></td><td><strong>1</strong></td><td>每次提交 fsync redo</td></tr><tr><td><code class="mv-md-code">sync_binlog</code></td><td><strong>1</strong></td><td>每次提交 fsync binlog</td></tr></tbody></table>
 <p class="mv-md-p"><strong>两个都为 1 时，事务的"提交成功"才算真的落到磁盘</strong>——这才是接口返回「提交成功」后断电也不丢的前提。<strong>只配一个</strong>会出现：redo 保证了主库恢复，但 binlog 丢了 → 从库缺数据；或者反过来。</p>
 <p class="mv-md-p mv-md-quote">面试追问「这样不是更慢吗？」→ 是，但可以先给出<strong>代价量化</strong>（吞吐下降幅度要靠压测），再说<strong>取舍标准</strong>：涉及钱的写路径不省这个 fsync；能容忍丢最近 1 秒的场景（埋点、日志类）才降到 2 或 0。<strong>这是"按业务定口径"，不是"按性能定口径"。</strong></p>
