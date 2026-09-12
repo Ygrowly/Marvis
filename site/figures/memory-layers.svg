@@ -1,0 +1,28 @@
+<svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>记忆分三层：每层的作用域、寿命和写入门槛都不同</title>
+  <desc>第一层是 thread 级的运行状态，随一次目标执行产生，用 checkpointer 持久化，过了这次 run 就没用了。第二层是跨 thread 的长期记忆，用 store 持久化，只存跨任务稳定、经过验证、且获准保存的信息，每条要有来源、作用域和 TTL。第三层是业务权威状态，它不在 Agent 系统里，而在业务数据库里——任何时候都不应该用前两层的记忆去当事实。把三层混在一起，就会出现拿模型自己的摘要当业务真相的情况。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">记忆分三层：每层的作用域、寿命和写入门槛都不同</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">混在一起的后果是：拿模型自己总结的「已执行」当成工具真的执行成功了</text>
+
+  <!-- 三层 -->
+  <rect x="30" y="66" width="620" height="66" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">① 运行状态（Checkpointer）</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">作用域：单个 thread　　寿命：一次 run　　写入：自动（每一步）</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#633806">内容：做到哪了、做过什么、还剩什么预算 —— 恢复的依据</text>
+
+  <rect x="30" y="140" width="620" height="66" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="162" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">② 长期记忆（Store）</text>
+  <text x="46" y="180" font-family="system-ui,sans-serif" font-size="10" fill="#633806">作用域：跨 thread　　寿命：用户 / 组织级　　写入：【有门槛】</text>
+  <text x="46" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#633806">门槛：跨任务稳定 + 经过验证 + 获准保存；每条要有来源、作用域、TTL、删除机制</text>
+
+  <rect x="30" y="214" width="620" height="66" rx="8" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="236" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">③ 业务权威状态（不在 Agent 系统里）</text>
+  <text x="46" y="254" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">作用域：业务系统　　寿命：长期　　权威性：【最高】</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#633806">订单、权限、审批、账单 —— 任何恢复动作都要先查它，不能信前两层的记忆</text>
+
+  <!-- 底部 -->
+  <path d="M30 296 L650 296" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="318" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">压缩是有损的，所以摘要里必须留下<tspan font-weight="600">可回溯的指针</tspan>：已完成副作用 + 幂等键、证据 ID、Artifact 引用、未决问题与剩余预算。</text>
+  <text x="30" y="336" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">原始消息与工具结果要外部持久化——摘要不是审计记录，丢了指针就找不回来了。</text>
+</svg>

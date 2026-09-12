@@ -1,0 +1,45 @@
+<svg viewBox="0 0 680 344" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>沙箱的两个边界必须同时存在，缺一个就漏</title>
+  <desc>左边是只有文件系统隔离的情况：agent 读不到系统文件，但它能自由联网，于是可以把能读到的敏感内容传出去。中间是只有网络隔离的情况：传不出去了，但它可以改动沙箱外的文件，破坏系统。右边是两个边界同时存在：读的范围被限死、写的去向被限死，泄露路径和破坏路径同时堵住。底部是审批疲劳：当每一次动作都要点确认时，用户从某一次开始就不再细看，后面的审批形同虚设。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">沙箱的两个边界必须同时存在，缺一个就漏</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">文件系统隔离管「能碰什么」，网络隔离管「能送到哪」——它们是「与」不是「或」</text>
+
+  <!-- 三格 -->
+  <rect x="30" y="66" width="196" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">只有文件系统隔离</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">✓ 读不到系统文件</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✗ 但能自由联网</text>
+  <text x="46" y="150" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 能读到的敏感内容</text>
+  <text x="46" y="166" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　可以被传出去</text>
+
+  <rect x="242" y="66" width="196" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="258" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">只有网络隔离</text>
+  <text x="258" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">✓ 内容传不出去</text>
+  <text x="258" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✗ 但能改动沙箱外的文件</text>
+  <text x="258" y="150" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 可以破坏系统，</text>
+  <text x="258" y="166" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　甚至绕出沙箱再联网</text>
+
+  <rect x="454" y="66" width="196" height="120" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="470" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">两个都要</text>
+  <text x="470" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✓ 读的范围被限死</text>
+  <text x="470" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✓ 写的去向被限死</text>
+  <text x="470" y="150" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 泄露路径与破坏路径</text>
+  <text x="470" y="166" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　同时堵住</text>
+
+  <!-- 审批疲劳 -->
+  <path d="M30 206 L650 206" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="230" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">但边界不是唯一手段——「每次都要点确认」会失效</text>
+
+  <rect x="30" y="242" width="300" height="72" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="262" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">一个任务 50 个动作，每个都弹确认：</text>
+  <text x="46" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">用户从第 20 次左右开始不看内容直接点</text>
+  <text x="46" y="302" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 后 30 次审批【形同虚设】</text>
+
+  <rect x="350" y="242" width="300" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="262" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">实测：沙箱把审批提示减少了 84%</text>
+  <text x="366" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#633806">且「即使提示注入成功，也被完整隔离」</text>
+  <text x="366" y="302" font-family="system-ui,sans-serif" font-size="10" fill="#633806">在边界内自由跑 ≫ 每次弹窗</text>
+
+  <text x="30" y="336" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以正确的方向是：<tspan font-weight="600">把「频繁的低风险确认」换成「少而准的高风险拦截」</tspan>——风险分级比无差别审批更安全，也更被认真对待。</text>
+</svg>
