@@ -1,0 +1,32 @@
+<svg viewBox="0 0 680 330" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>深分页：三种写法的扫描量与回表量</title>
+  <desc>同样是取第 100 万页之后的 10 行。直接 LIMIT 1000000, 10 要扫过 100 万零 10 行、并对前 100 万行逐行回表；游标定位用上一页的排序键直接跳过去，只扫 10 行；延迟关联先用覆盖索引把 id 捞出来再回表，扫描量没变但回表从 100 万次降到 10 次。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">深分页：三种写法的扫描量与回表量</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">目标都是「取第 100 万行之后的 10 条」——差别全在「为了这 10 条，你多碰了多少行」</text>
+
+  <!-- ① 直接深分页 -->
+  <text x="30" y="84" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① LIMIT 1000000, 10</text>
+  <rect x="30" y="94" width="546" height="26" rx="4" fill="#BA7517" fill-opacity="0.75"/>
+  <text x="303" y="112" font-family="system-ui,sans-serif" font-size="10.5" fill="#FFFFFF" text-anchor="middle">扫过 1,000,010 行（前 100 万行全部丢弃）</text>
+  <rect x="580" y="94" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="112" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">要的 10</text>
+  <text x="30" y="136" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回表：前 100 万行逐行回表 ≈ 100 万次随机 IO（每次约 3 次 IO → 约 300 万次）</text>
+
+  <!-- ② 游标定位 -->
+  <text x="30" y="176" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 游标定位：WHERE id &gt; :last_id ORDER BY id LIMIT 10</text>
+  <rect x="30" y="186" width="14" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <rect x="580" y="186" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">要的 10</text>
+  <text x="52" y="204" font-family="system-ui,sans-serif" font-size="10" fill="#633806">← 从上页末尾直接跳过来，扫 10 行，回表 10 次</text>
+
+  <!-- ③ 延迟关联 -->
+  <text x="30" y="244" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">③ 延迟关联：先在覆盖索引里取 id，再回表</text>
+  <rect x="30" y="254" width="546" height="26" rx="4" fill="#BA7517" fill-opacity="0.35"/>
+  <text x="303" y="272" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806" text-anchor="middle">仍是 100 万个索引项，但全程不回表（覆盖索引自己就够）</text>
+  <rect x="580" y="254" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">回表 10</text>
+  <text x="30" y="296" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回表从 100 万次 → 10 次；但扫描量没降，所以能拿到上一页排序键时，② 仍优于 ③</text>
+
+  <text x="30" y="320" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">共同的不变量：<tspan font-weight="600" fill="#2C2C2A">深分页的代价 = 偏移量</tspan>——所以任何解法都在做同一件事：不要按偏移量走。</text>
+</svg>

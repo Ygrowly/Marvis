@@ -1,0 +1,53 @@
+<svg viewBox="0 0 680 396" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>一条 SQL 的五层链路，以及慢可以慢在哪一层</title>
+  <desc>左侧是连接器、分析器、优化器、执行器、InnoDB 引擎层五层；中间标出每层做什么；右侧标出这一层各自可能因为什么变慢。底部把三种慢源收口：扫描行数多、回表次数多、JOIN 顺序错——它们的共同点是都能在 EXPLAIN 的字段上找到对应位置。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">一条 SQL 的五层链路，以及「慢」可以慢在哪一层</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">分层本身不是知识——能把「某一层慢」对应到「某个现象」，才是</text>
+
+  <text x="42" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">层</text>
+  <text x="196" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">它做什么</text>
+  <text x="430" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">可能因为什么慢</text>
+
+  <rect x="30" y="84" width="140" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="109" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">连接器</text>
+  <text x="186" y="109" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">握手 · 鉴权 · 管理连接</text>
+  <text x="420" y="109" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">连接数暴涨（少见，但要会排查）</text>
+
+  <rect x="30" y="130" width="140" height="40" rx="6" fill="#F7F6F3" stroke="#E3E1DA" stroke-dasharray="4 3"/>
+  <text x="100" y="155" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65" text-anchor="middle">查询缓存（已移除）</text>
+  <text x="186" y="155" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">8.0 起不再存在</text>
+  <text x="420" y="155" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">失效粒度是整表 → 写多的表命中率趋近 0</text>
+
+  <rect x="30" y="176" width="140" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="201" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">分析器</text>
+  <text x="186" y="201" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">词法 / 语法分析</text>
+  <text x="420" y="201" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">语法错误会立刻报错，不会是慢的原因</text>
+
+  <rect x="30" y="222" width="140" height="46" rx="6" fill="#BA7517"/>
+  <text x="100" y="250" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">优化器</text>
+  <text x="186" y="250" font-family="system-ui,sans-serif" font-size="10" fill="#633806">选索引 · 定 JOIN 顺序</text>
+  <text x="420" y="243" font-family="system-ui,sans-serif" font-size="10" fill="#633806">唯一「做决定」的一层。</text>
+  <text x="420" y="259" font-family="system-ui,sans-serif" font-size="10" fill="#633806">估算错 → 选错索引 / JOIN 顺序 → 最常见慢因</text>
+
+  <rect x="30" y="274" width="140" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="299" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">执行器</text>
+  <text x="186" y="299" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">按计划循环调引擎接口</text>
+  <text x="420" y="299" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">逐行回表（覆盖索引可省）</text>
+
+  <rect x="30" y="320" width="140" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="345" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A" text-anchor="middle">InnoDB 引擎层</text>
+  <text x="186" y="345" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">Buffer Pool · 锁 · undo/redo</text>
+  <text x="420" y="345" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">缓存冷（随机 IO）· 锁等待 · 日志刷盘</text>
+
+  <path d="M100 126 L100 130 M100 172 L100 176 M100 218 L100 222 M100 270 L100 274 M100 316 L100 320" stroke="#D8D5CC" stroke-width="1" fill="none"/>
+  <path d="M100 84 L100 124" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#sp-ar)"/>
+
+  <text x="30" y="384" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">三种慢源收口：① 扫描行数多　② 回表次数多　③ JOIN 顺序错 —— 每一个都能在 EXPLAIN 的字段上找到对应位置。</text>
+
+  <defs>
+    <marker id="sp-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+  </defs>
+</svg>
