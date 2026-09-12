@@ -97,14 +97,14 @@ window.MARVIS_CLUSTERS = [
   },
   {
     id: 'eval', name: '评测观测与治理', zone: 'AI 主战场',
-    /* 2026-09-12：E1–E4 已教材化；E5–E6 建完一张换一张 */
+    /* 2026-09-12：E1–E6 全部教材化，本簇完成 */
     topics: [
       { id: 'E1', name: '评测集设计与 pass^k', href: 'topics/评测观测与治理-母题-E1-评测集设计与pass^k.html', src: 'study/07-Eval-Trace与Observability.md' },
       { id: 'E2', name: 'Trace 与可观测性', href: 'topics/评测观测与治理-母题-E2-Trace与可观测性.html', src: 'study/07-Eval-Trace与Observability.md' },
       { id: 'E3', name: '回归门禁与发布卡口', href: 'topics/评测观测与治理-母题-E3-回归门禁与发布卡口.html', src: 'projects/RuleArena/RuleArena-项目说明.md' },
       { id: 'E4', name: '成本控制与限流', href: 'topics/评测观测与治理-母题-E4-成本控制与限流.html', src: 'study/10-生产治理安全性能与成本.md' },
-      { id: 'E5', name: '越权与提示注入防护', src: 'study/10-生产治理安全性能与成本.md' },
-      { id: 'E6', name: '灰度发布与回滚', src: 'study/10-生产治理安全性能与成本.md' }
+      { id: 'E5', name: '越权与提示注入防护', href: 'topics/评测观测与治理-母题-E5-越权与提示注入防护.html', src: 'study/10-生产治理安全性能与成本.md' },
+      { id: 'E6', name: '灰度发布与回滚', href: 'topics/评测观测与治理-母题-E6-灰度发布与回滚.html', src: 'study/10-生产治理安全性能与成本.md' }
     ]
   },
   {

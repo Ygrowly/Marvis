@@ -1,0 +1,44 @@
+<svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>防注入的三层，以及为什么顺序不能反</title>
+  <desc>最里面是边界：沙箱与最小权限，它保证即使注入成功也做不了什么，是确定性的、零边际成本。中间是契约：工具参数独立校验、危险动作需确认，比边界晚一步但仍是确定性的。最外面是过滤：内容检测，它便宜地被部署成第一道，但它是概率性的、会被绕过，而且在每次请求上都要付持续成本。顺序反过来（先上过滤）是成本最高、效果最差的做法。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">防注入的三层，以及为什么顺序不能反</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">过滤是概率性的（总有绕过方式），边界是确定性的——把安全建立在会被绕过的东西上最危险</text>
+
+  <!-- 三层同心 -->
+  <rect x="30" y="66" width="380" height="176" rx="10" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">③ 过滤（最外，最先被部署，但最弱）</text>
+
+  <rect x="56" y="98" width="328" height="132" rx="9" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="72" y="120" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">② 契约（半确定性）</text>
+
+  <rect x="82" y="130" width="276" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="98" y="152" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">① 边界（确定性，零边际成本）</text>
+  <text x="98" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">沙箱：读写范围 + 网络目标</text>
+  <text x="98" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">最小权限：每个工具只拿够用的权限</text>
+  <text x="98" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#633806">真凭证不进沙箱（代理校验后附加）</text>
+
+  <text x="98" y="120" font-family="system-ui,sans-serif" font-size="0" fill="#6B6A65"> </text>
+
+  <text x="222" y="120" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">工具参数独立校验 · 危险动作需确认</text>
+  <text x="222" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">内容检测 · 指令隔离 · 输入过滤</text>
+
+  <!-- 右侧对比 -->
+  <rect x="424" y="66" width="226" height="80" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="440" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">越权的两种方向</text>
+  <text x="440" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">纵向：低权限做了高权限的事</text>
+  <text x="440" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">横向：看到了不属于自己的数据</text>
+  <text x="440" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">两种都必须拦截，不能只防一种</text>
+
+  <rect x="424" y="156" width="226" height="86" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="440" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">注入的来源更麻烦</text>
+  <text x="440" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">直接注入：用户自己写的</text>
+  <text x="440" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#633806">间接注入：来自工具返回的内容</text>
+  <text x="440" y="234" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">网页 · 文档 · 日志 · issue 评论 —— 你过滤不过来</text>
+
+  <!-- 底部 -->
+  <path d="M30 258 L650 258" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="282" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">安全违规<tspan font-weight="600">不参与平均</tspan>：「跨租户泄露 = 0」是存在性判断，不是「不超过某个阈值」。</text>
+  <text x="30" y="302" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">而「测了 N 次没出事」只给出上界（三倍法则：0/1000 → 上界约 0.3%），说清 N 才是可检验的声明。</text>
+  <text x="30" y="326" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">还有一条最容易被漏：<tspan font-weight="600">权限必须在召回前生效</tspan>——先检索全部再让模型「别说」，等于已经泄露。</text>
+</svg>
