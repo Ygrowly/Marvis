@@ -1,0 +1,57 @@
+<svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>回归门禁：分层漏斗，以及两类性质不同的卡口</title>
+  <desc>上面是门禁的分层漏斗：改动先过小规模冒烟集，通过了再过金标与安全集，全过了才进影子与灰度。下面是两类性质完全不同的卡口：一类是统计阈值型，比如成功率不得下降超过某个值，它必须和评测集的分辨率匹配，否则不是误报就是漏报；另一类是绝对红线型，比如跨租户泄露必须为零，它不接受平均也不接受阈值。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">回归门禁：分层漏斗，以及两类性质不同的卡口</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">统计阈值要和评测集的分辨率匹配；红线不接受平均，也不接受阈值</text>
+
+  <!-- 漏斗 -->
+  <rect x="30" y="66" width="140" height="56" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">改动进来</text>
+  <text x="100" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">Prompt / Model / Tool / RAG</text>
+
+  <path d="M172 94 L200 94" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#gk-ar)"/>
+
+  <rect x="204" y="66" width="128" height="56" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="268" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">① 冒烟集</text>
+  <text x="268" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">小、快、抓明显坏改动</text>
+
+  <path d="M334 94 L362 94" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#gk-ar)"/>
+
+  <rect x="366" y="66" width="140" height="56" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="436" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">② 金标 + 安全集</text>
+  <text x="436" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">核心不能退化 + 红线</text>
+
+  <path d="M508 94 L536 94" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#gk-ar)"/>
+
+  <rect x="540" y="66" width="110" height="56" rx="7" fill="#BA7517"/>
+  <text x="595" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">③ 影子 / 灰度</text>
+  <text x="595" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#FFFFFF" text-anchor="middle">真实分布验证</text>
+
+  <!-- 两类卡口 -->
+  <path d="M30 146 L650 146" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="170" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">两类卡口，性质完全不同</text>
+
+  <rect x="30" y="182" width="300" height="112" rx="8" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="204" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">A · 统计阈值型</text>
+  <text x="46" y="224" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">例：核心成功率下降不超过 2%</text>
+  <text x="46" y="244" font-family="system-ui,sans-serif" font-size="10" fill="#633806">阈值必须与评测集分辨率匹配：</text>
+  <text x="46" y="262" font-family="system-ui,sans-serif" font-size="10" fill="#633806">200 条的标准误约 2.1% → 阈值设 2% 会频繁误报</text>
+  <text x="46" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">要么放宽到 2 个标准误，要么把集合做大</text>
+
+  <rect x="350" y="182" width="300" height="112" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="204" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">B · 绝对红线型</text>
+  <text x="366" y="224" font-family="system-ui,sans-serif" font-size="10" fill="#633806">例：跨租户泄露必须为 0</text>
+  <text x="366" y="244" font-family="system-ui,sans-serif" font-size="10" fill="#633806">不接受平均（不与其他指标合成分）</text>
+  <text x="366" y="262" font-family="system-ui,sans-serif" font-size="10" fill="#633806">不接受阈值（不是「不超过 2%」）</text>
+  <text x="366" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">而且「测了没出事」要报上界，不能报「通过」</text>
+
+  <!-- 底部 -->
+  <path d="M30 310 L650 310" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="332" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">分层过滤的价值：<tspan font-weight="600">让小集合先筛掉明显的坏改动</tspan>，把昂贵的大集合留给真正有希望的改动——</text>
+  <text x="30" y="350" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">同时保证「全量回归」永远发生过，而不是「改太频繁所以跳过了」。</text>
+
+  <defs>
+    <marker id="gk-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/></marker>
+  </defs>
+</svg>
