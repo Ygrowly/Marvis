@@ -117,8 +117,9 @@ aliases: [MAP, 正本登记表, 主题地图]
 | `wiki/interview/*复盘*.md`（六段结构） | `site/reviews/*.html` 诊断页 | 第 0 节总评 / 第 1 节问题清单表 / 第 2 节五维评分表 / 第 3 节标准答案（`#### 题号 · 名称`）/ 第 4 节缺失模块表 / 第 5 节下次清单 |
 | 任意 md 里的 `::card` 块 | 补充卡牌组 | 只用于模板覆盖不到的一次性卡 |
 | `site/figures/*.svg` + md 里 `::figure 文件名 \| 标题 \| 说明` | 内联进母题页 | 图由 AI 生成、人审图；不用 mermaid / d3（离线失效） |
+| `site/_data/clusters.js`（手写数据源，M3 起计划改由 `build.py` 生成） | `site/progress.html` 进度页 | 唯一手写页（例外，已登记）：能力簇 × 母题清单、每日派单、证据等级 L0–L4、欠账与自动减负。数据存 localStorage `mv.progress.v1`，**等级只能由闭卷自评推进、不可手改**，换机前用页面上的「导出备份」 |
 
-改完正本跑一次 `python site/build.py` 即可刷新视图。
+改完正本跑一次 `python site/build.py` 即可刷新视图（`progress.html` 与 `index.html` 是手写页，不受 build 影响，但**必须双向可达**：今日页有「进度与作业」入口，进度页有返回今日）。
 
 ## 四、维护约定
 

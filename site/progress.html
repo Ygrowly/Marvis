@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="0Nw02yCEVGgkxwEuMwU7Xr">
+<head data-page-node-id="2uXqvQYe69qwTmeRzR6njG">
+<meta charset="utf-8" data-page-node-id="GZBWpTiihfittmoSvZRz7b">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="OqAMUEDuPCbQhYf8nJAbme">
+<title>Marvis · 进度</title>
+<link rel="stylesheet" href="_components/marvis.css" data-page-node-id="jDyzIw6whkLoumphiGLYOV">
+</head>
+<body class="mv-page" data-page-node-id="P6PJt0CW5vlzkAdERSnCqK">
+<div class="mv-wrap" data-page-node-id="FpvGjLhVEiPMSt0vHTzQ4X">
+
+  <a class="mv-back" href="index.html" data-page-node-id="HaBZxhS0hMmapoXl3uThXL">← 今日</a>
+  <h1 class="mv-h1" data-page-node-id="HlAXx9bSpyzpeTWholA3qS">进度</h1>
+  <p class="mv-sub" id="subline" data-page-node-id="xlyzPFAQ5EFhJuq51L05L1">等级只由闭卷自评推进，不能手改。写完卡片不算会，说得出口才算。</p>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.75rem" data-page-node-id="5g9MToD0lIFvpXjW33GEXO">
+    <button class="mv-btn" onclick="exportJSON()" data-page-node-id="ENLUG8U40oCZzjbLSWrkTc">导出备份</button>
+    <button class="mv-btn" onclick="document.getElementById('impfile').click()" data-page-node-id="iYM36osFiqh6rzmJddNswt">导入备份</button>
+    <input type="file" id="impfile" accept=".json" hidden onchange="importJSON(this)" data-page-node-id="4Z9e3i1QlmXDmEGFqRHKz3">
+    <button class="mv-btn" onclick="clearDebt()" data-page-node-id="eUbXHllrMP2tQWf7T6CBTU">清账重开</button>
+  </div>
+
+  <div class="mv-ms" id="metrics" data-page-node-id="qGySrI7AI7ydvyYVxaa3m2"></div>
+
+  <h2 class="mv-h2" data-page-node-id="UNxJqBR0eLARf4rSs4sB6r">能力簇 <small data-page-node-id="q8G07PDCNoXGV6E6tNLacE">只有 L3 能在面试里说出口 · 点开看母题</small></h2>
+  <div id="clusters" data-page-node-id="LVYwsskaeKHILM2YdtyvOr"></div>
+
+  <h2 class="mv-h2" data-page-node-id="7AAt4N6Vs1LUFJeiSK8hYR">独立日课 <small data-page-node-id="geyvFwAH0AH5bJaAcYuwBl">手撕是肌肉记忆，不占模块时间</small></h2>
+  <div id="drillbox" data-page-node-id="ILX9lL6lcyjTsBHpKTO2DE"></div>
+
+  <h2 class="mv-h2" data-page-node-id="lVezCBDLxcIFlJfDqOotrp">今日作业 <small data-page-node-id="wpYe1NNOelcFDsWd2Fasht">系统派单，不可删 · 欠账如实显示，连欠两天自动减负</small></h2>
+  <div id="assign" data-page-node-id="Rdk1UJVM4SEON1rEce3u5i"></div>
+
+  <h2 class="mv-h2" data-page-node-id="TByJ4UN8zJbq8OFXABVuVp">额外完成 <small data-page-node-id="EdZhqQFsuzn6z1YDKAEDcE">不抵消作业，但会记下来</small></h2>
+  <div class="mv-bd" data-page-node-id="JA99DClr298aSMHStzRjBu">
+    <div style="display:flex;gap:.5rem;margin-bottom:.875rem" data-page-node-id="HTPVnb11rXWVaYCzErb3yk">
+      <input class="mv-ask-in" id="extrain" placeholder="今天还做了什么？回车添加" onkeydown="if(event.key==='Enter')addExtra()" data-page-node-id="0gHKcYf6sQPRuqqUG9u1Fx">
+      <button class="mv-btn" onclick="addExtra()" data-page-node-id="Qke4IwKgjo43kSlagTBl6R">添加</button>
+    </div>
+    <div id="extralist" data-page-node-id="fLB1vQiAaoxdJEQJN6texC"></div>
+  </div>
+
+  <h2 class="mv-h2" data-page-node-id="tnC6jlOGY47aqtmDmBZiNS">连续性 <small data-page-node-id="FENtdcyidEFHLvAKIWd4kD">never miss twice · 错过不补课不自罚</small></h2>
+  <div class="mv-bd" data-page-node-id="QTyI7v2PnrO5YbxQ9e23pb">
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start" data-page-node-id="F5Z7MQNrkRSYLZFaHvyjyw">
+      <div data-page-node-id="ArqOhBdui2DtXus8Mk40Em">
+        <div class="mv-ms-label" data-page-node-id="VimQ6OOFfx2pKlhOD9IFJQ">连续全交</div>
+        <div class="mv-ms-value" id="streakv" data-page-node-id="l0bpwTwmsV2slcaNrqx0wd">0<small data-page-node-id="p7BlpVQwaxyVC8vYAslFFL"> 天</small></div>
+      </div>
+      <div style="flex:1;min-width:14rem" data-page-node-id="0pv28lAJec1Kq8zhTGkBma">
+        <div class="mv-ms-label" style="margin-bottom:.5rem" data-page-node-id="XWXGR7iRbOgJ0dQKNpXzW4">近 35 天</div>
+        <div class="mv-pg-heat" id="heat" data-page-node-id="6vIpKCOO9EiZnpWA9G1AGH"></div>
+        <div style="display:flex;gap:.75rem;margin-top:.625rem;font-size:.8125rem;color:var(--mv-muted);flex-wrap:wrap" data-page-node-id="BQk6oJhOAi42AcBSGNnArw">
+          <span data-page-node-id="M1o5bPI2DO9LqI1yKalbbK"><i class="mv-hc h0" data-page-node-id="6JBvPdLOG6WGkVYLRs56nw"></i>没做</span>
+          <span data-page-node-id="VdYT2FEfpDUFeXHB4DTVHI"><i class="mv-hc h1" data-page-node-id="WVIGLqWpfHBNftETAFaG3D"></i>部分</span>
+          <span data-page-node-id="LhgHpg1rElcFJNEvHdwnm7"><i class="mv-hc h2" data-page-node-id="dhVP2drATSMWyBtEafd0jk"></i>全交</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mv-note" style="margin-top:2rem" data-page-node-id="NGTmfAsi4O107iCZTRp6oR">
+    升级规则：命中 → 升一级并进入 1-3-7-14-30 阶梯；部分 → 停在「能复述」；忘了 → 掉回「读过」且明天重派。
+    L4（面试验证过）暂不开放自评，等真实面试回来补。
+    数据存在本机浏览器（localStorage，键名 mv.progress.v1），换机器或清缓存前记得导出备份。
+  </div>
+
+</div>
+
+<div class="mv-modal-mask" id="rate" hidden onclick="if(event.target===this)closeRate()" data-page-node-id="xswLCSJLgGKDev5Fh3Tbqm">
+  <div class="mv-modal" style="max-width:34rem" data-page-node-id="fNDwxwN8jFFZHPwsMRxr7A">
+    <div class="mv-modal-head" data-page-node-id="OgLD9IXlvApqOvoxHKbQfL">
+      <span class="mv-modal-title" data-page-node-id="Hy1EGOr4uFAm72eByATyd6">闭卷自评</span>
+      <button class="mv-btn" onclick="closeRate()" data-page-node-id="2k4AOtjIG9VipYdt7NHkep">关闭</button>
+    </div>
+    <div id="ratebody" data-page-node-id="jD7EKhYJmLJghyyNMS7d0F"></div>
+  </div>
+</div>
+
+<script src="_data/clusters.js"></script>
+<script>
+var KEY = 'mv.progress.v1';
+var VAULT = 'Marvis';
+var GOAL = 0.6;
+var STEPS = [1, 3, 7, 14, 30];
+var LVN = ['未接触', '读过', '能复述', '能口述', '验证过'];
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function dstr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function today() { return dstr(new Date()); }
+function addDays(s, n) { var p = s.split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return dstr(d); }
+
+function linkOf(t) {
+  if (t.href) return t.href;
+  if (t.src) return 'obsidian://open?vault=' + VAULT + '&file=' + encodeURIComponent(t.src.replace(/\.md$/, ''));
+  return '';
+}
+
+function flat() {
+  var out = [];
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+    c.topics.forEach(function (t) {
+      out.push({ key: c.id + '/' + t.id, cid: c.id, cname: c.name, id: t.id, name: t.name, link: linkOf(t) });
+    });
+  });
+  return out;
+}
+function clusterById(id) {
+  var r = null;
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) { if (c.id === id) r = c; });
+  return r;
+}
+
+var S = null;
+
+function load() {
+  var raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) {}
+  var st = raw ? JSON.parse(raw) : null;
+  if (!st || typeof st !== 'object') st = { lv: {}, days: {}, debt: 0, oweDays: 0, relieve: false, drill: [], extra: {} };
+  if (!st.lv) st.lv = {};
+  if (!st.days) st.days = {};
+  if (!st.drill) st.drill = [];
+  flat().forEach(function (t) {
+    if (!st.lv[t.key]) st.lv[t.key] = { l: t.link ? 1 : 0, due: null, last: null, hit: 0, miss: 0 };
+  });
+  return st;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert('保存失败：' + e.message); } }
+function lvOf(key) { return (S.lv[key] && S.lv[key].l) || 0; }
+
+function settle() {
+  var t = today();
+  Object.keys(S.days).forEach(function (d) {
+    if (d >= t) return;
+    var day = S.days[d];
+    if (day.settled) return;
+    day.settled = true;
+    var it = day.items || [];
+    var done = 0;
+    it.forEach(function (x) { if (x.done) done++; });
+    var owe = it.length - done;
+    if (it.length && owe > 0) { S.debt += owe; S.oweDays += 1; } else if (it.length) { S.oweDays = 0; }
+  });
+  S.relieve = S.oweDays >= 2;
+}
+
+function pickSome(arr, n) {
+  var a = arr.slice();
+  var out = [];
+  while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]);
+  return out;
+}
+
+function reviewPool() {
+  var pool = flat().filter(function (t) { return t.link && lvOf(t.key) >= 1; });
+  pool.sort(function (a, b) {
+    var sa = S.lv[a.key], sb = S.lv[b.key];
+    var la = sa.last || '0000-00-00', lb = sb.last || '0000-00-00';
+    if (la !== lb) return la < lb ? -1 : 1;
+    if (sa.l !== sb.l) return sa.l - sb.l;
+    return sb.miss - sa.miss;
+  });
+  return pool.slice(0, 12);
+}
+
+function newPool() {
+  var cand = flat().filter(function (t) { return t.link && lvOf(t.key) <= 1; });
+  var rates = {};
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+    var n = 0;
+    c.topics.forEach(function (t) { if (lvOf(c.id + '/' + t.id) >= 3) n++; });
+    rates[c.id] = n / c.topics.length;
+  });
+  cand.sort(function (a, b) { return rates[a.cid] - rates[b.cid]; });
+  return cand.slice(0, 10);
+}
+
+function buildDay() {
+  var items = [];
+  var used = {};
+  var relieve = S.relieve;
+
+  var rev = pickSome(reviewPool(), relieve ? 1 : 2);
+  rev.forEach(function (t) {
+    used[t.key] = 1;
+    items.push({ type: 'rev', key: t.key, label: '复训：' + t.name, sub: t.cname + ' · 当前 L' + lvOf(t.key), link: t.link, done: false });
+  });
+
+  if (!relieve) {
+    var np = newPool().filter(function (t) { return !used[t.key]; });
+    if (np.length) {
+      var t = np[0];
+      used[t.key] = 1;
+      items.push({ type: 'new', key: t.key, label: '新母题：' + t.name, sub: t.cname + ' · 闭卷 → 补断点 → 费曼', link: t.link, done: false });
+    }
+  }
+
+  if (!relieve) {
+    var dr = (window.MARVIS_DRILL || { topics: [] }).topics.filter(function (t) {
+      return S.drill.indexOf('drill/' + t.id) < 0;
+    });
+    var d = dr.length ? dr[Math.floor(Math.random() * dr.length)] : (window.MARVIS_DRILL.topics[0] || null);
+    if (d) items.push({ type: 'drill', key: 'drill/' + d.id, label: '手撕：' + d.name, sub: '日课 · 10 分钟限时，关掉 AI 补全', link: d.href, done: false });
+  }
+
+  items.push({ type: 'life', key: 'life', label: '命功：八段锦 12 分钟 + 23:00 手机放客厅', sub: '电池优先，不强求跑步', link: '', done: false });
+  return items;
+}
+
+function ensureDay() {
+  var t = today();
+  if (!S.days[t] || !S.days[t].items || !S.days[t].items.length) S.days[t] = { items: buildDay(), settled: false };
+  return S.days[t];
+}
+
+function rate(idx) {
+  var it = S.days[today()].items[idx];
+  if (it.type === 'life') { it.done = !it.done; save(); render(); return; }
+  if (it.type === 'drill') {
+    it.done = true;
+    if (S.drill.indexOf(it.key) < 0) S.drill.push(it.key);
+    save(); render(); return;
+  }
+  var s = S.lv[it.key];
+  var t = flat().filter(function (x) { return x.key === it.key; })[0];
+  var body = document.getElementById('ratebody');
+  var nextHit = Math.min(3, s.l + 1);
+  body.innerHTML =
+    '<p style="margin:0 0 .375rem;font-size:1.0625rem;font-weight:600">' + it.label.replace(/^(复训|新母题)：/, '') + '</p>' +
+    '<p class="mv-note" style="margin:0 0 1rem">先闭卷写下<b>核心不变量</b>和 <b>3 个恢复关键词</b>，再翻面。忘了就如实点忘了。</p>' +
+    (it.link ? '<p style="margin:0 0 1rem"><a href="' + it.link + '" target="_blank" style="color:var(--mv-accent)">打开材料</a></p>' : '') +
+    '<div class="mv-bd" style="margin-bottom:1.25rem;font-size:.875rem;color:var(--mv-muted)">' +
+    '当前 L' + s.l + '（' + LVN[s.l] + '） · 命中 → L' + nextHit + ' · 部分 → 停在 L2 以内 · 忘了 → 掉回 L1' +
+    '</div>' +
+    '<div style="display:flex;gap:.625rem;flex-wrap:wrap">' +
+    '<button class="mv-btn mv-btn-ok" onclick="doRate(' + idx + ',\'hit\')">命中</button>' +
+    '<button class="mv-btn" onclick="doRate(' + idx + ',\'part\')">部分</button>' +
+    '<button class="mv-btn mv-btn-bad" onclick="doRate(' + idx + ',\'miss\')">忘了</button>' +
+    '</div>';
+  document.getElementById('rate').hidden = false;
+}
+function closeRate() { document.getElementById('rate').hidden = true; }
+
+function doRate(idx, score) {
+  var t = today();
+  var it = S.days[t].items[idx];
+  var s = S.lv[it.key];
+  var from = s.l;
+  if (score === 'hit') {
+    s.l = Math.min(3, s.l + 1); s.hit++; s.miss = 0;
+    s.due = addDays(t, STEPS[Math.min(s.hit - 1, 4)]);
+  } else if (score === 'part') {
+    s.l = Math.max(1, Math.min(s.l, 2)); s.hit = 0; s.miss++; s.due = addDays(t, 1);
+  } else {
+    s.l = Math.min(s.l, 1); s.hit = 0; s.miss++; s.due = addDays(t, 1);
+  }
+  s.last = t;
+  it.done = true; it.score = score;
+  save(); closeRate(); render();
+}
+
+function addExtra() {
+  var el = document.getElementById('extrain');
+  var v = (el.value || '').trim();
+  if (!v) return;
+  var t = today();
+  if (!S.extra[t]) S.extra[t] = [];
+  S.extra[t].push(v);
+  el.value = '';
+  save(); render();
+}
+function delExtra(i) { var t = today(); S.extra[t].splice(i, 1); save(); render(); }
+
+function clearDebt() {
+  if (!confirm('把累计欠账和连续欠账天数清零，重新开始。确定？')) return;
+  S.debt = 0; S.oweDays = 0; S.relieve = false;
+  save(); render();
+}
+
+function exportJSON() {
+  var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'marvis-progress-' + today() + '.json';
+  a.click();
+}
+function importJSON(input) {
+  var f = input.files && input.files[0];
+  if (!f) return;
+  var r = new FileReader();
+  r.onload = function () {
+    try {
+      var st = JSON.parse(r.result);
+      if (!st || !st.lv) throw new Error('格式不对');
+      if (!confirm('导入会覆盖当前进度，确定？')) return;
+      S = st; save(); location.reload();
+    } catch (e) { alert('导入失败：' + e.message); }
+  };
+  r.readAsText(f);
+  input.value = '';
+}
+
+function heatLevel(d) {
+  var day = S.days[d];
+  if (!day || !day.items || !day.items.length) return 0;
+  var done = 0;
+  day.items.forEach(function (x) { if (x.done) done++; });
+  if (done === 0) return 0;
+  return done >= day.items.length ? 2 : 1;
+}
+function streak() {
+  var n = 0;
+  var d = new Date();
+  if (heatLevel(dstr(d)) < 2) d.setDate(d.getDate() - 1);
+  while (heatLevel(dstr(d)) === 2) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+function segs(cnt, total) {
+  var out = '';
+  for (var l = 4; l >= 1; l--) {
+    if (!cnt[l]) continue;
+    out += '<i class="mv-lv lv' + l + '" style="width:' + (cnt[l] / total * 100) + '%" title="L' + l + ' ' + cnt[l] + '"></i>';
+  }
+  return out;
+}
+
+function render() {
+  var total = flat().length;
+  var l3 = flat().filter(function (t) { return lvOf(t.key) >= 3; }).length;
+  var need = Math.max(0, Math.ceil(total * GOAL) - l3);
+  var pct = total ? Math.round(l3 / total * 100) : 0;
+  var day = ensureDay();
+  var done = day.items.filter(function (x) { return x.done; }).length;
+
+  document.getElementById('metrics').innerHTML =
+    '<div class="mv-ms-item"><div class="mv-ms-label">L3+ 合计</div><div class="mv-ms-value">' + l3 + '<small>/' + total + '</small></div></div>' +
+    '<div class="mv-ms-item"><div class="mv-ms-label">达成率</div><div class="mv-ms-value ' + (pct >= GOAL * 100 ? 'ok' : 'warn') + '">' + pct + '<small>%</small></div></div>' +
+    '<div class="mv-ms-item"><div class="mv-ms-label">目标 ' + Math.round(GOAL * 100) + '% 还差</div><div class="mv-ms-value">' + need + '<small> 个母题</small></div></div>' +
+    '<div class="mv-ms-item"><div class="mv-ms-label">连续全交</div><div class="mv-ms-value">' + streak() + '<small> 天</small></div></div>';
+
+  var ch = '';
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+    var cnt = [0, 0, 0, 0, 0];
+    c.topics.forEach(function (t) { cnt[lvOf(c.id + '/' + t.id)]++; });
+    var n = c.topics.length;
+    var ok = cnt[3] + cnt[4];
+    var list = '';
+    c.topics.forEach(function (t) {
+      var l = lvOf(c.id + '/' + t.id);
+      var nm = t.name;
+      list += t.link
+        ? '<a class="mv-pg-chip" href="' + t.link + '" target="_blank"><i class="mv-dot lv' + l + '"></i>' + nm + '<em>L' + l + '</em></a>'
+        : '<span class="mv-pg-chip is-void"><i class="mv-dot lv0"></i>' + nm + '<em>未建卡</em></span>';
+    });
+    ch += '<details class="mv-pg-c">' +
+      '<summary><div class="mv-pg-head"><span class="mv-pg-name">' + c.name + '<em>' + c.zone + '</em></span>' +
+      '<span class="mv-pg-num"><b>' + ok + '</b>/' + n + ' · ' + Math.round(ok / n * 100) + '%</span></div>' +
+      '<div class="mv-pg-bar">' + segs(cnt, n) + '</div></summary>' +
+      '<div class="mv-pg-list">' + list + '</div></details>';
+  });
+  document.getElementById('clusters').innerHTML = ch;
+
+  var D = window.MARVIS_DRILL;
+  if (D) {
+    var dn = S.drill.length, dg = D.goal || 30;
+    document.getElementById('drillbox').innerHTML =
+      '<div class="mv-bd"><div class="mv-pg-head" style="margin-bottom:.625rem">' +
+      '<span class="mv-pg-name">手撕算法<em>日课</em></span>' +
+      '<span class="mv-pg-num"><b>' + dn + '</b>/' + dg + ' · ' + Math.round(dn / dg * 100) + '%</span></div>' +
+      '<div class="mv-pg-bar"><i class="mv-lv lv3" style="width:' + (dn / dg * 100) + '%"></i></div>' +
+      '<div class="mv-note" style="margin-top:.625rem">练过的不再重复派；存量卡片 ' + D.topics.length + ' 张，其余按 Hot100 顺序补。</div></div>';
+  }
+
+  var ah = '<div class="mv-cl"><div class="mv-cl-head"><span class="mv-cl-title">今日作业</span>' +
+    '<span class="mv-cl-count">' + done + '/' + day.items.length + '</span></div>';
+  if (S.debt > 0) ah += '<div class="mv-note" style="margin:0 0 .5rem;color:var(--mv-danger)">累计欠账 ' + S.debt + ' 条' + (S.relieve ? ' · 连欠 ' + S.oweDays + ' 天，已自动减负到 ' + day.items.length + ' 条' : '') + '</div>';
+  if (S.relieve) ah += '<div class="mv-note" style="margin:0 0 .5rem">减负不是惩罚：先做到 2 条，全交一天后自动恢复。</div>';
+  day.items.forEach(function (it, i) {
+    ah += '<div class="mv-cl-item' + (it.done ? ' on' : '') + '" onclick="rate(' + i + ')">' +
+      '<div class="mv-cl-box">✓</div>' +
+      '<div class="mv-cl-text">' + it.label +
+      '<div class="mv-cl-sub">' + it.sub + (it.score ? ' · 已评：' + ({ hit: '命中', part: '部分', miss: '忘了' })[it.score] : '') + '</div>' +
+      '</div></div>';
+  });
+  ah += '</div>';
+  document.getElementById('assign').innerHTML = ah;
+
+  var ex = S.extra[today()] || [];
+  var eh = ex.length ? '' : '<div class="mv-note" style="margin:0">今天还没有额外完成。</div>';
+  ex.forEach(function (v, i) {
+    eh += '<div style="display:flex;gap:.75rem;align-items:flex-start;padding:.375rem 0;font-size:.9375rem">' +
+      '<span style="color:var(--mv-ok)">+</span><span style="flex:1">' + v + '</span>' +
+      '<button class="mv-btn" style="padding:.125rem .625rem" onclick="delExtra(' + i + ')">删</button></div>';
+  });
+  document.getElementById('extralist').innerHTML = eh;
+
+  document.getElementById('streakv').innerHTML = streak() + '<small> 天</small>';
+
+  var days = [];
+  var d = new Date();
+  d.setDate(d.getDate() - 34);
+  for (var i = 0; i < 35; i++) { days.push(dstr(d)); d.setDate(d.getDate() + 1); }
+  document.getElementById('heat').innerHTML = days.map(function (x) {
+    return '<i class="mv-hc h' + heatLevel(x) + '" title="' + x + '"></i>';
+  }).join('');
+
+  var sl = document.getElementById('subline');
+  sl.textContent = '等级只由闭卷自评推进，不能手改。' + (S.relieve ? '当前减负模式：先保 2 条。' : '今天 ' + done + '/' + day.items.length + '。');
+}
+
+S = load();
+settle();
+ensureDay();
+save();
+render();
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRate(); });
+</script>
+</body>
+</html>

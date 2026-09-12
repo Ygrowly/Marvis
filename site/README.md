@@ -10,7 +10,9 @@
 
 ```text
 site/
-  index.html          唯一入口：房间直达 + 今日复训 + 今日保底（计时器在弹窗里）
+  index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
+  progress.html       进度页（手写，数据存 localStorage）：能力簇进度 + 每日派单 + 闭卷自评 + 欠账减负 + 热力图
+  _data/clusters.js   进度页数据源：10 个能力簇 + 日课母题清单（M3 起计划改由 build.py 生成）
   modules/            模块学习页（build 生成，勿手改）：{模块}.html 概览 + {模块}-NN-{主线}.html 子页
   topics/             母题页（build 生成，勿手改）
   reviews/            诊断页（build 生成，勿手改）
@@ -26,6 +28,7 @@ site/
 
 ```text
 index.html（训练台）
+  ├─ progress.html              进度与作业：派单 + 闭卷自评 + 欠账减负 + 连续性热力图
   ├─ modules/{模块}.html        模块概览：主线 + 一句话结论 + 边界 + 项目映射
   │    └─ modules/{模块}-NN-….html   主线子页：母题（先答后看）+ 本主线题
   │         └─ topics/{模块}-母题-….html  单卡视图（每个母题右上「单卡 →」）
@@ -78,6 +81,9 @@ PY
 | 时段 | 做什么 | 在哪 |
 |---|---|---|
 | 早上 5–10 分钟 | 今日到期的母题，先说后翻，点过关/忘了 | `site/index.html` |
+| **每天开工** | **领今日作业（系统派单），做完点开走闭卷自评** | **`site/progress.html`** |
+| 学完一个母题 5 分钟内 | 在这张卡上自评一次（遗忘曲线最陡的一段在这） | `site/progress.html` |
+| 晚上 | 只清当日作业与欠账，不学新的 | `site/progress.html` |
 | 白天 | 写笔记、讨论、推导 | Obsidian |
 | 讨论完 | `python site/build.py` | 终端 |
 | 要系统学一个模块 | 训练台 → 模块概览 → 进某一条主线 | `modules/` |
