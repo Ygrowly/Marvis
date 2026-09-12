@@ -83,8 +83,9 @@ window.MARVIS_CLUSTERS = [
   },
   {
     id: 'agent', name: 'Agent 运行时与工具', zone: 'AI 主战场',
+    /* 2026-09-12：A1 已教材化；A2–A8 建完一张换一张 */
     topics: [
-      { id: 'A1', name: '计划执行循环与停止条件', src: 'study/04-Agent-Runtime与Harness.md' },
+      { id: 'A1', name: '计划执行循环与停止条件', href: 'topics/Agent运行时与工具-母题-A1-计划执行循环与停止条件.html', src: 'study/04-Agent-Runtime与Harness.md' },
       { id: 'A2', name: '工具调用与 MCP 边界', src: 'study/05-Tool-MCP-Skill与可信执行.md' },
       { id: 'A3', name: '失败恢复与幂等', src: 'study/04-Agent-Runtime与Harness.md' },
       { id: 'A4', name: '长任务状态与 checkpoint', src: 'study/06-Workflow-多Agent与长任务.md' },

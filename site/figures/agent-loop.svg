@@ -1,0 +1,63 @@
+<svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Agent 循环：一个入口，三个出口</title>
+  <desc>循环体只有四步：组装上下文、模型决策、校验并执行工具、记录这一步的结果。关键不在循环本身，而在出口：正常出口是结果通过验证，异常出口有两个——预算耗尽（步数、token、时间、工具次数）和无进展。只保存消息历史、靠模型自己说 done 的循环，两个异常出口都没有，失控时只能跑满平台上限。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">Agent 循环：一个入口，三个出口</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">循环体很短，真正的工程在「什么情况下必须停下来」</text>
+
+  <!-- 循环体 -->
+  <rect x="30" y="76" width="330" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="48" y="100" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">循环体（四步）</text>
+
+  <rect x="48" y="112" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="132" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">① 组装上下文（State → Context 投影）</text>
+
+  <path d="M195 146 L195 156" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#al-ar)"/>
+
+  <rect x="48" y="158" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="178" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">② 模型决策：给答案，还是调工具</text>
+
+  <path d="M195 192 L195 202" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#al-ar)"/>
+
+  <rect x="48" y="204" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="224" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">③ 校验工具调用 → 执行 → 拿结果</text>
+
+  <path d="M195 238 L195 248" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#al-ar)"/>
+
+  <rect x="48" y="250" width="294" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="269" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">④ 记录 Step（含版本、幂等键、耗时）</text>
+
+  <path d="M48 265 L32 265 L32 128 L48 128" stroke="#8A877E" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#al-ar)"/>
+
+  <!-- 三个出口 -->
+  <path d="M362 120 L404 120" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#al-ar)"/>
+  <path d="M362 176 L404 176" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#al-ar2)"/>
+  <path d="M362 232 L404 232" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#al-ar2)"/>
+
+  <rect x="408" y="96" width="242" height="48" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="422" y="116" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">出口一 · 正常</text>
+  <text x="422" y="134" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">结果【通过验证】才算完成——不是模型说 done</text>
+
+  <rect x="408" y="152" width="242" height="48" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="422" y="172" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">出口二 · 预算耗尽</text>
+  <text x="422" y="190" font-family="system-ui,sans-serif" font-size="10" fill="#633806">步数 / token / 时间 / 工具次数 / 重试次数</text>
+
+  <rect x="408" y="208" width="242" height="48" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="422" y="228" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">出口三 · 无进展</text>
+  <text x="422" y="246" font-family="system-ui,sans-serif" font-size="10" fill="#633806">连续 N 步状态没变 / 重复调同一个工具</text>
+
+  <!-- 底部 -->
+  <path d="M30 290 L650 290" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">终止原因必须<tspan font-weight="600">结构化</tspan>：completed_verified / budget_exhausted / needs_clarification / waiting_approval /</text>
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">tool_unavailable / policy_blocked / cancelled_by_user / unrecoverable_error</text>
+  <text x="30" y="350" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">「模型停了」不是工程可用的终止原因——它把四类完全不同的失败压成了一句话。</text>
+
+  <defs>
+    <marker id="al-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="al-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>
