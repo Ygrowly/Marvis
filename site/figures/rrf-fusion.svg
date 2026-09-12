@@ -1,0 +1,39 @@
+<svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>RRF：为什么不拼分数拼排名</title>
+  <desc>上面是两路召回各自给出的分数——向量路的余弦相似度在 0 到 1 之间，BM25 路的分数是没有上界的相关度，两者量纲不可比，直接加权求和需要调参且不稳定。RRF 干脆扔掉分数只看排名，每路的贡献是 1 除以（k 加排名）。下面的例子说明它的效果：一个文档一路第一、另一路第十，得分略低于另一个两路都排第五的文档——因为 RRF 奖励的是「多路都在前列」。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">RRF：为什么不拼分数拼排名</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">两路的分数量纲完全不同——直接加权求和要调参，而且换个数据集就失效</text>
+
+  <!-- 两路 -->
+  <rect x="30" y="66" width="290" height="76" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">向量路（ANN）</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">doc_A 得分 0.92　← 余弦相似度，值域 [0, 1]</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">doc_C 得分 0.81</text>
+
+  <rect x="330" y="66" width="320" height="76" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="346" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">关键词路（BM25）</text>
+  <text x="346" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">doc_B 得分 8.7　← 相关度分数，无上界</text>
+  <text x="346" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">doc_C 得分 3.2</text>
+
+  <text x="30" y="162" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">0.92 和 8.7 谁更相关？没法比——这就是「不能直接加分数」的原因。</text>
+
+  <!-- RRF -->
+  <path d="M30 178 L650 178" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="202" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">RRF：扔掉分数，只看排名</text>
+  <text x="30" y="224" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">score(d) = Σ 1 /（k + rank<sub>i</sub>(d)）　　k 通常取 60</text>
+  <text x="30" y="244" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">某一路排得越前，贡献越大；在越多路里靠前，总分越高（各路独立贡献、自然叠加）</text>
+
+  <!-- 例子 -->
+  <rect x="30" y="258" width="300" height="80" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="278" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">doc_A：ANN 第 1，BM25 第 10</text>
+  <text x="46" y="298" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">1/(60+1) + 1/(60+10)</text>
+  <text x="46" y="316" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">= 0.0164 + 0.0143 = 0.0307</text>
+  <text x="46" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">一路很强，另一路很弱</text>
+
+  <rect x="350" y="258" width="300" height="80" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="278" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">doc_B：两路都第 5</text>
+  <text x="366" y="298" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">1/(60+5) + 1/(60+5)</text>
+  <text x="366" y="316" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">= 0.0154 + 0.0154 = 0.0308</text>
+  <text x="366" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">两路都在前列 → 略胜一筹</text>
+</svg>

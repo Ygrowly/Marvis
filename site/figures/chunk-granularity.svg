@@ -1,0 +1,58 @@
+<svg viewBox="0 0 680 366" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>切块粒度的两端都会坏，解耦才是解</title>
+  <desc>左端是把块切得太小：召回率高，但单块语义不完整——条款的例外被切到相邻块里，单个块的意思甚至可能是反的。右端是把块切得太大：语义完整，但相关内容被无关内容稀释，相似度信号变弱，排不进 Top-K。真正的解法是解耦：用小块去召回（保召回率），用父块返回给模型（保上下文完整）。底部是 Contextual Retrieval 的实测降幅。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">切块粒度的两端都会坏，解耦才是解</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「块多大」不是一个数字问题，是两个互相矛盾的需求要同时满足</text>
+
+  <!-- 左：太小 -->
+  <rect x="30" y="66" width="196" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 切得太小</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">召回率高（粒度细，匹配准）</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">但单块语义不完整：</text>
+  <text x="46" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">条款的「例外」被切到相邻块里，</text>
+  <text x="46" y="162" font-family="system-ui,sans-serif" font-size="10" fill="#633806">单看这一块，意思可能是反的</text>
+  <text x="46" y="182" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">块数暴涨 → 索引与召回成本上升</text>
+
+  <!-- 右：太大 -->
+  <rect x="240" y="66" width="196" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="256" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 切得太大</text>
+  <text x="256" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">语义完整，但相似度被稀释：</text>
+  <text x="256" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">2000 字里只有 200 字相关时，</text>
+  <text x="256" y="144" font-family="system-ui,sans-serif" font-size="10" fill="#633806">相关内容占比只剩 10%</text>
+  <text x="256" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">→ 关键内容被噪声淹没，</text>
+  <text x="256" y="180" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">排不进 Top-K</text>
+
+  <!-- 右：解耦 -->
+  <rect x="450" y="66" width="200" height="128" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="466" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">③ 解耦：两个需求分开满足</text>
+  <text x="466" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用【小块】去召回</text>
+  <text x="466" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 保召回率</text>
+  <text x="466" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用【父块 / 整节】返回给模型</text>
+  <text x="466" y="162" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 保上下文完整</text>
+  <text x="466" y="182" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">Child-Parent / 小块召回父块扩展</text>
+
+  <!-- 底部：Contextual Retrieval -->
+  <path d="M30 216 L650 216" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="240" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">第三种思路：不改粒度，改「块自己知不知道自己在说什么」</text>
+
+  <rect x="30" y="252" width="620" height="42" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="270" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">Contextual Retrieval：切块后，先让模型给每块补一句「它在全文里是什么位置、指代谁」（约 50–100 token），</text>
+  <text x="46" y="286" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">再把「补过上下文的块」拿去做向量和 BM25 索引。索引体积只涨约 12%，但失败率降幅很大：</text>
+
+  <rect x="30" y="304" width="150" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="105" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">基线失败率</text>
+  <text x="105" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A" text-anchor="middle">5.7%</text>
+
+  <rect x="190" y="304" width="150" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="265" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Contextual Embeddings</text>
+  <text x="265" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">3.7%（−35%）</text>
+
+  <rect x="350" y="304" width="150" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="425" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Contextual BM25</text>
+  <text x="425" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">2.9%（−49%）</text>
+
+  <rect x="510" y="304" width="140" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="580" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Rerank</text>
+  <text x="580" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">1.88%（−67%）</text>
+</svg>

@@ -71,9 +71,10 @@ window.MARVIS_CLUSTERS = [
   },
   {
     id: 'rag', name: 'RAG 与检索', zone: 'AI 主战场',
+    /* 2026-09-12：G1–G2 已教材化，href 指到母题页；G3–G6 暂用 src 指课程底库，建完一张换一张 */
     topics: [
-      { id: 'G1', name: '切分策略与索引粒度', src: 'study/03-RAG与企业知识系统.md' },
-      { id: 'G2', name: '向量与关键词的混合检索', src: 'study/03-RAG与企业知识系统.md' },
+      { id: 'G1', name: '切分策略与索引粒度', href: 'topics/RAG与检索-母题-G1-切分策略与索引粒度.html', src: 'study/03-RAG与企业知识系统.md' },
+      { id: 'G2', name: '向量与关键词的混合检索', href: 'topics/RAG与检索-母题-G2-向量与关键词的混合检索.html', src: 'study/03-RAG与企业知识系统.md' },
       { id: 'G3', name: '重排与召回质量', src: 'study/03-RAG与企业知识系统.md' },
       { id: 'G4', name: '引用绑定与证据可追溯', src: 'study/03-RAG与企业知识系统.md' },
       { id: 'G5', name: 'RAG 评测与幻觉率', src: 'study/07-Eval-Trace与Observability.md' },
