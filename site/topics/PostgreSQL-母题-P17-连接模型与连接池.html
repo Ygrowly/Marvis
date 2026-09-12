@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么不能简单把 <code class="mv-md-code">max_connections</code> 调很大？」</strong></strong></p>
+<p class="mv-md-p">因为<strong>连接本身要占内存</strong>（每连接私有内存 + 共享缓冲区映射）、<strong>调度开销随进程数上升</strong>、<strong>并发访存争用加剧</strong>；<strong>结果往往是"连接数增加了，总吞吐反而下降，尾延迟显著变差"</strong>。<strong>所以正确方向是"减少连接占用时间"（短事务 + 池化），不是"扩大连接池上限"。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「这跟你项目里的 Worker 有什么关系？」</strong></strong></p>
+<p class="mv-md-p">关系很直接：<strong>Worker/队列消费者天然是"长驻连接"</strong>（它们持续取任务），所以<strong>必须给它们单独的池与上限</strong>，否则<strong>后台任务会把前台请求的连接挤掉</strong>。<strong>RuleArena 的「条件更新认领任务」在这里又赢一次</strong>（P18）：<strong>认领是一个短事务（一条 UPDATE），不是"开事务再慢慢处理"</strong>——<strong>它占用连接的时间极短，既省连接也更少锁等待。</strong> <strong>这条把连接模型、池化模式、并发控制三件事收成了一个设计结论：短事务 + 池化 + 无锁并发控制是同一套选择。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「连接池调多大合适？」——<strong>先算同时活跃事务数，再用压测验证</strong>；<strong>过大反而降低吞吐</strong>（更多争用、更多上下文切换）。「经验值」不如「自己压出来的曲线」。</li><li>「没有连接池会怎样？」——见上面的雪崩路径。<strong>核心不是"慢"，是"没有排队点"</strong>。</li><li>「PG 有没有内置的连接池？」——<strong>没有服务端内置池</strong>（连接就是进程），社区方案是外部代理（<code class="mv-md-code">pgbouncer</code> 之类）或语言侧池。<strong>MySQL 的 <code class="mv-md-code">thread_cache</code> 那套类比不成立。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的 <strong>Worker 池与任务认领</strong>（长驻连接 + 短事务认领）；EnergyOps 的<strong>报表查询</strong>（长查询要单独限制并发，否则会拖垮其他请求）；数驭穹图的<strong>只读查询执行</strong>（文档里明确要求「超时、扫描量、并发、行数、取消能力」——<strong>这正是"连接与并发必须显式设限"的工程化表达</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 是<strong>线程模型 + 连接便宜 + 服务端有 <code class="mv-md-code">max_connections</code> / 线程池</strong>；PG 是<strong>进程模型 + 连接贵 + 必须外部池化</strong>。<strong>「PG 也能开几千连接」在理论上可能，在生产上是反模式</strong>——说的时候要加一句「开得起来，但吞吐会下降」。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">进程模型 vs 线程模型 → 为什么连接贵（三笔开销）→ 所以必须池化 → 两种池化模式与选择 → transaction 模式的约束（会话状态）→ 容量规划的正确口径</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>连接数的上限不是「数据库能不能开」，而是「开了之后每个请求还快不快」。</strong> 所以要管的是<strong>「同时活跃的事务数」</strong>，不是「连接数」——<strong>这也是为什么 PG 的池化推荐 transaction 模式：它让连接数与客户端数解耦。</strong></p></collapse-panel>

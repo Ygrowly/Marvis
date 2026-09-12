@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「分片键选错了怎么办？」</strong></strong></p>
+<p class="mv-md-p"><strong>分片键是"最难改的决定"</strong>：改了要<strong>全量迁移数据</strong>。<strong>所以选型时必须基于真实的查询分布（哪些字段出现在 WHERE 里、频率多少），而不是"字段看起来像 ID"</strong>。<strong>这一条和 P16 的"分区键必须进大部分查询条件"是同一个原则。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「跨分片的事务怎么办？」</strong></strong></p>
+<p class="mv-md-p"><strong>最好的答案是"业务上避免跨分片写"</strong>（把强一致的数据放同一分片，即"按业务单元分片"）；<strong>实在避免不了，才考虑分布式事务，而那是复杂度的新台阶</strong>。<strong>RuleArena 的设计里有现成对照</strong>：<strong>"至少一次投递 + 幂等消费者 + 权威查询"替代"exactly-once"——跨边界的正确性优先用幂等解决，而不是用强一致事务硬扛</strong>（P19 的结论在这里再次成立）。<strong>这条把三个母题串成了一个方法论。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「冷热分离和分库分表的区别？」——<strong>冷热分离是"按时间把数据分层"（同库或不同库），分库分表是"按分片键水平拆分"（多库多表）</strong>。<strong>前者解决"热查询背着冷数据"，后者解决"单机容量/写入上限"</strong>——<strong>两个不同的问题。</strong></li><li>「8000 万行必须分表吗？」——<strong>不一定</strong>。<strong>单表几千万行在索引合理时完全可服务</strong>；<strong>真正的信号是：索引与 SQL 已优化到位、事务已拆批、冷数据已归档，仍然扛不住</strong>。<strong>"行数"从来不是分表的直接理由。</strong></li><li>「归档和分区怎么选？」——<strong>MySQL：两张表 + 定期迁移（应用管理）；PG：分区表 + DROP 分区（数据库管理）</strong>。<strong>PG 的方案更顺——"丢弃分区"几乎瞬时且不产生死元组（P16），MySQL 的"DELETE + 迁移"是长事务与膨胀源（M13）</strong>。<strong>这条对照能同时展示两边的能力差异。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>四层事实表</strong>（<strong>本质上就是应用层的冷热/粒度分离</strong>——raw 层不直接给报表查，hourly/daily 才给，<strong>这是"冷热分离"思想在数据建模上的体现</strong>）；RuleArena 的<strong>事件流水</strong>（追加写 + 归档场景）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 的归档靠"两张表 + 迁移"；PG 可以用分区 + DROP 分区</strong>。<strong>MySQL 的分库分表是常见架构手段（有 ShardingSphere 生态）；PG 更常用原生分区与 FDW，分库分表相对少</strong>。<strong>说的时候要说清楚自己讲的是哪一套，别把"MySQL 需要分库分表"当成通用结论</strong>——<strong>PG 侧对应问题是分区设计</strong>。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">先定问题（是读慢还是写慢还是单纯大）→ 五步顺序逐条 → 冷热分离怎么做 → 归档怎么做 → 分库分表的四项代价与分片键 → 回到题目</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"数据量大"本身不是问题，"热查询背着冷数据跑"才是问题。</strong> 所以治理的第一动作永远是<strong>把热和冷分开</strong>，而不是"把大表拆开"——<strong>两者听起来像，做的完全是不同的事。</strong></p></collapse-panel>
@@ -70,7 +76,7 @@
 <h3 class="mv-md-h mv-md-h3">三、冷热分离：让热查询只打热数据</h3>
 <p class="mv-md-p"><strong>raw 里的例子</strong>：最近 7 天的任务日志经常查，半年前的几乎只在审计时查。</p>
 <p class="mv-md-p"><strong>问题不是"数据太多"，而是"热查询背着冷数据一起跑"</strong>：</p>
-<ul class="mv-md-ul"><li><strong>索引更深、缓存命中率更低</strong>（冷数据把热数据挤出 shared buffer）；</li><li><strong>扫描范围里 99% 是不会命中的行</strong>。</li></ul>
+<ul class="mv-md-ul"><li><strong>索引更深、缓存命中率更低</strong>（冷数据把热数据挤出 shared buffer）；</li><li><strong>扫描范围里绝大部分是不会命中的行</strong>——表里留两年（730 天）、查询只覆盖最近 7 天时，<strong>热数据只占 7/730 ≈ 1%</strong>，剩下 <strong>99% 被扫到但用不上</strong>。</li></ul>
 <p class="mv-md-p"><strong>做法</strong>：<strong>按时间轴（最自然的切分轴）把近期热数据和历史冷数据分层</strong>——<strong>MySQL 里通常是"两张表 + 定期迁移"</strong>（在线表只留热数据），<strong>PG 里更优解是分区表（P16）</strong>——<strong>分区是数据库原生支持的分层，且"丢弃分区即归档"</strong>。<strong>这是两边能力差异的一个直接体现。</strong></p>
 <h3 class="mv-md-h mv-md-h3">四、归档：从在线主链路移走（不等于删除）</h3>
 <p class="mv-md-p mv-md-quote"><strong>不再高频访问的旧数据，别一直留在在线主表里拖性能。</strong></p>

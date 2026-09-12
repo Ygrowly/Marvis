@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么 <code class="mv-md-code">VACUUM FULL</code> 需要等量额外空间？」</strong></strong></p>
+<p class="mv-md-p">因为它<strong>新建一张表、把有效行拷过去、再替换</strong>（和 MySQL 影子表方案同一个思路，P4 里对比过）。<strong>所以磁盘本来就紧张时，<code class="mv-md-code">VACUUM FULL</code> 反而先把磁盘写爆</strong>——这是它最实际的失败方式。<strong>能说出这一点，说明不是在背命令。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「怎么判断一个实例的回卷风险高不高？」</strong></strong></p>
+<p class="mv-md-p">看<strong>最老未冻结事务 ID 与当前事务 ID 的距离</strong>（PG 有相关视图/函数可以查）。<strong>这个指标比"有没有长事务"更接近本质</strong>——因为真正致命的是「冻结推进不动」，而不是「有长事务」这件事本身。<strong>监控口径要盯"离出事还有多远"，不是"有没有出现某个现象"</strong> ——<strong>这句话可以迁移到所有运维监控设计上。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「<code class="mv-md-code">VACUUM</code> 和 <code class="mv-md-code">ANALYZE</code> 什么关系？」——<code class="mv-md-code">ANALYZE</code> 只更新统计信息（P7）；autovacuum 默认顺带做 <code class="mv-md-code">ANALYZE</code>，但<strong>两者的触发阈值是独立的</strong>。</li><li>「<code class="mv-md-code">VACUUM FREEZE</code> 是什么？」——强制做冻结。<strong>PG 9.4+ 后有 aggressive vacuum 与 freeze map</strong>，手工执行通常没必要，<strong>但要知道它在处理什么风险。</strong></li><li>「<code class="mv-md-code">pg_repack</code> 和 <code class="mv-md-code">VACUUM FULL</code> 到底差在哪？」——<strong><code class="mv-md-code">pg_repack</code> 的收益是「不长时间持锁」</strong>，代价是需要额外空间、需要触发器/复制机制跟踪变更、<strong>极端情况下仍可能吃到锁</strong>。<strong>它是"在线优先"的选择，不是"零成本"的选择。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>历史事实表</strong>（天然该分区按月/季，归档就是丢弃分区——<strong>这条把「数据增长治理」和「膨胀治理」合成一个动作</strong>）；RuleArena 的<strong>事件流水表</strong>（追加写、量增长快，是 VACUUM 与分区设计的典型场景）。<strong>方言差异（面试安全底线）</strong>：MySQL <strong>没有 VACUUM、没有事务 ID 回卷、没有冻结</strong>——它靠 purge 线程自动回收 undo，<strong>所以「MySQL 也要定期 VACUUM」是明确错误</strong>。反过来，<strong>MySQL 有它自己的膨胀类问题（表碎片 / undo 表空间膨胀）</strong>，但机制和处置方式完全不同。<strong>两边不能互相套用。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">VACUUM 到底做了什么（标记复用）→ 它和 VACUUM FULL 的分工 → autovacuum 为什么跟不上 → 事务 ID 回卷的机制与 PG 的应对 → 膨胀已经发生怎么处理 → 预防清单</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong><code class="mv-md-code">VACUUM</code> 解决「空间能不能复用」，<code class="mv-md-code">VACUUM FULL</code> / <code class="mv-md-code">pg_repack</code> 解决「文件要不要变小」。</strong> 两件事，<strong>回答时混为一谈是最常见的失分点</strong>——因为绝大多数人以为「跑一次 VACUUM 表就变小了」。</p></collapse-panel>

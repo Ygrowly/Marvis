@@ -85,7 +85,7 @@ WHERE TIME_TO_SEC(TIMEDIFF(NOW(), trx_started)) &gt; 60;</pre>
 <h3 class="mv-md-h mv-md-h3">五、约束、范式与三条删除语句</h3>
 <ul class="mv-md-ul"><li><strong>常用约束</strong>：主键（唯一且非空）、唯一（唯一但可有 NULL）、非空、默认值、外键、CHECK。<strong>主键和唯一的区别就是「是否允许 NULL」</strong>。</li><li><strong>三范式</strong>：1NF 列不可再分；2NF 非主键列完全依赖整个主键（针对联合主键）；3NF 非主键列之间不能有传递依赖。<strong>反范式的唯一理由是可测量的读性能</strong>——比如事实表冗余园区快照以避免一次 JOIN。<strong>先有执行计划，再谈反范式。</strong></li></ul>
 <table class="mv-table"><thead><tr><th>语句</th><th>类型</th><th>能回滚</th><th>删什么</th><th>速度</th></tr></thead><tbody><tr><td><code class="mv-md-code">DELETE</code></td><td>DML</td><td><strong>可以</strong></td><td>表结构留着，可带 WHERE 删部分行</td><td>慢（逐行）</td></tr><tr><td><code class="mv-md-code">TRUNCATE</code></td><td>DDL</td><td>不可以</td><td>清空全部行，结构保留</td><td>快（重建）</td></tr><tr><td><code class="mv-md-code">DROP</code></td><td>DDL</td><td>不可以</td><td><strong>表结构、数据、索引、权限全删</strong></td><td>最快</td></tr></tbody></table>
-<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M5-引擎与表设计基本盘.md</p></div>
+<hr class="mv-md-hr"></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「页分裂到底损失什么？」</strong></strong></p><p class="mv-md-p">① 分裂是同步的写操作，直接抬高写入延迟；② 分裂后两页各约半满，索引不紧凑，同样的数据占更多页，范围扫描要读更多页；③ 顺序写变成随机写，失去 B+ 树最大的性能来源。</p><p class="mv-md-p"><strong>2. <strong>「那用趋势递增的自增 ID（雪花）不就好了？」</strong></strong></p><p class="mv-md-p">可以，但注意两点：① 趋势递增不是严格递增，跨节点时钟回拨仍可能插到中间，只是概率远小于 UUID；② 全局唯一 ID 通常位数更长（64 位 LONG），二级索引体积会变大，要接受这个代价。</p></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M5-引擎与表设计基本盘.md</p></div>
   </div>
 
   <div class="mv-section">

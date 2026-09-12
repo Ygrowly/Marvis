@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「页分裂到底损失什么？」</strong></strong></p>
+<p class="mv-md-p">① 分裂是同步的写操作，直接抬高写入延迟；② 分裂后两页各约半满，索引不紧凑，同样的数据占更多页，范围扫描要读更多页；③ 顺序写变成随机写，失去 B+ 树最大的性能来源。</p>
+<p class="mv-md-p"><strong>2. <strong>「那用趋势递增的自增 ID（雪花）不就好了？」</strong></strong></p>
+<p class="mv-md-p">可以，但注意两点：① 趋势递增不是严格递增，跨节点时钟回拨仍可能插到中间，只是概率远小于 UUID；② 全局唯一 ID 通常位数更长（64 位 LONG），二级索引体积会变大，要接受这个代价。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「MySQL 支持哪些存储引擎？」——InnoDB（默认）、MyISAM、Memory（内存表，重启即失，适合临时表）、Archive（高压缩，只插不查）。<strong>考官想听的是「为什么默认是 InnoDB」</strong>，不是背名单。</li><li>「建表时字段类型怎么选？」——够用就好：能用 INT 不用 BIGINT，能用定长不用变长；<strong>别用字符串存时间，也别用浮点存金额</strong>（用 DECIMAL）。</li><li>「InnoDB 和 MyISAM 谁快？」——<strong>读多写少且无事务需求时 MyISAM 的表扫描可能更快</strong>；但只要涉及并发写、事务、恢复，InnoDB 全面胜出。承认这一点比硬吹 InnoDB 更显水平。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表（层级表的粒度与冗余设计、时间字段选型）；数驭穹图的元数据表（Schema 登记需要用大范围时间）。<strong>方言差异</strong>：PostgreSQL 是<strong>堆表</strong>，主键不是数据顺序，所以「自增主键防页分裂」这条在 PG 里不成立；PG 的对应实践是用 <code class="mv-md-code">identity</code> / <code class="mv-md-code">bigserial</code> 避免序列竞争，而表膨胀要靠 <strong>VACUUM</strong> 处理，与页分裂是两套机制。<strong>面试时不要把这两套混着说。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">引擎对比（三条硬差异）→ 为什么 InnoDB 成默认 → 主键为什么必须自增（页分裂）→ varchar vs char → DATETIME vs TIMESTAMP → 约束与范式（反范式的条件）</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>表设计不是审美问题，是"写入路径顺不顺、存储紧不紧凑、以后改不改得动"的问题。</strong> 所有具体选择（引擎、主键、字段类型）都服务这三件事。</p></collapse-panel>

@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「优化器怎么估行数？」</strong></strong></p>
+<p class="mv-md-p">按<strong>索引的区分度（基数）统计</strong>：<code class="mv-md-code">SHOW INDEX</code> 的 cardinality。<strong>估算不准的常见原因</strong>：统计信息过期、数据倾斜（某个值占了 90% 行）、条件是表达式/函数。<strong>PG 侧有扩展统计和更完整的直方图，MySQL 8.0 也有直方图（histogram），但两者都比"加索引"更少被人注意</strong>——这条是 M7 的核心。</p>
+<p class="mv-md-p"><strong>2. <strong>「server 层和引擎层为什么要分开？」</strong></strong></p>
+<p class="mv-md-p">因为 <strong>server 层要兼容多种存储引擎</strong>（MyISAM/Memory/InnoDB，M5），所以"解析、优化、执行"这些通用能力放在 server 层，"存储与事务"由引擎各自实现。<strong>代价</strong>：有些优化做不了跨层（例如早期的 count(*) 全表扫描必须逐行数，引擎其实知道行数但 server 层不知道）。<strong>能说出"分层是为了可插拔、代价是有些优化跨不了层"，说明理解了架构取舍。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「一条 UPDATE 的链路和 SELECT 差在哪？」——多了<strong>两阶段提交</strong>（M11）与<strong>锁获取</strong>（M10）；而且 update 是<strong>当前读</strong>（M9），不走 MVCC 快照。<strong>这条能把 M9/M10/M11 三张卡串起来。</strong></li><li>「长连接和短连接怎么选？」——长连接省握手与鉴权，但<strong>连接对象内存会随执行增长</strong>，所以要定期 <code class="mv-md-code">reset_connection</code>；短连接每次都付握手 + 鉴权成本。<strong>连接池（PG 那边是刚需，MySQL 侧主要靠应用侧池）是两者的折中。</strong></li><li>「一条 SQL 到了 InnoDB 之后怎么取数据？」——按执行计划给的方式（全表扫 / 走某个索引）访问，<strong>二级索引命中后回聚簇索引取整行</strong>，行数据在 Buffer Pool 命中就直接返回，未命中才读盘。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的 20 多秒链路——<strong>那不是单层问题，是"扫描行数（未限归属范围）+ 应用层 N+1 + 现算差分"三层叠加</strong>，所以优化也必须按层做；数驭穹图的查询成本控制（<strong>"先缩小业务范围再查"本质上就是帮优化器少做错误决定</strong>）。<strong>方言差异（面试安全底线）</strong>：PG 的执行链路里<strong>没有查询缓存</strong>（本来就没有），但<strong>统计信息体系更完整</strong>（扩展统计、直方图、pg_stat_statements）；MySQL 8.0 移除查询缓存、8.0.18 加了 <code class="mv-md-code">EXPLAIN ANALYZE</code>。<strong>"一条 SQL 怎么走"两边都要会，但字段名和工具名不能混。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">五层链路各一句 → 查询缓存为什么被移除 → 优化器在决定什么 → 三种慢源 → 与 explain 字段的对应关系</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>优化器是整条链路里唯一"做决定"的环节</strong>——它决定走哪个索引、按什么顺序 JOIN。<strong>所以"SQL 慢"的第一嫌疑人永远是"优化器做错了决定"，而它做错的原因通常是"估算不准"</strong>（这条直接连到 M7）。</p></collapse-panel>

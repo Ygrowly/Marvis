@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么你项目第一版不做完整 CDC？」</strong></strong></p>
+<p class="mv-md-p">要说出<strong>取舍</strong>：CDC 要求源端<strong>启用逻辑复制/binlog 并常驻一个消费者</strong>，一旦消费者停摆就会有 <strong>WAL/binlog 堆积</strong>风险；而分析场景对新鲜度的要求是<strong>分钟级可接受</strong>。<strong>所以用「可恢复快照 + <code class="mv-md-code">updated_at</code> / 递增主键轮询 + 位点与校验」换来了「不侵入客户生产库 + 可复现」</strong>——升级条件是出现真实的秒级新鲜度需求。<strong>这段是项目叙事的核心，必须能自己讲。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「轮询增量有什么问题？」</strong></strong></p>
+<p class="mv-md-p">两个：<strong>① 删除的行永远轮询不到</strong>（必须靠 tombstone、变更日志或周期性全量核对）；<strong>② <code class="mv-md-code">updated_at</code> 不可靠</strong>（有些写入不更新它、或者时钟不一致）。<strong>这正是数驭穹图文档里写「发布前校验行数 / 主键重复 / Schema 漂移 / 新鲜度，失败就停在 <code class="mv-md-code">INVALID</code>/<code class="mv-md-code">STALE</code>」的原因</strong>——<strong>用校验兜住轮询的漏，是这个设计的关键一环。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「逻辑复制的目标端能写吗？」——能（它是独立的可写表），<strong>代价是冲突要自己处理</strong>（目标端本地已有数据会与回放冲突）。</li><li>「能不能用逻辑复制做双向同步？」——技术上可以，但<strong>冲突解决完全靠自己</strong>，收益通常不如改成单向 + 明确归属。<strong>面试里承认「双向的复杂度收益比不高」比硬吹更好。</strong></li><li>「为什么 PG 不用 binlog 也能做 CDC？」——因为 <strong>WAL 本身就是完整的变更记录</strong>，逻辑解码把它翻译成逻辑变更（<code class="mv-md-code">pgoutput</code>）即可。<strong>这也解释了为什么 PG 的 CDC 工具（Debezium 等）在 PG 侧都是基于逻辑解码槽。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>数驭穹图的接入层（本场主战场）</strong>——MySQL 源走 Binlog、PG 源走逻辑复制/WAL、都不支持时退回轮询；EnergyOps 的读写分离与报表查询（能接受延迟就上备库）。<strong>方言差异（面试安全底线）</strong>：MySQL 的复制是靠 <strong>binlog</strong>（Server 层逻辑日志）+ 各种格式（Statement/Row/Mixed，M11 已讲）；PG 的物理复制走 <strong>WAL</strong>、逻辑复制走 <strong>WAL 逻辑解码</strong>。<strong>「MySQL 用 binlog、PG 用逻辑复制/WAL」这句话本身就是两套机制的对照，说的时候要清楚自己在对照什么。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">两种复制的机制差异 → 各自绑定的东西 → 回到题目做选择 → 同步/异步怎么取舍 → 两个必须知道的坑（复制槽、主从延迟）→ 你项目为什么选逻辑路径</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>物理复制复制的是「存储的变化」，逻辑复制复制的是「数据的变化」。</strong> 所以前者绑定<strong>实例与版本</strong>，后者绑定<strong>表与行</strong>——<strong>所有能力差异（能不能选择性复制、备端能不能写、能不能跨版本）都是这一句话的推论。</strong></p></collapse-panel>

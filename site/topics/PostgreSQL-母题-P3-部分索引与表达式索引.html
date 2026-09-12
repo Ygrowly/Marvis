@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「部分索引会不会失效？」</strong></strong></p>
+<p class="mv-md-p">会，而且失效方式是<strong>静默的</strong>：只要查询条件与谓词不再匹配（比如以后加了「查终态任务」的需求），新查询就自动用不上、走全表扫，<strong>而你不会收到任何通知</strong>。所以部分索引必须配一句「它的服务范围是什么」写在注释或文档里——<strong>这是它最大的运维风险。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「索引多了对 VACUUM 有什么影响？」</strong></strong></p>
+<p class="mv-md-p">每多一个索引，autovacuum 清理死元组时要多处理一棵索引树，<strong>代价从「写放大」延伸到「清理负担」</strong>。所以「索引不是越多越好」在 PG 里的后半句是：<strong>索引越多，表膨胀越难被自动控制住</strong>。这条直接接到主线五，也是 PG 比 MySQL 更在意索引数量的原因。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PostgreSQL 怎么做软删除的唯一约束？」——上面的部分唯一索引。<strong>注意：用 <code class="mv-md-code">WHERE deleted_at IS NULL</code> 之后，删掉的行不参与唯一性，所以可以重新注册同一个邮箱。</strong></li><li>「<code class="mv-md-code">LIKE '%xx'</code> 能走索引吗？」——普通 B-tree 不行（前缀无序）；PG 的常规解法是 <code class="mv-md-code">pg_trgm</code> + GIN/GiST 索引。<strong>答这题能顺手展示你知道「扩展」而不是只会内置类型。</strong></li><li>「函数写在条件里索引失效，怎么办？」——两条路：<strong>改写成 <code class="mv-md-code">col &gt;= ? AND col &lt; ?</code>（去掉函数）</strong>，或<strong>建表达式索引</strong>。前者不付额外代价，后者只在改不动 SQL 时用。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的<strong>任务队列</strong>（<code class="mv-md-code">status</code> 只索引活跃态，正是上面那条 SQL 的真实场景）；数驭穹图的<strong>同步任务表</strong>（只查未完成的任务）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 没有部分索引</strong>，同需求要么靠前置过滤 + 组合索引，要么靠业务层改写。被问到时正确说法是「PG 用部分索引；MySQL 里我会用 <code class="mv-md-code">(status, updated_at)</code> 的联合索引，靠最左列过滤，但索引里仍然包含终态行」。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">全表索引浪费在哪 → 部分索引的机制 → 谓词必须匹配的规则 → 表达式索引解决什么问题 → 两者组合（部分唯一索引）→ 判据与边界</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小。</strong> 部分索引直接砍掉第二个因子——<strong>「只用得上 1% 的行，就不该为 100% 的行付维护成本」。</strong></p></collapse-panel>

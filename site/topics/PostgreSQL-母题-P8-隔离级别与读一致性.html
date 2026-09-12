@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「RC 下 <code class="mv-md-code">UPDATE</code> 重新检查的行为，会不会导致死锁？」</strong></strong></p>
+<p class="mv-md-p">会，而且这是 PG 里一种常见的死锁来源：<strong>两个事务以不同顺序更新同一批行</strong>。处理办法是所有写路径<strong>统一加锁/更新顺序</strong>（比如总是按主键升序），或者用条件更新把冲突变成「0 行受影响」而不是「互相等待」。</p>
+<p class="mv-md-p"><strong>2. <strong>「怎么知道线上到底是哪个隔离级别在跑？」</strong></strong></p>
+<p class="mv-md-p">查 <code class="mv-md-code">SHOW default_transaction_isolation</code>（会话/默认值），<strong>并且要注意应用可能自己设了</strong>（连接池、ORM、<code class="mv-md-code">SET TRANSACTION ISOLATION LEVEL</code>）。<strong>面试里的正确表述是「我先确认当前默认值和连接池是否覆盖」，而不是假定「PG 就是 X」。</strong> 这一点和 P5 里那条「我项目默认 RC，所以你们库里的 RR 行为我要先确认」是同一个纪律。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「RC 下会不会有幻读？」——会（范围查询两次结果可能不同），<strong>但 PG 不会因此加锁</strong>；要挡住就提到 RR/Serializable 或显式加锁。</li><li>「<code class="mv-md-code">BEGIN; INSERT ...; SELECT ...; COMMIT;</code> 里 <code class="mv-md-code">SELECT</code> 能看到自己没提交的改动吗？」——<strong>能看到，事务能看到自己的改动</strong>（这是所有隔离级别都成立的）。</li><li>「只读事务也有快照吗？」——有，而且<strong>PG 的只读事务在 RR 下同样持有快照</strong>，因此<strong>同样会阻塞 VACUUM、导致膨胀</strong>——这是 P14 那个反直觉结论的来源。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的任务状态机与退款路径（<strong>条件更新能在 RC 下安全工作，正是因为这里说的「重新判定 WHERE」</strong>）；EnergyOps 的结算批处理（<strong>如果要求「整批基于同一时刻」，那就是该用 RR 的场景，同时必须能重试</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照 + 报错重试。<strong>绝对不要说「PG 的 RR 也靠间隙锁」——PG 根本没有间隙锁。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 默认 RC（对比 MySQL 的 RR）→ 快照粒度差异（语句 vs 事务）→ 所以「两次查询不同」是规范行为 → RR 的代价是写冲突要报错 → RC 下 UPDATE 的特殊行为 → 怎么选</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>隔离级别在 PG 里承诺的是「你能看到什么」，不是「你不会失败」。</strong> 级别越高，看到的越一致，但<strong>越可能被要求重试</strong>——这是 PG 与 MySQL 的哲学差异：<strong>PG 用「快照 + 报错重试」换掉了「加锁等待」。</strong></p></collapse-panel>

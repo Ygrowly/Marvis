@@ -67,7 +67,7 @@ SELECT ...;        -- 开了一个事务（隐式 BEGIN）
 <h3 class="mv-md-h mv-md-h3">五、怎么监控</h3>
 <table class="mv-table"><thead><tr><th>看什么</th><th>用途</th></tr></thead><tbody><tr><td><code class="mv-md-code">information_schema.innodb_trx</code> 的 <code class="mv-md-code">trx_started</code></td><td><strong>运行时间最长的事务</strong>——回收边界的直接代理</td></tr><tr><td><code class="mv-md-code">SHOW PROCESSLIST</code></td><td>长时间处于 <code class="mv-md-code">Sleep</code> 状态的连接（可能是 <code class="mv-md-code">idle in transaction</code> 的 MySQL 版）</td></tr><tr><td>undo 表空间大小 / 历史链长度相关指标</td><td>膨胀程度</td></tr></tbody></table>
 <p class="mv-md-p"><strong>面试加分点</strong>：<strong>能说出"我盯的是最老事务的 trx_started，因为回收边界由最老的 ReadView 决定"</strong>——<strong>这和 PG 侧"盯最老事务的 xmin"（P14）是同一句话</strong>，<strong>两套数据库，同一条原理。</strong></p>
-<hr class="mv-md-hr"></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M13-长事务为什么危险.md</p></div>
+<hr class="mv-md-hr"></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「undo 膨胀了怎么办？」</strong></strong></p><p class="mv-md-p"><strong>先杀掉肇事的长事务</strong>（purge 立刻恢复推进），<strong>再等 purge 追上来</strong>（undo 表空间可以配置为可收缩，取决于版本与 undo 表空间配置）。<strong>预防才是重点：超时参数 + 代码纪律（事务里不做 IO）。</strong> <strong>这条和 PG 的"先治因再回收"（P15）完全同构。</strong></p><p class="mv-md-p"><strong>2. <strong>「为什么两边（MySQL/PG）都会因为长事务出事，但表现形式不一样？」</strong></strong></p><p class="mv-md-p"><strong>因为版本存放位置不同（M9 的对照表）</strong>：MySQL 的版本在 <strong>undo log</strong>，所以膨胀表现为 <strong>undo 表空间与回溯变慢</strong>；PG 的版本在<strong>堆里</strong>，所以膨胀表现为<strong>表与索引变大（表膨胀）</strong>。<strong>机制同源（长事务按住回收），症状不同（undo 膨胀 vs 表膨胀）</strong>——<strong>能说出这句对照，就超过了 90% 的候选人。</strong></p></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M13-长事务为什么危险.md</p></div>
   </div>
 
   <div class="mv-section">

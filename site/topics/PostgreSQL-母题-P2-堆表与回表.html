@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「那怎么判断有没有真的省掉回表？」</strong></strong></p>
+<p class="mv-md-p"><code class="mv-md-code">EXPLAIN ANALYZE</code> 看三点：节点是不是 <code class="mv-md-code">Index Only Scan</code>；<strong><code class="mv-md-code">Heap Fetches</code> 是多少</strong>（不是 0 就说明还是回了堆）；实际行数与 buffered read 的关系。<strong>只看节点名不看 Heap Fetches，是典型的假优化。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「表膨胀会让回表更慢吗？」</strong></strong></p>
+<p class="mv-md-p">会，而且是双重影响：① 堆页更稀疏，同样的行数分布在更多页上，回表的随机 IO 次数上升；② 索引的 ctid 指向的旧位置让局部性更差。<strong>所以「回表慢」在 PG 里经常要先治膨胀（VACUUM），而不是先加索引</strong>——这条正好接到主线五。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PG 的主键一定是聚簇索引吗？」——<strong>不是</strong>。PG 的主键只是「唯一且非空的 B-tree 索引」，数据仍然是堆。<strong>这是最容易被 MySQL 语义污染的一题。</strong></li><li>「PG 有聚簇吗？」——有 <code class="mv-md-code">CLUSTER</code> 命令，但它是一次性重排（按某个索引把堆重写一遍），<strong>之后新写入的行不会再维持顺序</strong>，所以不是持续的「聚簇索引」。<strong>知道它存在，也知道它不持久，就够了。</strong></li><li>「为什么 PG 的索引个数对写入影响大？」——每次写要在<strong>堆</strong>里插行，同时更新<strong>每一个</strong>索引；PG 的 MVCC 还让更新等于「插入新版本 + 标记旧版本」，写放大被进一步放大。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的四层事实表（等值 + 范围的联合索引，最典型的 PG 查询形状）；数驭穹图的元数据检索。<strong>方言差异（面试安全底线）</strong>：MySQL 的表是<strong>索引组织表</strong>，主键查询不回表；PG 是<strong>堆表</strong>，<strong>所有</strong>查询都可能回表。被问覆盖索引时，<strong>先说「我项目里是 PG，机制是 X」，再说「MySQL 那边对应是 Y」</strong>——顺序反了就容易把两套混成一句。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">堆表长什么样 → 索引只能给位置，所以回表必然 → Index Only Scan 的判据是可见性映射 → 最左前缀依然成立但语义不同 → INCLUDE 列怎么用 → 落到项目查询</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>MySQL 的主键就是数据本身（索引组织表），PG 的索引只是「指向数据的路标」。</strong> 这一条决定了两边索引的一切行为差异：回表、主键选型、页分裂、覆盖索引的可行性。</p></collapse-panel>

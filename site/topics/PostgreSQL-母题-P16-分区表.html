@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「分区表的主键怎么设计？」</strong></strong></p>
+<p class="mv-md-p">因为唯一约束必须带分区键，<strong>如果业务主键是「业务 ID」而分区键是「时间」，就不能只对业务 ID 建主键</strong>。常见处理：<strong>主键改成「业务 ID + 时间」的复合</strong>，或者<strong>放弃数据库级唯一约束、改用「全局 ID 生成 + 幂等写入」来保证唯一</strong>（把唯一性交到上游或应用层）。<strong>这是一个"分区代价"落到具体 DDL 上的例子——能讲出来说明真设计过。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「分区真的能让 5 亿行的查询变快吗？」</strong></strong></p>
+<p class="mv-md-p"><strong>只在裁剪生效时</strong>。裁剪后扫描量下降到单分区，<strong>本质收益和「加索引」是一样的（少扫数据）</strong>，区别在于：<strong>索引解决"行级过滤"，分区解决"整块数据根本不用碰"</strong>。当条件本身能排除大量整块数据（时间范围）时，<strong>分区比索引更彻底</strong>——因为它连索引都不用读。<strong>但如果查询本来就命中很少的行，单表加索引可能更划算</strong>（改动更小、不用承担分区代价）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「分区和分表有什么区别？」——<strong>分区是「一张逻辑表 + 多个物理分区」</strong>（由数据库管理、对外是一张表）；<strong>分表是「多张独立表」</strong>（由应用管理路由）。<strong>分区是数据库能力，分表是架构手段</strong>——这个区分要讲清。</li><li>「HASH 分区有什么用？」——<strong>没有天然分区键</strong>时，用一个稳定的高基数列（如租户 ID / 实体 ID）把写入与查询摊开；<strong>放弃裁剪能力，换并发分摊</strong>。<strong>这是「用分区做水平分散」而不是做裁剪。</strong></li><li>「索引要不要建在分区上？」——<strong>分区表上的索引默认是"每个分区各一个"（local index）</strong>；查询时如果裁剪生效，只用对应分区的索引。<strong>所以索引设计要跟着分区键走</strong>——<strong>分区键通常是索引的最左列。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的四层事实表</strong>（时间维度天然、有归档需求——<strong>分区候选第一名</strong>）；RuleArena 的<strong>事件与仲裁记录表</strong>（追加写、按时间清理）；数驭穹图的<strong>同步任务与位点表</strong>（按租户 LIST 分区的场景）。<strong>方言差异（面试安全底线）</strong>：MySQL 的对应能力也是<strong>声明式分区</strong>（<code class="mv-md-code">RANGE / LIST / HASH</code>，8.0 前需要指定引擎），<strong>但 MySQL 分区表的限制更多</strong>（比如分区表不支持外键、对唯一键的限制类似），而且 <strong>MySQL 的主要"归档"手段通常是"分库分表 + 应用路由"或"归档到历史库"</strong>。<strong>两边都能分区，但「分区 + DROP 分区做归档」在 PG 上更常用、也更顺；MySQL 圈更常见的是分表。</strong> 说的时候要说清自己在讲哪一套。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">分区的三种方式 → 收益一：分区裁剪 → 收益二：丢弃即归档 → 代价与限制（尤其是唯一约束）→ 回到题目做判断 → 与膨胀治理合流</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>分区不是「把大表变小表」，而是「把一张表的管理粒度变细」。</strong> 它的收益全部来自「<strong>能只碰一部分</strong>」——<strong>只扫一部分（裁剪）、只丢一部分（DROP 分区）</strong>。<strong>没有这两类操作的场景，分区只会增加复杂度。</strong></p></collapse-panel>
@@ -63,7 +69,7 @@
 <p class="mv-md-p">当查询条件<strong>明确落在某个/某些分区</strong>上时，规划器<strong>根本不去碰其他分区</strong>：</p>
 <pre class="mv-md-pre">查询：WHERE stat_date &gt;= '2026-01-01' AND stat_date &lt; '2026-02-01'
   ↓ 分区裁剪
-只扫描 2026-01 那一个分区 → 扫描量从 5 亿行降到 1400 万行</pre>
+只扫描 2026-01 那一个分区 → 扫描量从 5 亿行降到约 2100 万行（5 亿 ÷ 24 个月）</pre>
 <p class="mv-md-p"><strong>关键前提：分区键必须出现在查询条件里。</strong> 如果查询经常不带分区键（比如只按 <code class="mv-md-code">device_id</code> 查），<strong>裁剪失效，等于在 24 张分区表上做 24 次扫描</strong>——<strong>比不分区分区还慢</strong>。<strong>这是评估分区是否值得的第一道门槛。</strong></p>
 <p class="mv-md-p"><strong>第二个要求</strong>：<strong>条件要与分区边界"可推断"</strong>。用 <code class="mv-md-code">date_trunc</code> / 表达式包住分区键，规划器可能无法裁剪（和索引谓词匹配是同一类问题，P3）。</p>
 <h3 class="mv-md-h mv-md-h3">三、收益二：丢弃即归档（这是更值钱的那个）</h3>

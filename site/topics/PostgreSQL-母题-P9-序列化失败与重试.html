@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「重试会不会把压力放大成雪崩？」</strong></strong></p>
+<p class="mv-md-p">会，这是 SSI 在高并发下的真实风险：失败率随并发上升，重试又增加并发。<strong>所以正确写法必须带退避 + 抖动 + 上限 + 全局并发限制</strong>，而不是简单 <code class="mv-md-code">while(true) retry()</code>。<strong>能说出「重试也要限流」，就超出教科书答案了。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「怎么判断该不该上 Serializable？」</strong></strong></p>
+<p class="mv-md-p">先问三件事：<strong>① 有没有跨行不变量（没有就不用上）；② 业务操作可不可重试（不可重试就别用 SSI，用锁）；③ 冲突频率有多高（很高时重试成本可能超过加锁）</strong>。<strong>三个问题问完，答案自己出来。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「写偏斜是什么，为什么 RC/RR 拦不住？」——两个事务各读一部分数据、各写另一部分，<strong>各自的读集与写集不重叠</strong>，所以快照隔离看不出问题，但<strong>合起来破坏了一个跨行的不变量</strong>。<strong>只有 SSI 能自动拦住它</strong>，否则要靠显式锁或约束。</li><li>「能不能不用 SSI，只用 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 保证正确？」——能，但<strong>必须保证「读的时候也加锁」</strong>——只给写加锁的「先查再写」在 RC 下有竞态（这正是 RuleArena 不用 FOR UPDATE 的原因）。</li><li>「<code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code> 是什么意思？」——只读事务声明可延迟启动，<strong>它会等到一个「安全快照」再开始</strong>，从而保证一定不会因序列化而失败。<strong>报表类长只读事务想彻底免重试，这是标准做法</strong>——知道这一条会显得非常扎实。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的<strong>沙箱重放</strong>（同一批动作重放要能拿到一样的结果——<strong>这正是「事务可重试」的业务前提</strong>）；EnergyOps 的<strong>月度结算</strong>（跨行不变量多、但通常可以按周期重算，天然后可重试）。<strong>方言差异（面试安全底线）</strong>：MySQL 的 Serializable 靠<strong>加锁 + 间隙锁</strong>实现，<strong>通常表现为等待与超时，而不是报错重试</strong>；PG 靠 SSI <strong>主动报错</strong>。「MySQL 上到 Serializable 会变慢」和「PG 上到 Serializable 会开始报错」是两种不同的现象，<strong>这是能直接体现你真用过 PG 的一处差异。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 怎么做到可串行化（SSI 检测依赖而不是加锁）→ 所以会失败 → 失败的错误码与语义 → 正确的处理方式（重试整个事务）→ 与悲观锁的取舍 → 一个前提检查清单</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>Serializable 的成本不在执行速度，在「失败与重试」。</strong> 所以选择它的前提不是「我的 SQL 快不快」，而是<strong>「这个业务操作本身可不可以重试」</strong>——可重试，SSI 就是最省心的可串行化；不可重试，就该用显式锁。</p></collapse-panel>

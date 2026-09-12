@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「<code class="mv-md-code">FOR UPDATE</code> 是不是就万无一失了？」</strong></strong></p>
+<p class="mv-md-p">不是。① 它<strong>只锁匹配到的行</strong>，如果范围里还没有行（还没插入），照样锁不住——<strong>这正是「无间隙锁」的直接后果</strong>；② 它需要<strong>读的时候也用它</strong>，一旦某条路径忘了加锁就出现竞态；③ 它会把并发冲突从「报错重试」变成「排队等待」，<strong>高并发下可能拖垮吞吐</strong>。</p>
+<p class="mv-md-p"><strong>2. <strong>「那 RuleArena 为什么不用它？」</strong></strong></p>
+<p class="mv-md-p">因为扣退款/认领任务是<strong>低频写、读多写少</strong>：加锁引入锁等待与死锁风险，而收益几乎没有；<strong>条件更新（乐观）在这里更合适</strong>，而且它天然幂等（重复执行第二次影响 0 行）。<strong>唯一约束负责最终防线，而不是靠锁。</strong> 这条直接呼应 [[母题-P18-乐观并发控制]]。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「<code class="mv-md-code">SELECT ... FOR UPDATE</code> 和 <code class="mv-md-code">UPDATE</code> 自己差在哪？」——<code class="mv-md-code">UPDATE</code> 会自动加行锁（且权限更细，PG 里普通更新对应 <code class="mv-md-code">FOR NO KEY UPDATE</code>），<code class="mv-md-code">FOR UPDATE</code> 是<strong>先把行锁住再去判断/计算</strong>，用于「读—判断—写」跨越多次交互的场景。</li><li>「表锁呢？」——PG 还有表级锁（<code class="mv-md-code">LOCK TABLE ... IN ... MODE</code>），日常业务基本不用；<strong>要提醒的是 <code class="mv-md-code">ALTER TABLE</code> 会拿较重的表锁</strong>（对应 P4「改类型要排窗口」）。</li><li>「PostgreSQL 有没有 <code class="mv-md-code">SELECT ... LOCK IN SHARE MODE</code>？」——那是 MySQL 语法；PG 是 <code class="mv-md-code">FOR SHARE</code> / <code class="mv-md-code">FOR KEY SHARE</code>。<strong>语法别串。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的<strong>任务认领</strong>（多个 Worker 抢同一任务——用条件更新而不是 <code class="mv-md-code">FOR UPDATE</code>）；EnergyOps 的<strong>月度结算</strong>（跨行不变量多，正是该考虑 SSI 或显式锁的地方）。<strong>方言差异（面试安全底线）</strong>：MySQL 的 RR + next-key lock 会<strong>阻止插入</strong>（表现为插入被阻塞）；PG <strong>不会</strong>，它要么让你看到旧快照、要么在冲突时报错。<strong>「PG 也靠间隙锁」是明确的概念性错误</strong>，和「SSE 是短连接」同一级别。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 为什么没有间隙锁 → 那幻读怎么防（两条路）→ 四种行锁强度与用途 → 外键为什么用最弱的那个 → 写偏斜为什么更麻烦 → 工程上怎么选</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>MySQL 用「范围锁」把幻读挡在门外；PG 用「多版本快照」让幻读不产生错误结果，代价是冲突时要报错重试。</strong> 一个靠「不许发生」，一个靠「发生但可检测」——<strong>理解这个分歧，后面的锁与隔离全都能推出来。</strong></p></collapse-panel>

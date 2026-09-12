@@ -105,6 +105,39 @@ def grab_numbered(text, name):
     return out
 
 
+def grab_items(text, *names):
+    """抽 `**字段**` 之后的条目，`- ` 与 `1. ` 都认，返回去掉标记的整行文本。
+
+    2026-09-12 新增：旧体例的母题卡（MySQL M5–M7/M13–M17、PostgreSQL 全部）用的是
+    `**追问链**` / `**类似题**` 两个标签、且追问是 `- 追问一层：…` 的**无序**列表，
+    原先 grab_numbered/grab_list 抓不到 → 这 27 张卡的页面静默丢掉追问与变体两节。
+    本函数按「先给的名字先试，抓到就返回」工作，对已正常的卡零影响。
+    """
+    for name in names:
+        idx = text.find("**" + name + "**")
+        if idx < 0:
+            continue
+        tail = text[idx + len("**" + name + "**"):]
+        stop = re.search(r"\n\s*(?:\*\*|##)", tail)
+        block = tail[: stop.start()] if stop else tail
+        out = [re.sub(r"^\s*(?:[-*]|\d+[.、])\s+", "", ln).strip()
+               for ln in block.splitlines()
+               if re.match(r"^\s*(?:[-*]|\d+[.、])\s+\S", ln)]
+        if out:
+            return out
+    return []
+
+
+def to_pairs(items):
+    """把 `追问一层：**「问」**——答` 这类整行，切成 [(问, 答)]"""
+    out = []
+    for s in items:
+        s = re.sub(r"^追问[一二三四五六七八九十]+层\s*[：:]\s*", "", s)
+        parts = re.split(r"\s*——\s*|\s*—\s*", s, maxsplit=1)
+        out.append((parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""))
+    return out
+
+
 # ---------------------------------------------------------------- md → html（轻量）
 
 def esc(s):
@@ -284,8 +317,9 @@ def parse_topic(path):
         "keywords": [x.strip() for x in re.split(r"[/｜|·]", grab(body, "恢复关键词")) if x.strip()],
         "invariant": grab(body, "核心不变量 / 主线") or grab(body, "核心不变量"),
         "skeleton": grab(body, "完整回答骨架"),
-        "followups": grab_numbered(body, "追问") or grab_numbered(body, "两层追问"),
-        "variants": grab_list(body, "同类变体"),
+        "followups": (grab_numbered(body, "追问") or grab_numbered(body, "两层追问")
+                      or to_pairs(grab_items(body, "追问链", "追问"))),
+        "variants": grab_list(body, "同类变体") or grab_items(body, "类似题"),
         "related": grab(body, "关联母题"),
         "transfer": grab(body, "可迁移场景"),
         "breakpoint": grab(body, "本次断点"),

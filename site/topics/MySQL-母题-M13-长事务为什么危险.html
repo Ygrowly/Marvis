@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「undo 膨胀了怎么办？」</strong></strong></p>
+<p class="mv-md-p"><strong>先杀掉肇事的长事务</strong>（purge 立刻恢复推进），<strong>再等 purge 追上来</strong>（undo 表空间可以配置为可收缩，取决于版本与 undo 表空间配置）。<strong>预防才是重点：超时参数 + 代码纪律（事务里不做 IO）。</strong> <strong>这条和 PG 的"先治因再回收"（P15）完全同构。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「为什么两边（MySQL/PG）都会因为长事务出事，但表现形式不一样？」</strong></strong></p>
+<p class="mv-md-p"><strong>因为版本存放位置不同（M9 的对照表）</strong>：MySQL 的版本在 <strong>undo log</strong>，所以膨胀表现为 <strong>undo 表空间与回溯变慢</strong>；PG 的版本在<strong>堆里</strong>，所以膨胀表现为<strong>表与索引变大（表膨胀）</strong>。<strong>机制同源（长事务按住回收），症状不同（undo 膨胀 vs 表膨胀）</strong>——<strong>能说出这句对照，就超过了 90% 的候选人。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「批量更新一百万行为什么要分批？」——<strong>① 事务过长（本母题）；② 单事务产生的 undo 与 redo 都大；③ 大事务在主从复制里是一条 binlog，从库要整体重放（M14）；④ 锁持有范围大（M10）</strong>。<strong>分批（比如每 1000 行提交一次）把这四个问题一起解决</strong>——<strong>所以"分批"是四张卡的公共答案，这个判断要能自己说出来。</strong></li><li>「怎么找到是谁把 purge 卡住的？」——<strong>查最老的事务</strong>；<strong>MySQL 8.0 的 <code class="mv-md-code">performance_schema</code> / <code class="mv-md-code">information_schema.innodb_trx</code> 能直接看到 <code class="mv-md-code">trx_started</code> 与正在执行的语句</strong>。</li><li>「长查询（没开事务）会拖吗？」——<strong>autocommit 开着时，单条查询自己是原子提交的，结束后就释放</strong>；<strong>危险的是"显式 BEGIN 之后挂着"</strong>。<strong>所以"只读长事务危险"的准确条件是"它持有 ReadView"——而持有 ReadView 的前提是事务没结束。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的月度结算</strong>（跨多表多步，事务边界最容易画大——<strong>"事务里不做外部调用"在这里最值钱</strong>）；RuleArena 的<strong>Worker 长任务</strong>（<strong>事务只包数据库动作，Checkpoint 之外不做 IO</strong>）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 长事务 → undo 膨胀 + 持锁久；PG 长事务 → 表膨胀 + 阻塞 VACUUM + 事务 ID 回卷风险（P15）</strong>。<strong>两边都要"短事务"，但症状与监控指标不同</strong>——<strong>这是"机制同源、症状不同"的最佳案例。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">危害一：拖住旧版本清理（从 MVCC 推导）→ 危害二：持锁久 → 只读事务为什么也危险 → 工程规避清单 → 怎么监控</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>长事务最可怕的不是"执行久"，而是它会持续占着数据库资源，让整个系统越来越难受。</strong>（raw 原话）——<strong>它不是"慢"，是"按住资源的柄"。</strong></p></collapse-panel>

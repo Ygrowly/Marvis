@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么估计会差那么多？」</strong></strong></p>
+<p class="mv-md-p">三类原因：统计信息过期、<strong>列之间有关联但统计是独立的</strong>（比如「城市=北京」和「区=海淀」相乘会把行数估得极小）、条件是表达式/函数导致无法估算。对应三种修法见 P7。<strong>答这题要说「优化器不是猜的，它是按你给的统计算的」。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「<code class="mv-md-code">EXPLAIN ANALYZE</code> 会不会本身改变行为？」</strong></strong></p>
+<p class="mv-md-p">会。① 它真的执行，所以有副作用风险；② <strong><code class="mv-md-code">ANALYZE</code> 会强制用真实参数生成计划，而真实运行可能用的是预编译的通用计划</strong>（见 P7 的 generic plan 陷阱）——<strong>所以「EXPLAIN ANALYZE 里很快、线上很慢」是可能发生的</strong>。这条能把两个母题串起来。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Seq Scan 一定比 Index Scan 慢吗？」——<strong>不一定</strong>。命中比例高时顺序读整表比「索引 + 大量随机回表」更快。<strong>能说出「Seq Scan 也是一种正确选择」，就脱离了「索引崇拜」。</strong></li><li>「怎么对比两个计划的优劣？」——看<strong>实际耗时</strong>与 <strong>Buffers</strong>，而不是「估算代价」；估算代价只能用于同结构比较。<strong>要 <code class="mv-md-code">ANALYZE</code> 真跑、固定参数、跑多次取稳定值。</strong></li><li>「<code class="mv-md-code">Bitmap Heap Scan</code> 后面接 <code class="mv-md-code">Sort</code> 说明什么？」——说明索引没有提供所需顺序（它按物理顺序读堆），所以还得排一次。<strong>要排序就应该考虑让索引顺序直接匹配 <code class="mv-md-code">ORDER BY</code>。</strong></li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的 20 多秒链路；数驭穹图的查询成本控制（<strong>每次改索引都要用计划证明，而不是"感觉快了"</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 的 <code class="mv-md-code">EXPLAIN</code> 是<strong>只看计划不执行</strong>，要看实际执行要用 <code class="mv-md-code">EXPLAIN ANALYZE</code>（8.0.18+）或 <code class="mv-md-code">EXPLAIN FORMAT=JSON</code>；输出字段是 <code class="mv-md-code">type</code> / <code class="mv-md-code">key</code> / <code class="mv-md-code">rows</code> / <code class="mv-md-code">Extra</code> 这套（P4 里已经提过 MySQL 的 <code class="mv-md-code">type</code> 从好到坏）。<strong>两边的字段名完全不同，别混着说。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">两种 EXPLAIN 的差别（估算 vs 实测）→ 看计划的五步顺序 → 每个节点该问什么 → 一个真实例子（20 多秒那条）→ 注意事项（ANALYZE 会真跑）</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>计划里的错误几乎总是先出现在「估计行数」上。</strong> 所以看计划的第一动作永远是比对估计与实际——<strong>偏差大的那个节点，就是问题所在节点</strong>，不需要通读整棵树。</p></collapse-panel>

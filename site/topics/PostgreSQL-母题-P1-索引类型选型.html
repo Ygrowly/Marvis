@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「一个字段能同时建两种索引吗？」</strong></strong></p>
+<p class="mv-md-p">能，但要想清楚收益：比如 JSONB 既要整体等值又要包含查询，可以 B-tree + GIN 各一个，代价是<strong>写入要维护两棵树</strong>。多数情况下只留 GIN 就够（GIN 也能做等值）。</p>
+<p class="mv-md-p"><strong>2. <strong>「GIN 写入慢，高写入表怎么办？」</strong></strong></p>
+<p class="mv-md-p">两条路：① 用 GIN 的 fastupdate / pending list，把多次写合并成一次批量合并（代价是查询要先扫 pending list）；② 换思路——<strong>把需要检索的字段在写入时预处理成一个可 B-tree 的列</strong>（比如把常用标签列出来做普通索引），用写入侧的冗余换掉 GIN 的写入开销。<strong>这条能接住「你怎么做技术选型」的叙事。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「GIN 为什么适合 JSONB 和数组？」——因为 JSONB / 数组是<strong>多值</strong>字段，B-tree 只能比较整体，GIN 的倒排结构把「包含某个元素」变成一次键查找。<strong>答这题必须把「倒排」两个字说出来。</strong></li><li>「时序数据用什么索引？」——<strong>BRIN</strong>（按时间追加写、物理有序），体积比 B-tree 小几个数量级；但一旦乱序就失效，所以要先确认「只追加、不更新」。</li><li>「全文检索怎么建索引？」——GIN + <code class="mv-md-code">tsvector</code>（配 <code class="mv-md-code">to_tsvector</code> 表达式索引），这正是「表达式索引 + GIN」的组合。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">数驭穹图的<strong>元数据检索</strong>（Schema / 目录字段常有 JSON 结构，GIN 主战场）；RuleArena 的<strong>规则与场景标签</strong>（多标签包含查询）。<strong>方言差异（面试安全底线）</strong>：MySQL 里没有 GIN / GiST / BRIN 这套东西，它对应的是「全文索引 / 空间索引」这类特例，而<strong>多值包含在 MySQL 里通常要靠生成列或拆表解决</strong>——<strong>不要把「JSONB 用 GIN」这套说法套到 MySQL 上</strong>，那是 PG 的机制。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">默认为什么是 B-tree（覆盖面）→ 四种类型的组织方式与对应操作符 → 回到题目做选择 → 各自的代价与边界 → 一句判据收尾</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引是「按某种方式重新组织或摘要数据」的结构，它能回答哪类查询，由它的组织方式决定。</strong> 所以选型的第一句话永远是——<strong>这个查询用的是哪个操作符</strong>；第二句话才是——<strong>代价是什么</strong>。</p></collapse-panel>

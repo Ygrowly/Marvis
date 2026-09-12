@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么不能放在事务里，机制上是什么？」</strong></strong></p>
+<p class="mv-md-p">因为它<strong>需要跨多个事务、让并发事务持续提交</strong>才能收集到完整数据；被放进一个事务里，就变成「持锁等待」，反而退化成普通 <code class="mv-md-code">CREATE INDEX</code> 的语义，所以 PG 直接禁止。<strong>「它不是更聪明的锁，而是换了一套做法」。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「如果建到一半应用在写，会不会丢行？」</strong></strong></p>
+<p class="mv-md-p">不会。第二遍扫描就是为这件事存在的：它补齐构建期间新增/更新的行；<strong>校验阶段会确认覆盖完整，不完整就标记 invalid</strong>。所以<strong>正确性靠「补扫 + 校验」，不靠「停写」</strong>——这和 MySQL 影子表方案（pt-osc / gh-ost）的「先建后换」是两种哲学，可以对比着讲。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PG 加字段会不会锁表？」——<code class="mv-md-code">ADD COLUMN</code> 只有<strong>默认值</strong>在 PG 11+ 后是元数据操作、不重写表（很轻）；但<strong>改类型 / 加约束要重写表</strong>，那才是真正危险的。<strong>要区分「加列」和「改列」。</strong></li><li>「索引建多了会怎样？」——见上面三项代价；<strong>回答里带上 VACUUM 压力，就把 PG 和 MySQL 的答案区分开了。</strong></li><li>「怎么发现线上有无效索引？」——<code class="mv-md-code">pg_index.indisvalid</code>；同理还有「重复/冗余索引」（同一前缀的多个索引）可以一起查。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena / EnergyOps 的表结构演进（都在 PG 上）；数驭穹图的元数据表变更。<strong>方言差异（面试安全底线）</strong>：MySQL 的在线 DDL 是 <code class="mv-md-code">ALGORITHM=INPLACE, LOCK=NONE</code> + pt-osc / gh-ost 影子表；PG 是 <code class="mv-md-code">CONCURRENTLY</code>。<strong>两边共同的坑是「失败留下的中间态」</strong>——MySQL 是 MDL 排队，PG 是 INVALID 索引。<strong>能把两边的「静默风险」各说一句，这道题就满分。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">索引的三项代价（PG 版）→ 直接建索引会堵什么 → CONCURRENTLY 的机制 → 三个坑 → 失败后的正确处理 → 工程流程</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>在线变更安全的判据不是「它快不快」，而是「失败之后系统停在一个什么状态、以及这个状态是否可见」。</strong> MySQL 的答案是「看不见的队列堵住一切」，PG 的答案是「看得见但不报错的无效索引」——<strong>两次都是「静默」最危险。</strong></p></collapse-panel>

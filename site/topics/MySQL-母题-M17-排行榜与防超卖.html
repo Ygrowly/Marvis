@@ -46,6 +46,12 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「Redis 挂了排行榜怎么办？」</strong></strong></p>
+<p class="mv-md-p"><strong>① 从 DB 重建（冷数据定时落 DB 是前提）；② 降级为"榜单维护中"，主玩法不受影响</strong>；<strong>③ 写路径要能容忍 Redis 不可用（丢分但不断游戏）</strong>。<strong>"依赖服务的可用性必须低于主链路"是这条的通用原则。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>「这道题和你项目有什么关系？」</strong></strong></p>
+<p class="mv-md-p"><strong>方法论一致</strong>：<strong>① 澄清优先（RuleArena 的"先查规格再重放"）；② 幂等键防重复上报（P19）；③ 削峰走异步 + 最终一致 + 对账（M14/P12 的延迟语义）</strong>。<strong>答场景题时主动把这些连线，就把"知识题"答成了"工程题"。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「ZSet 为什么快？」——<strong>跳表</strong>：按 score 有序的多级链表，<code class="mv-md-code">ZREVRANK</code> 走 O(logN)；<strong>哈希表保证 member → score 的 O(1) 查询</strong>。<strong>两个结构配合，所以它"既能查排名又能按成员取分数"。</strong></li><li>「为什么不用 MySQL 的排名字段？」——<strong>每写一次分数要更新所有受影响排名</strong>（写放大），<strong>或者用 <code class="mv-md-code">COUNT</code> 现算（读放大）</strong>；<strong>ZSet 把排名维护内建进了数据结构</strong>。<strong>"把计算内建进数据结构"是选型的通用思路。</strong></li><li>「消消乐是单机游戏吧？」——<strong>不是</strong>（9.9 那次的第一条失误就是假设单机）。<strong>它有联网排行榜、好友榜、活动榜</strong>——<strong>澄清阶段没问，这里就假设错</strong>。</li></ul></collapse-panel>
     <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>乐元素这类游戏公司的场景题（本卡就是按 9.9 真题做的修复）</strong>；EnergyOps 的<strong>异常告警聚合</strong>（Top N + 近似统计同构）；RuleArena 的<strong>预算与候选上限</strong>（计数扣减 + 唯一约束防重复）。<strong>方言差异（面试安全底线）</strong>：<strong>排行榜在两边的答案一致（该用 Redis 就用 Redis，数据库选型不改变这个结论）</strong>；<strong>防超卖在 PG 里同样用条件更新（P18），语法一致</strong>；<strong>差别在 PG 连接模型下并发上限更低（P17），所以"Redis 前置削峰"在 PG 架构里更必要</strong>。<strong>这条能体现"同一条原理在不同架构下的不同权重"。</strong></p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">六步章法 → 排行榜选型与复合分数 → 2000 万 DAU 的工程问题（热点 key / 削峰 / 名次近似 / 持久化）→ 游戏特性（防作弊 / 弱联网）→ 防超卖三条路 → 指标与降级</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>场景题的第一动作是澄清，不是给方案。</strong> ——<strong>9.9 那次丢分的一半在"没问够"（榜单范围、更新频率、防作弊全没问），另一半才是技术</strong>。<strong>技术选型（MySQL vs Redis）反而是这张卡里最容易的部分。</strong></p></collapse-panel>
