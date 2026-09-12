@@ -1,0 +1,47 @@
+<svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>计划会变，所以计划必须离开模型的上下文</title>
+  <desc>左边是计划只活在上下文里的情况：上下文一压缩或重置，计划就丢了，模型开始凭残余记忆干活，越走越偏，而且没人能看出它偏离了。右边是把计划外化成版本化产物：每次修订产生新版本、进版本控制、可被检查，上下文再压缩也不影响，而且偏离是可见的。底部是验证的优先级：能写成确定性检查的就不要交给模型判断。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">计划会变，所以计划必须离开模型的上下文</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">动态计划的问题不是「会变」，而是「变了之后没人知道、也回不去」</text>
+
+  <!-- 左：计划在上下文里 -->
+  <rect x="30" y="66" width="300" height="158" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">✗ 计划只活在上下文里</text>
+  <text x="46" y="112" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第 1 步：模型想出一个计划</text>
+  <text x="46" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第 40 步：上下文被压缩 / 重置</text>
+  <text x="46" y="152" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 计划丢了，只剩残余记忆</text>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 开始凭印象干活，越走越偏</text>
+  <text x="46" y="196" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 而且【没人看得出它偏离了】</text>
+  <text x="46" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">因为它「一直在干活」，看起来很正常</text>
+
+  <!-- 右：计划外化 -->
+  <rect x="350" y="66" width="300" height="158" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">✓ 计划外化成版本化产物</text>
+  <text x="366" y="112" font-family="system-ui,sans-serif" font-size="10" fill="#633806">计划是仓库里的一个 artifact</text>
+  <text x="366" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#633806">改计划 = 产生一个新版本（可 diff）</text>
+  <text x="366" y="152" font-family="system-ui,sans-serif" font-size="10" fill="#633806">进度与决策日志一起进版本控制</text>
+  <text x="366" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 上下文压缩不影响它</text>
+  <text x="366" y="196" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 偏离变成【可见的 diff】</text>
+  <text x="366" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">人不必读全过程，只需要看计划变了没有</text>
+
+  <!-- 底部：验证优先级 -->
+  <path d="M30 246 L650 246" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="270" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">执行的可靠性：能写成确定性检查的，就不要交给模型判断</text>
+
+  <rect x="30" y="282" width="150" height="46" rx="7" fill="#BA7517"/>
+  <text x="105" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF" text-anchor="middle">① 确定性</text>
+  <text x="105" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#FFFFFF" text-anchor="middle">测试 · Schema · 规则 · AST</text>
+
+  <rect x="190" y="282" width="150" height="46" rx="7" fill="#E8D3AF"/>
+  <text x="265" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">② 权威状态</text>
+  <text x="265" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">工具返回 · 只读查询</text>
+
+  <rect x="350" y="282" width="150" height="46" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="425" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">③ 多源交叉</text>
+  <text x="425" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">不同来源互相印证</text>
+
+  <rect x="510" y="282" width="140" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="580" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">④ 模型 Judge / 人工</text>
+  <text x="580" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">同一模型会重复同一盲点</text>
+</svg>
