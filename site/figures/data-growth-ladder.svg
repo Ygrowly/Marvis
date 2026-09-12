@@ -1,0 +1,38 @@
+<svg viewBox="0 0 680 350" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>数据增长的治理阶梯：为什么分库分表在最后一步</title>
+  <desc>五步按复杂度递增、且可逆性递减排列：索引与 SQL、事务边界与锁、冷热分离与归档、读写分离、分库分表。每一步标注它解决什么和它的代价。核心判据是「便宜且可逆的先做，贵且难回头的后做」——而分库分表恰好是最贵、最难回头的那一步。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">数据增长的治理阶梯：为什么分库分表在最后一步</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">判据只有一条：便宜且可逆的先做，贵且难回头的后做</text>
+
+  <text x="60" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">步</text>
+  <text x="150" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">它解决什么</text>
+  <text x="452" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">代价 / 可逆性</text>
+
+  <rect x="30" y="84" width="620" height="42" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="60" y="110" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">①</text>
+  <text x="150" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">索引与 SQL 做好</text>
+  <text x="452" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">最便宜，随时可改</text>
+
+  <rect x="30" y="132" width="620" height="42" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="60" y="158" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">②</text>
+  <text x="150" y="158" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">事务边界与锁冲突管好（分批 + 短事务）</text>
+  <text x="452" y="158" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">改代码，可回退</text>
+
+  <rect x="30" y="180" width="620" height="42" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="60" y="206" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806">③</text>
+  <text x="150" y="206" font-family="system-ui,sans-serif" font-size="11" fill="#633806">冷热分离与归档</text>
+  <text x="452" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#633806">要动数据，需迁移与校验</text>
+
+  <rect x="30" y="228" width="620" height="42" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="60" y="254" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806">④</text>
+  <text x="150" y="254" font-family="system-ui,sans-serif" font-size="11" fill="#633806">读写分离</text>
+  <text x="452" y="254" font-family="system-ui,sans-serif" font-size="10" fill="#633806">要显式处理延迟语义，不是免费的</text>
+
+  <rect x="30" y="276" width="620" height="42" rx="7" fill="#BA7517"/>
+  <text x="60" y="302" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">⑤</text>
+  <text x="150" y="302" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#FFFFFF">分库分表</text>
+  <text x="452" y="302" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">路由 / 聚合分页 / 跨片事务 / 扩容迁移 —— 最难回头</text>
+
+  <text x="30" y="340" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">「8000 万行」本身不构成任何动作的理由——先分清是「查询慢」「写入慢」还是「单机容量到顶」，三者对应完全不同的步。</text>
+</svg>

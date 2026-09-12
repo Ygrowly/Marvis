@@ -14,91 +14,191 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">MySQL</span>
     <h1 class="mv-topic-title">母题 M16 · 乐观锁与悲观锁</h1>
-    <p class="mv-topic-meta">关联 母题-M10-锁与死锁 · 母题-M17-排行榜与防超卖 · 母题-P18-乐观并发控制 ｜ 正本 wiki/topics/MySQL/母题-M16-乐观锁与悲观锁.md</p>
+    <p class="mv-topic-meta">关联 母题-M10-锁与死锁（悲观锁在 MySQL 的具体代价）· 母题-M17-排行榜与防超卖（同一判据的另一个应用）· 母题-P18-乐观并发控制（PG 侧的同构实现与真实 SQL）· 母题-P9-序列化失败与重试（重试的四条要求） ｜ 正本 wiki/topics/MySQL/母题-M16-乐观锁与悲观锁.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① 两者是对冲突概率的两种假设 ② 判据只有一个：冲突频率 ③ ABA 为什么是 CAS 的固有缺陷）· 读完约 11 分钟 · 需要先懂：[[母题-M10-锁与死锁]]（<code class="mv-md-code">FOR UPDATE</code> 的代价）</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
-    <div class="mv-problem"><p class="mv-md-p">说一下乐观锁与悲观锁的区别。（<strong>9.9 一面原题，当次 11 分——口误"悲观所"、没提版本号/CAS、没讲适用边界</strong>）</p></div>
+    <div class="mv-problem"><p class="mv-md-p">说一下乐观锁与悲观锁的区别。</p>
+<p class="mv-md-p mv-md-quote"><strong>9.9 一面原题，当次 11 分</strong>——口误"悲观所"、没提版本号 / CAS、没讲适用边界。</p></div>
   </div>
 
-
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
-    <div class="mv-ask">
-      <p class="mv-ask-q">乐观锁和悲观锁怎么选？各自的实现与边界是什么？</p>
-      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
-    </div>
-    <flip-card gradable card-id="MySQL/母题-M16-乐观锁与悲观锁" tag="MySQL" q="乐观锁和悲观锁怎么选？各自的实现与边界是什么？" a="区别在对冲突的假设不同。悲观锁假定冲突一定发生，所以访问前先加锁：数据库里是 SELECT ... FOR UPDATE，Java 里是 synchronized / ReentrantLock，拿到锁才能改，其他事务阻塞等待——适合写多、冲突频繁、临界区长，代价是锁开销与死锁风险。乐观锁假定冲突很少，不加锁直接改，提交时校验有没有被别人改过：常见做法是 version 字段（UPDATE ... WHERE version=?，影响行数 0 即冲突）或 CAS——适合读多写少，要注意 ABA 问题。判据一句话：冲突频率高到重试成本大于加锁成本时，才用悲观锁。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是你 9.9 一面真实被问、且答得不合格的题</strong>——<strong>所以这张卡不只是知识点，是"补掉一个真实丢分点"的修复卡</strong>。当次的扣分点有三条：① 口误；② 乐观锁部分只说"先执行，变更时才上锁"，<strong>没有提到版本号 / CAS 这两个关键词</strong>；③ 没讲适用边界——<strong>按评分表，概念不完整、论据只能给 2 分</strong>。<strong>这张卡的目标是：再遇到时能拿满分。</strong></p>
-  </div>
-  <div class="mv-section">
-    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion"><strong>区别在对冲突的假设不同</strong>。<strong>悲观锁假定冲突一定发生</strong>，所以访问前先加锁：数据库里是 <code class="mv-md-code">SELECT ... FOR UPDATE</code>，Java 里是 <code class="mv-md-code">synchronized</code> / <code class="mv-md-code">ReentrantLock</code>，<strong>拿到锁才能改，其他事务阻塞等待</strong>——适合<strong>写多、冲突频繁、临界区长</strong>，代价是锁开销与死锁风险。<strong>乐观锁假定冲突很少</strong>，不加锁直接改，<strong>提交时校验有没有被别人改过</strong>：常见做法是 <strong>version 字段</strong>（<code class="mv-md-code">UPDATE ... WHERE version=?</code>，影响行数 0 即冲突）或 <strong>CAS</strong>——适合<strong>读多写少</strong>，要注意 <strong>ABA 问题</strong>。<strong>判据一句话：冲突频率高到重试成本大于加锁成本时，才用悲观锁。</strong></div>
-    
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>假设不同</li><li>悲观=FOR UPDATE</li><li>乐观=version 或 CAS</li><li>影响行数 0 判冲突</li><li><strong>ABA 问题</strong>（AtomicStampedReference）</li><li><strong>冲突频率是唯一判据</strong></li><li>RuleArena 的条件更新</li></ul>
-    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
-
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「version 冲突之后怎么处理？」</strong></strong></p>
-<p class="mv-md-p"><strong>读出权威状态，再决定重试还是放弃</strong>——<strong>"影响行数 0"是正常业务分支，不是异常</strong>（P18 展开过）。<strong>不要写 <code class="mv-md-code">while(true) retry</code></strong>：要有退避、抖动和上限（P9 的重试四要求）。</p>
-<p class="mv-md-p"><strong>2. <strong>「9.9 那次你的答案缺了什么？」</strong></strong></p>
-<p class="mv-md-p"><strong>三条：① 没提 version / CAS（实现层面）；② 没讲适用边界（判据层面）；③ 口误（表达层面）</strong>。<strong>这张卡的通过标准：40 秒内给出「假设不同 → 两种实现 → ABA → 判据 → 自己项目实例」五段结构，并主动补一句"什么情况我会换悲观锁"。</strong></p>
-</collapse-panel>
-    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「乐观锁在数据库里就是加 version 字段吗？」——<strong>核心是"期望值进 WHERE"</strong>：用 version、用状态、用时间戳都行；<strong>本质是 CAS 思想</strong>。<strong>version 字段的好处是自带 ABA 防护。</strong></li><li>「悲观锁在 MySQL 里怎么实现？」——<code class="mv-md-code">SELECT ... FOR UPDATE</code>（X 锁）；<strong>注意它会带出 next-key lock（M10），锁范围可能比预期大</strong>——<strong>这正是"悲观锁代价"的具体体现</strong>。</li><li>「分布式锁算悲观锁吗？」——<strong>算</strong>（假设冲突、先拿锁），<strong>但它是应用层的锁，不能替代数据库约束做正确性兜底</strong>（P19）。</li></ul></collapse-panel>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena 的任务认领与退款（乐观锁，真实 SQL）</strong>；EnergyOps 的<strong>告警处置与设备状态</strong>（状态机 + 条件更新）。<strong>方言差异（面试安全底线）</strong>：<strong>乐观锁在两边的写法几乎一样（条件更新），判据也一致</strong>——<strong>这是少数两边完全互通的机制</strong>；<strong>但"冲突时数据库怎么响应"不同</strong>：<strong>MySQL 排队等锁（悲观）/ 返回 0 行（乐观）；PG 悲观是等待、乐观是 0 行、Serializable 是报错重试（P8）</strong>。<strong>所以判据通用，实现细节按库区分。</strong></p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">两种假设 → 悲观锁的实现与适用 → 乐观锁的实现（version / CAS）与 ABA → 一条判据 → 结合自己项目（RuleArena 条件更新）→ 反向讲"什么情况我会换悲观锁"</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>两者不是"谁更好"，而是对冲突概率的两种假设。</strong> <strong>没有冲突概率，选型就是空谈</strong>——<strong>所以回答的第一句话永远是"冲突频率"，第二句才是机制</strong>（这正是 9.9 那次缺的东西）。</p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：<strong>40 秒五段结构 + ABA 能讲成因果 + 主动说出"什么情况换悲观锁"</strong>。这张卡是 9.9 丢分点的修复，建议第一批进入闭卷验收。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、悲观锁：先拿锁，再操作</h3>
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：它们是对冲突概率的两种假设</h3>
+<p class="mv-md-p">【事实】</p>
+<ul class="mv-md-ul"><li><strong>悲观锁假定冲突一定发生</strong> → 所以在访问前<strong>先加锁</strong>，拿到锁才能改，其他事务阻塞等待</li><li><strong>乐观锁假定冲突很少</strong> → 所以<strong>不加锁直接改</strong>，<strong>提交时校验有没有被别人改过</strong></li></ul>
+<p class="mv-md-p">【推论】<strong>"哪个更好"这个问题本身就是错的</strong>——<strong>没有冲突概率，选型就是空谈</strong>。</p>
+<p class="mv-md-p">【推论】<strong>所以回答的第一句话永远是"冲突频率"，第二句才是机制。</strong> <strong>这正是 9.9 那次缺的东西。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 悲观锁：先拿锁，再操作【事实】</h3>
 <pre class="mv-md-pre">SELECT status FROM task WHERE id = 1 FOR UPDATE;   -- 加 X 锁
 UPDATE task SET status = 'RUNNING' WHERE id = 1;
 COMMIT;</pre>
-<p class="mv-md-p"><strong>实现</strong>：数据库 <code class="mv-md-code">SELECT ... FOR UPDATE</code>（排他锁）；Java 里 <code class="mv-md-code">synchronized</code> / <code class="mv-md-code">ReentrantLock</code>；分布式场景是 Redis/ZK 锁（<strong>但分布式锁不能替代数据库约束，P19 的结论</strong>）。</p>
-<p class="mv-md-p"><strong>适用</strong>：<strong>写多、冲突频繁、临界区长</strong>（拿到锁之后要做一堆事）。 <strong>代价</strong>：① 等待与吞吐下降；② <strong>死锁风险</strong>（顺序不一致时，M10）；③ <strong>连接占用时间长</strong>（P17 的口径）。</p>
-<h3 class="mv-md-h mv-md-h3">二、乐观锁：不加锁，提交时校验</h3>
+<p class="mv-md-p"><strong>实现</strong>：数据库 <code class="mv-md-code">SELECT ... FOR UPDATE</code>（排他锁）；Java 里 <code class="mv-md-code">synchronized</code> / <code class="mv-md-code">ReentrantLock</code>；分布式场景是 Redis / ZK 锁（<strong>但分布式锁不能替代数据库约束，见 [[母题-P19-唯一约束与UPSERT]]</strong>）。</p>
+<p class="mv-md-p"><strong>适用</strong>：<strong>写多、冲突频繁、临界区长</strong>（拿到锁之后要做一堆事）。</p>
+<p class="mv-md-p"><strong>代价</strong>：① <strong>等待与吞吐下降</strong>；② <strong>死锁风险</strong>（加锁顺序不一致时，[[母题-M10-锁与死锁]]）；③ <strong>连接占用时间长</strong>。</p>
+<p class="mv-md-p">【事实】<strong>实现上的一个坑</strong>：<code class="mv-md-code">SELECT ... FOR UPDATE</code> 在 RR 下<strong>会带出 next-key lock</strong>，锁范围可能比预期大（[[母题-M10-锁与死锁]]）——<strong>这正是"悲观锁代价"的具体体现</strong>。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 乐观锁：不加锁，提交时校验【事实】</h3>
 <p class="mv-md-p"><strong>两种实现</strong>：</p>
 <p class="mv-md-p"><strong>① version 字段（数据库场景的标准做法）</strong></p>
 <pre class="mv-md-pre">UPDATE task
 SET status = 'RUNNING', version = version + 1
 WHERE id = 1 AND version = :expected_version;   -- 期望值进 WHERE
 -- 影响行数 = 0 → 别人改过 → 读出最新值再决定</pre>
-<p class="mv-md-p"><strong>② CAS（Compare-And-Swap，CPU/Java 层面）</strong></p>
+<p class="mv-md-p"><strong>② CAS（Compare-And-Swap，CPU / Java 层面）</strong></p>
 <pre class="mv-md-pre">期望值 E、新值 V：内存位置当前值 == E 才写入 V
-Java 里即 Atomic* 类（AtomicInteger 等，底层 CAS 指令）</pre>
-<p class="mv-md-p"><strong>适用</strong>：<strong>读多写少、冲突少、单行</strong>。 <strong>代价</strong>：<strong>冲突多时反复重试，成本反而更高</strong>；<strong>只能保护单行/单个变量</strong>——<strong>跨行不变量靠它撑不住</strong>（要靠约束或事务，P18）。</p>
-<h3 class="mv-md-h mv-md-h3">三、ABA 问题（必考的细节）</h3>
-<p class="mv-md-p"><strong>CAS 只比较"值是否相等"，不比较"中间有没有变过"</strong>：</p>
+Java 里即 Atomic* 类（底层是一条 CAS 指令）</pre>
+<p class="mv-md-p"><strong>适用</strong>：<strong>读多写少、冲突少、单行</strong>。</p>
+<p class="mv-md-p"><strong>代价</strong>：<strong>冲突多时反复重试，成本反而更高</strong>；<strong>只能保护单行 / 单个变量</strong>——<strong>跨行不变量靠它撑不住</strong>（要靠约束或事务，[[母题-P18-乐观并发控制]]）。</p>
+<p class="mv-md-p">【事实】<strong>核心是"期望值进 WHERE"</strong>：用 version、用状态、用时间戳都行，<strong>本质是 CAS 思想</strong>。version 字段的好处是<strong>自带 ABA 防护</strong>（下一节）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. ABA 问题：CAS 的固有缺陷【推导】</h3>
+<p class="mv-md-p">【事实】CAS 只比较"值是否相等"，<strong>不比较"中间有没有变过"</strong>：</p>
 <pre class="mv-md-pre">线程 1 读到值 100（准备改成 200）
 线程 2 把 100 改成 80，又改回 100
 线程 1 CAS(100 → 200) 成功          ← 但它不知道中间发生过 80</pre>
-<p class="mv-md-p"><strong>数值场景通常无害（1 加 5 次 = 5 加 1 次），但"引用/状态"场景有害</strong>——<strong>比如栈顶指针被弹出又压回同一个地址，链表结构已被破坏，CAS 却认为"没变过"。</strong></p>
-<p class="mv-md-p"><strong>解法</strong>：<strong>版本号 / 时间戳一起比</strong>——Java 里 <code class="mv-md-code">AtomicStampedReference</code>（带 stamp），<strong>数据库里 <code class="mv-md-code">version</code> 字段本质就是"自带 ABA 防护的 CAS"</strong>。</p>
-<p class="mv-md-p"><strong>这一条能把"version 为什么比直接比较值更稳"讲成因果，而不是一句"要加 version"的口诀。</strong></p>
-<h3 class="mv-md-h mv-md-h3">四、判据（本题的落点）</h3>
-<p class="mv-md-p mv-md-quote"><strong>冲突频率高到「重试成本 &gt; 加锁成本」时，用悲观锁；否则乐观。</strong></p>
-<p class="mv-md-p"><strong>为什么这条是唯一判据</strong>：<strong>两种方案的成本函数不同</strong>——</p>
-<pre class="mv-md-pre">悲观锁成本 ≈ 加锁开销 + 冲突时的等待（随冲突率线性上升）
-乐观锁成本 ≈ 重试次数 × 单次成本（随冲突率更快上升）</pre>
-<p class="mv-md-p"><strong>低冲突时乐观的曲线更平（几乎零成本），高冲突时悲观的曲线更平（等待是排队，不是全部重来）</strong>。<strong>所以不是"乐观更先进"，是"冲突少时乐观便宜"</strong>。<strong>面试里画这两条成本曲线，比背定义高一个档次。</strong></p>
-<h3 class="mv-md-h mv-md-h3">五、结合自己的项目（必练：这条是你的差异化）</h3>
-<p class="mv-md-p"><strong>RuleArena 的退款与任务认领用的是乐观锁（条件更新）</strong>，理由（P18 已展开）：</p>
-<ul class="mv-md-ul"><li><strong>扣退款是低频写、读多写少</strong> → 冲突少；</li><li><strong>条件更新一次原子写</strong>，天然幂等（重复执行第二次影响 0 行）；</li><li><strong>跨行不变量写进 WHERE</strong>（<code class="mv-md-code">refunded + amount &lt;= paid</code>）；</li><li><strong>唯一约束兜底</strong>（<code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code>）。</li></ul>
-<p class="mv-md-p"><strong>然后反向讲一句（这是"懂边界"的证据）</strong>：<strong>"如果同一个任务被大量 Worker 高频争抢，重试成本就会超过加锁成本，那时我会换成悲观锁或者把任务分区错开"</strong>——<strong>主动说出自己方案不适用的情况，比硬吹乐观锁可信得多</strong>（这也是 A11 复盘里"主动暴露局限"那条经验在技术题上的应用）。</p>
+<p class="mv-md-p">【推导】<strong>什么时候有害、什么时候无害</strong>：</p>
+<table class="mv-table"><thead><tr><th>场景</th><th>有害吗</th><th>为什么</th></tr></thead><tbody><tr><td><strong>数值累加/设置</strong></td><td><strong>通常无害</strong></td><td>"1 加 5 次" 和 "1 加 1 次" 结果一样——CAS 只关心最终值</td></tr><tr><td><strong>引用 / 状态 / 指针</strong></td><td><strong>有害</strong></td><td>栈顶指针被弹出又压回<strong>同一个地址</strong>，但链表结构已经被破坏，CAS 却认为"没变过"</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>解法</strong>：<strong>版本号 / 时间戳一起比</strong>——Java 里 <code class="mv-md-code">AtomicStampedReference</code>（带 stamp）；<strong>数据库里 <code class="mv-md-code">version</code> 字段本质就是"自带 ABA 防护的 CAS"</strong>。</p>
+<p class="mv-md-p">【推论】<strong>这一条能把"version 为什么比直接比较值更稳"讲成因果，而不是一句"要加 version"的口诀。</strong> 面试里能这样讲，就超过只背结论的人。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"用状态字段当期望值"在某些场景下不如 version？</p>
 <hr class="mv-md-hr">
-    </collapse-panel>
+<h3 class="mv-md-h mv-md-h3">5. 判据：两条成本曲线的交点（本题的落点）</h3>
+<p class="mv-md-p mv-md-quote"><strong>冲突频率高到「重试成本 &gt; 加锁成本」时，用悲观锁；否则用乐观。</strong></p>
+<figure-box num="乐观锁与悲观锁的成本曲线：判据在交点" title="" note="悲观锁成本线性上升（等待是排队，不全部重来）；乐观锁按 1/(1−p) 上升、在 p→1 处发散（每次冲突都要整段重做）；交点就是判据"><svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>乐观锁与悲观锁的成本曲线：判据在交点</title>
+  <desc>横轴是冲突频率，纵轴是单次操作的成本。悲观锁的成本随冲突率线性上升——因为等待是排队，不会全部重来。乐观锁的成本按 1/(1-p) 上升，在高冲突处发散——因为它假设的是一次成功，每次冲突都要整段重做。两条曲线的交点就是判据：冲突频率高到重试成本大于加锁成本时，才该用悲观锁。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">乐观锁与悲观锁的成本曲线：判据在交点</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">两者不是「谁更先进」，是对冲突概率的两种假设——所以第一句话永远是「冲突频率」</text>
+
+  <!-- 坐标轴 -->
+  <path d="M80 282 L80 74 M80 282 L452 282" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="452" y="300" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">冲突频率 p →</text>
+  <text x="66" y="80" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">成本</text>
+
+  <!-- 乐观锁曲线 1/(1-p)：在 p→1 发散 -->
+  <path d="M90 278 C240 272 340 250 392 180 C412 148 420 120 424 88" stroke="#BA7517" stroke-width="1.8" fill="none"/>
+  <text x="300" y="176" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">乐观锁：成本 ≈ 单次成本 ÷ (1 − p)</text>
+  <text x="300" y="192" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">每次冲突都要整段重做 → p→1 时发散</text>
+
+  <!-- 悲观锁曲线：线性 -->
+  <path d="M90 278 L440 168" stroke="#8A877E" stroke-width="1.8" fill="none"/>
+  <text x="330" y="238" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">悲观锁：加锁开销 + 排队等待</text>
+  <text x="330" y="254" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">等待是排队，不会全部重来 → 线性上升</text>
+
+  <!-- 交点 -->
+  <circle cx="306" cy="232" r="4" fill="#2C2C2A"/>
+  <path d="M306 232 L306 108" stroke="#2C2C2A" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+  <text x="314" y="104" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">交点 = 判据</text>
+  <text x="314" y="120" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">左边选乐观，右边选悲观</text>
+
+  <!-- 右侧说明 -->
+  <rect x="474" y="86" width="176" height="96" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="488" y="106" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">高冲突时的量级差</text>
+  <text x="488" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">N 个请求抢同一行：</text>
+  <text x="488" y="141" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">悲观锁总工作量 ≈ N 次</text>
+  <text x="488" y="158" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">乐观锁 ≈ N² 次（期望尝试 N 次）</text>
+  <text x="488" y="175" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">差一个 N 倍</text>
+
+  <rect x="474" y="194" width="176" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="488" y="214" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">低冲突时相反</text>
+  <text x="488" y="232" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">乐观锁几乎零额外开销，</text>
+  <text x="488" y="249" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">而悲观锁每次都要付</text>
+  <text x="488" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">加锁与释放的固定成本</text>
+
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">所以选了乐观锁，就要把「重试上限 + 退避 + 抖动」当成方案的一部分——否则高冲突时它会自己把自己拖垮。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>为什么要画曲线而不是背结论</strong>——因为<strong>两种方案的成本函数形状完全不同</strong>：</p>
+<pre class="mv-md-pre">悲观锁成本 ≈ 加锁开销 + 冲突时的【排队等待】
+            → 随冲突率【线性】上升（等待是排队，工作不会白做）
+
+乐观锁成本 ≈ 单次成本 ÷ (1 − p)
+            → 随冲突率【发散】（每次冲突都要把整段工作重做）</pre>
+<h4 class="mv-md-h mv-md-h4">5.1 把"发散"算出来【推导】</h4>
+<p class="mv-md-p">乐观锁的<strong>期望尝试次数</strong>：</p>
+<pre class="mv-md-pre">期望尝试次数 = 1 + p + p² + … = 1 / (1 − p)      （p = 单次尝试遇到冲突的概率）
+
+p = 0.05 →  1.05 次
+p = 0.30 →  1.43 次
+p = 0.70 →  3.33 次
+p = 0.90 → 10    次
+p → 1    → 发散</pre>
+<p class="mv-md-p">【推论】<strong>这就是"高冲突时乐观锁崩掉"的数学表达</strong>——<strong>它不是"慢一点"，是在 p→1 时成本发散。</strong></p>
+<h4 class="mv-md-h mv-md-h4">5.2 高冲突下的量级差【推导】</h4>
+<pre class="mv-md-pre">N 个请求同时抢同一行（此时单次冲突概率 p ≈ (N−1)/N）
+  乐观锁期望尝试次数 = 1/(1−p) ≈ N
+  总工作量 = N 个请求 × N 次尝试 = N² 次
+
+悲观锁：串行执行，每个请求做一次
+  总工作量 = N 次
+
+量级比 = N</pre>
+<p class="mv-md-p">【结论】<strong>高冲突时乐观锁的总工作量是 N²，悲观锁是 N——差一个 N 倍。</strong> 10 个并发就差 10 倍，100 个并发差 100 倍。</p>
+<p class="mv-md-p">【推论】<strong>这就是"重试成本 &gt; 加锁成本"这句话的量化版本</strong>——面试里能给出 N² vs N 这个对比，比说"高冲突别用乐观锁"有说服力得多。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"乐观锁不加锁所以更快"是一句危险的话？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 选了乐观锁，就必须把重试当成方案的一部分【推导】</h3>
+<pre class="mv-md-pre">某热点行 1000 QPS，乐观锁冲突率 90%
+  期望尝试次数 = 1/(1−0.9) = 10 次
+  总更新尝试 = 1000 × 10 = 10,000 次/秒
+
+加退避 + 抖动，把有效冲突率降到 30%：
+  期望尝试次数 = 1/(1−0.3) ≈ 1.43 次
+  总更新尝试 = 1000 × 1.43 = 1,430 次/秒
+
+降到约 1/7</pre>
+<p class="mv-md-p">【事实】<strong>"影响行数 0"是正常业务分支，不是异常</strong>：正确的处理是<strong>读权威状态 → 判定 → 决定</strong>，而不是无脑重试。<strong>不要写 <code class="mv-md-code">while(true) retry</code></strong>——要有<strong>退避、抖动和上限</strong>（[[母题-P9-序列化失败与重试]] 的四条要求）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 结合自己的项目（这条是你的差异化）</h3>
+<p class="mv-md-p">【事实】<strong>RuleArena 的退款与任务认领用的是乐观锁（条件更新）</strong>，理由（[[母题-P18-乐观并发控制]] 已展开）：</p>
+<ul class="mv-md-ul"><li><strong>扣退款是低频写、读多写少</strong> → 冲突少（落在曲线交点的左边）</li><li><strong>条件更新一次原子写</strong>，天然幂等（重复执行第二次影响 0 行）</li><li><strong>跨行不变量写进 <code class="mv-md-code">WHERE</code></strong>（<code class="mv-md-code">refunded + amount &lt;= paid</code>）</li><li><strong>唯一约束兜底</strong>（<code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code>）</li></ul>
+<p class="mv-md-p">【取舍】<strong>然后反向讲一句（这是"懂边界"的证据）</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"如果同一个任务被大量 Worker 高频争抢，重试成本就会超过加锁成本，那时我会换成悲观锁，或者把任务分区错开。"</strong></p>
+<p class="mv-md-p"><strong>主动说出自己方案不适用的情况，比硬吹乐观锁可信得多。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">8. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"乐观锁不加锁，性能一定更好"</td><td><strong>低冲突时对，高冲突时反了</strong>。乐观锁成本 ≈ 单次成本 ÷ (1−p)，<strong>在 p→1 时发散</strong>；高冲突下总工作量是 <strong>N²</strong>，悲观锁是 <strong>N</strong>——差一个 N 倍</td></tr><tr><td>"乐观锁就是加个 version 字段"</td><td><strong>核心是"期望值进 WHERE"</strong>——version、状态、时间戳都行，<strong>本质是 CAS 思想</strong>。version 的好处是<strong>自带 ABA 防护</strong></td></tr><tr><td>"CAS 比较值相等就安全"</td><td><strong>漏了 ABA</strong>：值相等 ≠ 中间没变过。数值场景通常无害，<strong>引用 / 状态 / 指针场景有害</strong>（栈顶指针弹出又压回同一地址）</td></tr><tr><td>"影响行数 0 说明出异常了"</td><td><strong>是正常业务分支</strong>。它可能是"别人抢先了"，也可能是"条件本来就不满足"——<strong>分不出来，也不需要分</strong>；正确做法是<strong>读权威状态再判定</strong></td></tr><tr><td>"重试失败就一直重试到成功"</td><td><strong>三处错</strong>：没有上限（可能无限循环）、没有退避（会形成重试风暴）、没意识到有些失败<strong>重试一万次也不会成功</strong>（条件本身不满足）。<strong>要有退避 + 抖动 + 上限</strong></td></tr><tr><td>"分布式锁就是悲观锁，能保证正确性"</td><td><strong>它是应用层的锁，不能替代数据库约束做正确性兜底</strong>（[[母题-P19-唯一约束与UPSERT]]）。<strong>锁会失效（过期、网络分区），约束不会</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>两者不是"谁更好"，而是对冲突概率的两种假设——所以没有冲突频率，就没有选型。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q1" tag="MySQL" q="乐观锁的期望尝试次数 = 1 / (1 − p)，其中 p 是单次尝试遇到冲突的概率。&#10;问：p 分别为 0.05 / 0.3 / 0.7 / 0.9 时，期望尝试次数各是多少？这个函数在 p 接近 1 时会怎样？" a="p · 期望尝试次数 = 1/(1−p)&#10;0.05 · 1.05&#10;0.30 · 1.43&#10;0.70 · 3.33&#10;0.90 · 10&#10;→ 1 · 发散（趋于无穷）&#10;【结论】乐观锁的成本不是&quot;随冲突线性上升&quot;，是&quot;在 p→1 时发散&quot;。&#10;【推论】这就是&quot;高冲突时乐观锁会崩&quot;的数学表达——不是&quot;慢一点&quot;，是每次冲突都要把整段工作重做，而成功率越低重做的次数越多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q2" tag="MySQL" q="N 个请求同时抢同一行（此时单次冲突概率约为 (N−1)/N）。&#10;问：乐观锁和悲观锁的总工作量各是多少？差多少倍？N = 10 和 N = 100 时分别是多少？" a="``text&#10;乐观锁：&#10;期望尝试次数 = 1/(1 − (N−1)/N) = N&#10;总工作量 = N 个请求 × N 次尝试 = N² 次&#10;悲观锁：&#10;串行执行，每个请求做一次&#10;总工作量 = N 次&#10;量级比 = N² / N = N&#10;``&#10;N · 乐观锁 · 悲观锁 · 倍数&#10;10 · 100 次 · 10 次 · 10 倍&#10;100 · 10,000 次 · 100 次 · 100 倍&#10;【结论】并发越高，乐观锁的劣势越大——它是 N² 对 N，差距随并发线性放大。&#10;【推论】这就是&quot;重试成本 &gt; 加锁成本&quot;的量化版本：当 N 足够大（冲突足够密集），乐观锁白做的工作量会远超悲观锁的排队成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q3" tag="MySQL" q="某热点行 1000 QPS，乐观锁的冲突率 90%。&#10;问：总更新尝试次数是多少？如果加退避 + 抖动把有效冲突率降到 30%，总尝试次数变成多少？" a="``text&#10;无退避（冲突率 90%）：&#10;期望尝试次数 = 1/(1−0.9) = 10 次&#10;总尝试 = 1000 × 10 = 10,000 次/秒&#10;有退避 + 抖动（有效冲突率降到 30%）：&#10;期望尝试次数 = 1/(1−0.3) ≈ 1.43 次&#10;总尝试 = 1000 × 1.43 = 1,430 次/秒&#10;降到约 1/7&#10;``&#10;【结论】退避 + 抖动不是&quot;优化&quot;，是乐观锁方案的必要组成部分。&#10;【为什么抖动也必要】没有抖动时，失败的请求会同时回来重试，形成&quot;重试风暴&quot;——瞬时并发不降，冲突率也不会降。抖动把重试摊开到时间窗里，两者才一起下降。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们用的是乐观锁，不加锁，所以并发性能肯定比悲观锁好。&quot;" a="在低冲突时对，在高冲突时完全反了。&#10;1. 乐观锁的成本是 单次成本 ÷ (1−p)（Q1）——在 p→1 时发散，不是&quot;常数级更快&quot;。&#10;2. 高冲突下的量级差是 N 倍（Q2）：N 个请求抢同一行时，乐观锁总工作量 N²、悲观锁 N。100 并发就是 100 倍。&#10;3. &quot;不加锁&quot;省下的只是加锁开销——而它换来的是每次冲突都要整段重做。当整段工作比加锁贵得多时，这笔交换是亏的。&#10;【准确说法】&quot;乐观锁在低冲突下更便宜，悲观锁在高冲突下更便宜——判据是两条成本曲线的交点（冲突频率）。没有冲突频率，'性能更好'这句话不成立。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q5" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们的乐观锁失败后会 while(true) 一直重试，直到更新成功为止。&quot;" a="三处错。&#10;1. 没有上限：可能无限循环。要在有限次（常见 2–3 次）后转人工或走降级。&#10;2. 没有退避和抖动：失败请求会同时回来重试，形成重试风暴——瞬时并发不降，冲突率也不降（Q3 里退避能把总尝试降到 1/7）。&#10;3. 把&quot;影响行数 0&quot;当成了异常：它可能是条件本身不满足（比如 WHERE status='QUEUED' 但状态已经是 RUNNING），这种情况重试一万次也不会成功——必须先读权威状态再判定。&#10;【准确说法】&quot;影响行数 0 是正常业务分支：读权威状态 → 判定 → 决定（重试 / 放弃 / 转人工）。重试要带退避 + 抖动 + 上限（[[母题-P9-序列化失败与重试]] 的四条要求）。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">乐观锁和悲观锁怎么选？各自的实现与边界是什么——为什么&quot;哪个更好&quot;这个问题本身就是错的？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M16-乐观锁与悲观锁" tag="MySQL" q="乐观锁和悲观锁怎么选？各自的实现与边界是什么——为什么&quot;哪个更好&quot;这个问题本身就是错的？" a="两者不是&quot;谁更好&quot;，而是对冲突概率的两种假设——悲观锁假定冲突一定发生，所以先加锁（SELECT ... FOR UPDATE / synchronized）；乐观锁假定冲突很少，不加锁、提交时校验（version 字段或 CAS，UPDATE ... WHERE version=?，影响行数 0 即冲突）。判据只有一个：冲突频率——冲突高到&quot;重试成本 &gt; 加锁成本&quot;时用悲观。这不是口号：乐观锁成本是 单次成本 ÷ (1−p)，在 p→1 时发散；高冲突下 N 个请求抢同一行，乐观锁总工作量 N²、悲观锁 N，差一个 N 倍。乐观锁要注意 ABA 问题（值相等 ≠ 中间没变过），version 字段本质就是&quot;自带 ABA 防护的 CAS&quot;。RuleArena 的退款与任务认领用的是乐观锁（条件更新），因为它是低频写、且条件更新天然幂等；但如果同一个任务被大量 Worker 高频争抢，我会换成悲观锁或把任务分区错开。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是你 9.9 一面真实被问、且答得不合格的题</strong>——<strong>所以这张卡不只是知识点，是"补掉一个真实丢分点"的修复卡</strong>。当次的扣分点有三条：① 口误；② 乐观锁部分只说"先执行，变更时才上锁"，<strong>没有提到版本号 / CAS 这两个关键词</strong>；③ 没讲适用边界——<strong>按评分表，概念不完整、论据只能给 2 分</strong>。<strong>这张卡的目标是：再遇到时能拿满分。</strong></p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>两者不是"谁更好"，而是对冲突概率的两种假设</strong>——悲观锁假定冲突一定发生，所以先加锁（<code class="mv-md-code">SELECT ... FOR UPDATE</code> / <code class="mv-md-code">synchronized</code>）；乐观锁假定冲突很少，不加锁、<strong>提交时校验</strong>（<strong>version 字段</strong>或 <strong>CAS</strong>，<code class="mv-md-code">UPDATE ... WHERE version=?</code>，<strong>影响行数 0 即冲突</strong>）。<strong>判据只有一个：冲突频率</strong>——<strong>冲突高到"重试成本 &gt; 加锁成本"时用悲观</strong>。这不是口号：乐观锁成本是 <code class="mv-md-code">单次成本 ÷ (1−p)</code>，<strong>在 p→1 时发散</strong>；高冲突下 N 个请求抢同一行，乐观锁总工作量 <strong>N²</strong>、悲观锁 <strong>N</strong>，<strong>差一个 N 倍</strong>。乐观锁要注意 <strong>ABA 问题</strong>（值相等 ≠ 中间没变过），<strong>version 字段本质就是"自带 ABA 防护的 CAS"</strong>。<strong>RuleArena 的退款与任务认领用的是乐观锁（条件更新）</strong>，因为它是低频写、且条件更新天然幂等；<strong>但如果同一个任务被大量 Worker 高频争抢，我会换成悲观锁或把任务分区错开。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>假设不同（冲突一定发生 vs 冲突很少）</li><li>悲观 = <code class="mv-md-code">FOR UPDATE</code>（注意 next-key）、有死锁风险</li><li>乐观 = version 或 CAS、<strong>期望值进 WHERE</strong></li><li><strong>影响行数 0 = 正常业务分支</strong></li><li>ABA（值相等 ≠ 没变过；引用场景有害）</li><li><code class="mv-md-code">AtomicStampedReference</code>、version 自带 ABA 防护</li><li><strong>判据 = 冲突频率</strong></li><li>乐观成本 = 1</li><li>(1−p) 会发散</li><li>高冲突 N² vs N</li><li>重试要有退避 + 抖动 + 上限</li><li>分布式锁不能替代约束</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>version 冲突之后怎么处理？</strong></strong></p>
+<p class="mv-md-p"><strong>读出权威状态，再决定重试还是放弃</strong>——<strong>"影响行数 0"是正常业务分支，不是异常</strong>。<strong>不要写 <code class="mv-md-code">while(true) retry</code></strong>：要有退避、抖动和上限。</p>
+<p class="mv-md-p"><strong>2. <strong>9.9 那次你的答案缺了什么？</strong></strong></p>
+<p class="mv-md-p"><strong>三条</strong>：① 没提 <strong>version / CAS</strong>（实现层面）；② 没讲<strong>适用边界</strong>（判据层面）；③ 口误（表达层面）。<strong>通过标准：40 秒内给出「假设不同 → 两种实现 → ABA → 判据 → 自己项目实例」五段结构，并主动补一句"什么情况我会换悲观锁"。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>乐观锁在数据库里就是加 version 字段吗？</strong></strong></p>
+<p class="mv-md-p"><strong>核心是"期望值进 WHERE"</strong>：用 version、用状态、用时间戳都行；<strong>本质是 CAS 思想</strong>。version 字段的好处是<strong>自带 ABA 防护</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>分布式锁算悲观锁吗？</strong></strong></p>
+<p class="mv-md-p"><strong>算</strong>（假设冲突、先拿锁），<strong>但它是应用层的锁，不能替代数据库约束做正确性兜底</strong>（[[母题-P19-唯一约束与UPSERT]]）。<strong>锁会失效（过期、网络分区），约束不会。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「MySQL 和 PG 在乐观锁上有什么不同？」——<strong>乐观锁在两边的写法几乎一样（条件更新），判据也一致</strong>——<strong>这是少数两边完全互通的机制</strong>。但"冲突时数据库怎么响应"不同：<strong>MySQL 乐观返回 0 行；PG 乐观返回 0 行，而 Serializable 隔离级别下是直接报 <code class="mv-md-code">40001</code> 让你重试</strong>（[[母题-P8-隔离级别与读一致性]]、[[母题-P9-序列化失败与重试]]）。<strong>判据通用，实现细节按库区分。</strong></li><li>「什么场景下乐观锁一定不能用在数据库里？」——<strong>跨行不变量</strong>。乐观锁只能保护<strong>单行 / 单个变量</strong>；像"账户余额总和不能为负"这种跨行约束，<strong>要么写进 <code class="mv-md-code">WHERE</code>（条件更新），要么靠唯一约束 / 外键兜底</strong>（[[母题-P18-乐观并发控制]]）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena 的任务认领与退款（乐观锁，真实 SQL）</strong>——<strong>这是主战场案例，要练成 60 秒</strong>。 - <strong>EnergyOps 的告警处置与设备状态</strong>（状态机 + 条件更新）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">两种假设 → 悲观锁的实现与代价 → 乐观锁的实现（version / CAS）→ <strong>ABA 为什么是 CAS 的固有缺陷</strong> → <strong>一条判据 + 两条成本曲线（1/(1−p) 会发散）</strong> → 结合自己项目（RuleArena 条件更新）→ 反向说"什么情况我会换悲观锁"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>两者不是"谁更好"，而是对冲突概率的两种假设。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：<strong>40 秒五段结构 + ABA 能讲成因果 + 主动说出"什么情况换悲观锁"</strong>；<strong>能算出 1/(1−p) 的发散</strong>（p=0.9 → 10 次）；<strong>能算出高冲突的 N² vs N 量级差</strong>；能说出重试三件套（上限 / 退避 / 抖动）；<strong>且自测 5 题全对</strong>。<strong>这张卡是 9.9 丢分点的修复，建议第一批进入闭卷验收。</strong></p></collapse-panel>
   </div>
 
   <div class="mv-section">

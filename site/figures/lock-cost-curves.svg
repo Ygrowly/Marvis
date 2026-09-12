@@ -1,0 +1,44 @@
+<svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>乐观锁与悲观锁的成本曲线：判据在交点</title>
+  <desc>横轴是冲突频率，纵轴是单次操作的成本。悲观锁的成本随冲突率线性上升——因为等待是排队，不会全部重来。乐观锁的成本按 1/(1-p) 上升，在高冲突处发散——因为它假设的是一次成功，每次冲突都要整段重做。两条曲线的交点就是判据：冲突频率高到重试成本大于加锁成本时，才该用悲观锁。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">乐观锁与悲观锁的成本曲线：判据在交点</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">两者不是「谁更先进」，是对冲突概率的两种假设——所以第一句话永远是「冲突频率」</text>
+
+  <!-- 坐标轴 -->
+  <path d="M80 282 L80 74 M80 282 L452 282" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="452" y="300" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">冲突频率 p →</text>
+  <text x="66" y="80" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">成本</text>
+
+  <!-- 乐观锁曲线 1/(1-p)：在 p→1 发散 -->
+  <path d="M90 278 C240 272 340 250 392 180 C412 148 420 120 424 88" stroke="#BA7517" stroke-width="1.8" fill="none"/>
+  <text x="300" y="176" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">乐观锁：成本 ≈ 单次成本 ÷ (1 − p)</text>
+  <text x="300" y="192" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">每次冲突都要整段重做 → p→1 时发散</text>
+
+  <!-- 悲观锁曲线：线性 -->
+  <path d="M90 278 L440 168" stroke="#8A877E" stroke-width="1.8" fill="none"/>
+  <text x="330" y="238" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">悲观锁：加锁开销 + 排队等待</text>
+  <text x="330" y="254" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">等待是排队，不会全部重来 → 线性上升</text>
+
+  <!-- 交点 -->
+  <circle cx="306" cy="232" r="4" fill="#2C2C2A"/>
+  <path d="M306 232 L306 108" stroke="#2C2C2A" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+  <text x="314" y="104" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">交点 = 判据</text>
+  <text x="314" y="120" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">左边选乐观，右边选悲观</text>
+
+  <!-- 右侧说明 -->
+  <rect x="474" y="86" width="176" height="96" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="488" y="106" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">高冲突时的量级差</text>
+  <text x="488" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">N 个请求抢同一行：</text>
+  <text x="488" y="141" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">悲观锁总工作量 ≈ N 次</text>
+  <text x="488" y="158" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">乐观锁 ≈ N² 次（期望尝试 N 次）</text>
+  <text x="488" y="175" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">差一个 N 倍</text>
+
+  <rect x="474" y="194" width="176" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="488" y="214" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">低冲突时相反</text>
+  <text x="488" y="232" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">乐观锁几乎零额外开销，</text>
+  <text x="488" y="249" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">而悲观锁每次都要付</text>
+  <text x="488" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">加锁与释放的固定成本</text>
+
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">所以选了乐观锁，就要把「重试上限 + 退避 + 抖动」当成方案的一部分——否则高冲突时它会自己把自己拖垮。</text>
+</svg>

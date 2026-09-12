@@ -1,0 +1,37 @@
+<svg viewBox="0 0 680 322" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>复合分数的位数预算：为什么 10^10 这个位宽会踩到精度上限</title>
+  <desc>排行榜用「分数 × 倍率 + (最大时间戳 − 通关时间戳)」把两个排序维度压进一个数字。但 Redis 的 score 是双精度浮点，只有 2 的 53 次方以内的整数能被精确表示。用 10^10 作倍率时，分数上限一旦超过约 90 万，乘积就会越过这个精度边界，低位开始丢失，同分排序随之错乱。更稳的做法是按时间窗定倍率，而不是按时间戳的原值。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">复合分数的位数预算：为什么 10¹⁰ 这个位宽会踩到精度上限</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">复合分数 =「分数 × 倍率 + (最大时间戳 − 通关时间戳)」——把两个排序维度压进一个数字</text>
+
+  <!-- 位分配 -->
+  <text x="30" y="80" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">位分配</text>
+  <rect x="118" y="66" width="300" height="28" rx="5" fill="#BA7517"/>
+  <text x="268" y="85" font-family="system-ui,sans-serif" font-size="10.5" fill="#FFFFFF" text-anchor="middle">分数 × 倍率（决定主排序）</text>
+  <rect x="422" y="66" width="180" height="28" rx="5" fill="#E8D3AF"/>
+  <text x="512" y="85" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806" text-anchor="middle">时间戳差（决定同分先后）</text>
+
+  <text x="118" y="112" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">低位 ← 时间戳差在这里，所以同分时它决定排序</text>
+
+  <!-- 精度边界 -->
+  <path d="M30 142 L650 142" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="166" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">精度边界（Redis 的 score 是双精度浮点）</text>
+
+  <rect x="30" y="176" width="300" height="60" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="196" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">能精确表示的整数上限 = 2⁵³</text>
+  <text x="46" y="214" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">= 9,007,199,254,740,992</text>
+  <text x="46" y="230" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">≈ 9.007 × 10¹⁵</text>
+
+  <rect x="350" y="176" width="300" height="60" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="196" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">用 10¹⁰ 作倍率时：</text>
+  <text x="366" y="214" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">分数上限 × 10¹⁰ 必须 &lt; 2⁵³</text>
+  <text x="366" y="230" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">→ <tspan font-weight="600">分数上限 &lt; 约 90 万</tspan>；100 万就越界（10¹⁶）</text>
+
+  <!-- 越界后果 -->
+  <rect x="30" y="248" width="620" height="30" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="268" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">越界后果：低位（时间戳差）被抹掉 → <tspan font-weight="600">同分玩家的先后变得不确定</tspan>，而且不报错。</text>
+
+  <text x="30" y="302" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">更稳的做法：倍率按「时间窗」定，而不是按时间戳原值。例如时间差不超过一年（约 3.15×10⁷）→ 倍率取 10⁸ 即可，分数上限 100 万时只有 10¹⁴，安全。</text>
+  <text x="30" y="318" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">这类「看着能算、其实越界且不报错」的坑，正是面试官区分「用过」和「看过」的地方。</text>
+</svg>
