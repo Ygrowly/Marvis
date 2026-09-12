@@ -1,0 +1,49 @@
+<svg viewBox="0 0 680 330" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>知识更新：三条路径都要走完，缺一条就出事</title>
+  <desc>文档变更进来后有三条路径要走。新增和修改走增量链路：解析、切分、嵌入、写入新索引，然后双写切换。删除必须按文档 ID 反查它切出来的全部块再逐个清理，漏一个就意味着已删除内容还能被搜到。撤权则要同时清理主索引、向量、缓存和任何派生引用——因为缓存会绕过 ACL 过滤。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">知识更新：三条路径都要走完，缺一条就出事</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">增量更新省的是成本，删除与撤权保的是正确性——后者出事就是事故</text>
+
+  <!-- 源事件 -->
+  <rect x="30" y="72" width="120" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="90" y="92" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">源事件</text>
+  <text x="90" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">新增 / 修改 / 删除 / 撤权</text>
+
+  <path d="M152 94 L182 94" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#ku-ar)"/>
+
+  <!-- 三条路径 -->
+  <rect x="186" y="62" width="200" height="64" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="200" y="82" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">① 新增 / 修改：增量链路</text>
+  <text x="200" y="100" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">只重跑变化的那部分：解析 → 切分</text>
+  <text x="200" y="116" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→ 嵌入 → 写新索引 → 双写切换</text>
+
+  <rect x="186" y="136" width="200" height="64" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="200" y="156" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">② 删除：必须按 ID 反查全部块</text>
+  <text x="200" y="174" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">一份文档切出 100 个块 → 要清 100 个</text>
+  <text x="200" y="190" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">漏一个 = 已删内容还能被搜到</text>
+
+  <rect x="186" y="210" width="200" height="64" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="200" y="230" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">③ 撤权：要清的地方更多</text>
+  <text x="200" y="248" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">主索引 · 向量 · 倒排 · <tspan font-weight="600">缓存</tspan></text>
+  <text x="200" y="264" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">缓存会绕过 ACL 过滤 → 必须一起清</text>
+
+  <!-- 右侧说明 -->
+  <rect x="400" y="62" width="250" height="104" rx="8" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="416" y="84" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">为什么增量值得做</text>
+  <text x="416" y="106" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">100 万块文档，每天只改 1%：</text>
+  <text x="416" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">全量重建 = 100 万次嵌入</text>
+  <text x="416" y="142" font-family="system-ui,sans-serif" font-size="10" fill="#633806">增量 = 1 万次嵌入　→ 降到 1/100</text>
+  <text x="416" y="160" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">代价：要维护版本与一致性</text>
+
+  <rect x="400" y="176" width="250" height="98" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="416" y="198" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">新鲜度必须可观测</text>
+  <text x="416" y="220" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">文档带 effective_at / expires_at /</text>
+  <text x="416" y="236" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">source_version，回答要展示生效时间</text>
+  <text x="416" y="258" font-family="system-ui,sans-serif" font-size="10" fill="#633806">索引滞后（变更 → 可检索）是最该盯的指标</text>
+
+  <!-- 底部 -->
+  <path d="M30 290 L650 290" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">双写 / 影子索引再切换的用意：<tspan font-weight="600">新旧索引并存一段时间，验证没问题再切，切错了能回滚。</tspan></text>
+  <text x="30" y="328" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">直接原地覆盖 = 没有回滚路径；而且重建期间旧索引已被破坏，出问题只能全量重来。</text>
+</svg>

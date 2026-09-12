@@ -1,0 +1,50 @@
+<svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>答案失败的归因链：三个岔路口决定该动哪一段</title>
+  <desc>一个答案错了，要顺着三个问题往下走。第一问：正确证据进 TopK 了吗？没进就是解析、切分、查询改写或召回的问题。第二问：进了 TopK 但进最终上下文了吗？没进就是重排、去重或 token 预算的问题。第三问：都进了还是错，那才是生成、Prompt、模型或引用的问题。三个岔路口对应三段完全不同的修复动作——混在一起就会去优化错的一环。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">答案失败的归因链：三个岔路口决定该动哪一段</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「检索指标好但答案差」的排查顺序——每一步都对应一段不同的修复动作</text>
+
+  <rect x="30" y="70" width="120" height="40" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="90" y="95" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A" text-anchor="middle">答案失败</text>
+
+  <path d="M152 90 L196 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+
+  <rect x="200" y="66" width="200" height="48" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="300" y="86" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A" text-anchor="middle">① 正确证据进 TopK 了吗？</text>
+  <text x="300" y="103" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">看 Recall@K</text>
+
+  <path d="M402 90 L446 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+  <path d="M300 114 L300 140" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#fr-ar2)"/>
+  <text x="308" y="132" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">否</text>
+
+  <rect x="450" y="66" width="200" height="48" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="550" y="86" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A" text-anchor="middle">② 进最终 Context 了吗？</text>
+  <text x="550" y="103" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">看重排后位置与 token 预算</text>
+
+  <path d="M650 90 L664 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+  <path d="M550 114 L550 140" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#fr-ar2)"/>
+  <text x="558" y="132" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">否</text>
+
+  <!-- 三段结论 -->
+  <rect x="30" y="152" width="200" height="72" rx="7" fill="#BA7517"/>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#FFFFFF">① 没进 TopK</text>
+  <text x="46" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">动【摄取与召回】：</text>
+  <text x="46" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">解析 / 切分 / 查询改写 / 混合检索</text>
+
+  <rect x="240" y="152" width="200" height="72" rx="7" fill="#BA7517"/>
+  <text x="256" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#FFFFFF">② 进了但没用上</text>
+  <text x="256" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">动【精排与组装】：</text>
+  <text x="256" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">重排 / 去重 / token 预算 / 位置</text>
+
+  <rect x="450" y="152" width="200" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="466" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">③ 都进了还是错</text>
+  <text x="466" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#633806">动【生成与验收】：</text>
+  <text x="466" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#633806">Prompt / 引用绑定 / 模型 / 拒答</text>
+
+  <!-- 底部 -->
+  <path d="M30 246 L650 246" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="270" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">还有一个容易被忽略的岔路口：这套归因需要 Trace 把「候选、分数、重排位置、上下文版本」都留下来</text>
+  <text x="30" y="290" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">否则你只能看到「答案错了」，看不到它在第几个岔路口走丢的——那就只能猜。</text>
+  <text x="30" y="316" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">关键：<tspan font-weight="600">检索失败率 ≠ 幻觉率</tspan>。检索失败只是「证据缺失型幻觉」的上界；反过来，检索成功了模型也照样可能不用它。</text>
+</svg>
