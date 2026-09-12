@@ -1,0 +1,48 @@
+<svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>五种索引：组织方式决定它能回答哪类查询</title>
+  <desc>左边五种索引，每种画出它的组织方式；右边是对应的操作符与典型场景。B 树是有序树，键到位置，覆盖等值与范围与排序；GIN 是倒排，值到出现位置集合，把包含变成按元素查找；GiST 节点存包围盒或范围摘要，适合几何近邻和范围重叠；BRIN 只存每个数据块的最小最大值，只对物理有序有效；Hash 只有哈希到位置，只支持等值。底部用同一张时序表的体积对照说明 BRIN 省在哪。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">五种索引：组织方式决定它能回答哪类查询</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">选型的第一句话永远是「这个查询用哪个操作符」，第二句才是「代价是什么」</text>
+
+  <!-- 表头 -->
+  <text x="46" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">类型 · 怎么组织</text>
+  <text x="360" y="76" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#6B6A65">它能回答什么</text>
+
+  <!-- B-tree -->
+  <rect x="30" y="84" width="310" height="42" rx="7" fill="#BA7517"/>
+  <text x="46" y="103" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#FFFFFF">B-tree　有序树，键 → 位置</text>
+  <text x="46" y="119" font-family="system-ui,sans-serif" font-size="9.5" fill="#FFFFFF">覆盖面最广 → 所以是默认（默认不是最好，是最不容易选错）</text>
+  <text x="360" y="103" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">等值 · 范围 · 排序 · 前缀 LIKE 'abc%' · 唯一约束</text>
+  <text x="360" y="119" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">90% 的普通索引</text>
+
+  <!-- GIN -->
+  <rect x="30" y="134" width="310" height="42" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="153" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">GIN　倒排：值 → 出现位置集合</text>
+  <text x="46" y="169" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">把每个元素单独建键 → 「包含」变成「按元素查」</text>
+  <text x="360" y="153" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">多值包含 @&gt; · &amp;&amp; · @@</text>
+  <text x="360" y="169" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">JSONB · 数组 · 全文检索</text>
+
+  <!-- GiST -->
+  <rect x="30" y="184" width="310" height="42" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="203" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">GiST　节点存包围盒 / 范围摘要</text>
+  <text x="46" y="219" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能是【有损】的 → 需要回表复核</text>
+  <text x="360" y="203" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">几何相交 · 近邻 &lt;-&gt; · 范围重叠</text>
+  <text x="360" y="219" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">地理位置 · 区间 · 模糊匹配</text>
+
+  <!-- BRIN -->
+  <rect x="30" y="234" width="310" height="42" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="253" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">BRIN　每块只存 min / max</text>
+  <text x="46" y="269" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">只对【物理有序】有效 —— 一旦乱序就退化成形同虚设</text>
+  <text x="360" y="253" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">大表按物理有序列做范围扫</text>
+  <text x="360" y="269" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">时序表（只追加、不更新）</text>
+
+  <!-- Hash -->
+  <rect x="30" y="284" width="310" height="42" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="303" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">Hash　哈希 → 位置</text>
+  <text x="46" y="319" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不支持范围与排序，不能做唯一约束</text>
+  <text x="360" y="303" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">只有 =</text>
+  <text x="360" y="319" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">几乎用不上（B-tree 也能等值，还多给排序）</text>
+
+  <text x="30" y="348" font-family="system-ui,sans-serif" font-size="10" fill="#633806">体积对照（1 亿行时序表的 time 列）：B-tree ≈ 1.6 GB　vs　BRIN ≈ 156 KB —— 差约 1 万倍，代价是「只对有序数据有效」。</text>
+</svg>
