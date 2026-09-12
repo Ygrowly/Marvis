@@ -97,8 +97,9 @@ window.MARVIS_CLUSTERS = [
   },
   {
     id: 'eval', name: '评测观测与治理', zone: 'AI 主战场',
+    /* 2026-09-12：E1 已教材化；E2–E6 建完一张换一张 */
     topics: [
-      { id: 'E1', name: '评测集设计与 pass^k', src: 'study/07-Eval-Trace与Observability.md' },
+      { id: 'E1', name: '评测集设计与 pass^k', href: 'topics/评测观测与治理-母题-E1-评测集设计与pass^k.html', src: 'study/07-Eval-Trace与Observability.md' },
       { id: 'E2', name: 'Trace 与可观测性', src: 'study/07-Eval-Trace与Observability.md' },
       { id: 'E3', name: '回归门禁与发布卡口', src: 'projects/RuleArena/RuleArena-项目说明.md' },
       { id: 'E4', name: '成本控制与限流', src: 'study/10-生产治理安全性能与成本.md' },
