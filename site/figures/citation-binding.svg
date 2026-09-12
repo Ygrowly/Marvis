@@ -1,0 +1,33 @@
+<svg viewBox="0 0 680 316" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>引用的粒度决定校验成本由谁承担</title>
+  <desc>左边是粗引用：答案正文没有任何标记，文末列三个链接。用户无法判断哪一句有依据，只能选择全信或全不信——校验成本是全部结论。右边是细引用：每条结论后面绑到具体片段，找不到支撑的结论直接撤掉。用户只需要抽查可疑的那几条，校验成本从全部降到可疑。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">引用的粒度决定校验成本由谁承担</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「文末列几个链接」不是引用，是把校验成本全部推给读者</text>
+
+  <!-- 粗引用 -->
+  <rect x="30" y="66" width="300" height="150" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 粗引用（文末列链接）</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">正文：这里有 10 条结论，没有任何标记</text>
+  <text x="46" y="130" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">文末：参考资料 1 / 2 / 3</text>
+  <text x="46" y="156" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用户无法判断哪一句有依据，只能：</text>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　全信 → 错的那 2 条照样造成损失</text>
+  <text x="46" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　全不信 → 对的 8 条也白做</text>
+  <text x="46" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">校验成本 = 全部结论</text>
+
+  <!-- 细引用 -->
+  <rect x="350" y="66" width="300" height="150" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">② 细引用（逐条绑片段）</text>
+  <text x="366" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 1 …… [doc_12#p3]</text>
+  <text x="366" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 2 …… [doc_07#p1]</text>
+  <text x="366" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 3 …… 找不到支撑引用 → <tspan font-weight="600">撤掉</tspan></text>
+  <text x="366" y="172" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用户只需抽查可疑的那几条</text>
+  <text x="366" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">错的结论根本不会出现</text>
+  <text x="366" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">校验成本 = 可疑的那几条</text>
+
+  <!-- 底部 -->
+  <path d="M30 236 L650 236" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="260" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">关键动作不是「要求模型给引用」，而是「生成之后回头验证引用」</text>
+  <text x="30" y="280" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">把每条结论回头去原文里找支撑，找不到就撤稿——这是机制，不是提示词。「要求引用」只是 prompt，模型照样会编引用。</text>
+  <text x="30" y="302" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">代价：逐条验证会让 token 成本接近翻倍，所以通常只对高风险结论做（金额、权限、生效时间这类）。</text>
+</svg>
