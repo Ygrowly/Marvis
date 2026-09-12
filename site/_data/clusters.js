@@ -83,12 +83,12 @@ window.MARVIS_CLUSTERS = [
   },
   {
     id: 'agent', name: 'Agent 运行时与工具', zone: 'AI 主战场',
-    /* 2026-09-12：A1–A3 已教材化；A4–A8 建完一张换一张 */
+    /* 2026-09-12：A1–A4 已教材化；A5–A8 建完一张换一张 */
     topics: [
       { id: 'A1', name: '计划执行循环与停止条件', href: 'topics/Agent运行时与工具-母题-A1-计划执行循环与停止条件.html', src: 'study/04-Agent-Runtime与Harness.md' },
       { id: 'A2', name: '工具调用与 MCP 边界', href: 'topics/Agent运行时与工具-母题-A2-工具调用与MCP边界.html', src: 'study/05-Tool-MCP-Skill与可信执行.md' },
       { id: 'A3', name: '失败恢复与幂等', href: 'topics/Agent运行时与工具-母题-A3-失败恢复与幂等.html', src: 'study/04-Agent-Runtime与Harness.md' },
-      { id: 'A4', name: '长任务状态与 checkpoint', src: 'study/06-Workflow-多Agent与长任务.md' },
+      { id: 'A4', name: '长任务状态与 checkpoint', href: 'topics/Agent运行时与工具-母题-A4-长任务状态与Checkpoint.html', src: 'study/06-Workflow-多Agent与长任务.md' },
       { id: 'A5', name: '上下文压缩与记忆', src: 'study/04-Agent-Runtime与Harness.md' },
       { id: 'A6', name: '沙箱权限与可信执行', src: 'study/05-Tool-MCP-Skill与可信执行.md' },
       { id: 'A7', name: '多 Agent 拆分与协作', src: 'study/06-Workflow-多Agent与长任务.md' },
