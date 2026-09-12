@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 C4 · 幻觉的成因与可控性</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/LLM与上下文.html">← LLM与上下文 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">LLM与上下文</span>
+    <h1 class="mv-topic-title">母题 C4 · 幻觉的成因与可控性</h1>
+    <p class="mv-topic-meta">关联 母题-C1-上下文组装与窗口预算（第三、四类来源都落在上下文工程里）· 母题-C2-结构化输出与JSON可靠性（结构合法 ≠ 内容为真）· 母题-C3-Prompt版本管理与回归（允许弃答的 prompt 改动同样要走消融验证）· 母题-C5-模型选型与降级三角（"准确率更高的模型"未必是"错误更少的模型"） ｜ 正本 wiki/topics/LLM与上下文/母题-C4-幻觉的成因与可控性.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① "幻觉"这个词底下藏着四件不同的事 ② 错误和弃答必须分开定价 ③ 接 RAG 只治其中一类）· 读完约 13 分钟 · 需要先懂：无</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们系统怎么防幻觉？接了 RAG 之后幻觉问题解决了吗？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把"幻觉"拆成四件事</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 定义【事实】</h4>
+<p class="mv-md-p"><strong>幻觉（hallucination）</strong>：模型<strong>自信地</strong>生成了一个不成立的陈述。</p>
+<p class="mv-md-p">两个关键词：<strong>自信</strong>（不是"不确定地猜"，是语气笃定）和<strong>不成立</strong>（与事实或与给定证据不符）。</p>
+<p class="mv-md-p">【推导】先破一个直觉：<strong>这不是模型"坏掉了"，而是三套机制叠加的必然产物</strong>——预训练的统计结构、评测的激励结构、以及上下文里有没有那条信息。所以正确的问法不是"怎么消灭幻觉"，是"<strong>我手里这个错误属于哪一类，这一类能压到多低</strong>"。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 来源一：训练数据的统计结构【推导】</h4>
+<p class="mv-md-p">预训练做的事是<strong>预测下一个词</strong>，而且——</p>
+<p class="mv-md-p mv-md-quote"><strong>它看到的全是"流畅语言"的正例，没有任何一句被标注为"这是假的"。</strong></p>
+<p class="mv-md-p">【推导】这直接推出一件事：<strong>错误的可消除性，取决于那类知识有没有规律</strong>。</p>
+<pre class="mv-md-pre">拼写、括号配对   → 有稳定的模式  → 随模型规模变大而消失
+宠物的生日       → 没有模式可学  → 无论算法多先进都必然出错</pre>
+<p class="mv-md-p">【事实】OpenAI 用一个类比讲得很清楚：如果给几百万张猫狗照片打"猫/狗"标签，算法能学得很准；但如果给每张照片打上"这只宠物的生日"，<strong>这个任务本身就会永远出错</strong>——因为生日跟照片内容没有关系。</p>
+<p class="mv-md-p">【推论】<strong>所以有一类幻觉从根上就学不出来</strong>，只能靠"给外部证据"或者"承认不知道"来处理。这也解释了为什么<strong>拼写错误消失了，事实错误没有</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">1.3 来源二：评测口径的激励【推导】</h4>
+<p class="mv-md-p">这是最反直觉、也最值钱的一条。</p>
+<pre class="mv-md-pre">假设一道题模型不会，它有两个选择：
+  猜一个 → 有概率蒙对（比如生日，1/365）
+  说"我不知道" → 稳定得 0 分
+
+如果排行榜只看准确率：
+  猜 的期望收益 &gt; 0  &gt;  弃答的期望收益 = 0
+→ 几千道题累积下来，"爱猜的模型"在榜上比"谨慎的模型"更好看</pre>
+<p class="mv-md-p">【事实】OpenAI 在 SimpleQA 上的实测，把这个效应量化得很干净：</p>
+<table class="mv-table"><thead><tr><th>指标</th><th>gpt-5-thinking-mini</th><th>OpenAI o4-mini</th></tr></thead><tbody><tr><td>弃答率（不给具体答案）</td><td><strong>52%</strong></td><td><strong>1%</strong></td></tr><tr><td>准确率（答对，越高越好）</td><td>22%</td><td><strong>24%</strong></td></tr><tr><td>错误率（答错，越低越好）</td><td><strong>26%</strong></td><td><strong>75%</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>看这两行</strong>：按准确率排名，o4-mini <strong>更高</strong>（24% &gt; 22%）；按错误率排名，gpt-5-thinking-mini <strong>好得多</strong>（26% &lt; 75%）。</p>
+<p class="mv-md-p">【推论】<strong>排行榜的指标选择，决定了你会选出哪个模型。</strong> 只看准确率，你会挑到一个幻觉率接近 3 倍的模型，还以为自己选对了。这一条直接连到 [[母题-C5-模型选型与降级三角]]。</p>
+<h4 class="mv-md-h mv-md-h4">1.4 来源三、四：上下文工程能管的部分【事实】</h4>
+<ul class="mv-md-ul"><li><strong>来源三：上下文里根本没有这条信息。</strong> 模型看不见你的数据库、权限表、上个月刚改的政策。它要么说不知道，要么用训练分布里"相近的知识"补上——<strong>后者看起来完全合理</strong>。</li><li><strong>来源四：信息给了，但没用上。</strong> 证据确实在上下文里，可是：被长历史稀释（context rot，见 [[母题-C1-上下文组装与窗口预算]]）；两份材料互相冲突、模型自己挑了一个；或者结论对但<strong>引用对不上原文</strong>。</li></ul>
+<figure-box num="幻觉的四个来源与各自的对策" title="" note="四个来源分别对应不同的对策；前两类的&quot;置信度&quot;部分属于模型属性只能管理，后两类是工程问题能压到接近零——这就是&quot;接了 RAG 就解决了&quot;这句话错在哪"><svg viewBox="0 0 680 396" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>幻觉的四个来源与各自的对策</title>
+  <desc>幻觉不是一个 bug，是四件不同的事叠加出来的：训练数据的统计结构让任意低频事实无法从模式里学出来；评测的准确率口径奖励猜测而不是弃答；上下文里根本没给到相关信息；以及给了信息却被稀释、冲突或忽略。前两类只能管理不能消除，后两类是工程能压到接近零的。底部给出分界线。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">幻觉的四个来源与各自的对策</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">同一个词底下藏着四件不同的事——找错来源，就会用错对策</text>
+
+  <!-- 来源一 -->
+  <rect x="30" y="66" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源一 · 训练数据的统计结构</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">预训练只有"流畅语言"的正例，没有真假标签。</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">拼写、括号有规律 → 随规模消失；生日这类</text>
+  <text x="46" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">任意低频事实没有规律 → 必然出错。</text>
+  <text x="46" y="166" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：给证据（检索 / 引用）或允许弃答</text>
+
+  <!-- 来源二 -->
+  <rect x="350" y="66" width="300" height="120" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">来源二 · 评测口径的激励</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">只按准确率排名时，"蒙一个"的期望收益 > 0，</text>
+  <text x="366" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#633806">"我不知道"稳定得 0 分。于是模型被训成</text>
+  <text x="366" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#633806">"应试高手"：在不确定处照样作答。</text>
+  <text x="366" y="166" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：罚自信错误 &gt; 罚弃答，给弃答部分分</text>
+
+  <!-- 来源三 -->
+  <rect x="30" y="198" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="220" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源三 · 上下文里没有这条信息</text>
+  <text x="46" y="240" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">模型看不见你的数据库、权限表和最新政策。</text>
+  <text x="46" y="256" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">它要么说不知道，要么用训练分布里的"相近</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">知识"补上——后者看起来完全合理。</text>
+  <text x="46" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：检索 + 按步骤装配（C1）</text>
+
+  <!-- 来源四 -->
+  <rect x="350" y="198" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="220" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源四 · 信息给了，但没用上</text>
+  <text x="366" y="240" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">证据在上下文里，却被长历史稀释（context</text>
+  <text x="366" y="256" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">rot）；或者两份材料互相冲突，模型自己挑</text>
+  <text x="366" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">了一个；或者引用对不上原文。</text>
+  <text x="366" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：压缩 / 隔离 / 先摘录再回答 / 引用绑定</text>
+
+  <!-- 分界线 -->
+  <path d="M30 334 L650 334" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="356" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">分界线：来源一、二的"置信度"部分属于模型属性，只能管理；来源三、四是工程问题，能压到接近零。</text>
+  <text x="30" y="378" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">所以"我们接了 RAG，幻觉就解决了"这句话的问题在于：RAG 只治第三类，第四类它甚至可能加重。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"拼写错误会随规模消失，事实错误不会"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 候选对策（先各自介绍，不比较）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 给证据【事实】</h4>
+<ul class="mv-md-ul"><li><strong>检索</strong>：把相关材料放进上下文（[[母题-C1-上下文组装与窗口预算]] 的装配问题）</li><li><strong>先摘录、再作答</strong>：对长文档（超过 20k token），要求模型<strong>先逐字摘出相关原文</strong>，再基于摘录作答；找不到摘录就说"没找到"</li><li><strong>引用绑定</strong>：要求每条结论都挂到具体来源；<strong>生成之后再自查一遍</strong>——找不到支撑引用的结论，直接撤掉</li><li><strong>限制外部知识</strong>：明确要求"只用给定资料，不要用你自己的知识"</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.2 允许弃答 + 改评测口径【事实】</h4>
+<ul class="mv-md-ul"><li>显式给模型"说不知道"的许可（这一条被 Anthropic 列为<strong>最基本的</strong>手段）</li><li>更根本的是<strong>改评分</strong>：<strong>把"自信的错误"罚得比"承认不确定"更重</strong>，并给恰当的弃答<strong>部分分</strong></li><li>这不是新想法——标准化考试里早就有"答错倒扣分 / 留空给部分分"的做法</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.3 拆解与自校验【事实】</h4>
+<ul class="mv-md-ul"><li><strong>链式推理校验</strong>：先让模型把推理过程写出来，再给结论（暴露错误的前提）</li><li><strong>Best-of-N</strong>：同一 prompt 跑多次，比较输出——不一致的地方就是可疑处</li><li><strong>迭代精炼</strong>：把上一轮输出当输入，要求它复核或补充</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.4 上下文管理【事实】</h4>
+<p class="mv-md-p">压缩、隔离、把证据放到模型真正看得见的位置（[[母题-C1-上下文组装与窗口预算]]）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 逐个淘汰（统一指标：<strong>被消除的错误数 ÷ 增加的成本</strong>，且错误与弃答分开定价）</h3>
+<p class="mv-md-p">先立口径——<strong>这是本节最重要的一步</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>错误（答错）和弃答（说不知道）不是同一种失败，不能同价。</strong></p>
+<p class="mv-md-p mv-md-quote">弃答的成本是"转人工兜底"；错误的成本是"客诉 / 返工 / 回滚 / 信任损失"。后者通常贵一个数量级。</p>
+<h4 class="mv-md-h mv-md-h4">3.1 只靠"给证据"能治到哪【推导】</h4>
+<ul class="mv-md-ul"><li><strong>治来源三</strong>（没有信息）：非常有效</li><li><strong>治来源四</strong>（给了没用上）：部分有效——但<strong>如果上下文变长了，反而可能加剧</strong>（context rot）</li><li><strong>治来源一、二</strong>：<strong>无效</strong>。模型可能拿到了证据，仍然在证据没覆盖的细节上"补全"</li></ul>
+<p class="mv-md-p">【取舍】所以"接了 RAG 幻觉就解决了"的问题在于：<strong>它只治四类里的一类，还可能加重另一类。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 为什么"允许弃答"是性价比最高的一招【推导】</h4>
+<p class="mv-md-p">因为它的成本结构完全不同：</p>
+<pre class="mv-md-pre">给证据   → 每次请求都要付检索 + 更长的输入（持续成本）
+改评测/给许可 → 一次性的口径调整（几乎零边际成本）</pre>
+<p class="mv-md-p">【事实】而且论文给了它一个更硬的理由：<strong>校准比准确"便宜"得多</strong>——</p>
+<p class="mv-md-p mv-md-quote">一个完全不懂毛利语的小模型，可以直接说"我不会"；而一个懂<strong>一点</strong>毛利语的模型，反而必须先判断自己的置信度。</p>
+<p class="mv-md-p mv-md-quote"><strong>Being "calibrated" requires much less computation than being accurate.</strong></p>
+<p class="mv-md-p">【推论】<strong>"让模型知道自己不知道"这件事，比"让模型什么都知道"容易得多。</strong> 所以这是一个性价比极高的方向，也是它最容易被忽略的原因——它不像"上更强的模型"那样有故事性。</p>
+<h4 class="mv-md-h mv-md-h4">3.3 自校验的代价【推导】</h4>
+<ul class="mv-md-ul"><li><strong>Best-of-N</strong>：成本直接 ×N，而且<strong>N 次不一致时你还需要一个仲裁策略</strong></li><li><strong>链式校验</strong>：增加输出 token（输出比输入贵得多，见 [[母题-C6-成本与长上下文截断]]）</li><li><strong>迭代精炼</strong>：轮次不可控，容易收敛到"自我确认"而不是"纠错"</li></ul>
+<p class="mv-md-p">【取舍】自校验适合<strong>高价值、低频次</strong>的判定（比如最终发布前的复核），不适合每一次调用。</p>
+<h4 class="mv-md-h mv-md-h4">3.4 胜出方案：按来源分层，各治各的【取舍】</h4>
+<pre class="mv-md-pre">来源一（无模式的事实）→ 给证据；证据也没有 → 允许弃答
+来源二（评测激励）    → 改评分：罚自信错误 &gt; 罚弃答，给弃答部分分
+来源三（上下文缺失）  → 检索 + 装配 + 先摘录再作答
+来源四（给了没用上）  → 上下文管理 + 引用绑定 + 生成后自查撤稿</pre>
+<p class="mv-md-p">【推论】<strong>这是一个"下限可以推、上限推不动"的问题</strong>：来源三、四是纯工程问题，可以压到接近零；来源一、二里的"置信度"部分是模型属性，<strong>只能管理，不能消除</strong>。任何声称"彻底解决幻觉"的方案，都是在拿来源三、四的成绩去覆盖来源一、二。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们用了 RAG"和"我们没有幻觉"之间隔着一整个来源二？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 量化验证：两笔账</h3>
+<p class="mv-md-p"><strong>第一笔：只看准确率，你会选错模型</strong></p>
+<p class="mv-md-p">沿用 1.3 的 SimpleQA 数据。设某业务每天 10,000 次查询：</p>
+<pre class="mv-md-pre">弃答 → 转人工，成本 $0.5/次
+错误 → 客诉 / 返工，成本 $10/次   （按 20 倍估）</pre>
+<table class="mv-table"><thead><tr><th></th><th>gpt-5-thinking-mini</th><th>OpenAI o4-mini</th></tr></thead><tbody><tr><td>弃答 5,200 × $0.5</td><td>$2,600</td><td>—</td></tr><tr><td>弃答 100 × $0.5</td><td>—</td><td>$50</td></tr><tr><td>错误 2,600 × $10</td><td>$26,000</td><td>—</td></tr><tr><td>错误 7,500 × $10</td><td>—</td><td>$75,000</td></tr><tr><td><strong>每日总成本</strong></td><td><strong>$28,600</strong></td><td><strong>$75,050</strong></td></tr><tr><td><strong>准确率</strong></td><td>22%（更低）</td><td><strong>24%（更高）</strong></td></tr></tbody></table>
+<p class="mv-md-p">【结论】<strong>准确率更低的那一个，总成本只有对方的 38%。</strong> 排行榜上的名次和业务成本的方向是<strong>相反的</strong>——因为准确率口径把"弃答"和"错误"都算成了"没答对"。</p>
+<p class="mv-md-p"><strong>第二笔：为什么"猜"在准确率口径下几乎不吃亏</strong></p>
+<pre class="mv-md-pre">1000 道题，模型明确会 600 道，剩下 400 道完全不知道
+
+弃答模型：600 对 + 400 弃答      → 准确率 600/1000 = 60.00%
+猜测模型：600 对 + 400 题按 1/365 蒙
+         期望蒙对 ≈ 400 × 0.0027 ≈ 1.1 题
+         → 准确率 601.1/1000 = 60.11%
+
+准确率差距：0.11 个百分点   （几乎看不出来）
+错误数量差距：0 条  vs  约 399 条   （差 399 倍）</pre>
+<p class="mv-md-p">【结论】<strong>这就是"考核什么，就得到什么"。</strong> 在两套口径下，"猜测模型"的准确率只差 0.11 个点，但它多产出了近 <strong>400 条自信的错误</strong>。排行榜看不见这 400 条——<strong>而业务方付的正是这 400 条的钱</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"改评测口径"是减少幻觉的一部分，而不是"刷分技巧"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<p class="mv-md-p">【事实】OpenAI 论文直接列了五条常见误解并逐条反驳，这几条在面试里非常好用：</p>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>实际情况</th></tr></thead><tbody><tr><td>"准确率做到 100% 就没有幻觉了"</td><td><strong>准确率永远到不了 100%</strong>——不管模型多大、搜索和推理多强，有些真实问题本质上无法回答</td></tr><tr><td>"幻觉是不可避免的"</td><td><strong>不是</strong>——模型可以在不确定时<strong>弃答</strong>。可避免指的是"自信的错误"，不是"不知道"</td></tr><tr><td>"避免幻觉需要更大的模型"</td><td><strong>校准比准确便宜</strong>。小模型<strong>可能更容易</strong>知道自己不知道（完全不懂毛利语 → 直接说不会）</td></tr><tr><td>"幻觉是神秘的故障"</td><td>不是。<strong>成因是清楚的</strong>：预训练的统计结构 + 评测的激励结构</td></tr><tr><td>"做一个好的幻觉评测就够了"</td><td><strong>不够</strong>。一个好的幻觉评测，对抗不了几百个"惩罚谦逊、奖励猜测"的准确率评测——<strong>要改的是主口径</strong></td></tr><tr><td>"接了 RAG，幻觉就解决了"</td><td><strong>只治来源三</strong>（没给信息）。来源四（给了没用上）可能<strong>加重</strong>；来源一、二它完全不治</td></tr><tr><td>"检索失败率降了 49%，所以幻觉降了 49%"</td><td><strong>偷换指标</strong>。检索失败率是<strong>检索层</strong>数字，它只是"证据缺失型幻觉"的<strong>上界</strong>；幻觉里还有"证据给了没用上"和"证据没覆盖但模型硬答"两类，<strong>两者不是包含关系，不能互相换算</strong>。见自测 Q3</td></tr><tr><td>"让模型说'我不知道'显得系统很弱"</td><td><strong>反了</strong>。用户对"自信的错误"的容忍度远低于"坦白的不知道"。<strong>用错误率而不是准确率向业务汇报</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>幻觉不是要"消灭"的东西，是要"分门别类地管理"的东西——先把错误和弃答分开定价，你才知道该先治哪一类。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C4-幻觉的成因与可控性-q1" tag="LLM与上下文" q="某评测 1000 道题，模型明确掌握其中 600 道。剩下 400 道它完全不知道。&#10;问：&quot;弃答&quot;策略和&quot;每个都猜&quot;策略（假设蒙对概率 1/365），在准确率上差多少？在错误数量上差多少？这说明什么？" a="``text&#10;弃答：600 对 + 400 弃答&#10;准确率 = 600 / 1000 = 60.00%&#10;猜：  600 对 + 400 题按 1/365 蒙&#10;期望蒙对 ≈ 400 × (1/365) ≈ 1.1 题&#10;准确率 = 601.1 / 1000 = 60.11%&#10;准确率差距 = 0.11 个百分点&#10;错误数量：0 条  vs  约 399 条（400 − 1.1）&#10;``&#10;【结论】准确率口径下两者几乎无法区分（0.11 个点），但多出来的是近 400 条自信的错误。 这就是&quot;评测口径决定了模型学什么&quot;的具体数量——榜上看不见那 400 条，业务方赔的正是那 400 条。&#10;【补充】注意这里的关键结构：&quot;猜&quot;的期望收益永远为正（1/365 &gt; 0），而&quot;弃答&quot;稳定为 0。 只要评分不给弃答部分分、不给错误额外惩罚，理性模型就该猜。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C4-幻觉的成因与可控性-q2" tag="LLM与上下文" q="沿用 SimpleQA 的实测数据（弃答/准确/错误：mini = 52%/22%/26%，o4-mini = 1%/24%/75%）。某业务每天 10,000 次查询，弃答转人工 $0.5/次，错误按客诉计 $10/次。&#10;问：两个模型的每日总成本各是多少？如果只看准确率会得出什么错误结论？" a="gpt-5-thinking-mini · OpenAI o4-mini&#10;弃答成本 · 5,200 × $0.5 = $2,600 · 100 × $0.5 = $50&#10;错误成本 · 2,600 × $10 = $26,000 · 7,500 × $10 = $75,000&#10;合计 · $28,600/天 · $75,050/天&#10;准确率 · 22% · 24%&#10;``text&#10;成本比 = 28,600 / 75,050 ≈ 0.38      → mini 只要 38% 的成本&#10;`&#10;【结论】准确率更低（22% &lt; 24%）的模型，总成本只有对方的 38%。 只看准确率排行榜，你会选到一个成本高 2.6 倍的模型，并且完全不知道问题出在哪。&#10;【补充】这个结论对倍率极度敏感：&#10;`text&#10;若错误成本 = 弃答成本（都是 $0.5）：&#10;mini  = 5,200×0.5 + 2,600×0.5 = $3,900&#10;o4-mini = 100×0.5 + 7,500×0.5 = $3,800     → 几乎一样，甚至反过来&#10;若错误成本 = 弃答成本 × 100（都是 $50）：&#10;mini  = $2,600 + $130,000 = $132,600&#10;o4-mini = $50 + $375,000 = $375,050        → 差距拉大到 2.8 倍&#10;``&#10;所以做这个判断前，必须先回答一个问题：在你的业务里，一次&quot;自信的错误&quot;值多少次&quot;转人工&quot;？ 这个问题答不出来，选型就是在赌。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C4-幻觉的成因与可控性-q3" tag="LLM与上下文" q="某团队报告：&quot;我们用了 Contextual Retrieval，检索失败率从 5.7% 降到 2.9%（降 49%），加上重排后降 67%。&quot;&#10;问：能说&quot;幻觉降低了 49%～67%&quot;吗？这两个数字分别是什么口径？" a="不能。&#10;``text&#10;5.7% → 2.9%   是「top-20 检索失败率」：相关文档没被召回进前 20 的比例&#10;5.7% → 1.88%  是加上重排后的同一指标（5.7% × (1 − 67%) ≈ 1.88%）&#10;`&#10;两个都是检索层指标，衡量的是&quot;证据有没有被取回来&quot;。它只对应幻觉四类来源里的来源三，而且关系比看上去弱：&#10;`text&#10;检索失败（证据没取回来）&#10;↓ 是&quot;证据缺失型幻觉&quot;的必要条件，但不充分&#10;↓ 模型仍可能靠参数化知识答对 —— 所以检索失败不等于一定出错&#10;证据缺失型幻觉  ≤  检索失败率          ← 它是上界，不是下界&#10;总幻觉率 = 证据缺失型 ＋ 有证据不依（来源四）＋ 无模式事实（来源一）＋ 评测激励（来源二）&#10;→  与检索失败率之间没有必然的大小关系&#10;``&#10;【结论】检索失败率是&quot;证据缺失型幻觉&quot;的上界，不是幻觉率。把 -49% 说成&quot;幻觉降低 49%&quot;是指标偷换——方向上还是高估（真实改善一定小于这个数）。&#10;【正确说法】&quot;我们把检索失败率从 5.7% 降到 2.9%，这消除了'无据可依'这一类幻觉的约一半；但检索层解决不了'给了证据没看进去'和'不确定时仍然作答'这两类，需要上下文管理和评测口径配合。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C4-幻觉的成因与可控性-q4" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;等模型再大一点、再强一点，幻觉就自然解决了。&quot;" a="三处不准确。&#10;1. 准确率永远到不了 100%。论文明确指出：不管模型多大、搜索和推理能力多强，有些真实世界的问题本质上无法回答（信息不存在、需要澄清的歧义、需要现实世界动作才能确定的事）。所以&quot;等一个 100% 准确的模型&quot;这条路不存在。&#10;2. 方向反了：幻觉里&quot;自信的错误&quot;这部分，是可以靠弃答避免的——问题不是模型不够强，是评测奖励它猜。&#10;3. &quot;更大 = 更会承认不知道&quot;也不成立。论文给了一个反直觉的例子：一个完全不懂毛利语的小模型可以直接说&quot;我不会&quot;；而懂一点毛利语的模型反而必须去判断自己的置信度。&quot;Being calibrated requires much less computation than being accurate.&quot;&#10;【准确说法】&quot;幻觉里有一部分（任意低频事实）从统计上就学不出来，这部分要靠外部证据 + 允许弃答处理；而'爱猜'这个行为是评测激励塑造的，换更大的模型不会自动改掉——要改的是评分口径。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C4-幻觉的成因与可控性-q5" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;我们给系统接了 RAG，检索到的资料都会进上下文，所以幻觉问题基本解决了。&quot;" a="三处。&#10;1. RAG 只治四类来源里的第三类（上下文里没有这条信息）。它对来源一（任意低频事实）无效——如果检索没覆盖到，模型照样会补;对来源二（评测激励）完全不治——即使证据齐备，模型仍会在证据没覆盖的细节上自信作答。&#10;2. 它可能加重来源四。资料进上下文会让上下文变长，而长上下文里关键证据会被稀释（context rot）。&quot;检索到了&quot;不等于&quot;用上了&quot;。&#10;3. &quot;检索到的都会进上下文&quot;这句本身就不严谨：检索有 top-k 截断、有重排、有权限过滤，进不去的部分是静默的。&#10;【准确说法】&quot;RAG 把'无据可依'这一类幻觉压下去了，但它同时引入了'证据被稀释'的新风险；剩下两类（低频事实、评测激励）需要靠引用绑定 + 生成后自查撤稿 + 允许弃答 + 改评分口径来处理。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">&quot;幻觉&quot;是一个把四件不同的事装在一起的说法。它们各自的成因不同、可治程度不同——你能分清手里这个错误属于哪一类吗？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="LLM与上下文/母题-C4-幻觉的成因与可控性" tag="LLM与上下文" q="&quot;幻觉&quot;是一个把四件不同的事装在一起的说法。它们各自的成因不同、可治程度不同——你能分清手里这个错误属于哪一类吗？" a="幻觉不是一个 bug，是四件不同的事叠加：① 预训练只有流畅语言的正例、没有真假标签，所以任意低频事实（比如生日）从统计上就学不出来，而拼写这类有规律的错误会随规模消失；② 评测只按准确率排名时，&quot;猜&quot;的期望收益为正、&quot;弃答&quot;稳定为零，模型被训成应试高手；③ 上下文里根本没有那条信息；④ 信息给了却被稀释、冲突或忽略。对策必须按来源分开：给证据 + 先摘录再作答 + 引用绑定（治③④）、允许弃答 + 改评分（治②）、上下文管理（治④）。最关键的一个换算：错误和弃答不能同价——实测数据里，准确率更低（22% vs 24%）的模型，错误率只要 26% vs 75%，按业务成本算总成本只有对方的 38%。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">幻觉不是一个 bug，是<strong>四件不同的事叠加</strong>：① 预训练只有流畅语言的正例、没有真假标签，所以<strong>任意低频事实（比如生日）从统计上就学不出来</strong>，而拼写这类有规律的错误会随规模消失；② 评测只按准确率排名时，"猜"的期望收益为正、"弃答"稳定为零，<strong>模型被训成应试高手</strong>；③ 上下文里根本没有那条信息；④ 信息给了却被稀释、冲突或忽略。<strong>对策必须按来源分开</strong>：给证据 + 先摘录再作答 + 引用绑定（治③④）、允许弃答 + 改评分（治②）、上下文管理（治④）。最关键的一个换算：<strong>错误和弃答不能同价</strong>——实测数据里，准确率更低（22% vs 24%）的模型，错误率只要 26% vs 75%，按业务成本算总成本只有对方的 <strong>38%</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>四类来源</li><li>预训练没有真假标签 → 有规律的错消失、随机的错留下</li><li>生日类比</li><li>准确率口径奖励猜测（1</li><li>365 &gt; 0）</li><li>SimpleQA 22-26 vs 24-75</li><li>错误与弃答分开定价</li><li>校准比准确便宜</li><li>先摘录再作答（&gt;20k 文档）</li><li>引用绑定 + 生成后撤稿</li><li>RAG 只治第三类，可能加重第四类</li><li>检索失败率 ≠ 幻觉率</li><li>改主口径而不是加一个小评测</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>怎么让模型愿意说"我不知道"？</strong></strong></p>
+<p class="mv-md-p">两层：<strong>prompt 层</strong>显式给许可（"不确定就说不确定"）；<strong>评分层</strong>把"自信的错误"罚得比"承认不确定"更重，给恰当的弃答部分分。<strong>第二层更根本</strong>——因为第一层只是措辞，第二层才改激励。</p>
+<p class="mv-md-p"><strong>2. <strong>长文档怎么做 grounding？</strong></strong></p>
+<p class="mv-md-p">对超过 20k token 的文档，<strong>先要求逐字摘出相关原文（找不到就明说"没找到"），再基于摘录作答</strong>。生成完成后再自查一遍：每条结论找支撑引用，找不到的<strong>直接撤掉</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>Best-of-N 值不值得？</strong></strong></p>
+<p class="mv-md-p">对<strong>高价值、低频次</strong>的判定值得（发布前复核、高风险决策）；对每次调用不值得——成本 ×N，而且还需要一个仲裁策略处理不一致。<strong>别把它当常规防线。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>怎么向业务方汇报幻觉治理的效果？</strong></strong></p>
+<p class="mv-md-p"><strong>用错误率，不用准确率</strong>。原因见 Q1：准确率对"弃答"和"错误"一视同仁，看不出差别；而业务的成本是错误数的函数。<strong>"准确率 +5.3%"听起来平淡，"错误率减半"是同一件事的另一种说法</strong>（[[母题-C3-Prompt版本管理与回归]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>RAG 和幻觉是什么关系？</strong></strong></p>
+<p class="mv-md-p">RAG 降低的是"<strong>无据可依</strong>"这一类，代价是上下文变长可能加剧"<strong>有据不依</strong>"。<strong>所以 RAG 是必要不充分</strong>——接完 RAG 以后，还要做引用绑定和答案级的评测。</p>
+<p class="mv-md-p"><strong>6. <strong>怎么设计评测集才能反映幻觉？</strong></strong></p>
+<p class="mv-md-p">三个要点：<strong>指标里区分错误与弃答</strong>；<strong>答案级评测要和检索级评测分开</strong>（别拿召回率冒充正确率）；<strong>held-out 集合</strong>（[[母题-C3-Prompt版本管理与回归]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「RAG 的引用能不能防幻觉？」——<strong>能防一部分，但引用本身也会被编</strong>。所以关键的工程动作是<strong>生成后自查</strong>：把每条结论回头去原文里找支撑，找不到就撤稿。<strong>"要求引用"是 prompt，"验证引用"才是机制。</strong></li><li>「多轮对话里幻觉会不会累积？」——会。上一轮的错误结论进了下一轮上下文，就变成了"已确认事实"。<strong>所以摘要必须标注哪些是已验证事实、哪些是模型推断</strong>，并且关键状态要回权威源重查（[[母题-C1-上下文组装与窗口预算]]）。</li><li>「模型拒答率太高怎么办？」——先分清是<strong>安全拒答</strong>（<code class="mv-md-code">stop_reason: refusal</code>，会绕过 schema）还是<strong>不确定性弃答</strong>。两者处理方式完全不同：前者是策略问题，后者可能是"证据没给够"或"任务本身无解"。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：NL2SQL 的幻觉有专门形态——<strong>表名、字段名、口径被编出来</strong>。这类属于<strong>来源三</strong>，靠"Schema 装配 + 干跑校验"压；但"口径理解错"属于<strong>来源四</strong>，需要把口径定义和样例一起放进上下文并做引用绑定。 - <strong>RuleArena</strong>：审查结论的幻觉表现为<strong>引用了不存在的规则条款</strong>。这正好对应 Anthropic 的"生成后自查撤稿"：<strong>每条结论回原文找支撑，找不到就撤</strong>。规则条款的存在性校验是纯工程，能压到零。 - <strong>EnergyOps</strong>：告警诊断会编造不存在的"历史相似事件"。<strong>对策不是换模型，是给证据</strong>——把历史工单检索进上下文，并且<strong>要求引用具体的工单号</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先拆词（四类来源，各自的成因）→ 用"拼写会消失、生日不会"说明统计结构这一层 → 用 SimpleQA 数据说明评测激励这一层 → 上下文两类的工程对策 → 逐个对策的代价与边界 → 错误/弃答分开定价的算式 → RAG 只治一类的辨析 → 收束到"分层管理，不是消灭"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>幻觉的可治程度取决于它的来源，而"来源"和"模型强弱"几乎无关。</strong> 属于<strong>工程</strong>的（没给信息、给了没用上）可以压到接近零；属于<strong>统计与激励</strong>的（无模式的事实、评测奖励猜测）只能管理——<strong>而管理它的代价，远低于消除它的代价</strong>。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出四类来源并各给一个例子；能解释"拼写错误消失、事实错误不消失"的统计原因；<strong>能算出</strong>"猜 vs 弃答"在 1000 题上的准确率差（0.11 点）与错误数差（≈399 条）；能用 SimpleQA 数据算出两模型的业务成本比（38%）；能说清"检索失败率 ≠ 幻觉率"并解释方向上是高估还是低估；能说出"校准比准确便宜"这个反直觉结论；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

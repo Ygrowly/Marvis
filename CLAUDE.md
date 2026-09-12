@@ -233,7 +233,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 长期知识资产区。内容应结构清晰、可链接、可复用。
 
-`wiki/topics/` 下按能力模块建子目录（现有 `算法/`、`MySQL/`；未来 `Agent/`、`RAG/`、`Python后端/`、`系统设计/`），承载**母题卡**：一个模块 = 一张主线索引（`00-模块索引.md`）+ 若干 `母题-NN-名称.md` + 可选底库（只查不练）。母题卡落点规则见〈落盘闸门〉。
+`wiki/topics/` 下按能力模块建子目录（现有 `算法/`、`MySQL/`、`PostgreSQL/`、`网络/`、`Redis/`、`LLM与上下文/`），承载**母题卡**：一个模块 = 一张**模块卡**（`{模块}模块卡.md`，**frontmatter 必须写 `type: study-module` 与 `module:`——`build.py` 靠这两项发现模块，与文件名无关**）+ 若干 `母题-NN-名称.md` + 可选底库（只查不练）。母题卡落点规则见〈落盘闸门〉。
 
 ### `output/`
 
@@ -309,5 +309,5 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 - 阅读结论：`reading/conclusions/YYYY-MM-DD-标题.md`
 - 稳定知识页：使用概念、项目、问题或判断命名
 - 母题卡：`wiki/topics/{模块}/母题-NN-名称.md`（编号对齐母题池；名称用半角连字符，不用全角冒号）
-- 模块索引：`wiki/topics/{模块}/00-模块索引.md`
+- 模块卡：`wiki/topics/{模块}/{模块}模块卡.md`（**与文件名无关，`build.py` 认 frontmatter 的 `type: study-module` + `module:`**；早期 MySQL / PostgreSQL / Redis 三张写作 `{模块}模块深挖卡.md`，内容规范相同，不必改名）
 - 底库（只查不练）：`wiki/topics/{模块}/母题池-名称.md`

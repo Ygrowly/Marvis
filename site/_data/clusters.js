@@ -3,6 +3,10 @@
    1. href = 站内 html 页面（site/ 下相对路径），src = 库内 md（渲染成 obsidian 链接）。
    2. 两者都为空的母题 = 尚未建卡，只显示为「未接触」，不进派单池（没材料不能派活）。
    3. M3 阶段由 build.py 自动生成，当前手工维护。
+   ⚠️ 本表的**母题范围必须以模块卡正本为准**（`wiki/topics/{模块}/{模块}模块卡.md` 的「母题清单」节）。
+      2026-09-12 清理：删掉 14 行旧规划残留（M18–M21 / R4–R8 / N4–N8），它们的计划内容已被现有卡合并
+      （例：R5「过期与内存淘汰」并进了 R2）。**要扩母题先改模块卡，再回来加行**，否则进度页会挂出假欠账。
+   PostgreSQL 19 张卡已完成但**暂不进本表**（2026-09-12 决定）：模块页从训练台「模块学习」栏可达，不进派单。
 */
 window.MARVIS_CLUSTERS = [
   {
@@ -25,9 +29,7 @@ window.MARVIS_CLUSTERS = [
       { id: 'M10', name: '锁与死锁', href: 'topics/MySQL-母题-M10-锁与死锁.html' },
       { id: 'M13', name: '长事务为什么危险', href: 'topics/MySQL-母题-M13-长事务为什么危险.html' },
       { id: 'M16', name: '乐观锁与悲观锁', href: 'topics/MySQL-母题-M16-乐观锁与悲观锁.html' },
-      { id: 'M17', name: '排行榜与防超卖', href: 'topics/MySQL-母题-M17-排行榜与防超卖.html' },
-      { id: 'M18', name: '间隙锁与幻读', href: '' },
-      { id: 'M19', name: '死锁定位与处理', href: '' }
+      { id: 'M17', name: '排行榜与防超卖', href: 'topics/MySQL-母题-M17-排行榜与防超卖.html' }
     ]
   },
   {
@@ -36,22 +38,15 @@ window.MARVIS_CLUSTERS = [
       { id: 'M11', name: '三日志与两阶段提交', href: 'topics/MySQL-母题-M11-三日志与两阶段提交.html' },
       { id: 'M12', name: '崩溃恢复', href: 'topics/MySQL-母题-M12-崩溃恢复.html' },
       { id: 'M14', name: '主从复制与延迟', href: 'topics/MySQL-母题-M14-主从复制与延迟.html' },
-      { id: 'M15', name: '数据增长治理', href: 'topics/MySQL-母题-M15-数据增长治理.html' },
-      { id: 'M20', name: '读写分离与延迟应对', href: '' },
-      { id: 'M21', name: '分库分表与在线迁移', href: '' }
+      { id: 'M15', name: '数据增长治理', href: 'topics/MySQL-母题-M15-数据增长治理.html' }
     ]
   },
   {
     id: 'redis', name: 'Redis 与缓存', zone: '后端底盘',
     topics: [
       { id: 'R1', name: 'Redis 数据结构与选型', href: 'topics/Redis-母题-R1-Redis数据结构与选型.html' },
-      { id: 'R3', name: '缓存一致性与三类事故', href: 'topics/Redis-母题-R3-缓存一致性与三类事故.html' },
-      { id: 'R2', name: '持久化与数据丢失边界', href: '' },
-      { id: 'R4', name: '穿透击穿雪崩', href: '' },
-      { id: 'R5', name: '过期与内存淘汰', href: '' },
-      { id: 'R6', name: '分布式锁的坑', href: '' },
-      { id: 'R7', name: '线程模型与为什么快', href: '' },
-      { id: 'R8', name: '热点 key 与大 key', href: '' }
+      { id: 'R2', name: '持久化与内存淘汰', href: 'topics/Redis-母题-R2-持久化与内存淘汰.html' },
+      { id: 'R3', name: '缓存一致性与三类事故', href: 'topics/Redis-母题-R3-缓存一致性与三类事故.html' }
     ]
   },
   {
@@ -59,23 +54,19 @@ window.MARVIS_CLUSTERS = [
     topics: [
       { id: 'N1', name: '一次请求的完整路径', href: 'topics/网络-母题-N1-一次请求的完整路径.html' },
       { id: 'N2', name: 'SSE 与推送模型', href: 'topics/网络-母题-N2-SSE与推送模型.html' },
-      { id: 'N3', name: '进程线程与协程', href: 'topics/网络-母题-N3-进程线程与协程.html' },
-      { id: 'N4', name: 'TCP 建连断连与状态', href: '' },
-      { id: 'N5', name: 'HTTPS 与 TLS 握手', href: '' },
-      { id: 'N6', name: 'IO 多路复用', href: '' },
-      { id: 'N7', name: '超时重试与连接池', href: '' },
-      { id: 'N8', name: '502 与 504 这类状态码', href: '' }
+      { id: 'N3', name: '进程线程与协程', href: 'topics/网络-母题-N3-进程线程与协程.html' }
     ]
   },
   {
     id: 'llm', name: 'LLM 与上下文工程', zone: 'AI 主战场',
+    /* 2026-09-12：C1–C6 已教材化，href 指到母题页；课程底库降为资料索引（study/02·01·10） */
     topics: [
-      { id: 'C1', name: '上下文组装与窗口预算', src: 'study/02-LLM与Context-Engineering.md' },
-      { id: 'C2', name: '结构化输出与 JSON 可靠性', src: 'study/02-LLM与Context-Engineering.md' },
-      { id: 'C3', name: 'Prompt 版本管理与回归', src: 'study/02-LLM与Context-Engineering.md' },
-      { id: 'C4', name: '幻觉的成因与可控性', src: 'study/02-LLM与Context-Engineering.md' },
-      { id: 'C5', name: '模型选型与降级三角', src: 'study/01-第一性原理与业务AI化.md' },
-      { id: 'C6', name: '成本与长上下文截断', src: 'study/10-生产治理安全性能与成本.md' }
+      { id: 'C1', name: '上下文组装与窗口预算', href: 'topics/LLM与上下文-母题-C1-上下文组装与窗口预算.html', src: 'study/02-LLM与Context-Engineering.md' },
+      { id: 'C2', name: '结构化输出与 JSON 可靠性', href: 'topics/LLM与上下文-母题-C2-结构化输出与JSON可靠性.html', src: 'study/02-LLM与Context-Engineering.md' },
+      { id: 'C3', name: 'Prompt 版本管理与回归', href: 'topics/LLM与上下文-母题-C3-Prompt版本管理与回归.html', src: 'study/02-LLM与Context-Engineering.md' },
+      { id: 'C4', name: '幻觉的成因与可控性', href: 'topics/LLM与上下文-母题-C4-幻觉的成因与可控性.html', src: 'study/02-LLM与Context-Engineering.md' },
+      { id: 'C5', name: '模型选型与降级三角', href: 'topics/LLM与上下文-母题-C5-模型选型与降级三角.html', src: 'study/01-第一性原理与业务AI化.md' },
+      { id: 'C6', name: '成本与长上下文截断', href: 'topics/LLM与上下文-母题-C6-成本与长上下文截断.html', src: 'study/10-生产治理安全性能与成本.md' }
     ]
   },
   {

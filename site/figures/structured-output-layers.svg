@@ -1,0 +1,66 @@
+<svg viewBox="0 0 680 404" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>三种约束手段各自在哪一层生效</title>
+  <desc>左列是生成的四个阶段：上下文组装、逐 token 采样、输出文本、下游程序。提示约束作用在第一层，只降低出错概率不消除；解码约束作用在第二层，把不合语法的 token 概率直接压成 0，代价是 grammar 编译成本指数增长与每请求上限；事后校验作用在第四层，能拦住但已经付过一次推理的钱。底部说明即使结构完全合法，仍需独立的业务校验。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">三种约束手段各自在哪一层生效</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">越早介入，代价越低；越晚介入，能拦住的越少——但业务语义永远只能靠最后一层</text>
+
+  <!-- 左列：四个阶段 -->
+  <text x="42" y="76" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">生成链路</text>
+
+  <rect x="42" y="88" width="212" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="58" y="108" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">① 上下文组装</text>
+  <text x="58" y="125" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">Schema 描述 + 示例 + 指令</text>
+
+  <path d="M148 138 L148 156" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#so-ar)"/>
+
+  <rect x="42" y="160" width="212" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="58" y="180" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">② 逐 token 采样</text>
+  <text x="58" y="197" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">每个位置从整个词表里选一个</text>
+
+  <path d="M148 210 L148 228" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#so-ar)"/>
+
+  <rect x="42" y="232" width="212" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="58" y="252" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">③ 输出文本</text>
+  <text x="58" y="269" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">一段 JSON 字符串</text>
+
+  <path d="M148 282 L148 300" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#so-ar)"/>
+
+  <rect x="42" y="304" width="212" height="46" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="58" y="324" font-family="system-ui,sans-serif" font-size="11.5" fill="#2C2C2A">④ 下游程序</text>
+  <text x="58" y="341" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">parse → 校验 → 执行</text>
+
+  <!-- 右侧：三种手段 -->
+  <rect x="300" y="88" width="350" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="316" y="108" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">手段一 · 提示约束</text>
+  <text x="316" y="125" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">写清 schema、给示例 —— 只降低概率，长输出尾部照样会崩</text>
+
+  <rect x="300" y="160" width="350" height="46" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="316" y="180" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">手段二 · 解码约束（strict / json_schema）</text>
+  <text x="316" y="197" font-family="system-ui,sans-serif" font-size="10" fill="#633806">把不合语法的 token 概率压成 0 —— 编译成本指数增长，每请求有硬上限</text>
+
+  <rect x="300" y="304" width="350" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="316" y="324" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">手段三 · 事后校验 + 有限修复</text>
+  <text x="316" y="341" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">能拦住，但已经付过一次推理的钱（重试要重发输入）</text>
+
+  <path d="M264 111 L292 111" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#so-ar)"/>
+  <path d="M264 183 L292 183" stroke="#BA7517" stroke-width="1.2" fill="none" marker-end="url(#so-ar2)"/>
+  <path d="M264 327 L292 327" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#so-ar)"/>
+
+  <!-- 底部：两层校验 -->
+  <rect x="300" y="226" width="350" height="62" rx="7" fill="#F7F6F3" stroke="#E3E1DA" stroke-dasharray="4 3"/>
+  <text x="316" y="246" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">结构合法之后，还有一层只属于你的校验</text>
+  <text x="316" y="264" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">枚举值真的存在吗 · 数值在范围内吗 · 引用的 ID 在吗</text>
+  <text x="316" y="280" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">这个用户有权限吗 · 状态前置条件满足吗 · 预算够吗</text>
+
+  <path d="M264 257 L292 257" stroke="#8A877E" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#so-ar)"/>
+
+  <defs>
+    <marker id="so-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="so-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>

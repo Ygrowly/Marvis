@@ -1,0 +1,48 @@
+<svg viewBox="0 0 680 366" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>effort 曲线的形状：两个方向都会坏</title>
+  <desc>横轴是 effort，纵轴是任务得分，曲线是凸的——低档位加 effort 收益明显，高档位加 effort 边际收益迅速衰减。低端的问题是证据不足就收手，高端的问题是想过头。右侧给出两条实测曲线的数字，以及"强模型配低 effort 可能压过弱模型配高 effort"这条结论。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">effort 曲线的形状：两个方向都会坏</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">effort 不是「保险起见拉满」的旋钮，它是一条要标定的曲线</text>
+
+  <!-- 坐标轴 -->
+  <path d="M70 268 L70 96 M70 268 L360 268" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="70" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">low</text>
+  <text x="196" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">medium</text>
+  <text x="360" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">max</text>
+  <text x="46" y="96" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">得分</text>
+
+  <!-- 凸曲线 -->
+  <path d="M70 250 Q170 132 360 108" stroke="#BA7517" stroke-width="1.8" fill="none"/>
+
+  <!-- 低端标注 -->
+  <circle cx="88" cy="240" r="3.2" fill="#BA7517"/>
+  <text x="80" y="222" font-family="system-ui,sans-serif" font-size="10" fill="#633806">证据不足就收手：</text>
+  <text x="80" y="208" font-family="system-ui,sans-serif" font-size="10" fill="#633806">少调工具、只看第一条结果</text>
+
+  <!-- 高端标注 -->
+  <circle cx="340" cy="111" r="3.2" fill="#BA7517"/>
+  <text x="212" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#633806">想过头：斟酌超过任务所需，</text>
+  <text x="212" y="154" font-family="system-ui,sans-serif" font-size="10" fill="#633806">成本与延迟上去，质量未必</text>
+
+  <!-- 边际标注 -->
+  <path d="M300 121 L300 100" stroke="#8A877E" stroke-width="1" fill="none" stroke-dasharray="3 2"/>
+  <path d="M340 108 L340 100" stroke="#8A877E" stroke-width="1" fill="none" stroke-dasharray="3 2"/>
+  <text x="320" y="94" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">这一段很贵</text>
+
+  <!-- 右侧数据 -->
+  <rect x="392" y="86" width="258" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="408" y="108" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">实测：FrontierCode Diamond</text>
+  <text x="408" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">low：11.5% 得分 / $5.35 每任务</text>
+  <text x="408" y="145" font-family="system-ui,sans-serif" font-size="10" fill="#633806">max：30.9% 得分 / $19.00 每任务</text>
+  <text x="408" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#633806">边际每分 $0.704 &gt; 低档平均 $0.465</text>
+
+  <rect x="392" y="186" width="258" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="408" y="208" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">实测：Humanity's Last Exam</text>
+  <text x="408" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">low：约 53% / $0.30 每题</text>
+  <text x="408" y="245" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">max：约 61% / $2.23 每题</text>
+  <text x="408" y="264" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">最后一档只多 0.5 分，成本多 46%</text>
+
+  <text x="30" y="322" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">还有一条反直觉的：更强的模型配低 effort，可能压过更弱的模型配高 effort。</text>
+  <text x="30" y="342" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">在 CursorBench 上，Fable 5.1 低 effort 达到 Fable 5 高 effort 的水平，成本约三分之一 —— 因为新模型低 effort 下每任务做的工作更少，而且缓存读价更低。</text>
+</svg>

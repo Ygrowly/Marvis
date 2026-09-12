@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LLM 与上下文工程模块卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">LLM 与上下文工程模块卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/LLM与上下文/LLM与上下文模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>6</b> 个母题</span>
+    <span class="mv-stat-i"><b>24</b> 道题（<b>15</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>6</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="LLM与上下文-01-模型为什么不可靠.html"><span class="mv-line-no">一</span><span class="mv-line-name">模型为什么不可靠</span><span class="mv-line-q">输出的概率性从哪来、什么能治什么不能治、怎么选型</span><span class="mv-line-st">母题 2 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="LLM与上下文-02-上下文怎么装配与维持.html"><span class="mv-line-no">二</span><span class="mv-line-name">上下文怎么装配与维持</span><span class="mv-line-q">每一步该放什么、放不下怎么办、钱花在哪</span><span class="mv-line-st">母题 2 · 题 11</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="LLM与上下文-03-输出怎么被约束与验收.html"><span class="mv-line-no">三</span><span class="mv-line-name">输出怎么被约束与验收</span><span class="mv-line-q">从"请求它做对"变成"结构上做不错"</span><span class="mv-line-st">母题 2 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>Thread / Run / Step 的状态模型就是"权威"，上下文是从它装配出的"视图"</strong>；规则原文、审查摘要、权威状态、Agent 临时判断四者分开放</li><li>解决什么问题：<strong>长审查任务跨过了单次窗口</strong> —— 靠压缩 + checkpoint + 从权威状态重建最小上下文</li><li>踩过的坑：【待填 —— 提示：压缩摘要里如果没记"已经执行过哪些副作用"，恢复后会发生什么？】</li><li>决策与取舍：【待填 —— 提示：为什么恢复时要先查权威业务状态，而不是直接用旧摘要续跑？】</li><li>对应母题：【C1】【C4】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>上下文只装当前领域 Schema + 权限过滤后的候选表 + 关键样例</strong>；SQL 结果过大时写 Artifact 只回传统计与样本</li><li>解决什么问题：<strong>Schema 太大塞不下，且权限决定谁能看哪些表</strong> —— 上下文装配必须带权限过滤</li><li>踩过的坑：【待填 —— 提示：Token 18.4K→3.6K 那次砍的是什么？砍掉的东西去哪了？】</li><li>决策与取舍：【待填 —— 提示：为什么 Schema 版本、Prompt 版本要和结果绑定？】</li><li>对应母题：【C1】【C3】</li></ul></div></collapse-panel><collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>30 个 MCP 工具的工具定义本身就是上下文开销</strong>；每个工具只收必要业务参数；日志和大表先聚合再进上下文</li><li>解决什么问题：<strong>工具越多，上下文里光工具定义就吃掉一大块</strong> —— 这是"最小工具集"和延迟加载的直接动因</li><li>踩过的坑：【待填 —— 提示：30 个工具全量声明占多少 token？哪些是可以延迟加载的？】</li><li>决策与取舍：【待填 —— 提示：工具描述写详细一点更好还是更差？（占用 vs 选择准确率）】</li><li>对应母题：【C1】【C2】</li></ul></div></collapse-panel><collapse-panel title="Ovanta（全栈交易）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/Ovanta/</code></p>
+<ul class="mv-md-ul"><li>用在哪：AI 功能的输出要给到前端可编辑，<strong>结构化输出的稳定性直接决定前端能不能渲染</strong></li><li>解决什么问题：<strong>模型输出不可靠，但前端需要一个确定的表单结构</strong></li><li>踩过的坑：【待填】</li><li>决策与取舍：【待填】</li><li>对应母题：【C2】</li></ul></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
