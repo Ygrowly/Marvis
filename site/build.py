@@ -1102,12 +1102,12 @@ TOPIC_MODULE_INDEX = {}
 
 
 def safe_fname(s):
-    """文件名清洗：Windows 禁止 < > : " / \ | ? *，且不能以空格或点结尾。
+    r"""文件名清洗：Windows 禁止 < > : " / \ | ? *，且不能以空格或点结尾。
 
     2026-09-13 新增：模块卡的主线名会进文件名，一个 ASCII 双引号就让 write_text
     抛 OSError、整个 build 静默中断（后面的主线页全不生成，模块页里留下死链）。
     """
-    s = re.sub(r'[<>:"/\|?*]', "", s).strip().rstrip(".")
+    s = re.sub(r'[<>:"/\\|?*]', "", s).strip().rstrip(".")
     return s or "untitled"
 
 

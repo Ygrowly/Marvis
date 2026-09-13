@@ -1,0 +1,59 @@
+<svg viewBox="0 0 680 470" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>四种类型选择的判据：先问语义，再问代价</title>
+  <desc>左上角对比三种字符串类型：文本与变长字符串的存储完全相同，二十字符都是二十一字节；而定长字符补空格，存三个字符要占二百字节，是文本的五十倍。右上角是两种 JSON 类型的选择：会被查询就用二进制格式，只有原样保存原样取出才用文本格式。左下角对比两种自增写法的差别：语法糖只给非空、不给唯一，标准写法还能挡住手工写主键。右下角是两种时间类型：带时区的内部一律存协调世界时、不保留原来的时区。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">四种类型选择的判据：先问语义，再问代价</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">PG 里类型的「性能差异」几乎都能算出来，而算出来往往一样——所以它是一个语义问题</text>
+
+  <!-- 左上：文本 -->
+  <rect x="30" y="66" width="300" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">字符串：text / varchar(n) / char(n)</text>
+  <text x="46" y="108" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">存 20 字符：text = 1+20 = 21 B</text>
+  <text x="46" y="124" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">            varchar(255) = 1+20 = 21 B</text>
+  <text x="46" y="142" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">→ 两者开销【完全相同】</text>
+  <text x="46" y="160" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">varchar(n) 是【纯约束】，不是优化</text>
+  <text x="46" y="180" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">char(200) 存 3 字符 = 200 B → 50 倍，且最慢</text>
+
+  <!-- 右上：JSON -->
+  <rect x="350" y="66" width="300" height="128" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">JSON：json vs jsonb</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">判据一句话：<tspan font-weight="600">会被「查」就用 jsonb</tspan></text>
+  <text x="366" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">jsonb：二进制 · 可建 GIN · 键序不保证 · 去重复键</text>
+  <text x="366" y="146" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">json ：原始文本 · 每次解析 · 保留格式与键序</text>
+  <text x="366" y="168" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 这个选择直接决定【索引能不能做】</text>
+  <text x="366" y="186" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 要「原样回传」（签名 / hash）就只能用 json</text>
+
+  <path d="M30 212 L650 212" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <!-- 左下：主键 -->
+  <rect x="30" y="228" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="250" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">主键：serial vs identity</text>
+  <text x="46" y="270" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">serial = 语法糖（建 sequence + 默认值 + OWNED BY）</text>
+  <text x="46" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">它只给了【非空】——不给唯一</text>
+  <text x="46" y="308" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">identity = SQL 标准，序列隐式随表走</text>
+  <text x="46" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">ALWAYS 模式挡住手工写主键；仍需 PRIMARY KEY</text>
+  <text x="46" y="344" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">自增有洞是设计（回滚也消耗序列值）</text>
+
+  <!-- 右下：UUID 代价 -->
+  <rect x="350" y="228" width="300" height="120" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="250" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#8A3A28">UUID 主键：代价在索引，不在堆</text>
+  <text x="366" y="270" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">bigint 8+8+6=22→24B · 8000万 ≈ 1.92 GB</text>
+  <text x="366" y="286" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">uuid  8+16+6=30→32B · 8000万 ≈ 2.56 GB</text>
+  <text x="366" y="306" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">堆无序 → 插入永远追加 → 没有页分裂</text>
+  <text x="366" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">索引有序 → 随机插入变随机写（真正的代价）</text>
+  <text x="366" y="342" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">PG 二级索引叶存 ctid → 宽度【不摊开】（InnoDB 才摊）</text>
+
+  <!-- 底部：时间 -->
+  <path d="M30 364 L650 364" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="388" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">时间：timestamp vs timestamptz</text>
+
+  <rect x="30" y="400" width="300" height="58" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="419" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">timestamp（不带时区）</text>
+  <text x="46" y="437" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">存字面值，没有时区语义</text>
+  <text x="46" y="453" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">夏令时回拨那一小时里，两个瞬时点会撞成同一个值</text>
+
+  <rect x="350" y="400" width="300" height="58" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="419" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">timestamptz（默认答案）</text>
+  <text x="366" y="437" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">内部一律存 UTC，读取时按会话时区换算</text>
+  <text x="366" y="453" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">「带时区」≠ 记住原时区——原时区【不保留】</text>
+</svg>

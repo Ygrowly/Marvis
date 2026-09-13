@@ -1,0 +1,62 @@
+<svg viewBox="0 0 680 424" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>看执行计划的五步顺序与 loops 陷阱</title>
+  <desc>顶部是执行计划里最容易看错的一条：实际行数与实际耗时的显示值都是每个循环的平均值，必须乘以循环次数才是总量；示例里看起来只有十二行、零点一二毫秒的节点，乘上循环次数后其实是十二万行、一点二秒，是整条查询最贵的节点。中间是看计划的五步顺序：先比对估算与实际行数，再看扫描方式，再看连接算法与两侧规模，再看排序与哈希有没有落盘，最后看循环次数有没有暴露逐行查询。底部是估算错误如何导致算法选择错误：估算十行时优化器选了嵌套循环只要三十页，实际五万行时同样的算法要十五万页。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">看执行计划的五步顺序与 loops 陷阱</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">第一动作永远是比对「估算 vs 实际」——因为扫描方式与连接算法，本身就是优化器按估算算出来的</text>
+
+  <!-- loops 陷阱 -->
+  <rect x="30" y="66" width="620" height="96" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#8A3A28">最容易看错的一条：actual rows 与 actual time 都是【每个循环】的平均值</text>
+  <text x="46" y="108" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">(actual time=0.048..0.121 rows=12 loops=10000)</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">✗ 看错：「返回 12 行、耗时 0.12 毫秒」→ 判为廉价节点、跳过</text>
+  <text x="46" y="148" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">✓ 正确：12 × 10000 = 12 万行 ｜ 0.121 × 10000 = 1210 ms ≈ 1.2 秒 → 整条查询最贵的节点</text>
+
+  <!-- 五步 -->
+  <path d="M30 180 L650 180" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="204" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">五步顺序</text>
+
+  <rect x="30" y="216" width="118" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="40" y="236" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">① 估算 vs 实际</text>
+  <text x="40" y="254" font-family="system-ui,sans-serif" font-size="9" fill="#633806">差一个数量级</text>
+  <text x="40" y="269" font-family="system-ui,sans-serif" font-size="9" fill="#633806">就停下查统计信息</text>
+  <text x="40" y="284" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#633806">决定后面所有判断</text>
+
+  <rect x="158" y="216" width="118" height="74" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="168" y="236" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">② 扫描方式</text>
+  <text x="168" y="254" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Seq 不是罪</text>
+  <text x="168" y="269" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Bitmap = 中等命中</text>
+  <text x="168" y="284" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Index Only 看 Heap Fetches</text>
+
+  <rect x="286" y="216" width="118" height="74" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="296" y="236" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">③ JOIN 与规模</text>
+  <text x="296" y="254" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Nested Loop 外层估错</text>
+  <text x="296" y="269" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">= 最常见的爆炸点</text>
+  <text x="296" y="284" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Hash Join 看 Batches</text>
+
+  <rect x="414" y="216" width="118" height="74" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="424" y="236" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">④ 排序/哈希落盘</text>
+  <text x="424" y="254" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">Sort Method:</text>
+  <text x="424" y="269" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">external merge</text>
+  <text x="424" y="284" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">= 溢到磁盘了</text>
+
+  <rect x="542" y="216" width="108" height="74" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="552" y="236" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">⑤ loops</text>
+  <text x="552" y="254" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">loops 很大</text>
+  <text x="552" y="269" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">= N+1 形态</text>
+  <text x="552" y="284" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">记得乘算</text>
+
+  <!-- 估错 → 算法选错 -->
+  <path d="M30 306 L650 306" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">估错为什么是第一步：估算错 → 算法选错</text>
+
+  <rect x="30" y="342" width="300" height="70" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="362" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">优化器以为外层只有 10 行</text>
+  <text x="46" y="380" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10 次内层索引查找 × 3 页 = 30 页</text>
+  <text x="46" y="397" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→ 判定 Nested Loop 最便宜 → 选它</text>
+
+  <rect x="350" y="342" width="300" height="70" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="362" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">实际外层有 50,000 行</text>
+  <text x="366" y="380" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">50,000 × 3 页 = 150,000 页 → 多 5000 倍</text>
+  <text x="366" y="397" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">估算若准确，优化器会自己改选 Hash Join</text>
+</svg>
