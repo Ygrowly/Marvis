@@ -14,81 +14,189 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">PostgreSQL</span>
     <h1 class="mv-topic-title">母题 P3 · 部分索引与表达式索引</h1>
-    <p class="mv-topic-meta">关联 母题-P1-索引类型选型 · 母题-P2-堆表与回表 · 母题-P4-索引代价与在线建索引 ｜ 正本 wiki/topics/PostgreSQL/母题-P3-部分索引与表达式索引.md</p>
+    <p class="mv-topic-meta">关联 母题-P1-索引类型选型（选哪种索引）· 母题-P2-堆表与回表（索引拿到位置之后）· 母题-P4-索引代价与在线建索引（索引的第三项代价就是 VACUUM 压力）· 母题-P15-VACUUM与事务ID回卷（清理负担的底部原因） ｜ 正本 wiki/topics/PostgreSQL/母题-P3-部分索引与表达式索引.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① 只用得上 1% 的行，就不该为 100% 的行付维护成本 ② 谓词必须能被<strong>证明蕴含</strong> ③ 它会<strong>静默失效</strong>）· 读完约 11 分钟 · 需要先懂：[[母题-P2-堆表与回表]]</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
-    <div class="mv-problem"><p class="mv-md-p"><code class="mv-md-code">agent_runs</code> 表里 99% 的行都是终态（<code class="mv-md-code">COMPLETED</code> / <code class="mv-md-code">FAILED</code>），只有少量是活跃态（<code class="mv-md-code">QUEUED</code> / <code class="mv-md-code">RUNNING</code> / <code class="mv-md-code">WAITING_APPROVAL</code>）——但调度器<strong>每秒都在查这些活跃行</strong>。给 <code class="mv-md-code">status</code> 建一个全表索引，浪费在哪？</p></div>
+    <div class="mv-problem"><p class="mv-md-p"><code class="mv-md-code">agent_runs</code> 表里 <strong>99%</strong> 的行都是终态（<code class="mv-md-code">COMPLETED</code> / <code class="mv-md-code">FAILED</code>），只有少量是活跃态（<code class="mv-md-code">QUEUED</code> / <code class="mv-md-code">RUNNING</code> / <code class="mv-md-code">WAITING_APPROVAL</code>）——但调度器<strong>每秒都在查这些活跃行</strong>。给 <code class="mv-md-code">status</code> 建一个全表索引，浪费在哪？</p></div>
   </div>
 
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：全表索引的浪费在哪</h3>
+<figure-box num="部分索引：只给热子集建索引，体积与服务范围成正比" title="" note="全表索引 vs 部分索引的对比、谓词匹配三条判据、静默失效的风险"><svg viewBox="0 0 680 344" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>部分索引：只给热子集建索引，体积与服务范围成正比</title>
+  <desc>上面是全表索引与部分索引的对比：表里百分之九十九是终态行，全表索引要为所有行维护索引项，而部分索引只索引活跃态那一小部分，体积相差约一百倍，而且终态化那一步更新完全不碰它。中间是谓词匹配的三条判据：查询条件必须能被证明蕴含在谓词的集合里。底部是表达式索引，它把计算结果当作索引键，但有两个硬约束——函数必须确定性，且查询要写一模一样的表达式。</desc>
 
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">部分索引：只给热子集建索引，体积与服务范围成正比</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">只用得上 1% 的行，就不该为 100% 的行付维护成本——但这份便宜有代价：它会静默失效</text>
 
+  <!-- 对比 -->
+  <rect x="30" y="66" width="300" height="96" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">✗ 全表索引：为 100% 的行维护</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">99% 终态行永远用不上，却一直占空间</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">每次「终态化」的更新都要维护它</text>
+  <text x="46" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">VACUUM 要清理的索引页也更多</text>
+
+  <rect x="350" y="66" width="300" height="96" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">✓ 部分索引：只为活跃行维护</text>
+  <text x="366" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">体积与服务范围成正比（本例约为全量的 1/100）</text>
+  <text x="366" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">终态化那一步【完全不碰这个索引】</text>
+  <text x="366" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">VACUUM 负担同步下降</text>
+
+  <!-- 谓词匹配 -->
+  <path d="M30 180 L650 180" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="204" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">谓词匹配：查询条件必须能被【证明蕴含】在索引谓词里</text>
+  <text x="30" y="226" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">索引：WHERE status IN ('QUEUED','RUNNING','WAITING_APPROVAL')</text>
+
+  <rect x="30" y="238" width="196" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="258" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">WHERE status = 'RUNNING'</text>
+  <text x="46" y="276" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✓ 蕴含在 IN 里 → 能用</text>
+
+  <rect x="242" y="238" width="196" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="258" y="258" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">WHERE status = 'COMPLETED'</text>
+  <text x="258" y="276" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">✗ 不在子集里</text>
+
+  <rect x="454" y="238" width="196" height="46" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="470" y="258" font-family="system-ui,sans-serif" font-size="10" fill="#633806">WHERE updated_at &gt; ?（不带 status）</text>
+  <text x="470" y="276" font-family="system-ui,sans-serif" font-size="10" fill="#633806">✗ 谓词缺失 → 无法证明蕴含</text>
+
+  <!-- 底部 -->
+  <path d="M30 300 L650 300" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="322" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">最大的运维风险：<tspan font-weight="600">静默失效</tspan>——以后新增一条「查终态任务」的需求，新查询自动用不上、走全表扫，而你不会收到任何通知。</text>
+  <text x="30" y="340" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以部分索引必须配一句「它的服务范围是什么」写进注释或文档——这是它和普通索引最大的不同。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>调度器只查活跃态，但全表索引包含所有行</strong>，于是有<strong>四种浪费</strong>：</p>
+<table class="mv-table"><thead><tr><th>浪费维度</th><th>具体表现</th></tr></thead><tbody><tr><td><strong>体积</strong></td><td><strong>99% 的索引项永远不会被这条查询用到</strong>，却一直占空间、占缓存</td></tr><tr><td><strong>写入</strong></td><td><strong>每次「终态化」的更新都要维护这个索引项——而它永远不会被那条查询用到</strong></td></tr><tr><td><strong>VACUUM 负担</strong></td><td>索引项越多，autovacuum 要清理的索引页越多（<strong>这是 PG 特有的第三项</strong>，[[母题-P4-索引代价与在线建索引]]）</td></tr><tr><td><strong>统计信息</strong></td><td>选择性估算被大量无用值稀释</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>这条可以收成一句判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小。</strong></p>
+<p class="mv-md-p"><strong>部分索引直接砍掉第二个因子。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"给 status 建个索引"这个动作，在有明确热子集的表上是不经济的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 部分索引：把索引做小【事实】</h3>
+<pre class="mv-md-pre">CREATE INDEX idx_runs_active
+ON agent_runs (tenant_id, updated_at)
+WHERE status IN ('QUEUED', 'RUNNING', 'WAITING_APPROVAL');</pre>
+<p class="mv-md-p">【推导】<strong>效果能算</strong>：</p>
+<pre class="mv-md-pre">99% 终态 / 1% 活跃
+
+体积：索引只含活跃行 → 约为全表索引的 1/100
+写入：终态化那一步【完全不碰这个索引】
+      （假设 95% 的更新是「变成终态」→ 这部分写入的索引维护省掉）
+VACUUM：要清理的索引页同步下降</pre>
+<p class="mv-md-p">【结论】<strong>体积约降到 1/100，而写入与 VACUUM 负担同步下降。</strong></p>
+<p class="mv-md-p">【事实】<strong>这就是"调度器扫活跃任务"这类场景的标准做法</strong>——用「状态 + 时间」的队列式捞取，<strong>索引只覆盖队内元素</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">2.1 唯一的关键规则：谓词必须匹配【事实】</h4>
+<table class="mv-table"><thead><tr><th>查询</th><th>能否用上面的索引</th></tr></thead><tbody><tr><td><code class="mv-md-code">WHERE status = 'RUNNING'</code></td><td>✅ 能——<code class="mv-md-code">RUNNING</code> <strong>蕴含在</strong> <code class="mv-md-code">IN (...)</code> 里</td></tr><tr><td><code class="mv-md-code">WHERE status IN ('QUEUED','RUNNING')</code></td><td>✅ 能</td></tr><tr><td><code class="mv-md-code">WHERE status = 'COMPLETED'</code></td><td>❌ 不能</td></tr><tr><td><code class="mv-md-code">WHERE updated_at &gt; ?</code>（<strong>不带 status</strong>）</td><td>❌ <strong>不能——谓词缺失，PG 无法证明蕴含</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>最后一行是最容易踩的</strong>：</p>
+<pre class="mv-md-pre">"我明明有索引，为什么不走？"
+→ 因为查询条件里没有那句 WHERE 谓词
+→ PG 不敢用（用了会漏掉终态行）
+→ 【这时只能改写查询条件，不能靠加索引解决】</pre>
+<p class="mv-md-p">【推论】<strong>"证明蕴含"这个词可以背</strong>：<strong>PG 不会去推断"这个查询大概只关心活跃行"，它要的是一个能机械验证的包含关系。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我有索引但没用上"这件事，在部分索引上比在普通索引上更常见？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 表达式索引：让函数也能走索引【事实】</h3>
+<pre class="mv-md-pre">CREATE UNIQUE INDEX idx_users_email_lower ON users (lower(email));</pre>
+<p class="mv-md-p">【推导】<strong>问题是什么</strong>：</p>
+<pre class="mv-md-pre">WHERE lower(email) = ?
+  普通索引里存的是【原始值】，不是 lower() 之后的值
+  → 索引完全用不上</pre>
+<p class="mv-md-p">【事实】<strong>PG 的解法</strong>：<strong>把 <code class="mv-md-code">lower(email)</code> 的结果本身作为索引键</strong>。</p>
+<p class="mv-md-p">【推论】<strong>于是"函数导致索引失效"这件事在 PG 里是可以修的</strong>——<strong>不是"必须避免写函数"，而是"要么避免，要么为它建表达式索引"。</strong></p>
+<p class="mv-md-p">【事实】<strong>两个硬约束</strong>：</p>
+<pre class="mv-md-pre">① 函数必须是 IMMUTABLE（确定性）
+   lower() 是；now() 不是（每次结果不同）
+   → 【这是选型前必须查的一件事】
+
+② 查询必须写【完全一样】的表达式
+   lower(email) 的索引，upper(email) 或 email ILIKE ? 都用不上
+   → 所以表达式索引某种程度上是「给某一条 SQL 定制的」</pre>
+<p class="mv-md-p">【推导】<strong>为什么 <code class="mv-md-code">now()</code> 不能建表达式索引</strong>：</p>
+<pre class="mv-md-pre">表达式索引的键是【求值那一刻的结果】
+若表达式每次求值都不同
+→ 索引里的条目在下一次查询时就对不上了
+→ 【索引形同虚设，而且你不会有任何察觉】</pre>
+<p class="mv-md-p">【取舍】<strong>所以"函数写在条件里索引失效"有两条路</strong>：</p>
+<pre class="mv-md-pre">① 改写成 col &gt;= ? AND col &lt; ?（去掉函数）—— 不付额外代价
+② 建表达式索引 —— 只在【改不动 SQL】时用</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"给 <code class="mv-md-code">lower(email)</code> 建索引"这件事，要先确认 <code class="mv-md-code">lower</code> 是不是 IMMUTABLE？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 两者组合：部分唯一索引（软删除的经典解）【事实】</h3>
+<p class="mv-md-p">【事实】</p>
+<pre class="mv-md-pre">CREATE UNIQUE INDEX idx_users_email_active
+ON users (lower(email))
+WHERE deleted_at IS NULL;</pre>
+<p class="mv-md-p">【推导】<strong>一条语句同时用了三样东西</strong>：</p>
+<pre class="mv-md-pre">部分（WHERE deleted_at IS NULL）
++ 唯一（UNIQUE）
++ 表达式（lower(email)）
+
+→ 只对「未删除」的行保证 `lower(email)` 唯一
+→ 软删除后【允许同邮箱重新注册】</pre>
+<p class="mv-md-p">【推论】<strong>这是最能体现"索引是为业务规则服务"的一个例子</strong>——<strong>业务说的是"未删除的邮箱唯一"，索引就应该只约束那部分行</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"邮箱唯一"这个需求，在有软删除的系统里不能直接建成普通唯一索引？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 最大的风险：静默失效【推导】</h3>
+<p class="mv-md-p">【推导】<strong>部分索引的失效方式是静默的</strong>：</p>
+<pre class="mv-md-pre">只要查询条件与谓词不再匹配
+（比如以后加了「查终态任务」的需求）
+→ 新查询就自动用不上、走全表扫
+→ 【而你不会收到任何通知】</pre>
+<p class="mv-md-p">【推导】<strong>这个代价能算</strong>：</p>
+<pre class="mv-md-pre">一张 1000 万行的表（每页 16 行 → 62.5 万页）
+
+走部分索引：3 次树查找 + 命中 100 行的回表
+全表扫    ：62.5 万页顺序读
+
+【差几个数量级】</pre>
+<p class="mv-md-p">【推论】<strong>所以部分索引必须配一句"它的服务范围是什么"写在注释或文档里</strong>——<strong>这是它和普通索引最大的不同：普通索引失效通常是"条件不匹配"，你改改 SQL 就能用；部分索引失效可能是"需求变了"，而索引本身没错。</strong></p>
+<p class="mv-md-p">【取舍】<strong>这条在面试里很值钱</strong>：<strong>主动说出"部分索引最大的风险是静默失效"，比只说它省空间更像运维过的人。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"加个部分索引"这个动作，需要配一条注释？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"索引当然是覆盖的行越多越好"</td><td><strong>反了</strong>。<strong>索引的价值 = 服务的那部分查询的频率 × 被索引集合的大小</strong>——<strong>只用得上 1% 的行，就不该为 100% 的行付维护成本</strong>（体积约 1/100，且终态化那步完全不碰它）</td></tr><tr><td>"有索引就应该能用上"</td><td><strong>部分索引要求"查询条件能被证明蕴含在谓词里"</strong>。<strong><code class="mv-md-code">WHERE updated_at &gt; ?</code>（不带 status）用不上</strong>——<strong>因为谓词缺失，PG 不敢用（用了会漏掉终态行）</strong>。<strong>这时只能改写查询，不能靠加索引解决。</strong></td></tr><tr><td>"函数写在条件里索引必然失效"</td><td><strong>PG 有解：表达式索引</strong>（把 <code class="mv-md-code">lower(email)</code> 的结果作为索引键）。<strong>但有两个硬约束：函数必须 IMMUTABLE，且查询要写一模一样的表达式。</strong></td></tr><tr><td>"<code class="mv-md-code">now()</code> 也可以建表达式索引"</td><td><strong>不行</strong>。<strong>它每次求值都不同 → 索引条目下一次查询就对不上 → 索引形同虚设，而且你不会有任何察觉。</strong> <strong>选型前必须查函数是不是 IMMUTABLE。</strong></td></tr><tr><td>"部分索引加了就一劳永逸"</td><td><strong>它会【静默失效】</strong>：<strong>以后新增一条不匹配谓词的查询，就自动走全表扫，而你不会收到通知</strong>。<strong>必须把"服务范围"写进注释或文档。</strong></td></tr><tr><td>"索引多了只是写入慢一点"</td><td><strong>在 PG 里还有第三项代价：VACUUM 负担</strong>——<strong>每多一个索引，autovacuum 清理死元组就要多处理一棵索引树</strong>。<strong>所以"索引不是越多越好"在 PG 里的后半句是"索引越多，表膨胀越难被自动控制住"。</strong></td></tr><tr><td>"MySQL 也能这么干"</td><td><strong>MySQL 没有部分索引</strong>。同需求要么靠前置过滤 + 组合索引（<strong>索引里仍然包含终态行</strong>），要么靠业务层改写。<strong>"PG 用部分索引 + 表达式索引；MySQL 用 (status, updated_at) 联合索引靠最左列过滤，但索引仍含全量行"——这个对照要能说出来。</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>部分索引省的那一大截，代价是"它只为一部分查询服务"——所以用它就必须说清"这部分"是谁。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P3-部分索引与表达式索引-q1" tag="PostgreSQL" q="agent_runs 表里 99% 是终态行、1% 是活跃行。调度器只查活跃行。&#10;问：全表索引与部分索引的体积比是多少？在写入上，部分索引省掉了哪一部分？" a="``text&#10;体积：部分索引只含活跃行&#10;≈ 1% / 100% = 【1/100】&#10;写入：&#10;终态化那一步【完全不碰这个索引】&#10;（假设 95% 的更新是&quot;变成终态&quot;）&#10;→ 这部分更新的索引维护被完整省掉&#10;``&#10;【结论】体积约降到 1/100，而写入与 VACUUM 负担同步下降。&#10;【推论】判据：&#10;索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小。&#10;部分索引直接砍掉第二个因子。&#10;【补充】第三项收益（VACUUM）是 PG 特有的：每多一个索引，autovacuum 清理死元组就要多处理一棵索引树——所以部分索引在 PG 里的价值比在&quot;只有写放大&quot;的模型下更大。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="PostgreSQL/母题-P3-部分索引与表达式索引-q2" tag="PostgreSQL" q="索引是：&#10;``sql&#10;CREATE INDEX idx_active ON agent_runs (tenant_id, updated_at)&#10;WHERE status IN ('QUEUED','RUNNING','WAITING_APPROVAL');&#10;`&#10;下面三个查询，哪些能用上这个索引？为什么？&#10;`sql&#10;-- ①&#10;SELECT * FROM agent_runs WHERE status = 'RUNNING';&#10;-- ②&#10;SELECT * FROM agent_runs WHERE status = 'COMPLETED';&#10;-- ③&#10;SELECT * FROM agent_runs WHERE updated_at &gt; now() - interval '1 hour';&#10;``" a="能否用上 · 为什么&#10;① · ✅ · RUNNING 蕴含在 IN (...) 里——能被机械验证&#10;② · ❌ · COMPLETED 不在子集里&#10;③ · ❌ · 谓词缺失——PG 无法证明蕴含（用它就会漏掉终态行）&#10;【结论】③ 是最容易踩的：&quot;我明明有索引，为什么不走？&quot;——因为查询条件里没有那句 WHERE 谓词。&#10;【推论】这时只能改写查询条件，不能靠加索引解决。而且要注意：改写成带 status IN (...) 的形式，语义必须真的等价——如果业务上确实要查所有状态，那就该另建一个索引。&#10;【补充】&quot;证明蕴含&quot;这个说法可以背：PG 不去推断&quot;这个查询大概只关心活跃行&quot;，它要的是一个能机械验证的包含关系。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="PostgreSQL/母题-P3-部分索引与表达式索引-q3" tag="PostgreSQL" q="下面两个建索引的尝试，哪个能成功？为什么？&#10;``sql&#10;-- A&#10;CREATE INDEX idx_a ON users (lower(email));&#10;-- B&#10;CREATE INDEX idx_b ON users (now());&#10;``" a="A 能，B 不能。&#10;``text&#10;A（lower）：lower 是 IMMUTABLE（确定性）&#10;→ 同一个输入永远得到同一个输出&#10;→ 索引键是稳定的 → 索引有效&#10;B（now）：now 不是 IMMUTABLE&#10;→ 【每次求值都不同】&#10;→ 索引里的条目在下一次查询时就对不上&#10;→ 索引形同虚设，而且【你不会有任何察觉】&#10;`&#10;【结论】表达式索引的第一个硬约束是&quot;函数必须 IMMUTABLE&quot;——这是选型前必须查的一件事。&#10;【第二个约束】查询必须写完全一样的表达式：&#10;`text&#10;lower(email) 的索引：&#10;✓ WHERE lower(email) = ?&#10;✗ WHERE upper(email) = ?&#10;✗ WHERE email ILIKE ?&#10;``&#10;【推论】所以表达式索引某种程度上是&quot;给某一条 SQL 定制的&quot;——这一点要在设计时就接受。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P3-部分索引与表达式索引-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我给 status 建了个索引，调度器查活跃任务的性能问题就解决了。&quot;" a="三处问题。&#10;1. 全表索引为 100% 的行维护，而调度器只用 1%（Q1）——99% 的索引项永远不会被这条查询用到，却一直占空间、占缓存、拖慢写入。&#10;2. 更好的做法是部分索引：WHERE status IN ('QUEUED','RUNNING','WAITING_APPROVAL')——体积约 1/100，而且终态化那一步完全不碰它。&#10;3. 而且&quot;建了索引&quot;不等于&quot;用上了&quot;：查询条件必须能被证明蕴含在谓词里（Q2）——最终要看 EXPLAIN。&#10;【准确说法】&quot;先用部分索引把索引做小（只覆盖热子集），再确认查询条件与谓词匹配。如果业务上确实要查所有状态，那才需要全量索引——但那是一个不同的需求，不是&quot;顺手建一个&quot;。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P3-部分索引与表达式索引-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我们加了部分索引，以后就不用管了。&quot;" a="三处问题。&#10;1. 部分索引会【静默失效】：只要以后新增一条不匹配谓词的查询（比如&quot;查今天完成的任务&quot;），它就自动走全表扫，而你不会收到任何通知。&#10;2. 所以必须把&quot;服务范围&quot;写进注释或文档——这是它和普通索引最大的不同：普通索引用不上，通常是&quot;SQL 没写好&quot;；部分索引用不上，可能是&quot;需求变了&quot;，而索引本身没错。&#10;3. 代价也不小（Q2 的量级对比）：一张 1000 万行的表，全表扫 62.5 万页 vs 走索引 3 次树查找 + 100 次回表——差几个数量级。&#10;【准确说法】&quot;部分索引必须配一句&quot;它服务哪些查询&quot;，而且要定期检查新增查询有没有落在它的服务范围内。它不是&quot;加完就忘&quot;的索引，是需要维护文档的索引。&quot;&#10;---"></flip-card></div></div>
   <div class="mv-section">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
-      <p class="mv-ask-q">部分索引（Partial Index）与表达式索引：什么场景能省一大截？</p>
+      <p class="mv-ask-q">部分索引与表达式索引各解决什么问题——它们省的那一大截，代价是什么？</p>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
-    <flip-card gradable card-id="PostgreSQL/母题-P3-部分索引与表达式索引" tag="PostgreSQL" q="部分索引（Partial Index）与表达式索引：什么场景能省一大截？" a="部分索引 = 只给满足谓词的行建索引，让索引体积和「热子集」成正比而不是跟全表成正比（省空间、省写入、省 VACUUM 负担）；表达式索引 = 把计算结果作为索引键，让 lower(email) 这种「函数写在列上」的条件也能走索引。代价只有一条：查询条件必须能匹配谓词 / 表达式——部分索引的 WHERE 要能被「证明蕴含」，表达式索引要求函数确定性（IMMUTABLE）。"></flip-card>
+    <flip-card gradable card-id="PostgreSQL/母题-P3-部分索引与表达式索引" tag="PostgreSQL" q="部分索引与表达式索引各解决什么问题——它们省的那一大截，代价是什么？" a="索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小——只用得上 1% 的行，就不该为 100% 的行付维护成本。部分索引只给满足谓词的行建索引，体积与服务范围成正比（本例约 1/100），而且终态化那一步完全不碰它；它还有 PG 特有的第三项收益：VACUUM 负担同步下降。唯一的关键规则是&quot;谓词必须匹配（可证明蕴含）&quot;——WHERE updated_at &gt; ?（不带 status）用不上，因为谓词缺失，PG 不敢用（用了会漏终态行），这时只能改写查询，不能靠加索引解决。表达式索引把计算结果作为索引键，让 lower(email) 这类条件也能走索引——两个硬约束是：函数必须 IMMUTABLE（now() 不行），且查询要写一模一样的表达式。两者组合就是部分唯一索引（UNIQUE (lower(email)) WHERE deleted_at IS NULL），这是软删除场景的经典解，也最能体现&quot;索引是为业务规则服务&quot;。最大的风险是静默失效——以后新增一条不匹配谓词的查询就自动走全表扫，而你不会收到通知，所以必须把服务范围写进注释。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是 <strong>PG 相对 MySQL 的一个实打实的优势</strong>，也是「索引设计」和「索引堆砌」的分界线。它同时回答了另外两个高频追问——「索引是不是越多越好」（不是，所以要把索引做小）和「函数为什么导致索引失效」（PG 有解）。<strong>能主动提这一条，说明你真的是在 PG 上做过优化。</strong></p>
   </div>
   <div class="mv-section">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion"><strong>部分索引 = 只给满足谓词的行建索引</strong>，让索引体积和「热子集」成正比而不是跟全表成正比（省空间、省写入、省 VACUUM 负担）；<strong>表达式索引 = 把计算结果作为索引键</strong>，让 <code class="mv-md-code">lower(email)</code> 这种「函数写在列上」的条件也能走索引。<strong>代价只有一条：查询条件必须能匹配谓词 / 表达式</strong>——部分索引的 WHERE 要能被「证明蕴含」，表达式索引要求函数确定性（<code class="mv-md-code">IMMUTABLE</code>）。</div>
+    <div class="mv-conclusion"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小</strong>——<strong>只用得上 1% 的行，就不该为 100% 的行付维护成本</strong>。<strong>部分索引只给满足谓词的行建索引</strong>，体积与服务范围成正比（<strong>本例约 1/100</strong>），而且<strong>终态化那一步完全不碰它</strong>；它还有 PG 特有的第三项收益：<strong>VACUUM 负担同步下降</strong>。<strong>唯一的关键规则是"谓词必须匹配（可证明蕴含）"</strong>——<code class="mv-md-code">WHERE updated_at &gt; ?</code>（不带 status）<strong>用不上，因为谓词缺失，PG 不敢用（用了会漏终态行）</strong>，<strong>这时只能改写查询，不能靠加索引解决</strong>。<strong>表达式索引把计算结果作为索引键</strong>，让 <code class="mv-md-code">lower(email)</code> 这类条件也能走索引——<strong>两个硬约束是：函数必须 IMMUTABLE（<code class="mv-md-code">now()</code> 不行），且查询要写一模一样的表达式</strong>。<strong>两者组合就是部分唯一索引</strong>（<code class="mv-md-code">UNIQUE (lower(email)) WHERE deleted_at IS NULL</code>），<strong>这是软删除场景的经典解，也最能体现"索引是为业务规则服务"</strong>。<strong>最大的风险是静默失效</strong>——<strong>以后新增一条不匹配谓词的查询就自动走全表扫，而你不会收到通知</strong>，所以<strong>必须把服务范围写进注释</strong>。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>WHERE 谓词</li><li>只索引热子集</li><li>谓词必须匹配（可证明蕴含）</li><li>函数确定性 IMMUTABLE</li><li>部分唯一索引</li><li>软删除</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>价值 = 频率 × 集合大小</strong></li><li>全表索引的四项浪费（体积</li><li>写入</li><li>VACUUM</li><li>统计）</li><li>部分索引体积 ≈ 1</li><li>100</li><li><strong>谓词必须可证明蕴含</strong></li><li>缺谓词 = 用不上（只能改写查询）</li><li><strong>静默失效</strong>是最大风险 → 服务范围要写注释</li><li>表达式索引：把结果作为键</li><li><strong>两个约束：IMMUTABLE + 表达式一模一样</strong></li><li><code class="mv-md-code">now()</code> 不行</li><li><strong>部分唯一索引 = 软删除的经典解</strong></li><li>MySQL 没有部分索引（用 <code class="mv-md-code">(status, updated_at)</code> 但索引仍含全量行）</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「部分索引会不会失效？」</strong></strong></p>
-<p class="mv-md-p">会，而且失效方式是<strong>静默的</strong>：只要查询条件与谓词不再匹配（比如以后加了「查终态任务」的需求），新查询就自动用不上、走全表扫，<strong>而你不会收到任何通知</strong>。所以部分索引必须配一句「它的服务范围是什么」写在注释或文档里——<strong>这是它最大的运维风险。</strong></p>
-<p class="mv-md-p"><strong>2. <strong>「索引多了对 VACUUM 有什么影响？」</strong></strong></p>
-<p class="mv-md-p">每多一个索引，autovacuum 清理死元组时要多处理一棵索引树，<strong>代价从「写放大」延伸到「清理负担」</strong>。所以「索引不是越多越好」在 PG 里的后半句是：<strong>索引越多，表膨胀越难被自动控制住</strong>。这条直接接到主线五，也是 PG 比 MySQL 更在意索引数量的原因。</p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 怎么做软删除的唯一约束？</strong></strong></p>
+<p class="mv-md-p"><strong>部分唯一索引</strong>：<code class="mv-md-code">CREATE UNIQUE INDEX ... ON users (lower(email)) WHERE deleted_at IS NULL</code>。<strong>删掉的行不参与唯一性，所以可以重新注册同一个邮箱。</strong></p>
+<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">LIKE '%xx'</code> 能走索引吗？</strong></strong></p>
+<p class="mv-md-p"><strong>普通 B-tree 不行</strong>（前缀无序）；<strong>PG 的常规解法是 <code class="mv-md-code">pg_trgm</code> + GIN / GiST</strong>。<strong>答这题能顺手展示你知道"扩展"而不是只会内置类型。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>函数写在条件里索引失效，怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>两条路</strong>：<strong>改写成 <code class="mv-md-code">col &gt;= ? AND col &lt; ?</code>（去掉函数）</strong>，或<strong>建表达式索引</strong>。<strong>前者不付额外代价，后者只在改不动 SQL 时用。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>部分索引会不会失效？</strong></strong></p>
+<p class="mv-md-p"><strong>会，而且是静默的</strong>：<strong>查询条件与谓词不再匹配时，新查询自动用不上、走全表扫，而你收不到通知</strong>。<strong>所以必须把服务范围写进注释或文档——这是它最大的运维风险。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>索引多了对 VACUUM 有什么影响？</strong></strong></p>
+<p class="mv-md-p"><strong>每多一个索引，autovacuum 清理死元组要多处理一棵索引树</strong>，<strong>代价从"写放大"延伸到"清理负担"</strong>。<strong>所以"索引不是越多越好"在 PG 里的后半句是："索引越多，表膨胀越难被自动控制住"</strong>（[[母题-P15-VACUUM与事务ID回卷]]）。</p>
 </collapse-panel>
-    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PostgreSQL 怎么做软删除的唯一约束？」——上面的部分唯一索引。<strong>注意：用 <code class="mv-md-code">WHERE deleted_at IS NULL</code> 之后，删掉的行不参与唯一性，所以可以重新注册同一个邮箱。</strong></li><li>「<code class="mv-md-code">LIKE '%xx'</code> 能走索引吗？」——普通 B-tree 不行（前缀无序）；PG 的常规解法是 <code class="mv-md-code">pg_trgm</code> + GIN/GiST 索引。<strong>答这题能顺手展示你知道「扩展」而不是只会内置类型。</strong></li><li>「函数写在条件里索引失效，怎么办？」——两条路：<strong>改写成 <code class="mv-md-code">col &gt;= ? AND col &lt; ?</code>（去掉函数）</strong>，或<strong>建表达式索引</strong>。前者不付额外代价，后者只在改不动 SQL 时用。</li></ul></collapse-panel>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的<strong>任务队列</strong>（<code class="mv-md-code">status</code> 只索引活跃态，正是上面那条 SQL 的真实场景）；数驭穹图的<strong>同步任务表</strong>（只查未完成的任务）。<strong>方言差异（面试安全底线）</strong>：<strong>MySQL 没有部分索引</strong>，同需求要么靠前置过滤 + 组合索引，要么靠业务层改写。被问到时正确说法是「PG 用部分索引；MySQL 里我会用 <code class="mv-md-code">(status, updated_at)</code> 的联合索引，靠最左列过滤，但索引里仍然包含终态行」。</p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">全表索引浪费在哪 → 部分索引的机制 → 谓词必须匹配的规则 → 表达式索引解决什么问题 → 两者组合（部分唯一索引）→ 判据与边界</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小。</strong> 部分索引直接砍掉第二个因子——<strong>「只用得上 1% 的行，就不该为 100% 的行付维护成本」。</strong></p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能对一条真实查询写出部分索引的 DDL，并说清「谓词必须匹配」和「静默失效」这两个风险点。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、全表索引浪费在哪</h3>
-<p class="mv-md-p">调度器只查活跃态，但全表索引包含<strong>所有</strong>行：</p>
-<table class="mv-table"><thead><tr><th>浪费维度</th><th>具体表现</th></tr></thead><tbody><tr><td><strong>体积</strong></td><td>99% 的索引项永远不会被这次查询用到，却一直占空间、占缓存</td></tr><tr><td><strong>写入</strong></td><td>每次「终态化」的更新都要维护这个索引项——<strong>而它永远不会被那条查询用到</strong></td></tr><tr><td><strong>VACUUM 负担</strong></td><td>索引项越多，autovacuum 要清理的索引页越多（这是 PG 特有的第三项，见 P4）</td></tr><tr><td><strong>统计信息</strong></td><td>选择性估算被大量无用值稀释</td></tr></tbody></table>
-<h3 class="mv-md-h mv-md-h3">二、部分索引：把索引做小</h3>
-<pre class="mv-md-pre">CREATE INDEX idx_runs_active
-ON agent_runs (tenant_id, updated_at)
-WHERE status IN ('QUEUED', 'RUNNING', 'WAITING_APPROVAL');</pre>
-<p class="mv-md-p"><strong>效果</strong>：索引里只有活跃行 → 体积涨落跟随活跃量（稳定在一个小规模），<strong>终态化的写入完全不碰这个索引</strong>。</p>
-<p class="mv-md-p"><strong>这就是「调度器扫活跃任务」这类场景的标准做法</strong>——用「状态 + 时间」的队列式捞取，索引只覆盖队内元素。</p>
-<p class="mv-md-p"><strong>唯一的关键规则：谓词必须匹配（可证明蕴含）。</strong></p>
-<table class="mv-table"><thead><tr><th>查询</th><th>能否用上面的索引</th></tr></thead><tbody><tr><td><code class="mv-md-code">WHERE status = 'RUNNING'</code></td><td>✅ 能——<code class="mv-md-code">RUNNING</code> 蕴含在 <code class="mv-md-code">IN (...)</code> 里</td></tr><tr><td><code class="mv-md-code">WHERE status IN ('QUEUED','RUNNING')</code></td><td>✅ 能</td></tr><tr><td><code class="mv-md-code">WHERE status = 'COMPLETED'</code></td><td>❌ 不能</td></tr><tr><td><code class="mv-md-code">WHERE updated_at &gt; ?</code>（不带 status）</td><td>❌ 不能——<strong>谓词缺失，PG 无法证明蕴含</strong></td></tr></tbody></table>
-<p class="mv-md-p"><strong>最后一行是最容易踩的</strong>：「我明明有索引，为什么不走？」——因为查询条件里没有那句 <code class="mv-md-code">WHERE</code> 谓词，PG 不敢用（用了会漏掉终态行）。<strong>这时只能改写查询条件，不能靠加索引解决。</strong></p>
-<h3 class="mv-md-h mv-md-h3">三、表达式索引：让函数也能走索引</h3>
-<pre class="mv-md-pre">CREATE UNIQUE INDEX idx_users_email_lower ON users (lower(email));</pre>
-<p class="mv-md-p"><strong>问题</strong>：<code class="mv-md-code">WHERE lower(email) = ?</code> 在<strong>函数写在列上</strong>的情况下，普通索引完全用不上（索引里存的是原始值，不是 <code class="mv-md-code">lower()</code> 之后的值）。</p>
-<p class="mv-md-p"><strong>PG 的解法</strong>：<strong>把 <code class="mv-md-code">lower(email)</code> 的结果本身作为索引键</strong>。于是「函数导致索引失效」这件事在 PG 里是<strong>可以修的</strong>——不是「必须避免写函数」，而是「要么避免，要么为它建表达式索引」。</p>
-<p class="mv-md-p"><strong>两个硬约束</strong>：</p>
-<p class="mv-md-p">1. <strong>函数必须是 IMMUTABLE（确定性）</strong>。<code class="mv-md-code">lower()</code> 是；<code class="mv-md-code">now()</code> 不是（每次结果不同），所以不能在表达式索引里用。<strong>这是选型前必须查的一件事。</strong> 2. <strong>查询必须写完全一样的表达式</strong>。<code class="mv-md-code">lower(email)</code> 的索引，<code class="mv-md-code">upper(email)</code> 或 <code class="mv-md-code">email ILIKE ?</code> 都用不上。<strong>所以表达式索引某种程度上是「给某一条 SQL 定制的」。</strong></p>
-<h3 class="mv-md-h mv-md-h3">四、两者组合：部分唯一索引（软删除场景的经典解）</h3>
-<p class="mv-md-p">需求：邮箱唯一，但<strong>只在未删除的行里唯一</strong>（软删除后允许同邮箱重新注册）。</p>
-<pre class="mv-md-pre">CREATE UNIQUE INDEX idx_users_email_active
-ON users (lower(email))
-WHERE deleted_at IS NULL;</pre>
-<p class="mv-md-p"><strong>一条语句同时用了部分 + 唯一 + 表达式</strong>：只对「未删除」的行（部分）保证 <code class="mv-md-code">lower(email)</code>（表达式）唯一。<strong>这是最能体现「索引是为业务规则服务」的一个例子</strong>——业务说的是「未删除的邮箱唯一」，索引就应该只约束那部分行。</p>
-<p class="mv-md-p mv-md-quote">MySQL 没有部分索引，同场景通常要靠「软删除时改写唯一列（拼一个后缀）」绕过去——<strong>这是一个可以主动说出来的方言差异</strong>。</p>
-<hr class="mv-md-hr">
-    </collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PG 和 MySQL 在"把索引做小"上的能力差多少？」——<strong>MySQL 只能靠组合索引的"最左列过滤"间接缩小有效范围，但索引里仍然包含全量行</strong>；<strong>PG 的部分索引是真正只存子集</strong>。<strong>这是两者在索引设计上的一个结构性差异</strong>（[[母题-M2-联合索引与最左前缀]]）。</li><li>「表达式索引和生成列（generated column）该选哪个？」——<strong>生成列是"把计算物化到行里"，表达式索引是"把计算物化到索引里"</strong>。<strong>前者能被更多查询用到（任何引用该列的查询），代价是每行多存一份；后者只服务匹配那个表达式的查询，但只占索引空间。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena 的任务队列</strong>（<strong><code class="mv-md-code">status</code> 只索引活跃态，正是上面那条 SQL 的真实场景</strong>）。 - <strong>数驭穹图的同步任务表</strong>（只查未完成的任务）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">全表索引浪费在哪（四项）→ <strong>部分索引的机制与收益算式</strong> → <strong>谓词必须匹配（含"缺谓词"那一行）</strong> → <strong>表达式索引与两个硬约束</strong> → <strong>部分唯一索引（软删除）</strong> → <strong>静默失效的风险</strong> → 收束到"索引是为业务规则服务"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能对一条真实查询写出部分索引的 DDL；<strong>能算出体积约 1/100 并说清写入省掉了哪一部分</strong>；<strong>能对三个查询判断谓词是否匹配（含"缺谓词"那一行）</strong>；<strong>能说出表达式索引的两个硬约束并解释 <code class="mv-md-code">now()</code> 为什么不行</strong>；能写出软删除的部分唯一索引并解释它的语义；<strong>能主动说出"静默失效"这个风险并给出对策</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
   <div class="mv-section">
