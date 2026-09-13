@@ -428,10 +428,19 @@ PAGE = """<!DOCTYPE html>
     <p class="mv-topic-meta">%%META%%</p>
   </div>
 %%GUIDE%%
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 %%PROBLEM%%
 %%LESSON%%
 %%QUIZ%%
-  <div class="mv-section">
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">%%Q%%</p>
@@ -441,13 +450,13 @@ PAGE = """<!DOCTYPE html>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     %%IMPORTANCE%%
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">%%CONCLUSION%%</div>
     %%KEYWORDS%%
   </div>
 %%FIGURES%%%%EXPAND%%%%BODY%%
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>
@@ -576,7 +585,7 @@ def render_topic(t):
 
     expand = ""
     if panels:
-        expand = ('\n  <div class="mv-section">\n'
+        expand = ('\n  <div class="mv-section" id="s-extra">\n'
                   '    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>\n'
                   "    " + "\n    ".join(panels) + "\n  </div>\n")
 
@@ -606,14 +615,14 @@ def render_topic(t):
 
     problem = ""
     if t["problem"]:
-        problem = ('\n  <div class="mv-section">\n    <h2 class="mv-section-title">题目</h2>\n'
+        problem = ('\n  <div class="mv-section" id="s-problem">\n    <h2 class="mv-section-title">题目</h2>\n'
                    '    <div class="mv-problem">%s</div>\n  </div>\n' % md_to_html(t["problem"]))
 
     guide = ('<p class="mv-guide">%s</p>' % inline(t["guide"])) if t.get("guide") else ""
 
     lesson = ""
     if t.get("lesson_html"):
-        lesson = ('<div class="mv-section">'
+        lesson = ('<div class="mv-section" id="s-lesson">'
                   '<h2 class="mv-section-title">一 · 教材 '
                   '<span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2>'
                   '<div class="mv-lesson">%s</div></div>' % t["lesson_html"])
@@ -629,7 +638,7 @@ def render_topic(t):
                        % (esc(it["no"]), esc(it["kind"] or "自测"),
                           attrs(t["key"]), attrs(it["no"]), esc(t["module"]),
                           attrs(card_text(it["q"])), attrs(card_text(it["a"]))))
-        quiz = ('<div class="mv-section">'
+        quiz = ('<div class="mv-section" id="s-quiz">'
                 '<h2 class="mv-section-title">二 · 自测 '
                 '<span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2>'
                 '%s</div>' % _cards)
@@ -1347,7 +1356,10 @@ def render_module_line(md, ln, prev_ln, next_ln):
             blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
             continue
 
-        ctx = '<p class="mv-mt-q">%s</p>' % inline(tc["question"])
+        # 2026-09-13：原来这里再摆一次题目，但卡片头的 mv-mt-name 已经是同一句话
+        #（例："默认 RC 还是 RR？…" vs "PG 默认是 RC 还是 RR？…?"），纯重复。
+        # 头部那份才是可扫的索引，删掉这个灰框，每张卡省 ~44px。
+        ctx = ""
         if tc["problem"]:
             ctx += '<collapse-panel title="题目背景">%s</collapse-panel>' % md_to_html(tc["problem"])
 

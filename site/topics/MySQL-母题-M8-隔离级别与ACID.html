@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M10-锁与死锁 · 母题-M11-三日志与两阶段提交 · 母题-P8-隔离级别与读一致性 ｜ 正本 wiki/topics/MySQL/母题-M8-隔离级别与ACID.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 事务的唯一前提 ② ACID 是推出来的不是背的 ③ 隔离级别是一条取舍谱系）· 读完约 9 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">四个隔离级别各挡住哪个并发问题？ACID 四个字母分别靠什么机制实现？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：事务只有一句话</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：事务只有一句话</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 定义【事实】</h4>
 <p class="mv-md-p"><strong>事务 = 一组动作，一起成功或一起失败。</strong></p>
 <p class="mv-md-p">就这一句。<strong>没有"必须满足 ACID"这种前提</strong>——ACID 是从这一句<strong>推出来的</strong>。</p>
@@ -116,8 +125,8 @@
 <h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"一致性由隔离级别实现"</td><td>【推导】C 是<strong>结果</strong>：A（undo）+ D（redo）+ I（锁+MVCC）+ 约束共同得到，<strong>没有独立的一致性机制</strong></td></tr><tr><td>"RR 完全解决了幻读"</td><td>【推导】快照读靠 MVCC、当前读靠间隙锁，<strong>两种读都不幻读，但混用时会出现"看起来像幻读"</strong>；说"完全解决"是漏了机制</td></tr><tr><td>"隔离级别越高越好"</td><td>【取舍】串行化把读也拉进排队，冲突面从约 1% 回到约 19%（3.2 的估算）</td></tr><tr><td>"MVCC 是 RR 专属"</td><td>【事实】MVCC 是 InnoDB 的基础能力，<strong>RC 下同样生效</strong>，只是快照刷新得更勤（M9）</td></tr><tr><td>"MySQL 和 PG 默认隔离级别一样"</td><td>【事实】<strong>MySQL 默认 RR，PG 默认 RC</strong>。这是最容易被抓住的方言错误——两边连"怎么处理幻读"都不是一套（[[母题-P8-隔离级别与读一致性]]）</td></tr><tr><td>"写写冲突时 MySQL 会报错让我重试"</td><td>【取舍】MySQL 的哲学是<strong>排队等锁</strong>；PG 在 RR 以上会<strong>报序列化失败（40001）让你重试</strong>。"冲突就等"和"冲突就报错"是两种代价模型</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q1" tag="MySQL" q="一个服务的负载里读占 90%、写占 10%。分别估算&quot;读加锁&quot;和&quot;读靠 MVCC 不加锁&quot;两种情况下，并发请求互相阻塞的比例。" a="（按请求对估算，只计数互斥的组合）：&#10;读加锁（S 与 X 互斥）：互斥组合是 读-写 + 写-写 → 2 × 0.9 × 0.1 + 0.1 × 0.1 = 约 19%&#10;读靠 MVCC（读不参与）：互斥组合只剩 写-写 → 0.1 × 0.1 = 约 1%&#10;降低约一个数量级。 口径提醒：这是只按请求类型占比估的粗略模型，真实系统还要看访问同一份数据的倾斜度（热点行会把概率显著推高）。&#10;这个算式的意义：MVCC 的收益不是&quot;更快&quot;，是&quot;把读从冲突里摘出去&quot;——读占比越高收益越大。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q2" tag="MySQL" q="事务 A 依次执行：① BEGIN ② SELECT balance FROM account WHERE id=1（读到 100）③ 事务 B 执行 UPDATE account SET balance=80 WHERE id=1 并 COMMIT ④ A 再执行一次同样的 SELECT。&#10;分别在 RC 和 RR 下，第 ④ 步读到什么？" a="RC：读到 80。RC 每条语句生成一个新的 ReadView，所以能看到 B 刚提交的结果 → 出现不可重复读。&#10;RR：读到 100。RR 在第一次快照读时定住 ReadView 并复用，B 的提交不在这个快照里 → 可重复读。&#10;关键差别只有一个：ReadView 是不是每条语句重新生成。这就是&quot;可重复读&quot;的全部实现（M9 展开）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q3" tag="MySQL" q="要同时满足&quot;回滚能撤销&quot;和&quot;提交后断电不丢&quot;，最少需要哪几个日志组件？各自记的是&quot;改之前&quot;还是&quot;改成什么&quot;？" a="需求 · 组件 · 记什么&#10;回滚能撤销（原子性） · undo log · 改之前的镜像（前镜像）&#10;提交后不丢（持久性） · redo log · 改成什么样（后镜像）&#10;两个都需要，不能省。 记忆点：撤销看前镜像，恢复看后镜像。&#10;【补充】InnoDB 还有一个 binlog，那是 Server 层的归档日志（用于复制和恢复）。它不负责 A 也不负责 D，但它的存在带来一个新问题——两份日志要一致，于是有了两阶段提交（[[母题-M11-三日志与两阶段提交]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;数据库的一致性是通过隔离级别实现的，所以隔离级别越高，一致性越强。&quot;" a="两处都错。&#10;1. &quot;一致性由隔离级别实现&quot; —— C 不是独立机制，它是 A（undo）+ D（redo）+ I（锁与 MVCC）+ 数据库约束共同作用的结果。隔离级别只负责 I 这一项。&#10;2. &quot;隔离级别越高一致性越强&quot; —— 隔离级别提高的是并发正确性，不是&quot;一致性&quot;这个整体属性。而且它有代价：串行化会把读也拉进排队（Q1 的模型里冲突面从约 1% 回到约 19%）。&#10;准确说法：一致性是&quot;事务把数据库从一个合法状态带到另一个合法状态&quot;，它靠 A、D、I 加上约束共同保证；隔离级别只是其中 I 的档位。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都默认使用可重复读，两边处理幻读的方式也一样。&quot;" a="两句都错。&#10;1. 默认值不同：MySQL 默认 RR，PostgreSQL 默认 RC。&#10;2. 幻读处理机制不同：MySQL 用 next-key lock（间隙锁）&quot;挡住&quot;插入；PostgreSQL 根本没有间隙锁，它靠快照 + 在必要时报序列化失败让应用重试。&#10;这两条是面试安全底线——把 MySQL 的语义套到 PG 上（或反过来）是明确错误，一说出来就暴露只在一边工作过。PG 侧的对照见 [[母题-P8-隔离级别与读一致性]] 和 [[母题-P10-无间隙锁与锁变体]]。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q1" tag="MySQL" q="一个服务的负载里读占 90%、写占 10%。分别估算&quot;读加锁&quot;和&quot;读靠 MVCC 不加锁&quot;两种情况下，并发请求互相阻塞的比例。" a="（按请求对估算，只计数互斥的组合）：&#10;读加锁（S 与 X 互斥）：互斥组合是 读-写 + 写-写 → 2 × 0.9 × 0.1 + 0.1 × 0.1 = 约 19%&#10;读靠 MVCC（读不参与）：互斥组合只剩 写-写 → 0.1 × 0.1 = 约 1%&#10;降低约一个数量级。 口径提醒：这是只按请求类型占比估的粗略模型，真实系统还要看访问同一份数据的倾斜度（热点行会把概率显著推高）。&#10;这个算式的意义：MVCC 的收益不是&quot;更快&quot;，是&quot;把读从冲突里摘出去&quot;——读占比越高收益越大。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q2" tag="MySQL" q="事务 A 依次执行：① BEGIN ② SELECT balance FROM account WHERE id=1（读到 100）③ 事务 B 执行 UPDATE account SET balance=80 WHERE id=1 并 COMMIT ④ A 再执行一次同样的 SELECT。&#10;分别在 RC 和 RR 下，第 ④ 步读到什么？" a="RC：读到 80。RC 每条语句生成一个新的 ReadView，所以能看到 B 刚提交的结果 → 出现不可重复读。&#10;RR：读到 100。RR 在第一次快照读时定住 ReadView 并复用，B 的提交不在这个快照里 → 可重复读。&#10;关键差别只有一个：ReadView 是不是每条语句重新生成。这就是&quot;可重复读&quot;的全部实现（M9 展开）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q3" tag="MySQL" q="要同时满足&quot;回滚能撤销&quot;和&quot;提交后断电不丢&quot;，最少需要哪几个日志组件？各自记的是&quot;改之前&quot;还是&quot;改成什么&quot;？" a="需求 · 组件 · 记什么&#10;回滚能撤销（原子性） · undo log · 改之前的镜像（前镜像）&#10;提交后不丢（持久性） · redo log · 改成什么样（后镜像）&#10;两个都需要，不能省。 记忆点：撤销看前镜像，恢复看后镜像。&#10;【补充】InnoDB 还有一个 binlog，那是 Server 层的归档日志（用于复制和恢复）。它不负责 A 也不负责 D，但它的存在带来一个新问题——两份日志要一致，于是有了两阶段提交（[[母题-M11-三日志与两阶段提交]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;数据库的一致性是通过隔离级别实现的，所以隔离级别越高，一致性越强。&quot;" a="两处都错。&#10;1. &quot;一致性由隔离级别实现&quot; —— C 不是独立机制，它是 A（undo）+ D（redo）+ I（锁与 MVCC）+ 数据库约束共同作用的结果。隔离级别只负责 I 这一项。&#10;2. &quot;隔离级别越高一致性越强&quot; —— 隔离级别提高的是并发正确性，不是&quot;一致性&quot;这个整体属性。而且它有代价：串行化会把读也拉进排队（Q1 的模型里冲突面从约 1% 回到约 19%）。&#10;准确说法：一致性是&quot;事务把数据库从一个合法状态带到另一个合法状态&quot;，它靠 A、D、I 加上约束共同保证；隔离级别只是其中 I 的档位。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M8-隔离级别与ACID-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都默认使用可重复读，两边处理幻读的方式也一样。&quot;" a="两句都错。&#10;1. 默认值不同：MySQL 默认 RR，PostgreSQL 默认 RC。&#10;2. 幻读处理机制不同：MySQL 用 next-key lock（间隙锁）&quot;挡住&quot;插入；PostgreSQL 根本没有间隙锁，它靠快照 + 在必要时报序列化失败让应用重试。&#10;这两条是面试安全底线——把 MySQL 的语义套到 PG 上（或反过来）是明确错误，一说出来就暴露只在一边工作过。PG 侧的对照见 [[母题-P8-隔离级别与读一致性]] 和 [[母题-P10-无间隙锁与锁变体]]。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？</p>
@@ -127,7 +136,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">事务就是"一组动作一起成败"。<strong>A 靠 undo（前镜像）、D 靠 redo（后镜像）、I 靠锁管写写 + MVCC 管读写、C 是前三者加约束共同得到的结果——它不是独立机制。</strong> 并发三问题是脏读、不可重复读、幻读，四个隔离级别逐级挡住它们，越严格并发越低。<strong>InnoDB 默认 RR，靠 MVCC 挡快照读的幻读、靠间隙锁挡当前读的幻读。</strong></div>
     
@@ -136,7 +145,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照</strong>——<strong>注意 40001 不是 RC 的行为</strong>：PG 在 <strong>RR 及以上</strong>才会因写冲突报序列化失败让你重试，<strong>默认的 RC 下它同样表现为等待 + 对更新后的版本重新求值</strong>（[[母题-P8-隔离级别与读一致性]]）。MySQL 靠锁"挡住"幻读；PG 没有间隙锁，靠检测冲突报错。<strong>默认值、幻读处理方式、冲突表现三项全不同</strong>——这是全库最容易说反的一组对照。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 A 是 undo、D 是 redo，不能反过来？</strong></strong></p>
@@ -155,7 +164,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能不看资料说清三个并发问题的区别、四个级别各自挡住什么，并<strong>按"undo / redo / 锁+MVCC / 结果"回答 ACID</strong>；能说清默认 RR 是历史 + 权衡，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-G1-切分策略与索引粒度（被检索的块从哪来）· 母题-G3-重排与召回质量（召回之后的那一步）· 母题-R1-Redis数据结构与选型（跳表——HNSW 的思想同源） ｜ 正本 wiki/topics/RAG与检索/母题-G2-向量与关键词的混合检索.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 两路检索的盲区互补，不是一个比另一个先进 ② ANN 是算力逼出来的，不是精度优化 ③ RRF 为什么不拼分数）· 读完约 14 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的检索是怎么做的？为什么既要用向量又要用关键词？"</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：两路检索的盲区正好互补</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：两路检索的盲区正好互补</h3>
 <table class="mv-table"><thead><tr><th></th><th>强项</th><th>弱项</th></tr></thead><tbody><tr><td><strong>BM25 / 关键词</strong></td><td><strong>专有名词、编号、精确短语</strong>、可解释</td><td><strong>同义表达与语义泛化弱</strong></td></tr><tr><td><strong>Dense Vector</strong></td><td><strong>语义相似、自然语言改写</strong></td><td><strong>编号 / 罕见词弱</strong>，且受 Embedding 版本影响</td></tr><tr><td><strong>Hybrid</strong></td><td>同时覆盖精确与语义</td><td><strong>需要融合、去重和调参</strong></td></tr></tbody></table>
 <p class="mv-md-p">【事实】<strong>得物文章给的那个反例最直观</strong>：</p>
 <pre class="mv-md-pre">搜 "SLB-20250101-abc" 这种 trace ID
@@ -174,8 +183,8 @@ doc_B：两路都第 5
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"向量检索比 BM25 先进，全用向量就行"</td><td><strong>反例很硬</strong>：搜 <code class="mv-md-code">SLB-20250101-abc</code> 这种 trace ID，<strong>Embedding 模型无能为力</strong>（语义向量对专有编码不敏感），BM25 才是正解。<strong>两者盲区不重叠，所以企业库通常两路都要</strong></td></tr><tr><td>"直接给两路分数加权求和就行"</td><td><strong>量纲不可比</strong>（余弦 ∈ [0,1]，BM25 无上界），加权要调参且换数据集就失效。<strong>RRF 扔掉分数只看排名，不需要调参</strong></td></tr><tr><td>"RRF 就是取平均"</td><td><strong>不是</strong>。它是 <code class="mv-md-code">Σ 1/(k+排名)</code>——<strong>奖励"多路共识"</strong>：一路第 1、另一路第 10 的文档（0.0307）<strong>排不过两路都第 5 的</strong>（0.0308）</td></tr><tr><td>"向量维度越高检索越准"</td><td><strong>维度由模型决定，不是调优项</strong>。而且<strong>换模型就换维度，整个索引必须重建</strong>——所以 Embedding 版本必须进版本管理，新旧向量<strong>不可比</strong></td></tr><tr><td>"向量库慢就加机器"</td><td><strong>多半是索引选型问题</strong>。精确 KNN 是 O(N×D)（100 万 × 1536 维 ≈ 1.5 秒/次），<strong>必须用 ANN</strong>；百万级以内 HNSW、千万级 IVF、亿级 DiskANN 或分片</td></tr><tr><td>"先把全部召回来，再让模型别说没权限的"</td><td><strong>这是明确的数据泄露</strong>——未授权内容一旦进入上下文就已经出去了；而且它会挤占预算、还可能进日志和缓存。<strong>权限必须在召回前生效</strong></td></tr><tr><td>"HNSW 保证找到最近的"</td><td><strong>它是近似算法，不保证命中全局最近邻</strong>——这是所有 ANN 的共同取舍：<strong>用可控的召回损失换数量级性能</strong>。要 100% 精确就得回到 O(N×D)</td></tr></tbody></table>
 <p class="mv-md-p">【取舍】读成一句话：<strong>"用哪一路"不是先进性问题，是"你的查询里有多少是专有编码、有多少是自然语言"——所以要按查询类型分桶评测来定，而不是拍脑袋。</strong></p>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q1" tag="RAG与检索" q="向量库里有 100 万条 1536 维向量。&#10;问：精确 KNN 一次查询要做多少次浮点运算？假设每次运算 1 纳秒，单次查询要多久？" a="``text&#10;精确 KNN 复杂度 = O(N × D)&#10;= 1,000,000 × 1536&#10;= 1,536,000,000 次浮点运算（约 15.36 亿次）&#10;按每次 1ns：&#10;= 15.36 亿 × 1ns = 1.536 秒 / 次查询&#10;``&#10;【结论】单次查询约 1.5 秒——而这还只是单条的代价，并发一来直接崩。&#10;【推论】ANN（近似最近邻）不是&quot;精度优化&quot;，是算力逼出来的：用可控的召回损失换数量级的性能。所有 ANN 算法共享这个取舍，HNSW 只是其中平衡得最好的一个。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q2" tag="RAG与检索" q="HNSW 有 100 万个节点，每层晋升概率约为 1/M（M = 16）。&#10;问：第 1 到第 5 层各有多少节点？最高大约几层？这个衰减规律叫什么？" a="``text&#10;第 1 层 ≈ 1,000,000 / 16 = 62,500&#10;第 2 层 ≈ 3,906&#10;第 3 层 ≈ 244&#10;第 4 层 ≈ 15&#10;第 5 层 ≈ 1&#10;→ 最高约 5 层&#10;``&#10;【结论】层级越高节点越少（指数衰减）——上层节点极少，但每个节点都要连 M 个邻居，所以这些边自然跨越很远，正好用来&quot;快速通道&quot;式地粗定位。&#10;【补充】这是跳表思想的直接移植（[[母题-R1-Redis数据结构与选型]]）。区别在于：跳表靠&quot;大小比较&quot;导航，而向量没有大小概念，所以 HNSW 必须再加一个&quot;贪心搜索&quot;在图里导航——分层 + 贪心，两者合起来才是 HNSW 的全部核心。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q3" tag="RAG与检索" q="用 RRF 融合两路结果，k 取 60。&#10;``text&#10;doc_A：ANN 排第 1，BM25 排第 10&#10;doc_B：两路都排第 5&#10;``&#10;问：两篇文档的 RRF 分数分别是多少？谁更高？这说明 RRF 在奖励什么？" a="``text&#10;doc_A = 1/(60+1) + 1/(60+10)&#10;= 1/61 + 1/70&#10;= 0.01639 + 0.01429&#10;= 0.03068&#10;doc_B = 1/(60+5) + 1/(60+5)&#10;= 1/65 + 1/65&#10;= 0.01538 × 2&#10;= 0.03077&#10;doc_B 略高（0.03077 &gt; 0.03068）&#10;``&#10;【结论】一路第一、另一路第十的文档，排不过&quot;两路都在前列&quot;的文档。&#10;【推论】RRF 奖励的是&quot;多路共识&quot;，不是&quot;单路极端强&quot;。 这正好对应它的设计目标：不偏向任何一路——因为两路各自有盲区（Dense 不懂专有编码、BM25 不懂同义改写），&quot;两路都认为它相关&quot;比&quot;一路强烈认为它相关&quot;更可信。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们用向量检索就够了，语义检索比关键词检索先进得多。&quot;" a="三处问题。&#10;1. 两路的盲区不重叠，不是先进性问题：向量检索对专有编码（SLB-20250101-abc 这类 trace ID、订单号、错误码）无能为力——语义向量在那里几乎没有信号。而这恰恰是企业知识库里最常见的一类查询。&#10;2. BM25 还有可解释性优势：它能告诉你&quot;命中了哪个词&quot;，这在排查和给用户看依据时很有用。&#10;3. 混合也不是免费的：要用 RRF 之类的方式融合（不能直接加分数，量纲不可比），还要处理去重。&#10;【准确说法】&quot;应该按查询类型分桶评测来决定权重：专有名词、编号、错误码偏 BM25；自然语言同义改写偏向量；企业知识通常混合检索后重排。这是得物那篇文章和 study/03 的共同结论。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;权限控制放在生成阶段就行——把全部文档召回，然后让模型不要说出没权限的内容。&quot;" a="这是明确的数据泄露，不是优化点。&#10;1. 未授权内容一旦进入上下文，就已经&quot;出去&quot;了——模型是否说出来是概率问题，不是权限控制。这等于把权限交给模型的自觉。&#10;2. 它会挤占上下文预算：无关且未授权的内容占掉的位置，本该给真正有用的证据（[[母题-C1-上下文组装与窗口预算]]）。&#10;3. 还可能从别的渠道漏出去：日志、Trace、缓存都可能记录下召回的原文——而&quot;日志里不能有敏感原文&quot;本身也是要求。&#10;【准确说法】&quot;身份 / 租户 / 角色 → 策略决策 → 生成 ACL Filter → 受权召回 → 生成与引用。权限必须在召回前生效。 而且要专门测：跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染。&quot;&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q1" tag="RAG与检索" q="向量库里有 100 万条 1536 维向量。&#10;问：精确 KNN 一次查询要做多少次浮点运算？假设每次运算 1 纳秒，单次查询要多久？" a="``text&#10;精确 KNN 复杂度 = O(N × D)&#10;= 1,000,000 × 1536&#10;= 1,536,000,000 次浮点运算（约 15.36 亿次）&#10;按每次 1ns：&#10;= 15.36 亿 × 1ns = 1.536 秒 / 次查询&#10;``&#10;【结论】单次查询约 1.5 秒——而这还只是单条的代价，并发一来直接崩。&#10;【推论】ANN（近似最近邻）不是&quot;精度优化&quot;，是算力逼出来的：用可控的召回损失换数量级的性能。所有 ANN 算法共享这个取舍，HNSW 只是其中平衡得最好的一个。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q2" tag="RAG与检索" q="HNSW 有 100 万个节点，每层晋升概率约为 1/M（M = 16）。&#10;问：第 1 到第 5 层各有多少节点？最高大约几层？这个衰减规律叫什么？" a="``text&#10;第 1 层 ≈ 1,000,000 / 16 = 62,500&#10;第 2 层 ≈ 3,906&#10;第 3 层 ≈ 244&#10;第 4 层 ≈ 15&#10;第 5 层 ≈ 1&#10;→ 最高约 5 层&#10;``&#10;【结论】层级越高节点越少（指数衰减）——上层节点极少，但每个节点都要连 M 个邻居，所以这些边自然跨越很远，正好用来&quot;快速通道&quot;式地粗定位。&#10;【补充】这是跳表思想的直接移植（[[母题-R1-Redis数据结构与选型]]）。区别在于：跳表靠&quot;大小比较&quot;导航，而向量没有大小概念，所以 HNSW 必须再加一个&quot;贪心搜索&quot;在图里导航——分层 + 贪心，两者合起来才是 HNSW 的全部核心。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q3" tag="RAG与检索" q="用 RRF 融合两路结果，k 取 60。&#10;``text&#10;doc_A：ANN 排第 1，BM25 排第 10&#10;doc_B：两路都排第 5&#10;``&#10;问：两篇文档的 RRF 分数分别是多少？谁更高？这说明 RRF 在奖励什么？" a="``text&#10;doc_A = 1/(60+1) + 1/(60+10)&#10;= 1/61 + 1/70&#10;= 0.01639 + 0.01429&#10;= 0.03068&#10;doc_B = 1/(60+5) + 1/(60+5)&#10;= 1/65 + 1/65&#10;= 0.01538 × 2&#10;= 0.03077&#10;doc_B 略高（0.03077 &gt; 0.03068）&#10;``&#10;【结论】一路第一、另一路第十的文档，排不过&quot;两路都在前列&quot;的文档。&#10;【推论】RRF 奖励的是&quot;多路共识&quot;，不是&quot;单路极端强&quot;。 这正好对应它的设计目标：不偏向任何一路——因为两路各自有盲区（Dense 不懂专有编码、BM25 不懂同义改写），&quot;两路都认为它相关&quot;比&quot;一路强烈认为它相关&quot;更可信。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们用向量检索就够了，语义检索比关键词检索先进得多。&quot;" a="三处问题。&#10;1. 两路的盲区不重叠，不是先进性问题：向量检索对专有编码（SLB-20250101-abc 这类 trace ID、订单号、错误码）无能为力——语义向量在那里几乎没有信号。而这恰恰是企业知识库里最常见的一类查询。&#10;2. BM25 还有可解释性优势：它能告诉你&quot;命中了哪个词&quot;，这在排查和给用户看依据时很有用。&#10;3. 混合也不是免费的：要用 RRF 之类的方式融合（不能直接加分数，量纲不可比），还要处理去重。&#10;【准确说法】&quot;应该按查询类型分桶评测来决定权重：专有名词、编号、错误码偏 BM25；自然语言同义改写偏向量；企业知识通常混合检索后重排。这是得物那篇文章和 study/03 的共同结论。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G2-向量与关键词的混合检索-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;权限控制放在生成阶段就行——把全部文档召回，然后让模型不要说出没权限的内容。&quot;" a="这是明确的数据泄露，不是优化点。&#10;1. 未授权内容一旦进入上下文，就已经&quot;出去&quot;了——模型是否说出来是概率问题，不是权限控制。这等于把权限交给模型的自觉。&#10;2. 它会挤占上下文预算：无关且未授权的内容占掉的位置，本该给真正有用的证据（[[母题-C1-上下文组装与窗口预算]]）。&#10;3. 还可能从别的渠道漏出去：日志、Trace、缓存都可能记录下召回的原文——而&quot;日志里不能有敏感原文&quot;本身也是要求。&#10;【准确说法】&quot;身份 / 租户 / 角色 → 策略决策 → 生成 ACL Filter → 受权召回 → 生成与引用。权限必须在召回前生效。 而且要专门测：跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">语义检索和关键词检索各自强在哪、弱在哪——为什么企业知识库通常两路都要？两路结果怎么合，权限又该在哪一步生效？</p>
@@ -185,7 +194,7 @@ doc_B：两路都第 5
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是 RAG 面试的<strong>必答题</strong>，也是最能区分"用过"和"照文档搭过"的一题。答"我们用向量库"会被追问到崩；<strong>答出"两路各有盲区、融合要处理量纲不可比、权限必须在召回前生效"才算过关</strong>。</p>
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>两路检索的盲区不重叠，所以企业知识库通常两路都要</strong>——BM25 强在专有名词 / 编号 / 精确短语（搜 <code class="mv-md-code">SLB-20250101-abc</code> 这种 trace ID，<strong>Embedding 无能为力</strong>），Dense 强在语义改写真（搜"数据库连接池"能命中"DB connection pool 配置"）。向量这一路：<strong>余弦相似度是默认</strong>（因为模型训练时就用它优化），<strong>维度由模型决定、换模型必须重建索引</strong>。<strong>精确 KNN 是 O(N×D)</strong>——100 万 × 1536 维 = <strong>15.36 亿次运算 ≈ 1.5 秒/次</strong>，所以<strong>必须用 ANN</strong>；<strong>HNSW = 跳表分层 + 图上贪心导航</strong>（100 万节点约 5–6 层），<strong>百万级以内 HNSW、千万级 IVF、亿级 DiskANN 或分片</strong>。两路融合用 <strong>RRF</strong>：<code class="mv-md-code">Σ 1/(k+排名)</code>，<strong>因为两路分数量纲不可比</strong>（余弦 ∈ [0,1]，BM25 无上界），RRF <strong>奖励多路共识</strong>——一路第 1 另一路第 10（0.0307）排不过两路都第 5（0.0308）。最后一条最容易答错：<strong>权限必须在召回前生效</strong>，先召回再让模型"别说"是<strong>已经泄露</strong>。</div>
     
@@ -194,7 +203,7 @@ doc_B：两路都第 5
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>向量检索和 BM25 怎么选？</strong></strong></p>
 <p class="mv-md-p"><strong>按查询类型分桶评测</strong>：专有名词、编号、错误码偏 BM25；自然语言同义改写偏向量；<strong>企业知识通常混合检索后重排</strong>。<strong>选择由数据决定，不由偏好决定。</strong></p>
@@ -214,7 +223,7 @@ doc_B：两路都第 5
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出两路的盲区各给一个反例；<strong>能算出精确 KNN 的 15.36 亿次运算与约 1.5 秒</strong>；<strong>能算出 HNSW 的层级分布与"100 万节点约 5–6 层"</strong>；<strong>能算出 RRF 的 0.0307 vs 0.0308 并解释它在奖励什么</strong>；能说清"权限必须在召回前"的三条理由；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

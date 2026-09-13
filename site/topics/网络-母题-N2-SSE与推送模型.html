@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-N1-一次请求的完整路径 · 母题-N3-进程线程与协程 ｜ 正本 wiki/topics/网络/母题-N2-SSE与推送模型.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 长连接 / 无状态 / 双向是三个正交维度 ② SSE 精确定义 ③ 生产里的两个坑）· 读完约 9 分钟 · 需要先懂：[[母题-N1-一次请求的完整路径]]（无状态 ≠ 短连接）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">通过 SSE 推送长任务的进度，SSE 是什么？<strong>是长连接吗？</strong> 和 WebSocket、长轮询的本质区别是什么？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把三个容易混在一起的概念分开</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把三个容易混在一起的概念分开</h3>
 <p class="mv-md-p"><strong>9.9 那道题答错，根子就在这里——把不同层面的概念混成了一个问题。</strong> 先把三个维度立起来：</p>
 <h4 class="mv-md-h mv-md-h4">1.1 三个正交的维度【事实】</h4>
 <table class="mv-table"><thead><tr><th>维度</th><th>属于哪一层</th><th>取值</th><th>问的是</th></tr></thead><tbody><tr><td><strong>连接时长</strong></td><td><strong>传输层</strong>（TCP）</td><td>短连接 / 长连接</td><td>这条连接<strong>开多久</strong></td></tr><tr><td><strong>是否保存状态</strong></td><td><strong>应用层</strong>（HTTP 语义）</td><td>无状态 / 有状态</td><td>服务端<strong>记不记得你</strong></td></tr><tr><td><strong>通信方向</strong></td><td>应用层</td><td>单向 / 双向</td><td>谁能主动发</td></tr></tbody></table>
@@ -121,8 +130,8 @@
 <h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"SSE 是短连接"</td><td>【事实】<strong>错。SSE 是长连接</strong>——服务端保持响应不结束。<strong>这正是 9.9 当场答错的那一处，必须一条不错地纠正过来</strong></td></tr><tr><td>"SSE 和 WebSocket 差不多，都是长连接"</td><td>【事实】<strong>方向不同</strong>：SSE <strong>单向</strong>（服务端→客户端），WebSocket <strong>双向</strong>；SSE 跑在 HTTP 上，WebSocket 要协议升级。<strong>"都是长连接"只描述了传输层，没描述应用层</strong></td></tr><tr><td>"SSE 就是普通 HTTP 响应，过网关不用任何配置"</td><td>【取舍】<strong>代理默认会缓冲</strong>，必须关掉（<code class="mv-md-code">X-Accel-Buffering: no</code>），否则数据会被攒着不发</td></tr><tr><td>"SSE 自带重连，所以不会丢消息"</td><td>【推导】<strong>重连 ≠ 不漏</strong>。要配合事件 ID + <code class="mv-md-code">Last-Event-ID</code> 才能续推</td></tr><tr><td>"长轮询就是短轮询加了个超时"</td><td>【事实】<strong>本质区别在"服务端是否按住请求"</strong>：短轮询立刻返回（大量空跑），长轮询 hold 住直到有数据。<strong>占用资源的方式也不同</strong>（长轮询会挂起请求上下文）</td></tr><tr><td>"能用 WebSocket 就用 WebSocket"</td><td>【取舍】WebSocket 要协议升级、要自己做心跳与重连、网关可能不支持。<strong>只需要单向推送时，SSE 的工程成本低得多</strong></td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q1" tag="网络" q="一个进度页有 1000 个在线用户。若用短轮询、每 1 秒问一次，而后端平均每 100 秒才产生一条新进度。&#10;问：服务端每秒要处理多少请求？其中&quot;无效请求&quot;占多少？改成 SSE 后大约是多少？" a="短轮询：1000 用户 × 1 次/秒 = 1000 QPS&#10;真正有新数据的比例 = 1 / 100 = 1% → 约 990 QPS 是空轮询（问了个寂寞）&#10;SSE：1000 条长连接（建立时各一次请求），之后只在有事件时发数据 → 服务端要&quot;处理&quot;的请求从 1000/s 降到约 10/s&#10;量级差 100 倍，而且在连接数不变的前提下。&#10;【推论】这就是推送模型的价值来源：把&quot;客户端不停问&quot;换成&quot;服务端有事才说&quot;。 但代价是服务端要为每条长连接保持状态（这就是 N3 要讲的&quot;怎么扛住很多连接&quot;）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q2" tag="网络" q="下面三个场景分别该选什么？（从 短轮询 / 长轮询 / SSE / WebSocket 里选，并说明理由）&#10;① 一个 AI 对话页面，用户看到的是模型逐字返回的答案&#10;② 规则审查任务跑 5 分钟，前端要显示当前进度和已发现的问题数&#10;③ 一个协作白板，多人同时拖拽图形，要实时同步" a="场景 · 选择 · 理由&#10;① LLM 逐字输出 · SSE（或流式 HTTP 响应） · 单向（服务端→客户端）、持续事件流、要复用现有 HTTP 网关 —— 三条全中&#10;② 长任务进度 · SSE（或直接用轮询查状态） · 如果&quot;只要最新状态、过程不重要&quot;，轮询更简单；如果要&quot;逐条事件&quot;（进度+问题列表），用 SSE&#10;③ 多人协作 · WebSocket · 需要双向：客户端不断上送自己的操作，服务端广播给别人&#10;关键：②这一格两可，取决于&quot;客户端要的是状态还是事件流&quot;——能把这个判断说出来，比直接答 SSE 更能体现理解。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q3" tag="网络" q="HTTP/1.1 下，浏览器对同一域名允许约 6 个并发连接。一个页面已经用了 1 个 SSE。此时页面同时发起 8 个普通接口请求，会发生什么？" a="可用连接 = 6 − 1（SSE 独占）= 5 个&#10;8 个请求里，5 个先发，剩下 3 个排队等前面完成&#10;现象：普通接口&quot;变慢&quot;了，因为它们在等前面的请求释放连接&#10;【推论】所以 SSE 不是&quot;零成本的长连接&quot;——它在 HTTP/1.1 下要占掉一份宝贵的连接配额。 解法是 HTTP/2（多路复用，一条连接跑多个流）。&#10;这条能答出来，说明不是背了 SSE 的定义，而是想过它上线之后会碰到什么。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q4" tag="网络" q="下面这段话哪里错了？&#10;&quot;SSE 是通过 HTTP 实现的，而 HTTP 是无状态的短连接，所以 SSE 本质上还是短连接，只是服务端推得比较频繁。&quot;" a="全错，而且错在两个概念上。错误链条是：&#10;1. &quot;HTTP 是短连接的&quot; —— 不对。HTTP/1.1 默认就是长连接（Keep-Alive），加上连接池，同一条 TCP 连接会被复用（N1 第 2.4、Q5）。&quot;无状态&quot;是应用层语义，&quot;短连接&quot;是传输层事实，两者互不决定。&#10;2. &quot;所以 SSE 是短连接&quot; —— 反了。SSE 恰恰是长连接：客户端发一次请求，服务端保持这个响应不结束，持续往回推。连接一直开着，这是它的定义。&#10;准确说法：SSE 是基于 HTTP 的长连接——它长在&quot;服务端不结束这个响应&quot;上，而不是长在&quot;客户端反复发请求&quot;上（那是长轮询）。&#10;这是 9.9 全场唯一一处明确的概念性错误。 记住一句话：&#10;SSE 是长连接；它是单向的；它跑在普通 HTTP 上。 三句都要说全。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q5" tag="网络" q="下面这段话哪里不准确？&#10;&quot;SSE 就是服务端不结束 HTTP 响应，所以它和普通接口一样过网关，不需要任何额外配置。&quot;" a="&quot;不需要任何额外配置&quot;是错的——反向代理默认会缓冲响应。&#10;Nginx 之类的代理会攒够一定量再转发。对普通接口无所谓，对 SSE 是致命的：&#10;数据被攒着不发 → 客户端看到的进度是&quot;长时间没动静，然后一次跳一大段&quot;&#10;而不是&quot;平滑地一条条出来&quot;&#10;必须做的两件事：&#10;配置 · 作用&#10;关掉该响应的缓冲（X-Accel-Buffering: no / proxy_buffering off） · 让数据立即穿过去&#10;定期发心跳注释行 · 防空闲连接被中间设备（网关/NAT/LB）当死连接回收&#10;【取舍】这两条都是&quot;上线才发现&quot;的坑——它们不在 SSE 的定义里，但在生产里一定会遇到。能把它们说出来，是从&quot;知道 SSE&quot;到&quot;用过 SSE&quot;的分界。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q1" tag="网络" q="一个进度页有 1000 个在线用户。若用短轮询、每 1 秒问一次，而后端平均每 100 秒才产生一条新进度。&#10;问：服务端每秒要处理多少请求？其中&quot;无效请求&quot;占多少？改成 SSE 后大约是多少？" a="短轮询：1000 用户 × 1 次/秒 = 1000 QPS&#10;真正有新数据的比例 = 1 / 100 = 1% → 约 990 QPS 是空轮询（问了个寂寞）&#10;SSE：1000 条长连接（建立时各一次请求），之后只在有事件时发数据 → 服务端要&quot;处理&quot;的请求从 1000/s 降到约 10/s&#10;量级差 100 倍，而且在连接数不变的前提下。&#10;【推论】这就是推送模型的价值来源：把&quot;客户端不停问&quot;换成&quot;服务端有事才说&quot;。 但代价是服务端要为每条长连接保持状态（这就是 N3 要讲的&quot;怎么扛住很多连接&quot;）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q2" tag="网络" q="下面三个场景分别该选什么？（从 短轮询 / 长轮询 / SSE / WebSocket 里选，并说明理由）&#10;① 一个 AI 对话页面，用户看到的是模型逐字返回的答案&#10;② 规则审查任务跑 5 分钟，前端要显示当前进度和已发现的问题数&#10;③ 一个协作白板，多人同时拖拽图形，要实时同步" a="场景 · 选择 · 理由&#10;① LLM 逐字输出 · SSE（或流式 HTTP 响应） · 单向（服务端→客户端）、持续事件流、要复用现有 HTTP 网关 —— 三条全中&#10;② 长任务进度 · SSE（或直接用轮询查状态） · 如果&quot;只要最新状态、过程不重要&quot;，轮询更简单；如果要&quot;逐条事件&quot;（进度+问题列表），用 SSE&#10;③ 多人协作 · WebSocket · 需要双向：客户端不断上送自己的操作，服务端广播给别人&#10;关键：②这一格两可，取决于&quot;客户端要的是状态还是事件流&quot;——能把这个判断说出来，比直接答 SSE 更能体现理解。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q3" tag="网络" q="HTTP/1.1 下，浏览器对同一域名允许约 6 个并发连接。一个页面已经用了 1 个 SSE。此时页面同时发起 8 个普通接口请求，会发生什么？" a="可用连接 = 6 − 1（SSE 独占）= 5 个&#10;8 个请求里，5 个先发，剩下 3 个排队等前面完成&#10;现象：普通接口&quot;变慢&quot;了，因为它们在等前面的请求释放连接&#10;【推论】所以 SSE 不是&quot;零成本的长连接&quot;——它在 HTTP/1.1 下要占掉一份宝贵的连接配额。 解法是 HTTP/2（多路复用，一条连接跑多个流）。&#10;这条能答出来，说明不是背了 SSE 的定义，而是想过它上线之后会碰到什么。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q4" tag="网络" q="下面这段话哪里错了？&#10;&quot;SSE 是通过 HTTP 实现的，而 HTTP 是无状态的短连接，所以 SSE 本质上还是短连接，只是服务端推得比较频繁。&quot;" a="全错，而且错在两个概念上。错误链条是：&#10;1. &quot;HTTP 是短连接的&quot; —— 不对。HTTP/1.1 默认就是长连接（Keep-Alive），加上连接池，同一条 TCP 连接会被复用（N1 第 2.4、Q5）。&quot;无状态&quot;是应用层语义，&quot;短连接&quot;是传输层事实，两者互不决定。&#10;2. &quot;所以 SSE 是短连接&quot; —— 反了。SSE 恰恰是长连接：客户端发一次请求，服务端保持这个响应不结束，持续往回推。连接一直开着，这是它的定义。&#10;准确说法：SSE 是基于 HTTP 的长连接——它长在&quot;服务端不结束这个响应&quot;上，而不是长在&quot;客户端反复发请求&quot;上（那是长轮询）。&#10;这是 9.9 全场唯一一处明确的概念性错误。 记住一句话：&#10;SSE 是长连接；它是单向的；它跑在普通 HTTP 上。 三句都要说全。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N2-SSE与推送模型-q5" tag="网络" q="下面这段话哪里不准确？&#10;&quot;SSE 就是服务端不结束 HTTP 响应，所以它和普通接口一样过网关，不需要任何额外配置。&quot;" a="&quot;不需要任何额外配置&quot;是错的——反向代理默认会缓冲响应。&#10;Nginx 之类的代理会攒够一定量再转发。对普通接口无所谓，对 SSE 是致命的：&#10;数据被攒着不发 → 客户端看到的进度是&quot;长时间没动静，然后一次跳一大段&quot;&#10;而不是&quot;平滑地一条条出来&quot;&#10;必须做的两件事：&#10;配置 · 作用&#10;关掉该响应的缓冲（X-Accel-Buffering: no / proxy_buffering off） · 让数据立即穿过去&#10;定期发心跳注释行 · 防空闲连接被中间设备（网关/NAT/LB）当死连接回收&#10;【取舍】这两条都是&quot;上线才发现&quot;的坑——它们不在 SSE 的定义里，但在生产里一定会遇到。能把它们说出来，是从&quot;知道 SSE&quot;到&quot;用过 SSE&quot;的分界。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">SSE 是长连接吗？三种推送方式该怎么选？</p>
@@ -132,7 +141,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>SSE 是基于 HTTP 的长连接</strong>——客户端发一次请求，服务端保持响应不结束，以 <code class="mv-md-code">text/event-stream</code> 持续单向推送，自带断线重连（<code class="mv-md-code">Last-Event-ID</code>）与事件 ID，<strong>跑在普通 HTTP 上所以过网关不用额外改造</strong>。它和长轮询的区别是"服务端按住请求 vs 客户端反复发"；和 WebSocket 的区别是"<strong>单向且复用 HTTP</strong> vs <strong>双向但要协议升级</strong>"。<strong>选型判据是两个问题：要不要双向？要事件流还是只要最新状态？</strong></div>
     
@@ -141,7 +150,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>SSE 的行为强依赖链路上的代理与网关配置</strong>——同一个服务在直连时正常，加了网关就可能"卡住不发"（缓冲）或"几分钟断一次"（空闲超时）。<strong>所以面试时要说"它跑在 HTTP 上，但代理需要配合关缓冲和加心跳"，而不是简单地说"无需配置"。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>SSE 和 WebSocket 到底怎么选？</strong></strong></p>
@@ -160,7 +169,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能<strong>一条不错地说出"SSE 是长连接、单向、跑在 HTTP 上"</strong>（<strong>这是 9.9 的丢分点</strong>）；能用两个问题完成选型；能说出生产里的三个坑，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

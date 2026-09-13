@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-R3-缓存一致性与三类事故 · 母题-M1-为什么用B+树 · 母题-N3-进程线程与协程 ｜ 正本 wiki/topics/Redis/母题-R1-Redis数据结构与选型.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 快的三个原因 ② 五种结构各是什么形状 ③ 跳表为什么在内存里胜出）· 读完约 11 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]（IO 次数判据）、[[母题-N3-进程线程与协程]]（单线程 + 事件循环）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">Redis 了解吗？<strong>它都有哪些主要的数据结构？</strong> ZSet 底层是怎么实现的？为什么用跳表而不用 B+ 树？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Redis 为什么快</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Redis 为什么快</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 第一个原因：数据在内存里</h4>
 <p class="mv-md-p">【事实】把量级摆出来（[[母题-M1-为什么用B+树]] 用过同一张表）：</p>
 <table class="mv-table"><thead><tr><th>访问</th><th>典型延迟</th></tr></thead><tbody><tr><td>内存随机访问</td><td>约 100 纳秒</td></tr><tr><td>机械盘随机读</td><td>约 10 毫秒</td></tr></tbody></table>
@@ -132,8 +141,8 @@
 <h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"Redis 是单线程的"</td><td>【事实】<strong>准确说法：命令执行单线程，网络 IO 在 6.0 后是多线程。</strong> 只说"单线程"是旧答案</td></tr><tr><td>"跳表比 B+ 树快"</td><td>【推导】<strong>不是快慢问题</strong>：B+ 树为磁盘 IO 设计，<strong>它的优势在内存里用不上</strong>；而跳表实现更简单、范围查询更自然</td></tr><tr><td>"单线程所以不会有并发问题"</td><td>【推导】单条命令原子，<strong>但多条命令的组合不原子</strong>（<code class="mv-md-code">GET</code> 完再 <code class="mv-md-code">SET</code> 之间可能插进别的请求）→ 需要 <code class="mv-md-code">INCR</code>/Lua/<code class="mv-md-code">SET NX</code> 这类原子操作</td></tr><tr><td>"Redis 什么都能缓存"</td><td>【取舍】<strong>它适合缓存"派生数据"，不适合当权威状态</strong>（[[母题-R3-缓存一致性与三类事故]]）</td></tr><tr><td>"Hash 就是 ZSet 少了个排序"</td><td>【事实】<strong>两者形状完全不同</strong>：Hash 是"字段→值"的映射（按字段取），ZSet 是"成员→分数"的<strong>有序集合</strong>（按分数取）</td></tr><tr><td>"HyperLogLog 能精确统计 UV"</td><td>【事实】<strong>它是估算</strong>，标准误差约 0.81%，且<strong>不能取回原始元素</strong>。换来的是固定的小内存</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q1" tag="Redis" q="内存随机访问约 100 纳秒，一次磁盘随机 IO 约 10 毫秒。&#10;问：两者相差几个数量级？这个差距对&quot;该选什么作为索引结构&quot;意味着什么？" a="10ms / 100ns = 10⁻² / 10⁻⁷ = 10⁵ → 相差 5 个数量级&#10;意义：&#10;场景 · 第一优化目标 · 优选结构&#10;磁盘（MySQL） · 减少 IO 次数 · B+ 树（扇出大 → 树矮 → IO 少）&#10;内存（Redis） · 没有 IO 可省 → 转向实现简单 + 范围查询自然 · 跳表&#10;【推论】同一个问题（&quot;该用什么索引结构&quot;）在两处答案不同，不是因为哪个结构更好，而是因为约束变了。 这是本卡最值钱的一条思路——面试里能把&quot;约束变了所以答案变了&quot;讲出来，比记住&quot;Redis 用跳表&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q2" tag="Redis" q="下面五个需求分别该用哪个结构？&#10;① 统计接口调用次数，用于限流&#10;② 存一个订单的 20 个字段，通常只改其中一两个&#10;③ 每天签到的用户去重，还要能查&quot;今天有多少人签到&quot;&#10;④ 一个游戏关卡的前 100 名（按分数排序）&#10;⑤ 一个任务要延迟 5 分钟执行" a="需求 · 结构 · 理由&#10;① 调用计数 · String · INCR + EXPIRE，单条命令原子&#10;② 订单多字段部分更新 · Hash · 按字段读写，不必整对象重写&#10;③ 签到人数 · Set（人数少）或 Bitmap（按用户 ID 打点） · 要&quot;精确人数 + 成员&quot;用 Set；只关心&quot;某用户是否签到&quot;用 Bitmap 更省&#10;④ 前 100 名 · ZSet · 按分数排序取范围，Set 做不到&#10;⑤ 延迟 5 分钟执行 · ZSet · score 存 到期时间戳，用 ZRANGEBYSCORE 捞到期任务&#10;【补充】⑤是最容易被忽略的用法——延迟队列就是&quot;score 是时间戳的 ZSet&quot;。能说出这个，说明不只会背&quot;ZSet 做排行榜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q3" tag="Redis" q="Redis 的哈希表要扩容。假设表里有 100 万个键，扩容需要把键重新分布到更大的表里。&#10;问：为什么不能一次性搬完？Redis 用什么办法？" a="一次性搬完是 O(n) = 100 万次搬运。因为 Redis 的命令执行是单线程，这一段时间里所有其他请求都在等（1.2 的代价）&#10;Redis 用「渐进式 rehash」：把搬运分摊到后续的每一次操作上（每次操作顺带搬一小批），把一次 O(n) 的尖峰摊成 O(1) 的平摊开销&#10;【联系】这又一次是&quot;单线程下最怕一处阻塞、全体停摆&quot;（[[母题-N3-进程线程与协程]] 的协作式代价）。&#10;同一个约束，在三个地方给出了三种解法：&#10;场景 · 解法&#10;协程里不能有阻塞调用 · 换异步库 / 丢线程池&#10;Redis 扩容会卡 · 渐进式 rehash（把 O(n) 摊掉）&#10;MySQL 加索引会卡 · Online DDL / 影子表（[[母题-M4-索引代价与大表变更]]）&#10;能把这三处串起来讲，说明你理解的是&quot;约束&quot;而不是&quot;三个孤立的知识点&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q4" tag="Redis" q="下面这段话哪里不准确？&#10;&quot;Redis 是单线程的，所以它跑不满多核 CPU，一份实例只能用一个核。&quot;" a="&quot;单线程&quot;说得太笼统了。&#10;准确的说法是分层的：&#10;部分 · 线程模型&#10;命令执行 · 单线程（这是&quot;Redis 是单线程&quot;这句话的真正含义）&#10;网络 IO（Redis 6+） · 多线程（读写 socket、解析协议）&#10;后台任务（持久化、异步删除等） · 另有后台线程 / 子进程&#10;所以&quot;只用了一个核&quot;也不准确：网络 IO 和后台任务会用别的核，但命令执行确实是单线程——这也是为什么&quot;慢命令会卡住所有人&quot;。&#10;【推论】正确的答法是&quot;命令执行单线程&quot;，并主动补一句 6.0 之后网络 IO 多线程——这一句能把&quot;背旧资料&quot;的印象变成&quot;跟得上版本&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;ZSet 用跳表实现，是因为跳表比 B+ 树和红黑树都快。&quot;" a="&quot;更快&quot;这个归因是错的。准确的原因是&quot;约束变了&quot;。&#10;B+ 树的全部优势来自&quot;一次磁盘 IO 的成本固定，所以让每次 IO 多带数据回来&quot;（扇出大 → 树矮 → IO 少）。而 Redis 的数据在内存里，根本没有磁盘 IO 可省 —— B+ 树最大的优势失效了，只剩&quot;节点分裂合并、需要重平衡&quot;这个复杂度。&#10;跳表胜出的真实理由是两条：&#10;1. 不需要重平衡（层数随机，约 1/2 概率向上）&#10;2. 范围查询更自然（底层就是有序链表，顺序遍历天然支持）&#10;【取舍】红黑树也能用，但它同样有&quot;平衡操作复杂&quot;的问题，而且范围查询不如跳表顺。&#10;准确说法：不是跳表更快，而是 B+ 树是为磁盘设计的结构，它的优势在这个场景里用不上；跳表是&quot;约束更匹配&quot;的那个选择。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q1" tag="Redis" q="内存随机访问约 100 纳秒，一次磁盘随机 IO 约 10 毫秒。&#10;问：两者相差几个数量级？这个差距对&quot;该选什么作为索引结构&quot;意味着什么？" a="10ms / 100ns = 10⁻² / 10⁻⁷ = 10⁵ → 相差 5 个数量级&#10;意义：&#10;场景 · 第一优化目标 · 优选结构&#10;磁盘（MySQL） · 减少 IO 次数 · B+ 树（扇出大 → 树矮 → IO 少）&#10;内存（Redis） · 没有 IO 可省 → 转向实现简单 + 范围查询自然 · 跳表&#10;【推论】同一个问题（&quot;该用什么索引结构&quot;）在两处答案不同，不是因为哪个结构更好，而是因为约束变了。 这是本卡最值钱的一条思路——面试里能把&quot;约束变了所以答案变了&quot;讲出来，比记住&quot;Redis 用跳表&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q2" tag="Redis" q="下面五个需求分别该用哪个结构？&#10;① 统计接口调用次数，用于限流&#10;② 存一个订单的 20 个字段，通常只改其中一两个&#10;③ 每天签到的用户去重，还要能查&quot;今天有多少人签到&quot;&#10;④ 一个游戏关卡的前 100 名（按分数排序）&#10;⑤ 一个任务要延迟 5 分钟执行" a="需求 · 结构 · 理由&#10;① 调用计数 · String · INCR + EXPIRE，单条命令原子&#10;② 订单多字段部分更新 · Hash · 按字段读写，不必整对象重写&#10;③ 签到人数 · Set（人数少）或 Bitmap（按用户 ID 打点） · 要&quot;精确人数 + 成员&quot;用 Set；只关心&quot;某用户是否签到&quot;用 Bitmap 更省&#10;④ 前 100 名 · ZSet · 按分数排序取范围，Set 做不到&#10;⑤ 延迟 5 分钟执行 · ZSet · score 存 到期时间戳，用 ZRANGEBYSCORE 捞到期任务&#10;【补充】⑤是最容易被忽略的用法——延迟队列就是&quot;score 是时间戳的 ZSet&quot;。能说出这个，说明不只会背&quot;ZSet 做排行榜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q3" tag="Redis" q="Redis 的哈希表要扩容。假设表里有 100 万个键，扩容需要把键重新分布到更大的表里。&#10;问：为什么不能一次性搬完？Redis 用什么办法？" a="一次性搬完是 O(n) = 100 万次搬运。因为 Redis 的命令执行是单线程，这一段时间里所有其他请求都在等（1.2 的代价）&#10;Redis 用「渐进式 rehash」：把搬运分摊到后续的每一次操作上（每次操作顺带搬一小批），把一次 O(n) 的尖峰摊成 O(1) 的平摊开销&#10;【联系】这又一次是&quot;单线程下最怕一处阻塞、全体停摆&quot;（[[母题-N3-进程线程与协程]] 的协作式代价）。&#10;同一个约束，在三个地方给出了三种解法：&#10;场景 · 解法&#10;协程里不能有阻塞调用 · 换异步库 / 丢线程池&#10;Redis 扩容会卡 · 渐进式 rehash（把 O(n) 摊掉）&#10;MySQL 加索引会卡 · Online DDL / 影子表（[[母题-M4-索引代价与大表变更]]）&#10;能把这三处串起来讲，说明你理解的是&quot;约束&quot;而不是&quot;三个孤立的知识点&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q4" tag="Redis" q="下面这段话哪里不准确？&#10;&quot;Redis 是单线程的，所以它跑不满多核 CPU，一份实例只能用一个核。&quot;" a="&quot;单线程&quot;说得太笼统了。&#10;准确的说法是分层的：&#10;部分 · 线程模型&#10;命令执行 · 单线程（这是&quot;Redis 是单线程&quot;这句话的真正含义）&#10;网络 IO（Redis 6+） · 多线程（读写 socket、解析协议）&#10;后台任务（持久化、异步删除等） · 另有后台线程 / 子进程&#10;所以&quot;只用了一个核&quot;也不准确：网络 IO 和后台任务会用别的核，但命令执行确实是单线程——这也是为什么&quot;慢命令会卡住所有人&quot;。&#10;【推论】正确的答法是&quot;命令执行单线程&quot;，并主动补一句 6.0 之后网络 IO 多线程——这一句能把&quot;背旧资料&quot;的印象变成&quot;跟得上版本&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;ZSet 用跳表实现，是因为跳表比 B+ 树和红黑树都快。&quot;" a="&quot;更快&quot;这个归因是错的。准确的原因是&quot;约束变了&quot;。&#10;B+ 树的全部优势来自&quot;一次磁盘 IO 的成本固定，所以让每次 IO 多带数据回来&quot;（扇出大 → 树矮 → IO 少）。而 Redis 的数据在内存里，根本没有磁盘 IO 可省 —— B+ 树最大的优势失效了，只剩&quot;节点分裂合并、需要重平衡&quot;这个复杂度。&#10;跳表胜出的真实理由是两条：&#10;1. 不需要重平衡（层数随机，约 1/2 概率向上）&#10;2. 范围查询更自然（底层就是有序链表，顺序遍历天然支持）&#10;【取舍】红黑树也能用，但它同样有&quot;平衡操作复杂&quot;的问题，而且范围查询不如跳表顺。&#10;准确说法：不是跳表更快，而是 B+ 树是为磁盘设计的结构，它的优势在这个场景里用不上；跳表是&quot;约束更匹配&quot;的那个选择。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">五种结构各解决什么问题？ZSet 为什么是跳表 + 哈希表？</p>
@@ -143,7 +152,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">Redis 快在三点——<strong>数据在内存、命令执行单线程（无锁、无切换）、IO 多路复用</strong>；注意 6.0 之后<strong>网络 IO 是多线程</strong>，只有命令执行仍是单线程。<strong>五种基础结构按"要不要唯一 + 要不要顺序"选</strong>：String / List / Hash / Set / ZSet；另有 Bitmap、HyperLogLog（估算 UV，有误差）、Geo、Stream 四种扩展。<strong>ZSet 底层是"跳表 + 哈希表"</strong>——哈希表支撑按成员查分数，跳表支撑按分数取范围与排名；<strong>用跳表而不用 B+ 树，是因为 B+ 树的优势（减少磁盘 IO）在内存里用不上，而跳表不需要重平衡、范围查询更自然。</strong></div>
     
@@ -152,7 +161,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Memcached 只有 String 一种结构</strong>（靠客户端序列化），<strong>Redis 的结构丰富是它的关键差异点</strong>；而 <strong>Redis 单线程 vs Memcached 多线程</strong>也是一个常见对比。<strong>能一句话说清"为什么结构丰富是优势"（服务端能做原子操作，不用把数据搬回客户端）</strong>，比列举结构名更有价值。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Redis 是单线程还是多线程？</strong></strong></p>
@@ -175,7 +184,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能按"唯一 + 有序"两问完成选型；能说清 ZSet 为什么是两个结构、为什么用跳表（<strong>归因到"约束变了"而不是"更快"</strong>）；<strong>每一种结构至少能说出一个自己项目里用过或用得上的场景</strong>（这是 9.9 的缺口），<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

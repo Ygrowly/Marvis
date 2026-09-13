@@ -17,8 +17,17 @@
     <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M3-聚簇索引与回表 · 母题-M7-慢查询与SQL优化手段 ｜ 正本 wiki/topics/MySQL/母题-M2-联合索引与最左前缀.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 索引的价值是少扫行 ② 字典序是什么 ③ 范围列截断的准确含义）· 读完约 10 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]（索引是有序结构）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">任务表要支持这条调度 SQL：</p>
 <pre class="mv-md-pre">SELECT id, status, next_retry_time, priority
@@ -30,7 +39,7 @@ LIMIT 100;</pre>
 <p class="mv-md-p">联合索引该怎么建？为什么 <code class="mv-md-code">(a, b, c)</code> 能用上 <code class="mv-md-code">a = 1</code> 和 <code class="mv-md-code">a = 1 AND b = 2</code>，却用不上单独 <code class="mv-md-code">b = 2</code>？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引的价值只有一个——少扫</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引的价值只有一个——少扫</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 先固定唯一指标</h4>
 <p class="mv-md-p">[[母题-M1-为什么用B+树]] 已经推出：磁盘索引的成本就是 IO 次数。但那条结论只说到了<strong>定位</strong>。</p>
 <p class="mv-md-p">真实查询读的不是一行，是一段。所以本卡把指标再推进一步：</p>
@@ -134,8 +143,8 @@ LIMIT 100</pre>
 <h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"范围列后面的索引列全失效"</td><td>【推导】准确说是<strong>失去缩小扫描范围的能力</strong>，但仍可通过 ICP 在索引层过滤、减少回表</td></tr><tr><td>"WHERE 的条件顺序会影响索引匹配"</td><td>【事实】不会。优化器重排条件，看的是列集合</td></tr><tr><td>"索引列越多越好"</td><td>【取舍】每加一列都会让索引变宽、写入变慢（见 [[母题-M4-索引代价与大表变更]]）。<strong>联合索引的收益来自"一条索引服务多条查询"，不是来自列多</strong></td></tr><tr><td>"建了索引优化器就会用"</td><td>【取舍】选择度低时它会主动放弃。<strong>先问区分度，再问写法</strong></td></tr><tr><td>"前缀索引可以替代联合索引"</td><td>【取舍】前缀索引让索引变窄，但<strong>丢掉了完整有序性</strong>，不能用于精确的定位与排序</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q1" tag="MySQL" q="1000 万行，status 高度倾斜（DONE 约 99%（990 万行），PENDING 约 1% = 10 万行）。next_retry_time 在两段里分布不均：PENDING 段约 1/3 已到期（≈ 3.3 万行），DONE 段约 10% 在过去（≈ 99 万行），合计全局 next_retry_time &lt;= NOW() 约 100 万行。查询 WHERE status = 'PENDING' AND next_retry_time &lt;= ?。索引 (status, next_retry_time) 和 (next_retry_time, status) 分别要扫多少索引项？差多少倍？" a="(status, next_retry_time)：status 等值切出约 10 万行的连续段，段内按 time 二分到起点，只扫满足 time 条件的那段前缀（10 万 × 1/3）→ 约 3.3 万项&#10;(next_retry_time, status)：time 范围在最外层，切出约 100 万行（所有 time 满足的），段内再逐项判断 status → 约 100 万项&#10;差约 30 倍。 字段顺序在成本上是有量级差异的。&#10;【关键一步】第一条之所以能&quot;只扫一部分&quot;，是因为等值列把范围收窄成了一段，范围列才能在这段里二分。第二条里 time 在最外层，范围一旦铺开，后面的 status 只能逐项筛，不能定位——这就是最左前缀的代价。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q2" tag="MySQL" q="索引 (a, b, c)，查询 SELECT id FROM t WHERE a = 1 AND c = 3（id 是主键）。三列各自能起什么作用？" a="a = 1：切出连续段，能定位&#10;b：完全用不上（中间断开，条件里没有它，无法继续细分）&#10;c = 3：不能缩小扫描范围（因为 b 断了），但可以在索引层过滤 —— SELECT id 且 id 就是主键，所以二级索引叶子已含 id，这个查询本身就是覆盖的，ICP 的作用体现在减少了不必要的索引项读取&#10;关键结论：a = 1 AND c = 3 扫的是&quot;整个 a=1 段&quot;，而 a = 1 AND b = 2 AND c = 3 扫的是&quot;段内一个点&quot;——中间那一列有没有，差别是段长和点的差别。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q3" tag="MySQL" q="索引 (a, b, c)，下面哪个 ORDER BY 可以免掉 filesort？&#10;① WHERE a = 1 ORDER BY b, c ② WHERE a = 1 AND b &gt; 5 ORDER BY c ③ WHERE a = 1 AND b &gt; 5 ORDER BY b, c" a="① 可以。a 等值 → 落在同一连续段，段内按 b、c 递增，正好是 ORDER BY b, c&#10;② 不可以。会扫过多个不同的 b 值，c 只在每个 b 内部有序 → 全局乱序&#10;③ 可以。先 b 后 c，正好等于索引顺序，扫描过程本身就是有序的&#10;判据是&quot;扫描结果在索引顺序上是否单调&quot;，不是&quot;有没有范围列&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;索引 (a, b, c) 上，只要查询里出现了范围条件，范围列后面的索引列就全部失效了。&quot;" a="&quot;全部失效&quot;是过度简化。 顺序没有错（范围列后面的列确实不能用来缩小扫描范围），但漏了两件事：&#10;1. 过滤还在：c = 3 仍然可以在索引层判断（ICP），不满足的索引项直接不回表；&#10;2. 扫描和过滤是两件事：ICP 省的是回表，省不掉扫描——范围内的索引项还是要读。&#10;准确说法：范围列之后的列失去定位能力，保留过滤能力。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;尽量把区分度高的条件写在 WHERE 的最前面，这样容易用上索引。&quot;" a="后半句错了：优化器会重排条件，WHERE 的书写顺序对执行计划没有影响。 决定顺序的是索引定义。&#10;前半句的方向是对的但对象错了——区分度决定的是&quot;该不该建索引、该把哪一列放索引最左&quot;，不是 SQL 里的书写位置。&#10;顺带一个反直觉点：区分度太低（如 status 只有 3 个值）时，优化器会主动放弃索引走全表——因为扫 1/3 索引再回表 1/3 的行，比顺序全表扫更贵。&quot;没走索引&quot;不一定是写法问题。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q1" tag="MySQL" q="1000 万行，status 高度倾斜（DONE 约 99%（990 万行），PENDING 约 1% = 10 万行）。next_retry_time 在两段里分布不均：PENDING 段约 1/3 已到期（≈ 3.3 万行），DONE 段约 10% 在过去（≈ 99 万行），合计全局 next_retry_time &lt;= NOW() 约 100 万行。查询 WHERE status = 'PENDING' AND next_retry_time &lt;= ?。索引 (status, next_retry_time) 和 (next_retry_time, status) 分别要扫多少索引项？差多少倍？" a="(status, next_retry_time)：status 等值切出约 10 万行的连续段，段内按 time 二分到起点，只扫满足 time 条件的那段前缀（10 万 × 1/3）→ 约 3.3 万项&#10;(next_retry_time, status)：time 范围在最外层，切出约 100 万行（所有 time 满足的），段内再逐项判断 status → 约 100 万项&#10;差约 30 倍。 字段顺序在成本上是有量级差异的。&#10;【关键一步】第一条之所以能&quot;只扫一部分&quot;，是因为等值列把范围收窄成了一段，范围列才能在这段里二分。第二条里 time 在最外层，范围一旦铺开，后面的 status 只能逐项筛，不能定位——这就是最左前缀的代价。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q2" tag="MySQL" q="索引 (a, b, c)，查询 SELECT id FROM t WHERE a = 1 AND c = 3（id 是主键）。三列各自能起什么作用？" a="a = 1：切出连续段，能定位&#10;b：完全用不上（中间断开，条件里没有它，无法继续细分）&#10;c = 3：不能缩小扫描范围（因为 b 断了），但可以在索引层过滤 —— SELECT id 且 id 就是主键，所以二级索引叶子已含 id，这个查询本身就是覆盖的，ICP 的作用体现在减少了不必要的索引项读取&#10;关键结论：a = 1 AND c = 3 扫的是&quot;整个 a=1 段&quot;，而 a = 1 AND b = 2 AND c = 3 扫的是&quot;段内一个点&quot;——中间那一列有没有，差别是段长和点的差别。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q3" tag="MySQL" q="索引 (a, b, c)，下面哪个 ORDER BY 可以免掉 filesort？&#10;① WHERE a = 1 ORDER BY b, c ② WHERE a = 1 AND b &gt; 5 ORDER BY c ③ WHERE a = 1 AND b &gt; 5 ORDER BY b, c" a="① 可以。a 等值 → 落在同一连续段，段内按 b、c 递增，正好是 ORDER BY b, c&#10;② 不可以。会扫过多个不同的 b 值，c 只在每个 b 内部有序 → 全局乱序&#10;③ 可以。先 b 后 c，正好等于索引顺序，扫描过程本身就是有序的&#10;判据是&quot;扫描结果在索引顺序上是否单调&quot;，不是&quot;有没有范围列&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;索引 (a, b, c) 上，只要查询里出现了范围条件，范围列后面的索引列就全部失效了。&quot;" a="&quot;全部失效&quot;是过度简化。 顺序没有错（范围列后面的列确实不能用来缩小扫描范围），但漏了两件事：&#10;1. 过滤还在：c = 3 仍然可以在索引层判断（ICP），不满足的索引项直接不回表；&#10;2. 扫描和过滤是两件事：ICP 省的是回表，省不掉扫描——范围内的索引项还是要读。&#10;准确说法：范围列之后的列失去定位能力，保留过滤能力。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M2-联合索引与最左前缀-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;尽量把区分度高的条件写在 WHERE 的最前面，这样容易用上索引。&quot;" a="后半句错了：优化器会重排条件，WHERE 的书写顺序对执行计划没有影响。 决定顺序的是索引定义。&#10;前半句的方向是对的但对象错了——区分度决定的是&quot;该不该建索引、该把哪一列放索引最左&quot;，不是 SQL 里的书写位置。&#10;顺带一个反直觉点：区分度太低（如 status 只有 3 个值）时，优化器会主动放弃索引走全表——因为扫 1/3 索引再回表 1/3 的行，比顺序全表扫更贵。&quot;没走索引&quot;不一定是写法问题。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">联合索引的字段顺序由什么决定？「最左前缀」这个限制是怎么来的？</p>
@@ -145,7 +154,7 @@ LIMIT 100</pre>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">联合索引 <code class="mv-md-code">(a, b, c)</code> 是按<strong>字典序</strong>排的——先按 a、a 相同按 b、b 相同按 c。所以只有<strong>从最左列开始的连续前缀</strong>才能确定一个"可定位区间"，从而缩小扫描范围；中间的列断开，后面的列就只能过滤、不能定位。</div>
     
@@ -154,7 +163,7 @@ LIMIT 100</pre>
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PostgreSQL 里 <code class="mv-md-code">(a, b)</code> 的 B-tree 语义与 MySQL 一致（同样是字典序、同样的最左前缀），但 PG 还有 MySQL 没有的手段——<strong>部分索引</strong>（只索引 <code class="mv-md-code">WHERE status='PENDING'</code> 的那部分行），对低选择度的 <code class="mv-md-code">status</code> 反而比联合索引更划算（见 [[母题-P3-部分索引与表达式索引]]）。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 <code class="mv-md-code">WHERE b = 2</code> 用不上 <code class="mv-md-code">(a, b, c)</code>？</strong></strong></p>
@@ -173,7 +182,7 @@ LIMIT 100</pre>
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上推出「字典序 → 可定位区间必须连续 → 最左前缀」，并对一条真实 SQL 说出索引顺序与两端代价，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-M12-崩溃恢复 · 母题-M8-隔离级别与ACID · 母题-M9-MVCC · 母题-P11-WAL与checkpoint ｜ 正本 wiki/topics/MySQL/母题-M11-三日志与两阶段提交.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① WAL 换掉的是什么 ② 三条日志各属于哪一层 ③ 两份日志为什么必须捆在一起）· 读完约 10 分钟 · 需要先懂：[[母题-M8-隔离级别与ACID]]（A 靠 undo、D 靠 redo）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">用户下单，接口返回「提交成功」。一秒后机器断电。重启后，这条订单还在吗？为什么？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：为什么不能"改完直接写磁盘"</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：为什么不能"改完直接写磁盘"</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 两个约束同时成立【推导】</h4>
 <p class="mv-md-p">要回答"断电后订单还在吗"，先看数据库面临的两个约束：</p>
 <p class="mv-md-p">1. <strong>数据要最终落到磁盘</strong>（内存断电就没了） 2. <strong>提交返回的那一刻，修改就不能丢</strong>（这是"持久性"的定义）</p>
@@ -135,8 +144,8 @@
 <h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"binlog 能单独保证 crash-safe"</td><td>【推导】不能。它不在 InnoDB 内、不记物理页变化，必须靠 2PC 与 redo 配合</td></tr><tr><td>"redo 是无限的，会一直追加"</td><td>【事实】<strong>固定大小循环写</strong>，会覆盖；边界靠 check point 推进</td></tr><tr><td>"有 redo 就不需要 binlog"</td><td>【事实】职责不同：redo 只服务<strong>崩溃恢复</strong>（且用完即弃）；binlog 服务<strong>复制与时间点恢复</strong>（要长期保留）</td></tr><tr><td>"两阶段提交是为了保证 ACID"</td><td>【取舍】它保证的是<strong>两份日志的逻辑一致</strong>（进而保证主从一致）。ACID 里的 A 和 D 分别由 undo 和 redo 负责，不是 2PC 的职责</td></tr><tr><td>"刷盘参数设 0 最快，性能最好"</td><td>【取舍】是快，但<strong>掉电丢最近 1 秒</strong>。取舍标准是<strong>业务能不能容忍丢这 1 秒</strong>（埋点/日志能忍，涉及钱的不能），不是"哪个快选哪个"</td></tr><tr><td>"PG 也有 redo / undo / binlog 三套日志"</td><td>【事实】<strong>PG 只有 WAL 一套</strong>。旧版本留在堆里靠 VACUUM 回收，复制也靠 WAL——<strong>所以 PG 根本不存在"两份日志要协调"的问题，也就没有 prepare/commit 这套两阶段日志状态</strong>（[[母题-P11-WAL与checkpoint]]）</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q1" tag="MySQL" q="SSD 上单次 fsync 约 0.2 ms。生产配置 innodb_flush_log_at_trx_commit=1（每次提交 fsync）。&#10;问：单条连接串行提交的 TPS 上限是多少？MySQL 靠什么机制突破它？" a="上限 = 1 / 0.0002s = 约 5000 TPS&#10;瓶颈是 fsync 的等待，不是 CPU&#10;突破靠「组提交（group commit）」：把并发到达的多个事务的 fsync 合并成一次——10 个事务一起提交，只付一次 0.2ms，等效 TPS 提到约 5 万。&#10;【推论】这就是为什么&quot;双一&quot;配置在生产上可行：安全的代价被组提交摊薄了。反过来说，如果业务是&quot;单线程串行提交&quot;（没有并发可以合并），双一的代价就是实打实的——&#10;``text&#10;&quot;双一&quot;每提交要等 2 次 fsync：redo 一次 + binlog 一次&#10;= 2 × 0.2 ms = 0.4 ms&#10;单线程串行提交上限 = 1 / 0.0004 = 约 2500 TPS&#10;``&#10;正好比&quot;只等一次 fsync&quot;的 5000 TPS 再腰斩一半。取舍要看并发行不行。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q2" tag="MySQL" q="数据库在下面两个时刻断电，重启后分别是什么结果？对主从一致性各有什么影响？&#10;① 写完 redo（prepare）、binlog 还没写&#10;② binlog 已写完整、redo 还是 prepare" a="崩溃点 · redo 状态 · binlog 状态 · 恢复动作 · 一致性&#10;① · prepare · 不完整 · 回滚（undo） · 主库、从库都没有这次更新 → 一致&#10;② · prepare · 完整 · 提交（把 redo 改成 commit） · 主库、从库都有这次更新 → 一致&#10;两个窗口都收敛到一致——这正是两阶段提交的作用。&#10;关键：裁决依据只有一个——binlog 是否完整。 因为 binlog 完整就意味着&quot;这个事务已经对外宣布过成功了&quot;（binlog 是复制的源头），必须让它生效。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q3" tag="MySQL" q="redo 日志组总大小 4GB，业务写入速率约 100 MB/s（按 redo 生成量估）。&#10;问：多久会绕满一圈？ 这个数字对&quot;崩溃后要重放多少&quot;意味着什么？" a="绕一圈时间 = 4 GB ÷ 100 MB/s = 约 41 秒&#10;含义：check point 最多落后 41 秒的日志。崩溃重启时，最坏要从 41 秒前的位置开始重放（数据页落盘位点再靠后，实际重放量可能更小）&#10;【推论】redo 组的大小直接决定&quot;崩溃恢复时间上限&quot;：调大 redo 组 → 恢复时间上限变长但写入更不容易被 check point 追上；调小则相反。这是同一组参数的两面（[[母题-M12-崩溃恢复]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;既然 binlog 也记录了所有的修改，那只要保证 binlog 落盘就够了，redo log 可以省掉。&quot;" a="三处都错。&#10;1. binlog 不记物理页变化。 它是逻辑日志（SQL 或行前后镜像），没法用来把内存里的数据页恢复成正确状态——恢复需要知道&quot;哪个页的哪个偏移要变成什么&quot;。&#10;2. binlog 在 Server 层，不在 InnoDB 里。 它的写入时机与 InnoDB 的提交不是一件事，单独依赖它无法保证 InnoDB 内部状态一致。&#10;3. 职责不同：redo 服务崩溃恢复（用完即弃、循环写）；binlog 服务复制与时间点恢复（长期保留、追加写）。去掉任何一个都会塌掉一块能力。&#10;正确说法：redo 保证 InnoDB 能恢复到最新状态，binlog 保证复制和时间点恢复能工作，两阶段提交保证这两份日志逻辑一致。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都是关系数据库，所以都有 redo log、undo log 和 binlog，崩溃恢复的原理也一样。&quot;" a="&quot;都有三套日志&quot;是错的。&#10;PostgreSQL 只有一套 WAL。 它：&#10;旧版本留在堆里，靠 VACUUM 回收（没有独立 undo 表空间）&#10;复制也靠 WAL（流复制 / WAL 归档），不需要第二份逻辑日志&#10;【推导】由此推出一连串差异：&#10;MySQL · PostgreSQL&#10;日志套数 · redo + undo + binlog · WAL 一套&#10;有没有&quot;两份日志要协调&quot; · 有 → 需要两阶段提交 · 没有 → 不存在这个问题&#10;复制依赖 · binlog（逻辑） · WAL（物理）&#10;所以&quot;PG 也有 prepare/commit 两阶段日志状态&quot;是明确错误——那是 MySQL 为了协调两份日志才发明的东西。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q1" tag="MySQL" q="SSD 上单次 fsync 约 0.2 ms。生产配置 innodb_flush_log_at_trx_commit=1（每次提交 fsync）。&#10;问：单条连接串行提交的 TPS 上限是多少？MySQL 靠什么机制突破它？" a="上限 = 1 / 0.0002s = 约 5000 TPS&#10;瓶颈是 fsync 的等待，不是 CPU&#10;突破靠「组提交（group commit）」：把并发到达的多个事务的 fsync 合并成一次——10 个事务一起提交，只付一次 0.2ms，等效 TPS 提到约 5 万。&#10;【推论】这就是为什么&quot;双一&quot;配置在生产上可行：安全的代价被组提交摊薄了。反过来说，如果业务是&quot;单线程串行提交&quot;（没有并发可以合并），双一的代价就是实打实的——&#10;``text&#10;&quot;双一&quot;每提交要等 2 次 fsync：redo 一次 + binlog 一次&#10;= 2 × 0.2 ms = 0.4 ms&#10;单线程串行提交上限 = 1 / 0.0004 = 约 2500 TPS&#10;``&#10;正好比&quot;只等一次 fsync&quot;的 5000 TPS 再腰斩一半。取舍要看并发行不行。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q2" tag="MySQL" q="数据库在下面两个时刻断电，重启后分别是什么结果？对主从一致性各有什么影响？&#10;① 写完 redo（prepare）、binlog 还没写&#10;② binlog 已写完整、redo 还是 prepare" a="崩溃点 · redo 状态 · binlog 状态 · 恢复动作 · 一致性&#10;① · prepare · 不完整 · 回滚（undo） · 主库、从库都没有这次更新 → 一致&#10;② · prepare · 完整 · 提交（把 redo 改成 commit） · 主库、从库都有这次更新 → 一致&#10;两个窗口都收敛到一致——这正是两阶段提交的作用。&#10;关键：裁决依据只有一个——binlog 是否完整。 因为 binlog 完整就意味着&quot;这个事务已经对外宣布过成功了&quot;（binlog 是复制的源头），必须让它生效。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q3" tag="MySQL" q="redo 日志组总大小 4GB，业务写入速率约 100 MB/s（按 redo 生成量估）。&#10;问：多久会绕满一圈？ 这个数字对&quot;崩溃后要重放多少&quot;意味着什么？" a="绕一圈时间 = 4 GB ÷ 100 MB/s = 约 41 秒&#10;含义：check point 最多落后 41 秒的日志。崩溃重启时，最坏要从 41 秒前的位置开始重放（数据页落盘位点再靠后，实际重放量可能更小）&#10;【推论】redo 组的大小直接决定&quot;崩溃恢复时间上限&quot;：调大 redo 组 → 恢复时间上限变长但写入更不容易被 check point 追上；调小则相反。这是同一组参数的两面（[[母题-M12-崩溃恢复]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;既然 binlog 也记录了所有的修改，那只要保证 binlog 落盘就够了，redo log 可以省掉。&quot;" a="三处都错。&#10;1. binlog 不记物理页变化。 它是逻辑日志（SQL 或行前后镜像），没法用来把内存里的数据页恢复成正确状态——恢复需要知道&quot;哪个页的哪个偏移要变成什么&quot;。&#10;2. binlog 在 Server 层，不在 InnoDB 里。 它的写入时机与 InnoDB 的提交不是一件事，单独依赖它无法保证 InnoDB 内部状态一致。&#10;3. 职责不同：redo 服务崩溃恢复（用完即弃、循环写）；binlog 服务复制与时间点恢复（长期保留、追加写）。去掉任何一个都会塌掉一块能力。&#10;正确说法：redo 保证 InnoDB 能恢复到最新状态，binlog 保证复制和时间点恢复能工作，两阶段提交保证这两份日志逻辑一致。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M11-三日志与两阶段提交-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;MySQL 和 PostgreSQL 都是关系数据库，所以都有 redo log、undo log 和 binlog，崩溃恢复的原理也一样。&quot;" a="&quot;都有三套日志&quot;是错的。&#10;PostgreSQL 只有一套 WAL。 它：&#10;旧版本留在堆里，靠 VACUUM 回收（没有独立 undo 表空间）&#10;复制也靠 WAL（流复制 / WAL 归档），不需要第二份逻辑日志&#10;【推导】由此推出一连串差异：&#10;MySQL · PostgreSQL&#10;日志套数 · redo + undo + binlog · WAL 一套&#10;有没有&quot;两份日志要协调&quot; · 有 → 需要两阶段提交 · 没有 → 不存在这个问题&#10;复制依赖 · binlog（逻辑） · WAL（物理）&#10;所以&quot;PG 也有 prepare/commit 两阶段日志状态&quot;是明确错误——那是 MySQL 为了协调两份日志才发明的东西。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">redo / undo / binlog 各管什么？两阶段提交为什么必要？</p>
@@ -146,7 +155,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">三条日志各管一件事——<strong>undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）</strong>。用 <strong>WAL</strong> 把"随机写数据页"换成"顺序写日志"，同时拿到性能和崩溃安全性。而<strong>两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致</strong>——不做的话，两个崩溃窗口分别造出"主库多从库少"和"从库多主库少"。</div>
     
@@ -155,7 +164,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PostgreSQL 只有 WAL 一套日志</strong>（没有 redo / undo / binlog 三套），旧版本留在堆里靠 VACUUM 回收，复制也走 WAL。<strong>所以 PG 不存在"两份日志要协调"的问题，也就没有 prepare/commit 两阶段日志状态。</strong> 不要把 MySQL 的三日志结构套到 PG 上。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>redo 循环写，为什么不怕覆盖掉还没刷盘的日志？</strong></strong></p>
@@ -174,7 +183,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上画完「2PC 三步 + 两个崩溃点各自后果 + 裁决依据」，并说清 undo / redo / binlog 三者的职责边界与文件形态差异，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

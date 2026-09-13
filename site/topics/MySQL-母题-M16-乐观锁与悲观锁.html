@@ -17,14 +17,23 @@
     <p class="mv-topic-meta">关联 母题-M10-锁与死锁（悲观锁在 MySQL 的具体代价）· 母题-M17-排行榜与防超卖（同一判据的另一个应用）· 母题-P18-乐观并发控制（PG 侧的同构实现与真实 SQL）· 母题-P9-序列化失败与重试（重试的四条要求） ｜ 正本 wiki/topics/MySQL/母题-M16-乐观锁与悲观锁.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 两者是对冲突概率的两种假设 ② 判据只有一个：冲突频率 ③ ABA 为什么是 CAS 的固有缺陷）· 读完约 11 分钟 · 需要先懂：[[母题-M10-锁与死锁]]（<code class="mv-md-code">FOR UPDATE</code> 的代价）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">说一下乐观锁与悲观锁的区别。</p>
 <p class="mv-md-p mv-md-quote"><strong>9.9 一面原题，当次 11 分</strong>——口误"悲观所"、没提版本号 / CAS、没讲适用边界。</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：它们是对冲突概率的两种假设</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：它们是对冲突概率的两种假设</h3>
 <p class="mv-md-p">【事实】</p>
 <ul class="mv-md-ul"><li><strong>悲观锁假定冲突一定发生</strong> → 所以在访问前<strong>先加锁</strong>，拿到锁才能改，其他事务阻塞等待</li><li><strong>乐观锁假定冲突很少</strong> → 所以<strong>不加锁直接改</strong>，<strong>提交时校验有没有被别人改过</strong></li></ul>
 <p class="mv-md-p">【推论】<strong>"哪个更好"这个问题本身就是错的</strong>——<strong>没有冲突概率，选型就是空谈</strong>。</p>
@@ -164,8 +173,8 @@ p → 1    → 发散</pre>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"乐观锁不加锁，性能一定更好"</td><td><strong>低冲突时对，高冲突时反了</strong>。乐观锁成本 ≈ 单次成本 ÷ (1−p)，<strong>在 p→1 时发散</strong>；高冲突下总工作量是 <strong>N²</strong>，悲观锁是 <strong>N</strong>——差一个 N 倍</td></tr><tr><td>"乐观锁就是加个 version 字段"</td><td><strong>核心是"期望值进 WHERE"</strong>——version、状态、时间戳都行，<strong>本质是 CAS 思想</strong>。version 的好处是<strong>自带 ABA 防护</strong></td></tr><tr><td>"CAS 比较值相等就安全"</td><td><strong>漏了 ABA</strong>：值相等 ≠ 中间没变过。数值场景通常无害，<strong>引用 / 状态 / 指针场景有害</strong>（栈顶指针弹出又压回同一地址）</td></tr><tr><td>"影响行数 0 说明出异常了"</td><td><strong>是正常业务分支</strong>。它可能是"别人抢先了"，也可能是"条件本来就不满足"——<strong>分不出来，也不需要分</strong>；正确做法是<strong>读权威状态再判定</strong></td></tr><tr><td>"重试失败就一直重试到成功"</td><td><strong>三处错</strong>：没有上限（可能无限循环）、没有退避（会形成重试风暴）、没意识到有些失败<strong>重试一万次也不会成功</strong>（条件本身不满足）。<strong>要有退避 + 抖动 + 上限</strong></td></tr><tr><td>"分布式锁就是悲观锁，能保证正确性"</td><td><strong>它是应用层的锁，不能替代数据库约束做正确性兜底</strong>（[[母题-P19-唯一约束与UPSERT]]）。<strong>锁会失效（过期、网络分区），约束不会</strong></td></tr></tbody></table>
 <p class="mv-md-p">【取舍】读成一句话：<strong>两者不是"谁更好"，而是对冲突概率的两种假设——所以没有冲突频率，就没有选型。</strong></p>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q1" tag="MySQL" q="乐观锁的期望尝试次数 = 1 / (1 − p)，其中 p 是单次尝试遇到冲突的概率。&#10;问：p 分别为 0.05 / 0.3 / 0.7 / 0.9 时，期望尝试次数各是多少？这个函数在 p 接近 1 时会怎样？" a="p · 期望尝试次数 = 1/(1−p)&#10;0.05 · 1.05&#10;0.30 · 1.43&#10;0.70 · 3.33&#10;0.90 · 10&#10;→ 1 · 发散（趋于无穷）&#10;【结论】乐观锁的成本不是&quot;随冲突线性上升&quot;，是&quot;在 p→1 时发散&quot;。&#10;【推论】这就是&quot;高冲突时乐观锁会崩&quot;的数学表达——不是&quot;慢一点&quot;，是每次冲突都要把整段工作重做，而成功率越低重做的次数越多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q2" tag="MySQL" q="N 个请求同时抢同一行（此时单次冲突概率约为 (N−1)/N）。&#10;问：乐观锁和悲观锁的总工作量各是多少？差多少倍？N = 10 和 N = 100 时分别是多少？" a="``text&#10;乐观锁：&#10;期望尝试次数 = 1/(1 − (N−1)/N) = N&#10;总工作量 = N 个请求 × N 次尝试 = N² 次&#10;悲观锁：&#10;串行执行，每个请求做一次&#10;总工作量 = N 次&#10;量级比 = N² / N = N&#10;``&#10;N · 乐观锁 · 悲观锁 · 倍数&#10;10 · 100 次 · 10 次 · 10 倍&#10;100 · 10,000 次 · 100 次 · 100 倍&#10;【结论】并发越高，乐观锁的劣势越大——它是 N² 对 N，差距随并发线性放大。&#10;【推论】这就是&quot;重试成本 &gt; 加锁成本&quot;的量化版本：当 N 足够大（冲突足够密集），乐观锁白做的工作量会远超悲观锁的排队成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q3" tag="MySQL" q="某热点行 1000 QPS，乐观锁的冲突率 90%。&#10;问：总更新尝试次数是多少？如果加退避 + 抖动把有效冲突率降到 30%，总尝试次数变成多少？" a="``text&#10;无退避（冲突率 90%）：&#10;期望尝试次数 = 1/(1−0.9) = 10 次&#10;总尝试 = 1000 × 10 = 10,000 次/秒&#10;有退避 + 抖动（有效冲突率降到 30%）：&#10;期望尝试次数 = 1/(1−0.3) ≈ 1.43 次&#10;总尝试 = 1000 × 1.43 = 1,430 次/秒&#10;降到约 1/7&#10;``&#10;【结论】退避 + 抖动不是&quot;优化&quot;，是乐观锁方案的必要组成部分。&#10;【为什么抖动也必要】没有抖动时，失败的请求会同时回来重试，形成&quot;重试风暴&quot;——瞬时并发不降，冲突率也不会降。抖动把重试摊开到时间窗里，两者才一起下降。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们用的是乐观锁，不加锁，所以并发性能肯定比悲观锁好。&quot;" a="在低冲突时对，在高冲突时完全反了。&#10;1. 乐观锁的成本是 单次成本 ÷ (1−p)（Q1）——在 p→1 时发散，不是&quot;常数级更快&quot;。&#10;2. 高冲突下的量级差是 N 倍（Q2）：N 个请求抢同一行时，乐观锁总工作量 N²、悲观锁 N。100 并发就是 100 倍。&#10;3. &quot;不加锁&quot;省下的只是加锁开销——而它换来的是每次冲突都要整段重做。当整段工作比加锁贵得多时，这笔交换是亏的。&#10;【准确说法】&quot;乐观锁在低冲突下更便宜，悲观锁在高冲突下更便宜——判据是两条成本曲线的交点（冲突频率）。没有冲突频率，'性能更好'这句话不成立。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q5" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们的乐观锁失败后会 while(true) 一直重试，直到更新成功为止。&quot;" a="三处错。&#10;1. 没有上限：可能无限循环。要在有限次（常见 2–3 次）后转人工或走降级。&#10;2. 没有退避和抖动：失败请求会同时回来重试，形成重试风暴——瞬时并发不降，冲突率也不降（Q3 里退避能把总尝试降到 1/7）。&#10;3. 把&quot;影响行数 0&quot;当成了异常：它可能是条件本身不满足（比如 WHERE status='READY' 但状态已经是 SEARCHING），这种情况重试一万次也不会成功——必须先读权威状态再判定。&#10;【准确说法】&quot;影响行数 0 是正常业务分支：读权威状态 → 判定 → 决定（重试 / 放弃 / 转人工）。重试要带退避 + 抖动 + 上限（[[母题-P9-序列化失败与重试]] 的四条要求）。&quot;&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q1" tag="MySQL" q="乐观锁的期望尝试次数 = 1 / (1 − p)，其中 p 是单次尝试遇到冲突的概率。&#10;问：p 分别为 0.05 / 0.3 / 0.7 / 0.9 时，期望尝试次数各是多少？这个函数在 p 接近 1 时会怎样？" a="p · 期望尝试次数 = 1/(1−p)&#10;0.05 · 1.05&#10;0.30 · 1.43&#10;0.70 · 3.33&#10;0.90 · 10&#10;→ 1 · 发散（趋于无穷）&#10;【结论】乐观锁的成本不是&quot;随冲突线性上升&quot;，是&quot;在 p→1 时发散&quot;。&#10;【推论】这就是&quot;高冲突时乐观锁会崩&quot;的数学表达——不是&quot;慢一点&quot;，是每次冲突都要把整段工作重做，而成功率越低重做的次数越多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q2" tag="MySQL" q="N 个请求同时抢同一行（此时单次冲突概率约为 (N−1)/N）。&#10;问：乐观锁和悲观锁的总工作量各是多少？差多少倍？N = 10 和 N = 100 时分别是多少？" a="``text&#10;乐观锁：&#10;期望尝试次数 = 1/(1 − (N−1)/N) = N&#10;总工作量 = N 个请求 × N 次尝试 = N² 次&#10;悲观锁：&#10;串行执行，每个请求做一次&#10;总工作量 = N 次&#10;量级比 = N² / N = N&#10;``&#10;N · 乐观锁 · 悲观锁 · 倍数&#10;10 · 100 次 · 10 次 · 10 倍&#10;100 · 10,000 次 · 100 次 · 100 倍&#10;【结论】并发越高，乐观锁的劣势越大——它是 N² 对 N，差距随并发线性放大。&#10;【推论】这就是&quot;重试成本 &gt; 加锁成本&quot;的量化版本：当 N 足够大（冲突足够密集），乐观锁白做的工作量会远超悲观锁的排队成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q3" tag="MySQL" q="某热点行 1000 QPS，乐观锁的冲突率 90%。&#10;问：总更新尝试次数是多少？如果加退避 + 抖动把有效冲突率降到 30%，总尝试次数变成多少？" a="``text&#10;无退避（冲突率 90%）：&#10;期望尝试次数 = 1/(1−0.9) = 10 次&#10;总尝试 = 1000 × 10 = 10,000 次/秒&#10;有退避 + 抖动（有效冲突率降到 30%）：&#10;期望尝试次数 = 1/(1−0.3) ≈ 1.43 次&#10;总尝试 = 1000 × 1.43 = 1,430 次/秒&#10;降到约 1/7&#10;``&#10;【结论】退避 + 抖动不是&quot;优化&quot;，是乐观锁方案的必要组成部分。&#10;【为什么抖动也必要】没有抖动时，失败的请求会同时回来重试，形成&quot;重试风暴&quot;——瞬时并发不降，冲突率也不会降。抖动把重试摊开到时间窗里，两者才一起下降。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们用的是乐观锁，不加锁，所以并发性能肯定比悲观锁好。&quot;" a="在低冲突时对，在高冲突时完全反了。&#10;1. 乐观锁的成本是 单次成本 ÷ (1−p)（Q1）——在 p→1 时发散，不是&quot;常数级更快&quot;。&#10;2. 高冲突下的量级差是 N 倍（Q2）：N 个请求抢同一行时，乐观锁总工作量 N²、悲观锁 N。100 并发就是 100 倍。&#10;3. &quot;不加锁&quot;省下的只是加锁开销——而它换来的是每次冲突都要整段重做。当整段工作比加锁贵得多时，这笔交换是亏的。&#10;【准确说法】&quot;乐观锁在低冲突下更便宜，悲观锁在高冲突下更便宜——判据是两条成本曲线的交点（冲突频率）。没有冲突频率，'性能更好'这句话不成立。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M16-乐观锁与悲观锁-q5" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们的乐观锁失败后会 while(true) 一直重试，直到更新成功为止。&quot;" a="三处错。&#10;1. 没有上限：可能无限循环。要在有限次（常见 2–3 次）后转人工或走降级。&#10;2. 没有退避和抖动：失败请求会同时回来重试，形成重试风暴——瞬时并发不降，冲突率也不降（Q3 里退避能把总尝试降到 1/7）。&#10;3. 把&quot;影响行数 0&quot;当成了异常：它可能是条件本身不满足（比如 WHERE status='READY' 但状态已经是 SEARCHING），这种情况重试一万次也不会成功——必须先读权威状态再判定。&#10;【准确说法】&quot;影响行数 0 是正常业务分支：读权威状态 → 判定 → 决定（重试 / 放弃 / 转人工）。重试要带退避 + 抖动 + 上限（[[母题-P9-序列化失败与重试]] 的四条要求）。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">乐观锁和悲观锁怎么选？各自的实现与边界是什么——为什么&quot;哪个更好&quot;这个问题本身就是错的？</p>
@@ -175,7 +184,7 @@ p → 1    → 发散</pre>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是你 9.9 一面真实被问、且答得不合格的题</strong>——<strong>所以这张卡不只是知识点，是"补掉一个真实丢分点"的修复卡</strong>。当次的扣分点有三条：① 口误；② 乐观锁部分只说"先执行，变更时才上锁"，<strong>没有提到版本号 / CAS 这两个关键词</strong>；③ 没讲适用边界——<strong>按评分表，概念不完整、论据只能给 2 分</strong>。<strong>这张卡的目标是：再遇到时能拿满分。</strong></p>
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>两者不是"谁更好"，而是对冲突概率的两种假设</strong>——悲观锁假定冲突一定发生，所以先加锁（<code class="mv-md-code">SELECT ... FOR UPDATE</code> / <code class="mv-md-code">synchronized</code>）；乐观锁假定冲突很少，不加锁、<strong>提交时校验</strong>（<strong>version 字段</strong>或 <strong>CAS</strong>，<code class="mv-md-code">UPDATE ... WHERE version=?</code>，<strong>影响行数 0 即冲突</strong>）。<strong>判据只有一个：冲突频率</strong>——<strong>冲突高到"重试成本 &gt; 加锁成本"时用悲观</strong>。这不是口号：乐观锁成本是 <code class="mv-md-code">单次成本 ÷ (1−p)</code>，<strong>在 p→1 时发散</strong>；高冲突下 N 个请求抢同一行，乐观锁总工作量 <strong>N²</strong>、悲观锁 <strong>N</strong>，<strong>差一个 N 倍</strong>。乐观锁要注意 <strong>ABA 问题</strong>（值相等 ≠ 中间没变过），<strong>version 字段本质就是"自带 ABA 防护的 CAS"</strong>。<strong>RuleArena 的退款与任务认领用的是乐观锁（条件更新）</strong>，<strong>项目给的判据是「权威性」不是「频率」</strong>（<code class="mv-md-code">04 §15</code><strong>「MVP 优先业务唯一键 + 条件更新」</strong>；<code class="mv-md-code">Q7</code><strong>「锁可以降低竞争，但不能成为资金正确性的唯一保证」</strong>），<strong>而且条件更新天然幂等</strong>；<strong>但如果同一个任务被大量 Worker 高频争抢，我会换成悲观锁或把任务分区错开。</strong></div>
     
@@ -184,7 +193,7 @@ p → 1    → 发散</pre>
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>乐观锁在两边的写法几乎一样（条件更新），判据也一致</strong>——<strong>这是少数两边完全互通的机制</strong>；<strong>但"冲突时数据库怎么响应"不同</strong>：<strong>MySQL 悲观是排队等锁、乐观是返回 0 行；PG 悲观是等待、乐观是 0 行、Serializable 是报错重试</strong>（[[母题-P8-隔离级别与读一致性]]）。<strong>所以判据通用，实现细节按库区分。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>version 冲突之后怎么处理？</strong></strong></p>
@@ -203,7 +212,7 @@ p → 1    → 发散</pre>
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：<strong>40 秒五段结构 + ABA 能讲成因果 + 主动说出"什么情况换悲观锁"</strong>；<strong>能算出 1/(1−p) 的发散</strong>（p=0.9 → 10 次）；<strong>能算出高冲突的 N² vs N 量级差</strong>；能说出重试三件套（上限 / 退避 / 抖动）；<strong>且自测 5 题全对</strong>。<strong>这张卡是 9.9 丢分点的修复，建议第一批进入闭卷验收。</strong></p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

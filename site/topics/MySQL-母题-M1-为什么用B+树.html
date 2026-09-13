@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-M2-联合索引与最左前缀 · 母题-M3-聚簇索引与回表 · 母题-M5-引擎与表设计基本盘 ｜ 正本 wiki/topics/MySQL/母题-M1-为什么用B+树.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 页是一次 IO 的单位 ② 树高决定 IO 次数 ③ 三个设计点各解决什么）· 读完约 10 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">InnoDB 的索引底层是 B+ 树。为什么是 B+ 树，而不是 B 树、红黑树或哈希表？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：真正的约束是磁盘 IO，不是比较速度</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：真正的约束是磁盘 IO，不是比较速度</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 先看量级</h4>
 <p class="mv-md-p">【事实】几种访问的延迟量级：</p>
 <table class="mv-table"><thead><tr><th>访问</th><th>典型延迟</th><th>相对内存</th></tr></thead><tbody><tr><td>内存随机访问</td><td>约 100 纳秒</td><td>×1</td></tr><tr><td>SSD 随机读</td><td>约 100 微秒</td><td><strong>约 ×1000</strong></td></tr><tr><td>机械盘随机读（含寻道）</td><td>约 10 毫秒</td><td><strong>约 ×100000</strong></td></tr></tbody></table>
@@ -265,8 +274,8 @@
 <h3 class="mv-md-h mv-md-h3">5. 边界与常见误解（不写这段最容易背成口诀）</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"页必须是 16KB"</td><td>【取舍】它是在"一次 IO 效率"与"扇出不足会树高"之间选的。太大则一次读进大量当前用不到的数据，太小则扇出不够</td></tr><tr><td>"B+ 树因为矮所以快"</td><td>【推导】树矮只保证<strong>定位到索引项</strong>便宜。要取整行还要<strong>回表</strong>（二级索引场景），那才是大头</td></tr><tr><td>"红黑树不适合数据库"</td><td>【取舍】准确说法是<strong>不适合做磁盘索引</strong>。内存场景（Redis ZSet 用跳表、Java TreeMap 用红黑树）完全合理</td></tr><tr><td>"B+ 树是唯一答案"</td><td>【取舍】写多读少的场景走另一条路：<strong>LSM 树</strong>（LevelDB / RocksDB）把随机写变成顺序追加，代价是读可能多查几层、且需要 compaction</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q1" tag="MySQL" q="InnoDB 一页 16KB，非叶节点每条「键 + 页号」按 14B 算，扇出约 1170。如果换成 36 字节的 UUID 作主键，非叶节点每条记录变成多少字节？扇出约变成多少？" a="非叶每条 = 键 36B + 页号 6B = 42B；扇出 ≈ 16384 / 42 ≈ 390，约为原来的三分之一。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q2" tag="MySQL" q="接着 Q1——扇出从 1170 降到 390，树高会不会变高？" a="会，从 3 层变成 4 层。 按本卡的口径（树高 = 层数，含根与叶子；扇出 f 的树在 h 层时叶子页数 = f^(h−1)）：&#10;``text&#10;需要覆盖 2000 万行，每叶子页 16 行 → 需要 2000万 / 16 = 125 万个叶子页&#10;扇出 1170：&#10;3 层 → 1170² = 136.9 万页 → ×16 ≈ 2190 万行   ✓ 够（刚好）&#10;扇出 390：&#10;3 层 →  390² =  15.2 万页 → ×16 ≈  243 万行   ✗ 不够&#10;4 层 →  390³ = 5932 万页 → ×16 ≈  9.5 亿行   ✓ 够&#10;``&#10;【结论】扇出降到三分之一，树高就要多一层——每次查询多一次随机 IO。&#10;所以用 UUID 当主键有两笔代价，两笔都要说：&#10;1. 树高 +1：只影响主键索引本身（一次查询多 1 次 IO）&#10;2. 更关键的是&quot;体积&quot;：主键会出现在每一个二级索引的叶子里（36B 对 8B），于是所有二级索引都变胖、每页能装的索引项变少、缓存命中率下降——5 个二级索引就是 5 份复制品一起变胖。&#10;这才是&quot;别用 UUID 当主键&quot;的真实理由：第一笔是一次性的 1 次 IO，第二笔是全表所有索引的长期成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q3" tag="MySQL" q="一张只有 100 行的表，B+ 树树高是几层？" a="2 层（根 + 1 个叶子页）。根页有 1170 个键，一个叶子页就装得下 100 行。不可能是 1 层——根节点也是页，而数据必须落在叶子层。&#10;这个推论的意义：小表和大表的树高只差 1 到 2 层，所以&quot;表小所以快&quot;不是因为树矮，而是因为扫描行数少、且整张表都在缓存里。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;B+ 树因为每个节点只存键，所以树矮；红黑树因为节点里存了数据，所以树高。&quot;" a="后半句错了，属于张冠李戴。&#10;&quot;节点存数据导致树高&quot;是 B 树的问题（见 3.3 ①）。红黑树树高是因为它是二叉树、扇出只有 2——它节点存不存数据与树高无关（即使不存数据，扇出还是 2，树高还是约 24）。&#10;正确说法：B 树输在&quot;非叶存数据挤小了扇出&quot;，红黑树输在&quot;扇出天生只有 2&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;B 树的叶子节点也存数据，所以它的范围查询比 B+ 树慢。&quot;" a="错在归因。 B 树范围查询慢，不是因为&quot;叶子存数据&quot;，而是因为数据分布在所有层，中序遍历要在层间上下跳（见 3.3 ②）。而且 B 树是所有节点都存数据，不只是叶子。&#10;正确说法：B+ 树的叶子之间用链表相连、数据只在叶子层，所以定位到起点后可以顺序向右扫；B 树没有这条链，相邻记录可能在不同层，只能靠跨层遍历。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q1" tag="MySQL" q="InnoDB 一页 16KB，非叶节点每条「键 + 页号」按 14B 算，扇出约 1170。如果换成 36 字节的 UUID 作主键，非叶节点每条记录变成多少字节？扇出约变成多少？" a="非叶每条 = 键 36B + 页号 6B = 42B；扇出 ≈ 16384 / 42 ≈ 390，约为原来的三分之一。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q2" tag="MySQL" q="接着 Q1——扇出从 1170 降到 390，树高会不会变高？" a="会，从 3 层变成 4 层。 按本卡的口径（树高 = 层数，含根与叶子；扇出 f 的树在 h 层时叶子页数 = f^(h−1)）：&#10;``text&#10;需要覆盖 2000 万行，每叶子页 16 行 → 需要 2000万 / 16 = 125 万个叶子页&#10;扇出 1170：&#10;3 层 → 1170² = 136.9 万页 → ×16 ≈ 2190 万行   ✓ 够（刚好）&#10;扇出 390：&#10;3 层 →  390² =  15.2 万页 → ×16 ≈  243 万行   ✗ 不够&#10;4 层 →  390³ = 5932 万页 → ×16 ≈  9.5 亿行   ✓ 够&#10;``&#10;【结论】扇出降到三分之一，树高就要多一层——每次查询多一次随机 IO。&#10;所以用 UUID 当主键有两笔代价，两笔都要说：&#10;1. 树高 +1：只影响主键索引本身（一次查询多 1 次 IO）&#10;2. 更关键的是&quot;体积&quot;：主键会出现在每一个二级索引的叶子里（36B 对 8B），于是所有二级索引都变胖、每页能装的索引项变少、缓存命中率下降——5 个二级索引就是 5 份复制品一起变胖。&#10;这才是&quot;别用 UUID 当主键&quot;的真实理由：第一笔是一次性的 1 次 IO，第二笔是全表所有索引的长期成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q3" tag="MySQL" q="一张只有 100 行的表，B+ 树树高是几层？" a="2 层（根 + 1 个叶子页）。根页有 1170 个键，一个叶子页就装得下 100 行。不可能是 1 层——根节点也是页，而数据必须落在叶子层。&#10;这个推论的意义：小表和大表的树高只差 1 到 2 层，所以&quot;表小所以快&quot;不是因为树矮，而是因为扫描行数少、且整张表都在缓存里。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;B+ 树因为每个节点只存键，所以树矮；红黑树因为节点里存了数据，所以树高。&quot;" a="后半句错了，属于张冠李戴。&#10;&quot;节点存数据导致树高&quot;是 B 树的问题（见 3.3 ①）。红黑树树高是因为它是二叉树、扇出只有 2——它节点存不存数据与树高无关（即使不存数据，扇出还是 2，树高还是约 24）。&#10;正确说法：B 树输在&quot;非叶存数据挤小了扇出&quot;，红黑树输在&quot;扇出天生只有 2&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M1-为什么用B+树-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;B 树的叶子节点也存数据，所以它的范围查询比 B+ 树慢。&quot;" a="错在归因。 B 树范围查询慢，不是因为&quot;叶子存数据&quot;，而是因为数据分布在所有层，中序遍历要在层间上下跳（见 3.3 ②）。而且 B 树是所有节点都存数据，不只是叶子。&#10;正确说法：B+ 树的叶子之间用链表相连、数据只在叶子层，所以定位到起点后可以顺序向右扫；B 树没有这条链，相邻记录可能在不同层，只能靠跨层遍历。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">数据库索引为什么必须选择 B+ 树？这个选择的约束条件是什么？</p>
@@ -276,7 +285,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">B+ 树是<strong>为磁盘 IO 次数最少</strong>而设计的——非叶节点只存键让扇出达到约 1170、树高压到 3 层；叶子双向链表让范围查询一次下降后顺序扫；页与磁盘块对齐让每次 IO 都不浪费。于是查 2000 万行只要 3 次 IO，而红黑树要约 24 次。</div>
     
@@ -285,7 +294,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PostgreSQL 也以 B-tree 打底（见 [[母题-P1-索引类型选型]]），但它的表是<strong>堆表</strong>、索引叶子存 <code class="mv-md-code">ctid</code> 而不是整行——而且 PG 圈通常只说 B-tree，不说 B+ 树。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然 B+ 树这么矮，为什么还要尽量走覆盖索引？</strong></strong></p>
@@ -302,7 +311,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能在白纸上不看书推出「IO 次数是判据 → 四个结构各输在哪 → 三个设计点各解决什么 → 三层 2000 万行」，答完三条追问，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

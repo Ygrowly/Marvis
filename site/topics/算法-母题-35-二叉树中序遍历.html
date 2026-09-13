@@ -17,15 +17,24 @@
     <p class="mv-topic-meta">关联 母题池-36道推导 · 其他树形母题 ｜ 正本 wiki/topics/算法/母题-35-二叉树中序遍历.md</p>
   </div>
 
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一棵二叉树，返回它的中序遍历结果（左 → 根 → 右）。</p></div>
   </div>
 
 
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">二叉树三种遍历顺序怎么写，迭代版又怎么写？</p>
@@ -35,7 +44,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：一切树题的地基。面试常追问迭代版和 Morris，用来看你对「显式栈替代递归」是否真的理解。</p>
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">左—根—右；迭代版把递归悄悄用的「调用栈 + 返回地址」拆成显式的 <code class="mv-md-code">stack + cur</code>——一路向左压到底，弹出才输出，再跳右子树。</div>
     
@@ -44,7 +53,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 迭代版为什么容易写错？</strong></p>
 <p class="mv-md-p">要显式维护两件状态：<code class="mv-md-code">stack</code> 记「欠账的祖先」、<code class="mv-md-code">cur</code> 记「走到哪」，并守住三条：循环条件 <code class="mv-md-code">cur or stack</code> 缺一不可、压栈必须写在 <code class="mv-md-code">cur = cur.left</code> <strong>之前</strong>（覆盖前备份）、pop 之后必须接 <code class="mv-md-code">cur = cur.right</code>（弹出后改向）</p>
@@ -182,7 +191,7 @@ def preorder(root):
     </collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

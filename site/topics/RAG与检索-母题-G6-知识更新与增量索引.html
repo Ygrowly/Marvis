@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-G1-切分策略与索引粒度（切分粒度决定删除要清多少个块）· 母题-G2-向量与关键词的混合检索（Embedding 版本变更 = 全量重建）· 母题-M14-主从复制与延迟（延迟语义同构） ｜ 正本 wiki/topics/RAG与检索/母题-G6-知识更新与增量索引.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 索引是派生数据，源变了它就得变 ② 删除要按 ID 反查全部块 ③ 缓存会绕过 ACL，撤权必须连它一起清）· 读完约 11 分钟 · 需要先懂：[[母题-G1-切分策略与索引粒度]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的文档更新了怎么办？删除和撤权呢？"</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引是派生数据，源变了它就必须变</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引是派生数据，源变了它就必须变</h3>
 <p class="mv-md-p">【推导】<strong>索引（向量 + 倒排 + 元数据）不是事实来源，它只是源文档的派生视图。</strong> 这直接推出一件事：</p>
 <pre class="mv-md-pre">源文档的三种变化，索引都必须跟着变：
   ① 新增 / 修改  → 内容变了，派生视图要重算
@@ -157,8 +166,8 @@
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"删除就是把文档记录删掉"</td><td><strong>文档记录只是主记录，派生物散在 100 个块里</strong>（向量 + 倒排 + 元数据）。<strong>必须按 <code class="mv-md-code">doc_id</code> 反查全部 <code class="mv-md-code">chunk_id</code> 逐个清</strong>——漏一个就是"已删内容还能被搜到"的合规事故</td></tr><tr><td>"撤权了下一次查询会被 ACL 过滤掉"</td><td><strong>挡不住缓存</strong>。如果缓存按 query 文本做键，有权用户查过的结果会直接命中给无权用户。<strong>缓存必须按租户 / 权限分区</strong>——它是权限模型的一部分，不是优化项</td></tr><tr><td>"每天全量重建最省心"</td><td><strong>在数据量小、更新少时确实对</strong>（简单性是真实收益）。但<strong>重建一次要多久、多久要重建一次</strong>才是判据——<strong>100 万块每天改 1% 时，增量能省 99% 的嵌入调用</strong></td></tr><tr><td>"原地覆盖索引就行，反正内容一样"</td><td><strong>没有回滚路径</strong>，而且重建期间旧索引已被破坏。<strong>要新建一份 + 双写 + 验证 + 切换</strong>——和影子表方案是同一个模式</td></tr><tr><td>"索引滞后我们大概几分钟"</td><td><strong>"大概"不够</strong>。它是个<strong>必须可观测的指标</strong>（变更时刻 → 可被检索时刻）。如果业务承诺"规则 10 分钟内生效"，那它超 10 分钟就是故障</td></tr><tr><td>"旧版本新版本都一样，选一个返回就行"</td><td><strong>冲突时要显式说明</strong>：优先权威级别和最新生效版本，<strong>并把"这是哪一版、什么时候生效"告诉用户</strong>。<strong>偷偷选一个</strong>会让用户以为那是唯一的答案</td></tr><tr><td>"换 Embedding 模型只要重跑一遍"</td><td><strong>新旧向量不可比</strong>（[[母题-G2-向量与关键词的混合检索]]），混在一起检索结果会错乱。<strong>必须全量重嵌入 + 双写切换</strong>——这意味着<strong>换模型是一次成本很高的操作，要提前规划</strong></td></tr></tbody></table>
 <p class="mv-md-p">【取舍】读成一句话：<strong>增量省的是成本，删除与撤权保的是正确性——前者做不好是慢，后者做不好是事故。</strong></p>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q1" tag="RAG与检索" q="某知识库有 100 万个块，每天约有 1% 的内容发生变化。&#10;问：全量重建和增量更新各要多少次嵌入调用？差多少倍？" a="``text&#10;全量重建：1,000,000 次嵌入&#10;增量更新：1,000,000 × 1% = 10,000 次嵌入&#10;倍数 = 100 倍&#10;``&#10;【结论】增量省 99% 的嵌入调用——在嵌入要花钱、要花时间的前提下，这是数量级的差别。&#10;【补充】但增量不是免费的：它换来两个新问题——版本管理（哪一版索引对应哪一版源）和一致性（增量跑失败一半怎么办）。所以&quot;数据量小、更新频率低&quot;时，全量重建反而是对的选择：它的简单性是真实收益。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q2" tag="RAG与检索" q="增量同步任务每 5 分钟跑一次。一份文档在两次任务之间被修改。&#10;问：这份文档的索引滞后最短和最长各是多少？如果业务承诺&quot;规则修改 10 分钟内生效&quot;，够不够？" a="``text&#10;最好情况：修改发生在任务开始前一刻 → 滞后 ≈ 0&#10;最坏情况：修改发生在任务刚跑完之后 → 要等完整一轮 → 滞后 = 5 分钟&#10;平均：   ≈ 2.5 分钟&#10;`&#10;【结论】最大滞后 = 任务周期（5 分钟）。业务承诺 10 分钟时够用——因为有 2 倍余量。&#10;【推论】但如果任务某次跑失败或超时，滞后就会突破 5 分钟——所以：&#10;`text&#10;① 索引滞后必须是【被监控的指标】，而不是&quot;我们大概几分钟&quot;&#10;② 要监控任务本身是否按时完成（失败了要告警，不能静默）&#10;③ 承诺的时限要留余量（5 分钟周期对 10 分钟承诺 = 2 倍余量，是合理的）&#10;``"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q3" tag="RAG与检索" q="一份文档切成 100 个块。删除时按 doc_id 反查并清理。&#10;问：如果清理逻辑漏掉了块的反查表（只删了主记录），会发生什么？这个后果和&quot;新增漏了一条&quot;有什么本质区别？" a="``text&#10;只删主记录、漏了反查表：&#10;→ 那 100 个块还留在索引里&#10;→ 它们仍会被检索到、仍会被引用&#10;→ 用户能搜到【已经删除的内容】&#10;``&#10;【结论】本质区别在&quot;错误的方向&quot;：&#10;后果 · 性质&#10;新增漏了 · 少了一条内容 · 功能缺失（用户找不到）&#10;删除漏了 · 多了一条不该在的内容 · 正确性 / 合规事故（用户看到了不该看的）&#10;【推论】所以&quot;删除传播&quot;必须当成一条独立的、可验证的链路——要能回答&quot;这份文档的 100 个块是不是都清了&quot;，而不是&quot;我调了删除接口&quot;。&#10;【补充】这也解释了为什么 study/03 把&quot;删除传播&quot;单独列为一个要测的场景（和&quot;跨租户、已撤权、共享链接、继承权限、缓存污染&quot;并列）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;用户被撤权了没关系，下一次查询时 ACL 过滤会把他挡住的。&quot;" a="挡不住缓存。&#10;1. 缓存绕过了 ACL 过滤：如果缓存按 query 文本做键，有权用户查过的结果会进缓存；无权用户用同样的 query 查 → 直接命中缓存 → 拿到不该看的内容。这条路径根本不经过 ACL 过滤。&#10;2. 派生物也要清：撤权时要清的不只是主索引——向量项、倒排项、元数据、以及任何派生的引用 / 摘要 / Agent 记忆。&#10;3. 所以&quot;下一次查询会挡住&quot;是一个不成立的假设：它假设了所有访问都经过同一条过滤链路，而缓存不是。&#10;【准确说法】&quot;缓存必须按租户 / 权限分区——它不是优化项，是权限模型的一部分。撤权时要清主索引、向量、倒排、缓存和派生引用；而且要专门测跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染这六类场景。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们要换一个更好的 Embedding 模型，直接重跑一遍索引替换掉就行了。&quot;" a="三处问题。&#10;1. 新旧向量不可比：不同模型的向量空间完全不同，混在同一个索引里检索结果会错乱。所以必须全量重嵌入，不能增量替换。&#10;2. &quot;直接替换&quot;没有回滚路径：重建期间旧索引已被破坏，出问题只能全量重来。正确做法是新建一份索引 + 双写 + 验证 + 切换（和 [[母题-M4-索引代价与大表变更]] 的影子表方案是同一个模式）。&#10;3. 低估了成本：全量重嵌入 = 一次全量的嵌入调用（100 万块就是 100 万次），而且切换期间要双写。换模型是一次成本很高的操作，要提前规划、留出双写窗口。&#10;【准确说法】&quot;换 Embedding 模型 = 全量重嵌入 + 双写切换 + 指标验证 + 可回滚。所以 Embedding 版本必须进版本管理——它和 Schema 版本、Prompt 版本一样，是决定输出的一部分（[[母题-C3-Prompt版本管理与回归]]）。&quot;&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q1" tag="RAG与检索" q="某知识库有 100 万个块，每天约有 1% 的内容发生变化。&#10;问：全量重建和增量更新各要多少次嵌入调用？差多少倍？" a="``text&#10;全量重建：1,000,000 次嵌入&#10;增量更新：1,000,000 × 1% = 10,000 次嵌入&#10;倍数 = 100 倍&#10;``&#10;【结论】增量省 99% 的嵌入调用——在嵌入要花钱、要花时间的前提下，这是数量级的差别。&#10;【补充】但增量不是免费的：它换来两个新问题——版本管理（哪一版索引对应哪一版源）和一致性（增量跑失败一半怎么办）。所以&quot;数据量小、更新频率低&quot;时，全量重建反而是对的选择：它的简单性是真实收益。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q2" tag="RAG与检索" q="增量同步任务每 5 分钟跑一次。一份文档在两次任务之间被修改。&#10;问：这份文档的索引滞后最短和最长各是多少？如果业务承诺&quot;规则修改 10 分钟内生效&quot;，够不够？" a="``text&#10;最好情况：修改发生在任务开始前一刻 → 滞后 ≈ 0&#10;最坏情况：修改发生在任务刚跑完之后 → 要等完整一轮 → 滞后 = 5 分钟&#10;平均：   ≈ 2.5 分钟&#10;`&#10;【结论】最大滞后 = 任务周期（5 分钟）。业务承诺 10 分钟时够用——因为有 2 倍余量。&#10;【推论】但如果任务某次跑失败或超时，滞后就会突破 5 分钟——所以：&#10;`text&#10;① 索引滞后必须是【被监控的指标】，而不是&quot;我们大概几分钟&quot;&#10;② 要监控任务本身是否按时完成（失败了要告警，不能静默）&#10;③ 承诺的时限要留余量（5 分钟周期对 10 分钟承诺 = 2 倍余量，是合理的）&#10;``"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q3" tag="RAG与检索" q="一份文档切成 100 个块。删除时按 doc_id 反查并清理。&#10;问：如果清理逻辑漏掉了块的反查表（只删了主记录），会发生什么？这个后果和&quot;新增漏了一条&quot;有什么本质区别？" a="``text&#10;只删主记录、漏了反查表：&#10;→ 那 100 个块还留在索引里&#10;→ 它们仍会被检索到、仍会被引用&#10;→ 用户能搜到【已经删除的内容】&#10;``&#10;【结论】本质区别在&quot;错误的方向&quot;：&#10;后果 · 性质&#10;新增漏了 · 少了一条内容 · 功能缺失（用户找不到）&#10;删除漏了 · 多了一条不该在的内容 · 正确性 / 合规事故（用户看到了不该看的）&#10;【推论】所以&quot;删除传播&quot;必须当成一条独立的、可验证的链路——要能回答&quot;这份文档的 100 个块是不是都清了&quot;，而不是&quot;我调了删除接口&quot;。&#10;【补充】这也解释了为什么 study/03 把&quot;删除传播&quot;单独列为一个要测的场景（和&quot;跨租户、已撤权、共享链接、继承权限、缓存污染&quot;并列）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;用户被撤权了没关系，下一次查询时 ACL 过滤会把他挡住的。&quot;" a="挡不住缓存。&#10;1. 缓存绕过了 ACL 过滤：如果缓存按 query 文本做键，有权用户查过的结果会进缓存；无权用户用同样的 query 查 → 直接命中缓存 → 拿到不该看的内容。这条路径根本不经过 ACL 过滤。&#10;2. 派生物也要清：撤权时要清的不只是主索引——向量项、倒排项、元数据、以及任何派生的引用 / 摘要 / Agent 记忆。&#10;3. 所以&quot;下一次查询会挡住&quot;是一个不成立的假设：它假设了所有访问都经过同一条过滤链路，而缓存不是。&#10;【准确说法】&quot;缓存必须按租户 / 权限分区——它不是优化项，是权限模型的一部分。撤权时要清主索引、向量、倒排、缓存和派生引用；而且要专门测跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染这六类场景。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G6-知识更新与增量索引-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们要换一个更好的 Embedding 模型，直接重跑一遍索引替换掉就行了。&quot;" a="三处问题。&#10;1. 新旧向量不可比：不同模型的向量空间完全不同，混在同一个索引里检索结果会错乱。所以必须全量重嵌入，不能增量替换。&#10;2. &quot;直接替换&quot;没有回滚路径：重建期间旧索引已被破坏，出问题只能全量重来。正确做法是新建一份索引 + 双写 + 验证 + 切换（和 [[母题-M4-索引代价与大表变更]] 的影子表方案是同一个模式）。&#10;3. 低估了成本：全量重嵌入 = 一次全量的嵌入调用（100 万块就是 100 万次），而且切换期间要双写。换模型是一次成本很高的操作，要提前规划、留出双写窗口。&#10;【准确说法】&quot;换 Embedding 模型 = 全量重嵌入 + 双写切换 + 指标验证 + 可回滚。所以 Embedding 版本必须进版本管理——它和 Schema 版本、Prompt 版本一样，是决定输出的一部分（[[母题-C3-Prompt版本管理与回归]]）。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">知识改了、删了、撤权了，索引怎么跟上——为什么&quot;更新&quot;这件事里最难的不是新增，而是删除？</p>
@@ -168,7 +177,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是 RAG 面试里<strong>最容易被忽略、但工程上最容易出事的一题</strong>。多数人答得出"我们每天重建一次索引"，但答不出"<strong>删除怎么传播</strong>"。<strong>而删除和撤权出事不是性能问题，是合规事故</strong>——用户能搜到已经删除或本无权看的内容。</p>
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>索引是派生数据，源变了它就必须变</strong>——三种变化各自要处理：<strong>新增 / 修改</strong>走增量链路（只重跑变化的 1%，100 万块每天改 1% 时能省 <strong>99%</strong> 的嵌入调用）；<strong>删除</strong>最难，因为<strong>要按 <code class="mv-md-code">doc_id</code> 反查它切出来的全部块</strong>（一份文档 100 个块就要清 100 个），<strong>漏一个就是"已删内容还能被搜到"的合规事故</strong>；<strong>撤权</strong>要清的地方更多——<strong>主索引、向量、倒排，以及缓存</strong>，<strong>因为缓存会绕过 ACL 过滤</strong>（有权用户查过的结果会命中给无权用户），所以<strong>缓存必须按租户 / 权限分区</strong>。<strong>新鲜度必须可观测</strong>：文档带 <code class="mv-md-code">effective_at</code> / <code class="mv-md-code">expires_at</code> / <code class="mv-md-code">source_version</code>，<strong>索引滞后</strong>（变更时刻 → 可检索时刻）要是一个被监控的指标，回答要<strong>展示规则生效时间</strong>，冲突时<strong>显式说明版本而不是偷偷选一个</strong>。改索引结构（比如换 Embedding 模型）要走<strong>双写 / 影子索引再切换</strong>——<strong>凡是要改正在服务的派生结构，都用"新建 + 双写 + 验证 + 切换"这套动作。</strong></div>
     
@@ -177,7 +186,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>知识更新怎么做到增量且不返回失效内容？</strong></strong></p>
 <p class="mv-md-p"><strong>Source 事件触发增量解析与索引；新旧索引双轨验证；文档和 chunk 版本化；删除 / 撤权必须传播；回答记录知识版本；支持回滚，并监控索引滞后。</strong> 这是 study/03 给的完整清单。</p>
@@ -197,7 +206,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出三种变化各自要处理什么；<strong>能算出增量省 99% 的嵌入调用</strong>；<strong>能算出索引滞后的最大窗口（= 任务周期）并判断是否满足业务承诺</strong>；<strong>能说清"删除漏了"与"新增漏了"的性质区别（合规事故 vs 功能缺失）</strong>；能解释缓存为什么绕过 ACL、撤权为什么必须连缓存一起清；能说出双写 / 影子索引的用意；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

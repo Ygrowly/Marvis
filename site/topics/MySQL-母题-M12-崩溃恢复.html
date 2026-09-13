@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-M11-三日志与两阶段提交 · 母题-M8-隔离级别与ACID · 母题-M9-MVCC · 母题-P11-WAL与checkpoint ｜ 正本 wiki/topics/MySQL/母题-M12-崩溃恢复.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 崩溃时只有三种状态 ② 幂等靠 LSN 而不是靠"只做一次" ③ 裁决依据是 binlog 完整性）· 读完约 9 分钟 · 需要先懂：[[母题-M11-三日志与两阶段提交]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">数据库在「事务提交到一半」时断电。重启后它怎么知道哪些事务该重做、哪些该回滚？会不会把已经提交的又回滚掉？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把"恢复"这个问题拆小</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把"恢复"这个问题拆小</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 崩溃瞬间，一个事务只可能是三种状态【事实】</h4>
 <p class="mv-md-p">这是全卡的地基。<strong>不要一上来就想"恢复算法"，先问"崩溃那一刻，每种状态留下了什么痕迹"。</strong></p>
 <table class="mv-table"><thead><tr><th>崩溃时的状态</th><th>数据页</th><th>日志留下了什么</th><th>恢复动作</th></tr></thead><tbody><tr><td><strong>还没提交</strong></td><td>可能已改内存</td><td>redo 里没有 commit、binlog 没写</td><td><strong>undo 回滚</strong></td></tr><tr><td><strong>已经提交</strong></td><td><strong>可能还没落盘</strong></td><td>redo 已 commit、binlog 已完整</td><td><strong>redo 重放补上</strong></td></tr><tr><td><strong>提交到一半</strong></td><td>不确定</td><td>redo 是 <strong>prepare</strong>，binlog 可能完整也可能不完整</td><td><strong>看 binlog 裁决</strong> ← 本题题眼</td></tr></tbody></table>
@@ -120,8 +129,8 @@
 <h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"恢复是靠猜或者靠事务开始时间"</td><td>【推导】靠<strong>日志状态</strong>。崩溃瞬间每个事务只有三种状态，<strong>每种状态都有明确的日志痕迹</strong>，动作由痕迹决定</td></tr><tr><td>"已提交的事务肯定已经在磁盘上了"</td><td>【事实】不一定。<strong>WAL 只保证日志落盘</strong>，数据页可能还在内存里 —— <strong>这正是要 redo 重放的原因</strong></td></tr><tr><td>"重放和回滚的顺序无所谓"</td><td>【推导】<strong>必须先 redo 重放再 undo 回滚</strong>。反过来会在"已提交但页未落盘"时丢掉已提交的数据</td></tr><tr><td>"恢复中断（又崩了）会出问题"</td><td>【推导】没关系。redo 重放<strong>按页 LSN 判断是否已应用</strong>，是幂等的；重启后从最新 check point 继续即可。<strong>系统不怕反复崩，怕的是重放不幂等</strong></td></tr><tr><td>"恢复时间长是磁盘慢"</td><td>【取舍】更主要的原因是 <strong>check point 落后太多</strong>（要重放的日志多）。<strong>而 check point 的推进频率同时影响正常写入性能</strong>，不能单边调</td></tr><tr><td>"PG 也有 prepare/commit 的两阶段日志状态"</td><td>【事实】<strong>没有</strong>。PG 只有 WAL 一套日志，<strong>不存在"两份日志要协调"的问题</strong>，所以没有 2PC 的日志状态；它的恢复是"重放 WAL + 回滚未提交元组"（[[母题-P11-WAL与checkpoint]]）</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q1" tag="MySQL" q="redo 生成速率约 100 MB/s，崩溃时 check point 落后 30 秒。重放（顺序读 + 应用）速度按 300 MB/s 估。&#10;问：恢复大约要多久？想缩短它，代价在哪？" a="待重放量 = 100 MB/s × 30s = 3 GB&#10;恢复时间 ≈ 3 GB ÷ 300 MB/s ≈ 10 秒&#10;缩短它的唯一手段是让 check point 更靠前——即更频繁地把脏页刷到磁盘。&#10;【代价】刷脏页是随机写（M11 的 1.2：随机写比顺序写慢 2–3 个数量级）。check point 推得越勤，正常运行时的写入性能越差。&#10;所以这是同一组参数的两面：&#10;check point 推进 · 恢复时间 · 正常运行写入性能&#10;更频繁 · 变短 · 变差&#10;更少 · 变长 · 变好&#10;没有&quot;都变好&quot;的选项——面试时能把这句说出来，比背&quot;把 check point 调密&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q2" tag="MySQL" q="重启后，日志里发现三个事务：&#10;① redo 有 commit 标记 ② redo 是 prepare，且它的 binlog 记录完整 ③ redo 是 prepare，binlog 里找不到它&#10;分别怎么处理？为什么？" a="事务 · 状态 · 处理 · 依据&#10;① · 已提交 · 保留（必要时 redo 重放把数据页补上） · redo 里的 commit 标记&#10;② · 提交到一半 · 提交（把 redo 改成 commit） · 2PC 第二步成功了 = 已对外宣布过成功，必须生效，否则从库有主库没有&#10;③ · 提交到一半 · 回滚（用 undo 撤销） · 2PC 第二步没成功 = 从未对外宣布，必须回滚，否则主库有从库没有&#10;三者的动作都不是猜的——状态来自日志，动作由状态决定。这就是&quot;恢复靠自证，不靠猜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q3" tag="MySQL" q="恢复进行到一半，又断电了。再次重启时会不会出问题？为什么？" a="不会出问题。&#10;因为 redo 重放是幂等的：每条 redo 应用前都比较数据页头部的 LSN 与这条 redo 的 LSN——已经应用过的（页.LSN &gt;= redo.LSN）直接跳过。所以再重启时从最新的 check point 继续重放即可，不会重复应用。&#10;幂等的来源是&quot;每个页自带 LSN 这个状态标记&quot;，不是&quot;只允许做一次&quot;的锁。&#10;【推论】系统不怕反复崩，怕的是重放不幂等。 这个判据可以迁移：设计任何重试/重放机制时，先问&quot;能不能判断已做过&quot;，而不是先问&quot;怎么保证只做一次&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;崩溃恢复的原理是：比较各个事务的开始时间，开始得早且日志写完了的就提交，没写完的就回滚。&quot;" a="&quot;比较开始时间&quot;是错的，恢复不看时间，看状态。&#10;准确的做法是读日志留下的状态标记：&#10;日志里的状态 · 结论&#10;redo 有 commit · 已提交 → 保留&#10;redo 是 prepare + binlog 完整 · 视为提交&#10;redo 是 prepare + binlog 不完整 · 回滚&#10;redo 没有该事务的提交痕迹 · 未提交 → 回滚&#10;为什么不能靠时间：事务的&quot;开始时间&quot;和&quot;是否提交&quot;没有任何必然关系——一个很早就开始的事务可能一直没提交；一个刚开的事务可能已经提交。&#10;&quot;依赖时间推断状态&quot;在分布式系统里是典型的错误设计——状态必须被显式记录，而不是被推断。 这一点同样适用于业务层的幂等设计。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 崩溃恢复也是靠 redo 重放 + 用 binlog 裁决 prepare 事务，和 MySQL 一样。&quot;" a="&quot;靠 binlog 裁决 prepare&quot;是错的——PG 没有 binlog，也没有 prepare/commit 这套日志状态。&#10;PostgreSQL 只有 WAL 一套日志：&#10;恢复 = 重放 WAL + 回滚未提交的元组&#10;复制也走 WAL（流复制 / WAL 归档），不依赖第二份逻辑日志&#10;旧的元组版本留在堆里，靠 VACUUM 回收&#10;【推导】所以 PG 从一开始就不存在&quot;两份日志要协调&quot;的问题 —— 而两阶段提交恰恰是 MySQL 为了解决这个问题才发明的。&#10;MySQL · PostgreSQL&#10;日志 · redo + undo + binlog · WAL 一套&#10;恢复关键步骤 · redo 重放 → 用 binlog 裁决 prepare → undo 回滚 · 重放 WAL + 回滚未提交元组&#10;一致性协调 · 需要（2PC） · 不需要（单一日志天然一致）&#10;把 MySQL 的&quot;binlog 裁决&quot;套到 PG 上，是把两边最容易混的地方说反了。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q1" tag="MySQL" q="redo 生成速率约 100 MB/s，崩溃时 check point 落后 30 秒。重放（顺序读 + 应用）速度按 300 MB/s 估。&#10;问：恢复大约要多久？想缩短它，代价在哪？" a="待重放量 = 100 MB/s × 30s = 3 GB&#10;恢复时间 ≈ 3 GB ÷ 300 MB/s ≈ 10 秒&#10;缩短它的唯一手段是让 check point 更靠前——即更频繁地把脏页刷到磁盘。&#10;【代价】刷脏页是随机写（M11 的 1.2：随机写比顺序写慢 2–3 个数量级）。check point 推得越勤，正常运行时的写入性能越差。&#10;所以这是同一组参数的两面：&#10;check point 推进 · 恢复时间 · 正常运行写入性能&#10;更频繁 · 变短 · 变差&#10;更少 · 变长 · 变好&#10;没有&quot;都变好&quot;的选项——面试时能把这句说出来，比背&quot;把 check point 调密&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q2" tag="MySQL" q="重启后，日志里发现三个事务：&#10;① redo 有 commit 标记 ② redo 是 prepare，且它的 binlog 记录完整 ③ redo 是 prepare，binlog 里找不到它&#10;分别怎么处理？为什么？" a="事务 · 状态 · 处理 · 依据&#10;① · 已提交 · 保留（必要时 redo 重放把数据页补上） · redo 里的 commit 标记&#10;② · 提交到一半 · 提交（把 redo 改成 commit） · 2PC 第二步成功了 = 已对外宣布过成功，必须生效，否则从库有主库没有&#10;③ · 提交到一半 · 回滚（用 undo 撤销） · 2PC 第二步没成功 = 从未对外宣布，必须回滚，否则主库有从库没有&#10;三者的动作都不是猜的——状态来自日志，动作由状态决定。这就是&quot;恢复靠自证，不靠猜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q3" tag="MySQL" q="恢复进行到一半，又断电了。再次重启时会不会出问题？为什么？" a="不会出问题。&#10;因为 redo 重放是幂等的：每条 redo 应用前都比较数据页头部的 LSN 与这条 redo 的 LSN——已经应用过的（页.LSN &gt;= redo.LSN）直接跳过。所以再重启时从最新的 check point 继续重放即可，不会重复应用。&#10;幂等的来源是&quot;每个页自带 LSN 这个状态标记&quot;，不是&quot;只允许做一次&quot;的锁。&#10;【推论】系统不怕反复崩，怕的是重放不幂等。 这个判据可以迁移：设计任何重试/重放机制时，先问&quot;能不能判断已做过&quot;，而不是先问&quot;怎么保证只做一次&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;崩溃恢复的原理是：比较各个事务的开始时间，开始得早且日志写完了的就提交，没写完的就回滚。&quot;" a="&quot;比较开始时间&quot;是错的，恢复不看时间，看状态。&#10;准确的做法是读日志留下的状态标记：&#10;日志里的状态 · 结论&#10;redo 有 commit · 已提交 → 保留&#10;redo 是 prepare + binlog 完整 · 视为提交&#10;redo 是 prepare + binlog 不完整 · 回滚&#10;redo 没有该事务的提交痕迹 · 未提交 → 回滚&#10;为什么不能靠时间：事务的&quot;开始时间&quot;和&quot;是否提交&quot;没有任何必然关系——一个很早就开始的事务可能一直没提交；一个刚开的事务可能已经提交。&#10;&quot;依赖时间推断状态&quot;在分布式系统里是典型的错误设计——状态必须被显式记录，而不是被推断。 这一点同样适用于业务层的幂等设计。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 崩溃恢复也是靠 redo 重放 + 用 binlog 裁决 prepare 事务，和 MySQL 一样。&quot;" a="&quot;靠 binlog 裁决 prepare&quot;是错的——PG 没有 binlog，也没有 prepare/commit 这套日志状态。&#10;PostgreSQL 只有 WAL 一套日志：&#10;恢复 = 重放 WAL + 回滚未提交的元组&#10;复制也走 WAL（流复制 / WAL 归档），不依赖第二份逻辑日志&#10;旧的元组版本留在堆里，靠 VACUUM 回收&#10;【推导】所以 PG 从一开始就不存在&quot;两份日志要协调&quot;的问题 —— 而两阶段提交恰恰是 MySQL 为了解决这个问题才发明的。&#10;MySQL · PostgreSQL&#10;日志 · redo + undo + binlog · WAL 一套&#10;恢复关键步骤 · redo 重放 → 用 binlog 裁决 prepare → undo 回滚 · 重放 WAL + 回滚未提交元组&#10;一致性协调 · 需要（2PC） · 不需要（单一日志天然一致）&#10;把 MySQL 的&quot;binlog 裁决&quot;套到 PG 上，是把两边最容易混的地方说反了。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？</p>
@@ -131,7 +140,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">恢复 = <strong>redo 重放 + undo 回滚</strong>。重启后从 check point 起顺序重放 redo（<strong>每页自带 LSN，已落盘的直接跳过，所以重放幂等</strong>），把<strong>已提交</strong>的事务补上；再用 undo 把<strong>未提交</strong>的撤销。<strong>提交到一半（prepare）的事务由 binlog 的完整性裁决</strong>——binlog 完整就提交，不完整就回滚。<strong>顺序不能反：必须先 redo 再 undo。</strong></div>
     
@@ -140,7 +149,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PG 没有 binlog、没有 prepare/commit 两阶段日志状态</strong>——它只有 WAL，恢复是"重放 WAL + 回滚未提交元组"，复制也走 WAL。<strong>"PG 也靠 binlog 裁决"这个说法一说出来就是错的。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>恢复要重放多久？</strong></strong></p>
@@ -159,7 +168,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能只靠「三状态表 + 两个崩溃窗口」把整条恢复逻辑推一遍；能说清"为什么 binlog 完整就提交"；能说出幂等的本质是"能判断已做过"，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

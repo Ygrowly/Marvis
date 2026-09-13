@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-C6-成本与长上下文截断（同一枚 token 的价钱那一面）· 母题-C4-幻觉的成因与可控性（上下文缺失与冲突是幻觉的一类成因）· 母题-C2-结构化输出与JSON可靠性（工具定义也占上下文）· 母题-M9-MVCC（"视图不是事实"这组概念在数据库里的版本） ｜ 正本 wiki/topics/LLM与上下文/母题-C1-上下文组装与窗口预算.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 窗口容量 ≠ 能用上的信息量 ② 四种手段在解决同一件事的不同侧面 ③ 成本随轮次平方增长）· 读完约 12 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">面试官问——"现在模型窗口都 1M 了，你为什么还要做 RAG、还要裁剪上下文？直接把全部资料塞进去不就行了？"</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：注意力是一份有限的预算</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：注意力是一份有限的预算</h3>
 <p class="mv-md-p"><strong>先把两个词分清</strong>【事实】：</p>
 <ul class="mv-md-ul"><li><strong>Prompt Engineering</strong> 关心的是"<strong>一条指令怎么写</strong>"——措辞、结构、示例、格式，作用范围是<strong>系统提示那一块文本</strong>。</li><li><strong>Context Engineering</strong> 关心的是"<strong>这次调用模型到底能看到什么</strong>"——系统规则、当前目标、权威状态、检索证据、工具定义、近期轨迹、长期记忆，以及如何<strong>选择、压缩、隔离、更新</strong>它们。</li></ul>
 <p class="mv-md-p">【推导】<strong>为什么前者不够</strong>？因为 prompt 只是上下文的一个组成部分。一次请求里模型看到的东西，绝大部分不是"你写的那段话"——是工具定义、是历史消息、是检索回来的证据（1.1 会给完整清单）。<strong>前者是局部文本设计，后者是系统级信息架构。</strong> 这个区别在短任务上不明显（prompt 占大头），在 Agent 循环里会立刻放大：循环每转一圈都在<strong>生成新的上下文</strong>（工具结果、状态变化），而没有任何人"写"过它。</p>
@@ -205,8 +214,8 @@
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"窗口 1M 了，不用管上下文"</td><td>容量 ≠ 注意力质量（context rot）；且历史重发使成本按平方增长</td></tr><tr><td>"开了缓存，上下文就变小了"</td><td><strong>缓存只改价格，不改占用</strong>。缓存命中的前缀照样占窗口、照样消耗注意力</td></tr><tr><td>"摘要做得好就不用原始记录了"</td><td>摘要<strong>不是审计记录</strong>。原始消息 / 工具结果 / 产物必须外部持久化，摘要只留指针</td></tr><tr><td>"上下文多给总没错"</td><td>噪声也是 token。信息变多会<strong>降低</strong>关键信息的利用率</td></tr><tr><td>"RAG 和长上下文是替代关系"</td><td>不是。数据小、稳定、无权限差异 → 直接放长上下文更简单；数据大 / 常更新 / 要权限过滤 / 要引用溯源 → RAG 负责候选选择与治理</td></tr><tr><td>"压缩可以随便压，越短越好"</td><td>顺序是<strong>先保 recall 再提 precision</strong>。压太狠会丢掉"当时看不出、后来才关键"的信息，且不可逆</td></tr><tr><td>"模型升级了/窗口变大了，老办法就废了"</td><td>反例：Claude Code 为 Claude 5 代模型<strong>删掉了超过 80% 的系统提示</strong>且编码评测无损失——<strong>要做的是消融验证，不是凭感觉重写</strong>（[[母题-C3-Prompt版本管理与回归]]）</td></tr></tbody></table>
 <p class="mv-md-p">【取舍】把这张表读成一句话：<strong>每一条上下文手段都在"信息完整度 / 注意力质量 / 成本"之间换，没有免费午餐，也没有哪一条能单独解决问题。</strong></p>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q1" tag="LLM与上下文" q="某 Agent 会话共 30 轮，每轮平均新增 10K token。&#10;问：最后一轮的 prompt 有多大？累计输入 token 是多少？是最后一轮的多少倍？" a="``text&#10;最后一轮 prompt = 30 × 10K = 300K&#10;累计输入        = 10K × (1 + 2 + … + 30)&#10;= 10K × 30 × 31 ÷ 2&#10;= 10K × 465 = 4,650K = 4.65M&#10;倍数            = 4.65M ÷ 300K = 15.5 = (30 + 1) ÷ 2&#10;``&#10;【结论】倍数只和轮数有关，和每轮增量无关。30 轮是 15.5 倍，40 轮是 20.5 倍。所以&quot;轮数多&quot;比&quot;单轮大&quot;更伤成本——这一点决定了长任务必须做压缩，而不只是减少单次注入。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q2" tag="LLM与上下文" q="沿用 Q1 的会话，模型 Opus 5（输入 $5/MTok、缓存写 $6.25/MTok、缓存读 $0.5/MTok）。假设前缀稳定，每轮只有新增的 10K 是新内容。&#10;问：不开缓存和开缓存分别花多少？" a="算式 · 结果&#10;不开缓存 · 4.65M × $5/MTok · $23.25&#10;开缓存 · 读 · (4.65M − 0.3M) × $0.5/MTok = 4.35M × $0.5/MTok · $2.175&#10;开缓存 · 写 · 0.3M × $6.25/MTok · $1.875&#10;开缓存 · 合计 · $4.05&#10;→ 约降到 1/5.7。&#10;【补充】但第 30 轮的 prompt 还是 300K——缓存省的是钱，（几乎）不省窗口占用，也完全不解决注意力稀释。要动占用只能靠压缩或隔离。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q3" tag="LLM与上下文" q="compaction 的默认触发阈值是多少？一个 1M 窗口的会话，如果每轮新增 15K token 且不做任何处理，第几轮会触到窗口上限？第几轮会触发 compaction？这两个数的差距说明了什么？" a="``text&#10;窗口上限：1,000K ÷ 15K ≈ 66.7  → 第 67 轮左右触顶&#10;（会以 stop_reason: &quot;model_context_window_exceeded&quot; 结束）&#10;compaction：150K ÷ 15K = 10   → 第 10 轮触发&#10;``&#10;【说明】compaction 不是&quot;快满了才压&quot;，而是在窗口还剩 85% 的时候就动手了。 因为触发依据不是&quot;装不装得下&quot;，而是&quot;注意力从什么时候开始明显稀释&quot;——这也是&quot;窗口是容量，不是质量&quot;这句话在工程上的直接体现。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q4" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;我们开了 prompt caching，所以历史消息不再占用上下文窗口了，等于把窗口容量变大了。&quot;" a="两处错。&#10;1. 缓存不改变占用。缓存命中的前缀照样占窗口、照样消耗注意力预算；缓存改变的是你为这些 token 付多少钱（读价 0.1×）。&#10;2. &quot;窗口容量变大&quot;这个说法本身错。容量是模型属性，不会因为计费方式变化。&#10;【准确说法】&quot;prompt caching 让重复的稳定前缀按 0.1× 计价，降低的是成本和首 token 延迟，不改变窗口占用，也不缓解 context rot。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q5" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;上下文压缩就是把历史总结一下，总结得越短越好，这样能塞更多新内容进去。&quot;" a="&quot;越短越好&quot;方向反了。&#10;正确的调法是先保 recall 再提 precision：先把每一条相关信息都抓进摘要（保证不漏），再迭代删冗余。为了短而牺牲 recall，丢掉的是&quot;当时看不出重要、后来才关键&quot;的细节。&#10;这种丢失不可逆——如果原始内容没有外部持久化，就真没了。&#10;而且摘要必须保留可回溯的指针（artifact ID、业务键、已完成副作用记录）。副作用记录尤其不能丢：丢了会导致恢复时重复执行已经做过的写操作。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q1" tag="LLM与上下文" q="某 Agent 会话共 30 轮，每轮平均新增 10K token。&#10;问：最后一轮的 prompt 有多大？累计输入 token 是多少？是最后一轮的多少倍？" a="``text&#10;最后一轮 prompt = 30 × 10K = 300K&#10;累计输入        = 10K × (1 + 2 + … + 30)&#10;= 10K × 30 × 31 ÷ 2&#10;= 10K × 465 = 4,650K = 4.65M&#10;倍数            = 4.65M ÷ 300K = 15.5 = (30 + 1) ÷ 2&#10;``&#10;【结论】倍数只和轮数有关，和每轮增量无关。30 轮是 15.5 倍，40 轮是 20.5 倍。所以&quot;轮数多&quot;比&quot;单轮大&quot;更伤成本——这一点决定了长任务必须做压缩，而不只是减少单次注入。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q2" tag="LLM与上下文" q="沿用 Q1 的会话，模型 Opus 5（输入 $5/MTok、缓存写 $6.25/MTok、缓存读 $0.5/MTok）。假设前缀稳定，每轮只有新增的 10K 是新内容。&#10;问：不开缓存和开缓存分别花多少？" a="算式 · 结果&#10;不开缓存 · 4.65M × $5/MTok · $23.25&#10;开缓存 · 读 · (4.65M − 0.3M) × $0.5/MTok = 4.35M × $0.5/MTok · $2.175&#10;开缓存 · 写 · 0.3M × $6.25/MTok · $1.875&#10;开缓存 · 合计 · $4.05&#10;→ 约降到 1/5.7。&#10;【补充】但第 30 轮的 prompt 还是 300K——缓存省的是钱，（几乎）不省窗口占用，也完全不解决注意力稀释。要动占用只能靠压缩或隔离。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q3" tag="LLM与上下文" q="compaction 的默认触发阈值是多少？一个 1M 窗口的会话，如果每轮新增 15K token 且不做任何处理，第几轮会触到窗口上限？第几轮会触发 compaction？这两个数的差距说明了什么？" a="``text&#10;窗口上限：1,000K ÷ 15K ≈ 66.7  → 第 67 轮左右触顶&#10;（会以 stop_reason: &quot;model_context_window_exceeded&quot; 结束）&#10;compaction：150K ÷ 15K = 10   → 第 10 轮触发&#10;``&#10;【说明】compaction 不是&quot;快满了才压&quot;，而是在窗口还剩 85% 的时候就动手了。 因为触发依据不是&quot;装不装得下&quot;，而是&quot;注意力从什么时候开始明显稀释&quot;——这也是&quot;窗口是容量，不是质量&quot;这句话在工程上的直接体现。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q4" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;我们开了 prompt caching，所以历史消息不再占用上下文窗口了，等于把窗口容量变大了。&quot;" a="两处错。&#10;1. 缓存不改变占用。缓存命中的前缀照样占窗口、照样消耗注意力预算；缓存改变的是你为这些 token 付多少钱（读价 0.1×）。&#10;2. &quot;窗口容量变大&quot;这个说法本身错。容量是模型属性，不会因为计费方式变化。&#10;【准确说法】&quot;prompt caching 让重复的稳定前缀按 0.1× 计价，降低的是成本和首 token 延迟，不改变窗口占用，也不缓解 context rot。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C1-上下文组装与窗口预算-q5" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;上下文压缩就是把历史总结一下，总结得越短越好，这样能塞更多新内容进去。&quot;" a="&quot;越短越好&quot;方向反了。&#10;正确的调法是先保 recall 再提 precision：先把每一条相关信息都抓进摘要（保证不漏），再迭代删冗余。为了短而牺牲 recall，丢掉的是&quot;当时看不出重要、后来才关键&quot;的细节。&#10;这种丢失不可逆——如果原始内容没有外部持久化，就真没了。&#10;而且摘要必须保留可回溯的指针（artifact ID、业务键、已完成副作用记录）。副作用记录尤其不能丢：丢了会导致恢复时重复执行已经做过的写操作。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">模型能看到的 token 是有上限的，但比&quot;有上限&quot;更麻烦的是——放进去的 token 模型不一定用得上，而且每一轮都要原样重发一遍。那么每一步到底该放什么？</p>
@@ -216,7 +225,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">上下文窗口是<strong>容量</strong>不是<strong>质量</strong>——Transformer 的注意力是 n² 关系，token 越多这份预算越被摊薄，实测表现为 context rot。所以目标不是"塞满窗口"，而是<strong>找到最小的那组高信号 token</strong>。工程上是四种手段的组合：<strong>选择</strong>（只放当前步骤所需）、<strong>压缩</strong>（摘要 + 外部持久化指针）、<strong>隔离</strong>（子任务独立窗口，只回传 1–2K）、<strong>缓存</strong>（稳定前缀复用）。另外成本是<strong>平方增长</strong>的——每轮都要重发全部历史，40 轮 × 15K 的会话累计输入 12.3M，是最后一轮 prompt 的 20.5 倍。缓存能把重复内容降到 0.1× 计价但<strong>不改占用</strong>；要真正降占用只能靠压缩。</div>
     
@@ -225,7 +234,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">数据库里的<strong>视图</strong>是查询时动态生成、不存数据的；LLM 的上下文恰好相反——<strong>每次都要把全部内容重新送进去、重新付钱、重新算注意力</strong>。同一个词，在数据库里是省成本的设计，在 LLM 这里<strong>是成本本身的来源</strong>。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>压缩和缓存到底谁解决什么？</strong></strong></p>
@@ -248,7 +257,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出 n² 与 attention budget 的因果关系；能列出窗口里到底装了什么（含输出、thinking、缓存前缀）；<strong>能算出</strong> 40 轮 × 15K 会话的累计输入 12.3M 与 20.5 倍；能讲清缓存（改价格）与压缩（改占用）的分工并给出算式；能说出压缩"先 recall 后 precision"的顺序和摘要必须保留的指针；能讲出 Claude Code 的混合策略与子 Agent 的 1–2K 回传；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-M9-MVCC · 母题-M8-隔离级别与ACID · 母题-M16-乐观锁与悲观锁 · 母题-M13-长事务为什么危险 · 母题-P10-无间隙锁与锁变体 ｜ 正本 wiki/topics/MySQL/母题-M10-锁与死锁.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 锁加在索引记录上 ② 间隙锁的存在理由 ③ 死锁是顺序不一致）· 读完约 9 分钟 · 需要先懂：[[母题-M9-MVCC]]（快照读不加锁）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p"><code class="mv-md-code">WHERE status='PENDING' FOR UPDATE</code> 明明只想锁几行，为什么<strong>插入</strong>被卡住了？多个 Worker 还互相锁住了。为什么？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：读的问题已经被解决了，剩下的是写</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：读的问题已经被解决了，剩下的是写</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 谁还需要锁</h4>
 <p class="mv-md-p">【推导】[[母题-M9-MVCC]] 已经把<strong>读</strong>从冲突里摘出去了：普通 <code class="mv-md-code">SELECT</code> 走快照读，<strong>不加锁</strong>。</p>
 <p class="mv-md-p">所以还会打架的只剩两种：</p>
@@ -141,8 +150,8 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
 <h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"行锁就是只锁一行"</td><td>【推导】<strong>锁的是扫描到的索引记录范围</strong>。非唯一索引 + 范围条件能锁到万级；没有索引时锁全表</td></tr><tr><td>"RR 下一个普通 <code class="mv-md-code">SELECT</code> 也会加锁"</td><td>【事实】<strong>不会</strong>。它是快照读（M9），不加锁。只有当前读才加锁</td></tr><tr><td>"死锁说明数据库有问题"</td><td>【取舍】死锁是<strong>应用侧访问顺序不一致</strong>的症状。InnoDB 会检测并回滚代价小的事务，<strong>表现是某次请求报错，不是系统挂掉</strong></td></tr><tr><td>"共享锁和排他锁是两种粒度"</td><td>【事实】<strong>类型与粒度是两个维度</strong>：S/X 是<strong>类型</strong>（读锁/写锁），Record/Gap/Next-Key 是<strong>粒度</strong>。<code class="mv-md-code">FOR SHARE</code> 加 S 锁，<code class="mv-md-code">FOR UPDATE</code> 加 X 锁，两者都在某个粒度上</td></tr><tr><td>"InnoDB 也有表锁"</td><td>【事实】InnoDB 以<strong>行级锁</strong>为主，另有<strong>表级意向锁（IS/IX）</strong>——意向锁的作用是"<strong>声明行锁意图</strong>"，让表锁请求不必逐行检查</td></tr><tr><td>"PG 也有间隙锁"</td><td>【事实】<strong>PG 没有间隙锁</strong>。它靠快照 + 必要时报序列化失败（40001）让应用重试。<strong>"PG 有间隙锁"和"MySQL 不需要间隙锁"都是明确错误</strong>（[[母题-P10-无间隙锁与锁变体]]）</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q1" tag="MySQL" q="一张 100 万行的表，status = 'PENDING' 占 20%（约 20 万行）。比较下面三种写法各自会锁住多少：&#10;① WHERE id = 123 FOR UPDATE（id 是主键）&#10;② WHERE status = 'PENDING' AND next_retry_time &lt;= NOW() FOR UPDATE（有 (status, next_retry_time) 索引）&#10;③ WHERE priority = 3 FOR UPDATE（priority 上没有索引）" a="写法 · 扫描路径 · 锁住的量&#10;① · 唯一索引等值，精确定位 · 1 条记录 + 0 间隙&#10;② · 索引范围扫描，扫过 status='PENDING' 那一段 · 约 20 万条索引记录 + 它们之间的间隙&#10;③ · 没有可用索引 → 全表扫描 · 100 万条记录 + 所有间隙 ≈ 锁全表&#10;①和③差 6 个数量级。 这就是为什么&quot;加个索引&quot;不只是性能问题，它还决定锁的范围。&#10;实务含义：写操作（尤其 FOR UPDATE）必须先确认走了哪条索引——EXPLAIN 的 key 是 NULL 或 type=ALL 时，这个 FOR UPDATE 就是在锁全表。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q2" tag="MySQL" q="事务 A 按顺序更新 id=1、id=2；事务 B 按顺序更新 id=2、id=1。两者几乎同时执行。会发生什么？InnoDB 会怎么处理？" a="形成循环等待 → 死锁。&#10;A 拿到 id=1 的锁，等 id=2&#10;B 拿到 id=2 的锁，等 id=1&#10;两个都在等对方释放 → 环 → 谁都不动&#10;InnoDB 的处理：主动检测到死锁，回滚&quot;代价较小&quot;的那个事务（比较修改行数），让另一个继续。所以表现是其中一个请求报 Deadlock found，系统不会整体卡死。&#10;根因不是&quot;锁太多&quot;，是&quot;顺序不一致&quot;——B 只要改成也按 id=1 再 id=2，就不会成环。统一加锁顺序是消除死锁最便宜的手段。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q3" tag="MySQL" q="N = 20 个 Worker 同时从同一张任务表里抢占待处理任务，每次取 1 条。&#10;分别估算&quot;不加 SKIP LOCKED&quot;和&quot;加 SKIP LOCKED&quot;两种情况下，Worker 需要等待的次数。" a="（按&quot;每次获取都精确撞上同一行&quot;的悲观估算）：&#10;不加 SKIP LOCKED：所有 Worker 抢的是同一批最前面的行，后到的只能排队 → 每个 Worker 平均要等 O(N) 次，整体处理变成串行&#10;加 SKIP LOCKED：每个 Worker 直接跳过已被锁的行，去拿当前未被锁的那批 → 等待 ≈ 0（除非可用的行已被全部锁完）&#10;这就是&quot;用查询语义替代等待&quot;的收益：把排队变成分流。&#10;【边界提醒】代价是拿到的不是&quot;最前面 N 条&quot;，而是&quot;当前可用的 N 条&quot;。如果业务要求严格按优先级处理，SKIP LOCKED 会破坏这个顺序。 这是个真实的取舍，不是无脑优化。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;行锁就是只锁一行。所以 WHERE status='PENDING' FOR UPDATE 只会锁住 status 为 PENDING 的那几行，不会影响别人插入。&quot;" a="两处都错。&#10;1. &quot;行锁就是只锁一行&quot; —— 锁加在索引记录上，锁的范围是扫描到的索引范围。非唯一索引 + 范围条件会锁住扫过的整段（Q1 里是约 20 万条）；没有可用索引时锁全表。&#10;2. &quot;不会影响别人插入&quot; —— 恰恰相反。RR 下会用 next-key lock 把扫过的记录和它们之间的间隙一起锁住，新插入的行落在被锁的间隙里就会被卡住。&#10;正确说法：锁的范围 = 扫描到的索引范围（含间隙）。 这正是&quot;只想锁几行，插入却被卡住&quot;的机制。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 也有间隙锁，所以 MySQL 和 PG 处理幻读的方式是一样的。&quot;" a="&quot;PG 也有间隙锁&quot;是错的。&#10;PostgreSQL 没有间隙锁。 它默认 RC，靠快照避免大部分幻读；在需要更强保证的场合靠在冲突时报序列化失败（40001）让应用重试。&#10;两边的代价模型完全不同：&#10;MySQL · PostgreSQL&#10;默认级别 · RR · RC&#10;防幻读 · next-key lock（挡住插入） · 快照 + 冲突时报错重试&#10;表现 · 插入被阻塞（等待） · 事务被中止（重试）&#10;&quot;等待&quot;和&quot;报错重试&quot;是两种哲学，各有适用场景——但不能把一方的机制说成另一方也有（[[母题-P10-无间隙锁与锁变体]]）。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q1" tag="MySQL" q="一张 100 万行的表，status = 'PENDING' 占 20%（约 20 万行）。比较下面三种写法各自会锁住多少：&#10;① WHERE id = 123 FOR UPDATE（id 是主键）&#10;② WHERE status = 'PENDING' AND next_retry_time &lt;= NOW() FOR UPDATE（有 (status, next_retry_time) 索引）&#10;③ WHERE priority = 3 FOR UPDATE（priority 上没有索引）" a="写法 · 扫描路径 · 锁住的量&#10;① · 唯一索引等值，精确定位 · 1 条记录 + 0 间隙&#10;② · 索引范围扫描，扫过 status='PENDING' 那一段 · 约 20 万条索引记录 + 它们之间的间隙&#10;③ · 没有可用索引 → 全表扫描 · 100 万条记录 + 所有间隙 ≈ 锁全表&#10;①和③差 6 个数量级。 这就是为什么&quot;加个索引&quot;不只是性能问题，它还决定锁的范围。&#10;实务含义：写操作（尤其 FOR UPDATE）必须先确认走了哪条索引——EXPLAIN 的 key 是 NULL 或 type=ALL 时，这个 FOR UPDATE 就是在锁全表。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q2" tag="MySQL" q="事务 A 按顺序更新 id=1、id=2；事务 B 按顺序更新 id=2、id=1。两者几乎同时执行。会发生什么？InnoDB 会怎么处理？" a="形成循环等待 → 死锁。&#10;A 拿到 id=1 的锁，等 id=2&#10;B 拿到 id=2 的锁，等 id=1&#10;两个都在等对方释放 → 环 → 谁都不动&#10;InnoDB 的处理：主动检测到死锁，回滚&quot;代价较小&quot;的那个事务（比较修改行数），让另一个继续。所以表现是其中一个请求报 Deadlock found，系统不会整体卡死。&#10;根因不是&quot;锁太多&quot;，是&quot;顺序不一致&quot;——B 只要改成也按 id=1 再 id=2，就不会成环。统一加锁顺序是消除死锁最便宜的手段。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q3" tag="MySQL" q="N = 20 个 Worker 同时从同一张任务表里抢占待处理任务，每次取 1 条。&#10;分别估算&quot;不加 SKIP LOCKED&quot;和&quot;加 SKIP LOCKED&quot;两种情况下，Worker 需要等待的次数。" a="（按&quot;每次获取都精确撞上同一行&quot;的悲观估算）：&#10;不加 SKIP LOCKED：所有 Worker 抢的是同一批最前面的行，后到的只能排队 → 每个 Worker 平均要等 O(N) 次，整体处理变成串行&#10;加 SKIP LOCKED：每个 Worker 直接跳过已被锁的行，去拿当前未被锁的那批 → 等待 ≈ 0（除非可用的行已被全部锁完）&#10;这就是&quot;用查询语义替代等待&quot;的收益：把排队变成分流。&#10;【边界提醒】代价是拿到的不是&quot;最前面 N 条&quot;，而是&quot;当前可用的 N 条&quot;。如果业务要求严格按优先级处理，SKIP LOCKED 会破坏这个顺序。 这是个真实的取舍，不是无脑优化。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;行锁就是只锁一行。所以 WHERE status='PENDING' FOR UPDATE 只会锁住 status 为 PENDING 的那几行，不会影响别人插入。&quot;" a="两处都错。&#10;1. &quot;行锁就是只锁一行&quot; —— 锁加在索引记录上，锁的范围是扫描到的索引范围。非唯一索引 + 范围条件会锁住扫过的整段（Q1 里是约 20 万条）；没有可用索引时锁全表。&#10;2. &quot;不会影响别人插入&quot; —— 恰恰相反。RR 下会用 next-key lock 把扫过的记录和它们之间的间隙一起锁住，新插入的行落在被锁的间隙里就会被卡住。&#10;正确说法：锁的范围 = 扫描到的索引范围（含间隙）。 这正是&quot;只想锁几行，插入却被卡住&quot;的机制。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M10-锁与死锁-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 也有间隙锁，所以 MySQL 和 PG 处理幻读的方式是一样的。&quot;" a="&quot;PG 也有间隙锁&quot;是错的。&#10;PostgreSQL 没有间隙锁。 它默认 RC，靠快照避免大部分幻读；在需要更强保证的场合靠在冲突时报序列化失败（40001）让应用重试。&#10;两边的代价模型完全不同：&#10;MySQL · PostgreSQL&#10;默认级别 · RR · RC&#10;防幻读 · next-key lock（挡住插入） · 快照 + 冲突时报错重试&#10;表现 · 插入被阻塞（等待） · 事务被中止（重试）&#10;&quot;等待&quot;和&quot;报错重试&quot;是两种哲学，各有适用场景——但不能把一方的机制说成另一方也有（[[母题-P10-无间隙锁与锁变体]]）。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">行锁、间隙锁、next-key lock 各锁什么？锁为什么会变大？死锁怎么来、怎么排查、怎么避免？</p>
@@ -152,7 +161,7 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">三种锁——<strong>Record Lock 锁记录本身；Gap Lock 锁记录之间的空隙（防插入，是防幻读的必要手段）；Next-Key Lock 把两者合起来，是 RR 下的默认单位</strong>。<strong>锁加在索引记录上，所以锁的范围等于"扫描到的索引范围"，不是"WHERE 里写的行"</strong>——非唯一索引、范围条件、缺少索引都会把锁放大到万级甚至全表。<strong>死锁 = 多个事务的加锁顺序不一致形成环</strong>，InnoDB 会检测并回滚代价小的事务。避免靠<strong>精确索引 + 短事务 + 一致顺序 +（队列场景）<code class="mv-md-code">SKIP LOCKED</code></strong>。</div>
     
@@ -161,7 +170,7 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的 RR 靠 next-key lock 挡幻读（会阻塞插入）；PG 没有间隙锁，靠快照 + 报错重试。</strong>「PG 也有间隙锁」和「MySQL 不需要间隙锁」都是明确错误。死锁排查工具也不同（MySQL 是 <code class="mv-md-code">SHOW ENGINE INNODB STATUS</code>，PG 是查锁等待视图）。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么唯一索引等值命中不产生间隙锁？</strong></strong></p>
@@ -180,7 +189,7 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出"<strong>锁的是扫描到的索引范围</strong>"并解释插入被卡的机制；能用统一指标算清三种写法的锁范围差异；能列五条避免手段并说出 <code class="mv-md-code">SKIP LOCKED</code> 的适用边界，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

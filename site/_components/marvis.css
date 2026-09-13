@@ -75,7 +75,8 @@
 /* ---------- 1. flip-card 翻转卡 ---------- */
 flip-card { display: block; perspective: 1400px; }
 .mv-fc {
-  position: relative; width: 100%; min-height: 15rem;
+  /* 原来固定 min-height: 15rem，短问题下方留一大片空 */
+  position: relative; width: 100%; min-height: 9rem;
   transform-style: preserve-3d; cursor: pointer;
   transition: transform .55s cubic-bezier(.4, .15, .2, 1);
 }
@@ -259,9 +260,10 @@ collapse-panel + collapse-panel { margin-top: 0.75rem; }
   border: 1px solid var(--mv-border); border-radius: var(--mv-radius);
   background: var(--mv-surface); overflow: hidden;
 }
+/* 2026-09-13：折叠头原来偏高，三个叠起来占 150px，压缩后更紧凑 */
 .mv-cp-head {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
-  gap: 0.75rem; padding: 0.9375rem 1.25rem; margin: 0;
+  gap: 0.625rem; padding: 0.6875rem 1.25rem; margin: 0;
   background: none; border: none; font-family: inherit; font-size: 0.9375rem;
   font-weight: 600; color: var(--mv-text); cursor: pointer; text-align: left; line-height: 1.6;
 }
@@ -412,10 +414,15 @@ figure-box { display: block; }
 .mv-mt collapse-panel + collapse-panel { margin-top: 0.625rem; }
 
 .mv-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+/* 2026-09-13：原来 font-weight 500 + muted 色，表头和正文几乎分不开。
+   长表格（如「组成 / 挡什么」六行）扫读时找不到列头。 */
 .mv-table th {
-  text-align: left; font-weight: 500; color: var(--mv-muted);
-  padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--mv-border);
+  text-align: left; font-weight: 600; color: var(--mv-text);
+  background: var(--mv-surface-2);
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--mv-border-strong);
 }
+.mv-table tbody tr:hover td { background: #FBFAF6; }
 .mv-table td {
   padding: 0.75rem; border-bottom: 1px solid var(--mv-border);
   vertical-align: top; line-height: 1.75;
@@ -649,3 +656,26 @@ figure-box { display: block; }
 .mv-modcard-name { font-weight: 600; font-size: .9375rem; color: var(--mv-text); }
 .mv-modcard-meta { margin-top: .25rem; font-size: .8125rem; color: var(--mv-muted); font-family: var(--mv-mono); }
 .mv-modcard-meta b { color: var(--mv-accent); font-weight: 600; }
+
+/* ---------- 母题页粘顶大纲（2026-09-13） ----------
+   一页 5000px，教材/自测/面试输出之间翻找要滚很久。加一条常驻的锚点导航，
+   并给各 section 留出滚动边距，免得跳过去被粘顶条盖住标题。 */
+.mv-toc {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; gap: 0.375rem;
+  margin: 0 0 1.25rem; padding: 0.5rem 0;
+  background: color-mix(in srgb, var(--mv-bg) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--mv-border);
+}
+.mv-toc a {
+  font-size: 0.8125rem; line-height: 1.6;
+  padding: 0.1875rem 0.625rem; border-radius: 999px;
+  color: var(--mv-muted); text-decoration: none;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.mv-toc a:hover {
+  color: var(--mv-accent); background: var(--mv-accent-soft);
+  border-color: #CECBF6;
+}
+.mv-section[id] { scroll-margin-top: 3.25rem; }

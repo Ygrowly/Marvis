@@ -17,13 +17,22 @@
     <p class="mv-topic-meta">关联 母题-R1-Redis数据结构与选型 · 母题-M11-三日志与两阶段提交 · 母题-P19-唯一约束与UPSERT ｜ 正本 wiki/topics/Redis/母题-R3-缓存一致性与三类事故.md</p>
   </div>
 <p class="mv-guide">必懂 3 件事（① 缓存是派生数据，DB 是权威 ② 为什么做不到强一致 ③ 三类事故的峰值怎么算）· 读完约 10 分钟 · 需要先懂：[[母题-R1-Redis数据结构与选型]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">缓存和数据库不一致怎么办？<strong>缓存穿透、击穿、雪崩</strong>分别是什么，怎么防？</p></div>
   </div>
 
-<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先定"谁是权威"</h3>
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先定"谁是权威"</h3>
 <h4 class="mv-md-h mv-md-h4">1.1 缓存是派生数据【事实】</h4>
 <p class="mv-md-p"><strong>这句话是本卡的地基</strong>：</p>
 <p class="mv-md-p mv-md-quote"><strong>数据库是权威状态，缓存只是它的一份派生副本。</strong></p>
@@ -116,8 +125,8 @@
 <h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
 <table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"先删缓存再写 DB 可以保证一致"</td><td>【推导】<strong>错的，而且比反过来更糟</strong>：中间的读会把旧值<strong>写回缓存长期保留</strong>（2.1）</td></tr><tr><td>"缓存和 DB 可以用事务保证强一致"</td><td>【推导】<strong>不可能</strong>——两个独立系统没有共同事务。<strong>目标是"最终一致 + 可接受的不一致窗口"</strong></td></tr><tr><td>"有了缓存就不怕 DB 挂了"</td><td>【取舍】缓存平时<strong>替你挡住了流量</strong>；一旦缓存整体故障，<strong>全部流量会瞬间倒向 DB</strong> —— 这正是雪崩的第二种成因。<strong>所以必须准备限流降级</strong></td></tr><tr><td>"给所有 key 设一样的 TTL 最省事"</td><td>【推导】<strong>这正是雪崩的成因</strong>。TTL 要加<strong>随机抖动</strong></td></tr><tr><td>"缓存永不过期就没事了"</td><td>【取舍】永不过期意味着<strong>永远不会自愈</strong>——一旦写入不一致，脏数据留到永远。<strong>TTL 是兜底，不是可选项</strong></td></tr><tr><td>"空值缓存会浪费内存，不如不做"</td><td>【取舍】短 TTL 的空值缓存<strong>正是为了防穿透</strong>；成本是一个短命的小 key，收益是 DB 不被无效请求打</td></tr></tbody></table>
 <hr class="mv-md-hr"></div></div>
-<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q1" tag="Redis" q="10 万个 key 在同一时刻被创建，TTL 都设 3600 秒。&#10;问：它们会在什么时候过期？如果给 TTL 加 0–600 秒的随机抖动，过期请求的峰值从多少降到多少？" a="不加抖动：10 万个 key 在同一秒过期 → 那一秒 DB 突然收到 约 10 万 QPS（如果这些 key 都有人在读）&#10;加 0–600 秒抖动：过期时间散布在 600 秒的窗口里 → 峰值 = 100,000 / 600 ≈ 167 QPS&#10;峰值降低约 600 倍。&#10;【推论】加抖动是一行代码的事，但不做就是一次事故。 这就是&quot;雪崩&quot;最典型的成因——不是有人攻击，而是自己的代码把过期时间对齐了。&#10;波动提醒：如果这 10 万个 key 是&quot;每天凌晨批量预热&quot;生成的，那它们天然会在同一秒过期——这种场景必须加抖动。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q2" tag="Redis" q="下面三个现象分别属于穿透、击穿还是雪崩？各自的直接对策是什么？&#10;① 有人用 id=-1、id=99999999 这类不存在的 ID 高频请求接口&#10;② 首页那一个商品缓存刚过期，一瞬间数据库 CPU 打满&#10;③ 服务重启后批量预热了缓存，2 小时后数据库周期性挨打" a="现象 · 类型 · 对策&#10;① 不存在的 ID · 穿透（键根本不存在） · 空值缓存（短 TTL）+ 布隆过滤器前置&#10;② 单个热 key 刚过期 · 击穿 · 互斥重建（只放一个请求去查 DB）/ 逻辑过期&#10;③ 批量预热的 key 同时到期 · 雪崩 · TTL 加随机抖动 + 多级缓存 + 限流降级&#10;【注意③】它暴露了一条容易忽略的规律：批量预热 = 批量同时过期。所以&quot;批量写入缓存&quot;的代码，必须同时&quot;批量加抖动&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q3" tag="Redis" q="一个热点 key 承载 10 万 QPS。某时刻它过期了，此时并发请求全部未命中。后端 DB 的上限是 5000 QPS。&#10;问：不用保护会发生什么？加了&quot;互斥重建&quot;之后，DB 收到多少请求？" a="不保护：10 万 QPS 全部落到 DB → 是 DB 上限的 20 倍 → 大概率把 DB 打挂（而 DB 一旦挂了，所有接口都受影响，不只是这个 key）&#10;加互斥重建：只有一个请求被放行去查 DB，其他请求等待它重建完成或直接读旧值 → DB 压力从 10 万降到 约 1&#10;【推论】这就是&quot;单个热点键能打挂整个系统&quot;的机制——它不是因为请求多，而是因为&quot;同时发现未命中&quot;。 加锁/互斥的成本，远低于 DB 挂掉的成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q4" tag="Redis" q="下面这段话哪里错了？&#10;&quot;缓存一致性很好解决：写数据的时候先删缓存、再更新数据库，这样读请求就会去数据库拿最新的。&quot;" a="这个顺序是错的，而且比反过来更糟。&#10;问题出在 ① 和 ② 之间的窗口：&#10;``&#10;T1: 线程 A 删除缓存&#10;T2: 线程 B 读缓存 → 未命中 → 从 DB 读到【旧值】&#10;T3: 线程 A 更新 DB（现在 DB 是新值了）&#10;T4: 线程 B 把【旧值】写回缓存     ← 脏数据被写进缓存&#10;`&#10;结果：缓存里留着旧值，而且可能长期留着（如果没设 TTL）。&#10;正确做法是反过来（Cache Aside）：&#10;`&#10;① UPDATE db&#10;② DEL cache&#10;``&#10;这样并发读最坏只是读到一次旧值，而不会把旧值写进缓存长期保留。&#10;【补充】即便用了正确顺序，仍有缺口：② 失败时缓存就是脏的。所以必须配 TTL 兜底，或者上 Outbox 保证&quot;删缓存&quot;这件事一定会被执行。（EnergyOps 用的就是后者。）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;只要引入 Redis，系统的可用性就更好了，因为数据库挂的时候缓存还能扛。&quot;" a="这句话把&quot;平时&quot;和&quot;故障时&quot;搞反了——引入缓存反而增加了一个故障面。&#10;平时：缓存替你挡住了大部分读流量，DB 很轻松。✅&#10;缓存整体故障时：被挡住的那部分流量会瞬间全部倒向 DB。假设原本 10 万 QPS 里 95% 由缓存承接，缓存一挂 → DB 瞬间要接 10 万 QPS（原来只接 5000）。结果往往不是&quot;降级仍可用&quot;，而是&quot;DB 被连锁打挂&quot;。&#10;【推论】所以必须准备两件事：&#10;1. 限流降级：DB 是最后一道防线，要能主动拒绝请求（宁可拒绝一部分，也不要全挂）&#10;2. 多级缓存 / 本地缓存：Redis 挂了还有一层本地缓存顶着&#10;准确说法：缓存提升的是&quot;平时的吞吐&quot;，它把故障风险从&quot;缓存的可用性&quot;转嫁成了&quot;DB 的抗冲击能力&quot;——所以缓存故障必须专门演练。&#10;---"></flip-card></div></div>
-  <div class="mv-section">
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q1" tag="Redis" q="10 万个 key 在同一时刻被创建，TTL 都设 3600 秒。&#10;问：它们会在什么时候过期？如果给 TTL 加 0–600 秒的随机抖动，过期请求的峰值从多少降到多少？" a="不加抖动：10 万个 key 在同一秒过期 → 那一秒 DB 突然收到 约 10 万 QPS（如果这些 key 都有人在读）&#10;加 0–600 秒抖动：过期时间散布在 600 秒的窗口里 → 峰值 = 100,000 / 600 ≈ 167 QPS&#10;峰值降低约 600 倍。&#10;【推论】加抖动是一行代码的事，但不做就是一次事故。 这就是&quot;雪崩&quot;最典型的成因——不是有人攻击，而是自己的代码把过期时间对齐了。&#10;波动提醒：如果这 10 万个 key 是&quot;每天凌晨批量预热&quot;生成的，那它们天然会在同一秒过期——这种场景必须加抖动。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q2" tag="Redis" q="下面三个现象分别属于穿透、击穿还是雪崩？各自的直接对策是什么？&#10;① 有人用 id=-1、id=99999999 这类不存在的 ID 高频请求接口&#10;② 首页那一个商品缓存刚过期，一瞬间数据库 CPU 打满&#10;③ 服务重启后批量预热了缓存，2 小时后数据库周期性挨打" a="现象 · 类型 · 对策&#10;① 不存在的 ID · 穿透（键根本不存在） · 空值缓存（短 TTL）+ 布隆过滤器前置&#10;② 单个热 key 刚过期 · 击穿 · 互斥重建（只放一个请求去查 DB）/ 逻辑过期&#10;③ 批量预热的 key 同时到期 · 雪崩 · TTL 加随机抖动 + 多级缓存 + 限流降级&#10;【注意③】它暴露了一条容易忽略的规律：批量预热 = 批量同时过期。所以&quot;批量写入缓存&quot;的代码，必须同时&quot;批量加抖动&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q3" tag="Redis" q="一个热点 key 承载 10 万 QPS。某时刻它过期了，此时并发请求全部未命中。后端 DB 的上限是 5000 QPS。&#10;问：不用保护会发生什么？加了&quot;互斥重建&quot;之后，DB 收到多少请求？" a="不保护：10 万 QPS 全部落到 DB → 是 DB 上限的 20 倍 → 大概率把 DB 打挂（而 DB 一旦挂了，所有接口都受影响，不只是这个 key）&#10;加互斥重建：只有一个请求被放行去查 DB，其他请求等待它重建完成或直接读旧值 → DB 压力从 10 万降到 约 1&#10;【推论】这就是&quot;单个热点键能打挂整个系统&quot;的机制——它不是因为请求多，而是因为&quot;同时发现未命中&quot;。 加锁/互斥的成本，远低于 DB 挂掉的成本。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q4" tag="Redis" q="下面这段话哪里错了？&#10;&quot;缓存一致性很好解决：写数据的时候先删缓存、再更新数据库，这样读请求就会去数据库拿最新的。&quot;" a="这个顺序是错的，而且比反过来更糟。&#10;问题出在 ① 和 ② 之间的窗口：&#10;``&#10;T1: 线程 A 删除缓存&#10;T2: 线程 B 读缓存 → 未命中 → 从 DB 读到【旧值】&#10;T3: 线程 A 更新 DB（现在 DB 是新值了）&#10;T4: 线程 B 把【旧值】写回缓存     ← 脏数据被写进缓存&#10;`&#10;结果：缓存里留着旧值，而且可能长期留着（如果没设 TTL）。&#10;正确做法是反过来（Cache Aside）：&#10;`&#10;① UPDATE db&#10;② DEL cache&#10;``&#10;这样并发读最坏只是读到一次旧值，而不会把旧值写进缓存长期保留。&#10;【补充】即便用了正确顺序，仍有缺口：② 失败时缓存就是脏的。所以必须配 TTL 兜底，或者上 Outbox 保证&quot;删缓存&quot;这件事一定会被执行。（EnergyOps 用的就是后者。）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R3-缓存一致性与三类事故-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;只要引入 Redis，系统的可用性就更好了，因为数据库挂的时候缓存还能扛。&quot;" a="这句话把&quot;平时&quot;和&quot;故障时&quot;搞反了——引入缓存反而增加了一个故障面。&#10;平时：缓存替你挡住了大部分读流量，DB 很轻松。✅&#10;缓存整体故障时：被挡住的那部分流量会瞬间全部倒向 DB。假设原本 10 万 QPS 里 95% 由缓存承接，缓存一挂 → DB 瞬间要接 10 万 QPS（原来只接 5000）。结果往往不是&quot;降级仍可用&quot;，而是&quot;DB 被连锁打挂&quot;。&#10;【推论】所以必须准备两件事：&#10;1. 限流降级：DB 是最后一道防线，要能主动拒绝请求（宁可拒绝一部分，也不要全挂）&#10;2. 多级缓存 / 本地缓存：Redis 挂了还有一层本地缓存顶着&#10;准确说法：缓存提升的是&quot;平时的吞吐&quot;，它把故障风险从&quot;缓存的可用性&quot;转嫁成了&quot;DB 的抗冲击能力&quot;——所以缓存故障必须专门演练。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">缓存怎么和 DB 保持一致？三类经典事故各自的根因与对策是什么？</p>
@@ -127,7 +136,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>数据库是权威状态，缓存是它的派生副本</strong>——两个独立系统<strong>没有共同事务</strong>，所以只能追求"最终一致 + 可接受的不一致窗口"。写路径用 <strong>Cache Aside（先写 DB 再删缓存）</strong>，删除失败要靠 <strong>TTL 兜底或 Outbox 保证</strong>（EnergyOps 用 Outbox，因为 <strong>PG 提交与 Redis 删除不可能构成同一个事务</strong>）。三类事故的共同根因是"<strong>缓存没挡住请求</strong>"：<strong>穿透 = 键不存在</strong>（空值缓存 / 布隆过滤器）、<strong>击穿 = 一个热点过期</strong>（互斥重建 / 逻辑过期）、<strong>雪崩 = 一大批同时过期</strong>（<strong>TTL 加抖动</strong> / 多级缓存 / 限流降级）。</div>
     
@@ -136,7 +145,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Redis 与 Memcached 在这个层面的差别</strong>——Memcached 只有 String、没有持久化、不支持复杂原子操作；<strong>所以"用 Redis 做限流/去重/分布式锁"这些用法在 Memcached 上做不出来</strong>。面试时能把"结构丰富 → 服务端能做原子操作 → 才支撑得起限流与去重"这条链讲清楚，比对比参数更有价值。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>先删缓存还是先写 DB？</strong></strong></p>
@@ -159,7 +168,7 @@
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"为什么做不到强一致"并给出不一致窗口的判据；能按根因区分三类事故并对症下药；能<strong>算出</strong> TTL 抖动把峰值降多少；能说清 Outbox 解决的是什么问题，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>

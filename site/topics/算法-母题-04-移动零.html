@@ -17,15 +17,24 @@
     <p class="mv-topic-meta">关联 母题-05-盛最多水的容器 · 母题-06-三数之和 ｜ 正本 wiki/topics/算法/母题-04-移动零.md</p>
   </div>
 
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-problem">
     <h2 class="mv-section-title">题目</h2>
     <div class="mv-problem"><p class="mv-md-p">给定一个整型数组，把所有 0 移到数组末尾，同时保持非零元素的相对顺序。要求原地操作，不得复制新数组。</p></div>
   </div>
 
 
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-output">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
       <p class="mv-ask-q">如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？</p>
@@ -35,7 +44,7 @@
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：快慢指针的最简形态，一切「原地改造数组」问题的母题。写起来简单，但讲清不变量才是得分点。</p>
   </div>
-  <div class="mv-section">
+  <div class="mv-section" id="s-conclusion">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。</div>
     
@@ -44,7 +53,7 @@
 
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 为什么用交换而不是直接覆盖？</strong></p>
 <p class="mv-md-p">交换顺带把零挤到尾部，省掉一趟补零</p>
@@ -90,7 +99,7 @@ def moveZero(nums):
     </collapse-panel>
   </div>
 
-  <div class="mv-section">
+  <div class="mv-section" id="s-recycle">
     <h2 class="mv-section-title">复训</h2>
     <div class="mv-ladder">
       <span class="mv-ladder-step">D1</span>
