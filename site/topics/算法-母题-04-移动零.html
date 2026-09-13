@@ -62,7 +62,9 @@
 <p class="mv-md-p">给定数组 <code class="mv-md-code">nums</code>，将所有 <code class="mv-md-code">0</code> 移动到数组末尾，同时保持非零元素的相对顺序。要求原地修改数组。</p>
 <pre class="mv-md-pre">输入：[0, 1, 0, 3, 12]
 结果：[1, 3, 12, 0, 0]</pre>
-<pre class="mv-md-pre">def moveZero(nums):
+<p class="mv-md-p"><strong>✗ 第一版（错误，保留作对照——但别照抄）</strong>：三个问题——<code class="mv-md-code">zero</code> 未定义（NameError）、<code class="mv-md-code">while</code> 里没有推进（死循环）、写回的位置也不对。根因是<strong>没有先把不变量定下来就开始写</strong>。</p>
+<pre class="mv-md-pre"># ✗ 错误版本：zero 未定义 + while 无推进
+def moveZero(nums):
     for i in range(len(nums)):
         while nums[i]!=0:
             nums[zero]=nums[i]</pre>

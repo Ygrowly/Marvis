@@ -67,13 +67,13 @@
 <p class="mv-md-p"><strong>更准确的回答是：</strong></p>
 <p class="mv-md-p"><strong>为了保证查找到的补数来自之前的元素，避免当前元素与自己配对。</strong></p>
 <hr class="mv-md-hr">
-<pre class="mv-md-pre">def tow_sum(nums,target):
-   seen={}
-   for i,x in enumerate(nums):
-      need=target-x
-      if need in seen:
-         return [seen[need],i]
-      seen[x]=i
+<pre class="mv-md-pre">def two_sum(nums, target):
+    seen = {}
+    for i, x in enumerate(nums):
+        need = target - x
+        if need in seen:
+            return [seen[need], i]
+        seen[x] = i
     return []</pre>
 <hr class="mv-md-hr">
 <p class="mv-md-p">1. <strong>循环不变量：</strong></p>

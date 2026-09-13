@@ -2,7 +2,7 @@
 type: topic
 topic: 算法
 created: 2026-09-08
-updated: 2026-09-10
+updated: 2026-09-13
 status: integrated
 human_reviewed: true
 ---
@@ -29,7 +29,8 @@ human_reviewed: true
 
 ---
 
-## 
+**题目要求**：
+
 实现一个缓存，要求：
 
 ```plain
