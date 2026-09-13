@@ -1,0 +1,62 @@
+<svg viewBox="0 0 680 436" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>版本留在堆里：更新即新版本与它的三项代价</title>
+  <desc>左上是一次更新产生的行版本：十一次写入留下十一个版本，堆占用是有效数据的十一倍，被改列所在的索引也各多出十个条目。右上给出可见性判定的两个条件：插入事务已提交且在快照之前，且删除事务为空或尚未生效。中间是一个容易误判的陷阱：删除事务标识非零并不表示这行不可见。底部对比两种空间的归还方式：普通清理只把空间标记为可复用、不还给操作系统，要真正缩小文件只能重写整张表，而那需要排他锁和等量磁盘空间。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">版本留在堆里：更新即新版本与它的三项代价</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">PG 的 MVCC 是「绝不动旧数据」的 MVCC——收益是读永不阻塞写，代价是空间必须由 VACUUM 回收</text>
+
+  <!-- 版本链 -->
+  <rect x="30" y="66" width="380" height="118" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">一次 UPDATE = 写一个新版本 + 把旧版本标记为死</text>
+
+  <rect x="46" y="100" width="44" height="26" rx="4" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="56" y="118" font-family="monospace,sans-serif" font-size="8.5" fill="#633806">v1</text>
+  <text x="96" y="118" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">✗ xmax=101</text>
+
+  <rect x="176" y="100" width="44" height="26" rx="4" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="186" y="118" font-family="monospace,sans-serif" font-size="8.5" fill="#633806">v2</text>
+  <text x="226" y="118" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">✗ xmax=102</text>
+
+  <text x="272" y="118" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">…</text>
+
+  <rect x="290" y="100" width="44" height="26" rx="4" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="300" y="118" font-family="monospace,sans-serif" font-size="8.5" fill="#2C5A20">v11</text>
+  <text x="338" y="118" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">✓ 活着</text>
+
+  <text x="46" y="146" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">200 字节的行更新 10 次 → 11 个版本 × 200 B = 2200 B</text>
+  <text x="46" y="164" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">占用是有效数据的 11 倍；被改列所在的每个索引也多 10 个条目</text>
+  <text x="46" y="180" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">走 HOT 时：那个索引【完全不增长】（改的列不在任何索引里）</text>
+
+  <!-- 可见性判定 -->
+  <rect x="430" y="66" width="220" height="118" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="446" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">可见性判定（两个条件）</text>
+  <text x="446" y="110" font-family="system-ui,sans-serif" font-size="9" fill="#633806">① xmin 事务已提交</text>
+  <text x="456" y="126" font-family="system-ui,sans-serif" font-size="9" fill="#633806">且【在快照之前】</text>
+  <text x="446" y="146" font-family="system-ui,sans-serif" font-size="9" fill="#633806">② xmax 为空，或 xmax 事务</text>
+  <text x="456" y="162" font-family="system-ui,sans-serif" font-size="9" fill="#633806">在快照之后 / 未提交 / 已回滚</text>
+  <text x="446" y="180" font-family="system-ui,sans-serif" font-size="9" fill="#633806">→ 读只做比较，不加锁</text>
+
+  <!-- 陷阱 -->
+  <path d="M30 196 L650 196" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <rect x="30" y="208" width="620" height="48" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="228" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">陷阱一：xmax 非零 ≠ 这行不可见</text>
+  <text x="46" y="246" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">官方原文：可见的行版本上这一列也可能非零——通常说明删除【还没提交】，或那次删除【被回滚了】。另：ctid 会变，不能当行标识。</text>
+
+  <!-- 两种空间归还 -->
+  <path d="M30 270 L650 270" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="294" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">「回收」要拆成两件事：标记可复用 ≠ 还给操作系统</text>
+
+  <rect x="30" y="306" width="300" height="112" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">普通 VACUUM</text>
+  <text x="46" y="346" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">移除表和索引里的死行版本</text>
+  <text x="46" y="364" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">把空间标记为【可供将来复用】</text>
+  <text x="46" y="382" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">文件大小【不变】</text>
+  <text x="46" y="400" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">目标：别再涨（让 autovacuum 跟得上）</text>
+
+  <rect x="350" y="306" width="300" height="112" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">VACUUM FULL / CLUSTER</text>
+  <text x="366" y="346" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">重写整张表到新文件</text>
+  <text x="366" y="364" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">空间真正还给操作系统</text>
+  <text x="366" y="382" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">代价：排他表锁 + 等量磁盘 + 大量 WAL</text>
+  <text x="366" y="400" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">目标：变小（而且期间这张表不可读写）</text>
+</svg>

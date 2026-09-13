@@ -1,0 +1,69 @@
+<svg viewBox="0 0 680 440" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>两种复制绑定的东西与同步级别的四个落点</title>
+  <desc>左上对比两种复制：物理复制传输的是预写日志字节流，绑定整个实例与版本，备端只读；逻辑复制传输的是解码出来的行变更，绑定表与行，备端可写、可跨大版本。右上列出同步提交五个档位分别保证了哪四件事，只有走到备库重放完成的那一档能让备库上的查询立刻看到。左下是复制槽堆积的算式：默认允许无限保留日志，每秒十兆字节的实例在十四小时内就能把五百吉字节写满，让主库完全不可写。右下是回放能力的硬约束：主库每秒一千个事务、备库只能回放八百个，延迟单调增长而不是稳定在某个值。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">两种复制绑定的东西与同步级别的四个落点</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">物理复制复制「存储的变化」，逻辑复制复制「数据的变化」——能力差异全是这一句的推论</text>
+
+  <!-- 两种复制 -->
+  <rect x="30" y="66" width="300" height="106" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">流复制（物理）：WAL 字节流</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">复制的是「第 N 号页第 M 个偏移改成了什么」</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→ 绑定【实例与版本】</text>
+  <text x="46" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→ 整实例 · 备库只读可查询 · 版本必须一致</text>
+  <text x="46" y="162" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">用途：高可用、只读副本、读写分离</text>
+
+  <rect x="350" y="66" width="300" height="106" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">逻辑复制：解码出的行变更</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">复制的是可翻译成 INSERT / UPDATE / DELETE 的变更</text>
+  <text x="366" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 绑定【表与行】</text>
+  <text x="366" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 可按表 / 按行过滤 · 备端可写 · 可跨大版本</text>
+  <text x="366" y="162" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">注意：默认只同步 DML，不同步 DDL</text>
+
+  <!-- 同步级别四个落点 -->
+  <path d="M30 188 L650 188" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="212" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">synchronous_commit 五档，分别保证哪四件事（官方表 19.1）</text>
+
+  <text x="240" y="234" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">本地</text>
+  <text x="240" y="246" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">持久提交</text>
+  <text x="326" y="234" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">备库 PG 崩</text>
+  <text x="326" y="246" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">后仍持久</text>
+  <text x="412" y="234" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">备库 OS 崩</text>
+  <text x="412" y="246" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">后仍持久</text>
+  <text x="498" y="234" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">备库查询</text>
+  <text x="498" y="246" font-family="system-ui,sans-serif" font-size="8.5" fill="#6B6A65">一致性</text>
+
+  <text x="46" y="266" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">remote_apply</text>
+  <text x="254" y="266" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="340" y="266" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="426" y="266" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="512" y="266" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">•</text>
+
+  <text x="46" y="284" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">on（默认）</text>
+  <text x="254" y="284" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="340" y="284" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="426" y="284" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+
+  <text x="46" y="302" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">remote_write</text>
+  <text x="254" y="302" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+  <text x="340" y="302" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+
+  <text x="46" y="320" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">local</text>
+  <text x="254" y="320" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">•</text>
+
+  <text x="46" y="338" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">off</text>
+  <text x="596" y="338" font-family="system-ui,sans-serif" font-size="8.5" fill="#8A3A28">← 都不保证</text>
+
+  <!-- 两个坑 -->
+  <path d="M30 354 L650 354" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <rect x="30" y="364" width="300" height="66" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="384" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">坑一：复制槽默认无限保留 WAL</text>
+  <text x="46" y="402" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">max_slot_wal_keep_size = -1</text>
+  <text x="46" y="420" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">500 GB ÷ 10 MB/s = 50,000 s ≈ 13.9 小时写满</text>
+
+  <rect x="350" y="364" width="300" height="66" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="384" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">坑二：回放追不上就永远追不上</text>
+  <text x="366" y="402" font-family="monospace,sans-serif" font-size="9" fill="#633806">主库 1000/s − 备库回放 800/s = 200/s 积压</text>
+  <text x="366" y="420" font-family="monospace,sans-serif" font-size="9" fill="#633806">1 小时 = 72 万个事务 → 延迟单调增长</text>
+</svg>

@@ -1,0 +1,56 @@
+<svg viewBox="0 0 680 448" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>回收边界、膨胀的正反馈环与自动清理的两道门槛</title>
+  <desc>顶部说明回收边界的定义：一个死元组只要还可能被某个活跃快照看到就不能删除，所以清理边界等于所有活跃快照里最老的那一个；一个两小时的只读事务会压住七百二十万个死元组、约一点四四吉字节。中间是膨胀的正反馈环：表页变多导致扫描变慢与缓存有效容量下降，查询因此变慢、事务变长，回收边界被按得更死，于是膨胀更严重。底部是自动清理的两道门槛：触发阈值默认是固定五十行加上表行数的百分之二十，八千万行的表要一千六百万个过期元组；而即使触发，回收边界被按住时它仍然清不掉任何东西。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">回收边界、膨胀的正反馈环与自动清理的两道门槛</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">清理边界由「最老快照」决定，不是由「谁改了什么」决定——所以只读事务一样在制造膨胀</text>
+
+  <!-- 回收边界 -->
+  <rect x="30" y="66" width="620" height="86" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#8A3A28">回收边界 = 所有活跃快照里最老的那一个</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">一个死元组只要【还可能被某个活跃快照看到】，就不能删——删了那个事务就读不到了</text>
+  <text x="46" y="128" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">1000 TPS × 2 小时 = 720 万个死元组 ≈ 1.44 GB（只算堆，不含索引）</text>
+  <text x="46" y="146" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">→ 它没改数据、没占锁、几乎不耗 CPU，但它【按住了整张表的回收】</text>
+
+  <!-- 正反馈环 -->
+  <path d="M30 170 L650 170" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="194" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">膨胀的正反馈环：它是性能事故的起点，不是结果</text>
+
+  <rect x="30" y="206" width="140" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="42" y="226" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">表页变多</text>
+  <text x="42" y="244" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">同样的行散布在更多页</text>
+
+  <rect x="186" y="206" width="140" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="198" y="226" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">扫描变慢</text>
+  <text x="198" y="244" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">2 倍膨胀 = 2 倍 IO</text>
+
+  <rect x="342" y="206" width="140" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="354" y="226" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">缓存有效容量减半</text>
+  <text x="354" y="244" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">shared_buffers 装不下有效数据</text>
+
+  <rect x="498" y="206" width="152" height="52" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="510" y="226" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">事务变长 → 边界更死</text>
+  <text x="510" y="244" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 回到「表页变多」</text>
+
+  <path d="M646 258 L646 276 L100 276 L100 262" stroke="#B4553F" stroke-width="1.2" fill="none"/>
+  <path d="M96 266 L100 262 L104 266 Z" fill="#B4553F"/>
+  <text x="300" y="292" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">← 环路：越慢越胖，越胖越慢</text>
+
+  <!-- 两道门槛 -->
+  <path d="M30 304 L650 304" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="328" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">autovacuum 有两道门槛，调阈值只解决第一道</text>
+
+  <rect x="30" y="340" width="300" height="94" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="360" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">门槛一：触发阈值</text>
+  <text x="46" y="378" font-family="monospace,sans-serif" font-size="9" fill="#633806">50 + 0.2 × 表行数</text>
+  <text x="46" y="396" font-family="monospace,sans-serif" font-size="9" fill="#633806">8000 万行 → 1600 万个过期元组才触发</text>
+  <text x="46" y="416" font-family="system-ui,sans-serif" font-size="9" fill="#633806">动作：按表调（ALTER TABLE ... SET），不要全局调</text>
+  <text x="46" y="430" font-family="system-ui,sans-serif" font-size="9" fill="#633806">（autovacuum_max_workers 默认只有 3）</text>
+
+  <rect x="350" y="340" width="300" height="94" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="360" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">门槛二：回收边界（更硬）</text>
+  <text x="366" y="378" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">长事务 / idle in transaction / 离线复制槽</text>
+  <text x="366" y="396" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 它跑上去也【一个都清不掉】</text>
+  <text x="366" y="416" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">但会正常退出、日志里看不出异常</text>
+  <text x="366" y="430" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">→ 看 n_dead_tup 的趋势，不看 last_autovacuum</text>
+</svg>
