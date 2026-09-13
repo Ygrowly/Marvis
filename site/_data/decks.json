@@ -216,7 +216,7 @@
       {
         "id": "proj-energyops",
         "q": "讲一遍 EnergyOps（Agent 后端版）",
-        "a": "核心主线：智能表累计读数 → 差分/质量 → 聚合 → 异常规则 → 告警通知 → 账单分摊/黄金对账 → MCP 查询与处置。\n\n重点回答：\n\nAI 负责理解和建议，计费/质量/权限由程序保证；\n25 个 Tool 动态暴露、R0/R1/R2；\ncheckpoint、自愈、乱序补数、partial 透明；\nTool 超时/通知状态查询/业务幂等；\nPostgreSQL/Redis/调度/测试/部署；\n对账是可执行 oracle。",
+        "a": "核心主线：智能表累计读数 → 差分/质量 → 聚合 → 异常规则 → 告警通知 → 账单分摊/黄金对账 → MCP 查询与处置。\n\n重点回答：\n\nAI 负责理解和建议，计费/质量/权限由程序保证；\n30 个 Tool 动态暴露、R0/R1/R2；\ncheckpoint、自愈、乱序补数、partial 透明；\nTool 超时/通知状态查询/业务幂等；\nPostgreSQL/Redis/调度/测试/部署；\n对账是可执行 oracle。",
         "tag": "项目口述",
         "src": "wiki/interview/面经-字节AI-Agent.md"
       },

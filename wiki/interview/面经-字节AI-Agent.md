@@ -806,7 +806,7 @@ def max_area(height: list[int]) -> int:
 **重点回答**：
 
 - AI 负责理解和建议，计费/质量/权限由程序保证；
-- 25 个 Tool 动态暴露、R0/R1/R2；
+- 30 个 Tool 动态暴露、R0/R1/R2；
 - checkpoint、自愈、乱序补数、partial 透明；
 - Tool 超时/通知状态查询/业务幂等；
 - PostgreSQL/Redis/调度/测试/部署；
