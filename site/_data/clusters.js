@@ -7,6 +7,18 @@
       2026-09-12 清理：删掉 14 行旧规划残留（M18–M21 / R4–R8 / N4–N8），它们的计划内容已被现有卡合并
       （例：R5「过期与内存淘汰」并进了 R2）。**要扩母题先改模块卡，再回来加行**，否则进度页会挂出假欠账。
    PostgreSQL 19 张卡已完成但**暂不进本表**（2026-09-12 决定）：模块页从训练台「模块学习」栏可达，不进派单。
+
+   ── 顺序与前置（2026-09-13 加）─────────────────────────────
+   学习序 = **topics 数组序**，与模块卡「母题清单」表的行序一致（这就是实际推进顺序）。
+   派单门控（宽松，见 progress.html MASTER）：
+     · 簇内：前一条到 L2 才解锁下一条 → 同一簇每天最多派 1 条新题
+     · 跨簇：`after: ['M11','M12']` 显式声明，这些也要 ≥ L2
+   `after` 只写**数组序管不到的真前置**（跨簇的、或簇内被拆开的）。簇内相邻关系不用写。
+   写多了会让派单卡死，写少了会跳步——只在「不学它后面那条就答不出来」时才加。
+
+   ── 项目线（2026-09-13 加）─────────────────────────────
+   `zone: '表达'` 的 pitch 簇**不参与 zone 轮转**，由 progress.html 单开「项目线」板块
+   每天派 1 条必做。所以它虽然在这张表里，但新题配额的轮转会自动跳过它。
 */
 window.MARVIS_CLUSTERS = [
   {
@@ -27,9 +39,9 @@ window.MARVIS_CLUSTERS = [
       { id: 'M8', name: '隔离级别与 ACID', href: 'topics/MySQL-母题-M8-隔离级别与ACID.html' },
       { id: 'M9', name: 'MVCC', href: 'topics/MySQL-母题-M9-MVCC.html' },
       { id: 'M10', name: '锁与死锁', href: 'topics/MySQL-母题-M10-锁与死锁.html' },
-      { id: 'M13', name: '长事务为什么危险', href: 'topics/MySQL-母题-M13-长事务为什么危险.html' },
+      { id: 'M13', name: '长事务为什么危险', href: 'topics/MySQL-母题-M13-长事务为什么危险.html', after: ['M11', 'M12'] },
       { id: 'M16', name: '乐观锁与悲观锁', href: 'topics/MySQL-母题-M16-乐观锁与悲观锁.html' },
-      { id: 'M17', name: '排行榜与防超卖', href: 'topics/MySQL-母题-M17-排行榜与防超卖.html' }
+      { id: 'M17', name: '排行榜与防超卖', href: 'topics/MySQL-母题-M17-排行榜与防超卖.html', after: ['M16', 'R3'] }
     ]
   },
   {
@@ -38,15 +50,15 @@ window.MARVIS_CLUSTERS = [
       { id: 'M11', name: '三日志与两阶段提交', href: 'topics/MySQL-母题-M11-三日志与两阶段提交.html' },
       { id: 'M12', name: '崩溃恢复', href: 'topics/MySQL-母题-M12-崩溃恢复.html' },
       { id: 'M14', name: '主从复制与延迟', href: 'topics/MySQL-母题-M14-主从复制与延迟.html' },
-      { id: 'M15', name: '数据增长治理', href: 'topics/MySQL-母题-M15-数据增长治理.html' }
+      { id: 'M15', name: '数据增长治理', href: 'topics/MySQL-母题-M15-数据增长治理.html', after: ['M4'] }
     ]
   },
   {
     id: 'redis', name: 'Redis 与缓存', zone: '后端底盘',
     topics: [
-      { id: 'R1', name: 'Redis 数据结构与选型', href: 'topics/Redis-母题-R1-Redis数据结构与选型.html' },
+      { id: 'R1', name: 'Redis 数据结构与选型', href: 'topics/Redis-母题-R1-Redis数据结构与选型.html', after: ['M1'] },
       { id: 'R2', name: '持久化与内存淘汰', href: 'topics/Redis-母题-R2-持久化与内存淘汰.html' },
-      { id: 'R3', name: '缓存一致性与三类事故', href: 'topics/Redis-母题-R3-缓存一致性与三类事故.html' }
+      { id: 'R3', name: '缓存一致性与三类事故', href: 'topics/Redis-母题-R3-缓存一致性与三类事故.html', after: ['M9'] }
     ]
   },
   {
@@ -77,7 +89,7 @@ window.MARVIS_CLUSTERS = [
       { id: 'G2', name: '向量与关键词的混合检索', href: 'topics/RAG与检索-母题-G2-向量与关键词的混合检索.html', src: 'study/03-RAG与企业知识系统.md' },
       { id: 'G3', name: '重排与召回质量', href: 'topics/RAG与检索-母题-G3-重排与召回质量.html', src: 'study/03-RAG与企业知识系统.md' },
       { id: 'G4', name: '引用绑定与证据可追溯', href: 'topics/RAG与检索-母题-G4-引用绑定与证据可追溯.html', src: 'study/03-RAG与企业知识系统.md' },
-      { id: 'G5', name: 'RAG 评测与幻觉率', href: 'topics/RAG与检索-母题-G5-RAG评测与幻觉率.html', src: 'study/07-Eval-Trace与Observability.md' },
+      { id: 'G5', name: 'RAG 评测与幻觉率', href: 'topics/RAG与检索-母题-G5-RAG评测与幻觉率.html', src: 'study/07-Eval-Trace与Observability.md', after: ['E1'] },
       { id: 'G6', name: '知识更新与增量索引', href: 'topics/RAG与检索-母题-G6-知识更新与增量索引.html', src: 'study/03-RAG与企业知识系统.md' }
     ]
   },
@@ -101,21 +113,24 @@ window.MARVIS_CLUSTERS = [
     topics: [
       { id: 'E1', name: '评测集设计与 pass^k', href: 'topics/评测观测与治理-母题-E1-评测集设计与pass^k.html', src: 'study/07-Eval-Trace与Observability.md' },
       { id: 'E2', name: 'Trace 与可观测性', href: 'topics/评测观测与治理-母题-E2-Trace与可观测性.html', src: 'study/07-Eval-Trace与Observability.md' },
-      { id: 'E3', name: '回归门禁与发布卡口', href: 'topics/评测观测与治理-母题-E3-回归门禁与发布卡口.html', src: 'projects/RuleArena/RuleArena-项目说明.md' },
-      { id: 'E4', name: '成本控制与限流', href: 'topics/评测观测与治理-母题-E4-成本控制与限流.html', src: 'study/10-生产治理安全性能与成本.md' },
-      { id: 'E5', name: '越权与提示注入防护', href: 'topics/评测观测与治理-母题-E5-越权与提示注入防护.html', src: 'study/10-生产治理安全性能与成本.md' },
+      { id: 'E3', name: '回归门禁与发布卡口', href: 'topics/评测观测与治理-母题-E3-回归门禁与发布卡口.html', src: 'projects/RuleArena/RuleArena-项目说明.md', after: ['C3'] },
+      { id: 'E4', name: '成本控制与限流', href: 'topics/评测观测与治理-母题-E4-成本控制与限流.html', src: 'study/10-生产治理安全性能与成本.md', after: ['C6'] },
+      { id: 'E5', name: '越权与提示注入防护', href: 'topics/评测观测与治理-母题-E5-越权与提示注入防护.html', src: 'study/10-生产治理安全性能与成本.md', after: ['A6'] },
       { id: 'E6', name: '灰度发布与回滚', href: 'topics/评测观测与治理-母题-E6-灰度发布与回滚.html', src: 'study/10-生产治理安全性能与成本.md' }
     ]
   },
   {
+    /* 项目线（2026-09-13）：本簇不再进 zone 轮转，由 progress.html 单开「项目线」板块，
+       每天派 1 条。proj 字段用来按项目分组显示进度——三个项目各 2 条
+       （90 秒骨架 → 决策链，后者要等前者到 L2 才解锁）。 */
     id: 'pitch', name: '项目口述', zone: '表达',
     topics: [
-      { id: 'P1', name: 'EnergyOps 90 秒骨架', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P2', name: 'EnergyOps 决策链', src: 'projects/EnergyOps/EnergyOps-项目说明.md' },
-      { id: 'P3', name: '数驭穹图 90 秒骨架', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P4', name: '数驭穹图决策链', src: 'projects/数驭穹图/数驭穹图项目说明.md' },
-      { id: 'P5', name: 'RuleArena 90 秒骨架', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P6', name: 'RuleArena 决策链', src: 'projects/RuleArena/RuleArena-项目说明.md' }
+      { id: 'P1', name: 'EnergyOps 90 秒骨架', proj: 'EnergyOps', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'P2', name: 'EnergyOps 决策链', proj: 'EnergyOps', src: 'projects/EnergyOps/EnergyOps-项目说明.md' },
+      { id: 'P3', name: '数驭穹图 90 秒骨架', proj: '数驭穹图', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'P4', name: '数驭穹图决策链', proj: '数驭穹图', src: 'projects/数驭穹图/数驭穹图项目说明.md' },
+      { id: 'P5', name: 'RuleArena 90 秒骨架', proj: 'RuleArena', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'P6', name: 'RuleArena 决策链', proj: 'RuleArena', src: 'projects/RuleArena/RuleArena-项目说明.md' }
     ]
   }
 ];

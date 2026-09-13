@@ -1760,6 +1760,34 @@ def main():
         "window.MARVIS_MODULES = " + json.dumps(mod_index, ensure_ascii=False) + ";\n",
         encoding="utf-8")
 
+    # 断点回流：进度页要按「上次断点」派复训、按断点抽检，所以母题卡里的
+    # 断点 / 证据 / 关键词 / 结论要出成数据，不能只埋在 html 里。
+    # 键 = 母题页路径，与 clusters.js 里的 href 精确对应（同一套 module-stem 命名）。
+    # 模板占位符（「【待填 —— …】」）一律当空值，否则进度页会把模板文字当断点摊出来。
+    def _real(s):
+        s = (s or "").strip()
+        if not s or re.match(r"^【.*】$", s) or "待填" in s or "待写" in s:
+            return ""
+        return s
+
+    breaks = {}
+    for t in topics:
+        bp, con = _real(t["breakpoint"]), _real(t["conclusion"])
+        if not (bp or con):
+            continue
+        # 只出进度页真正会渲染的字段：断点原文、一句话结论、恢复关键词、两条追问。
+        # 通过证据 / 完整骨架这些是学习当时的验收标准，复训时用不上，不进数据。
+        fu = []
+        for f in t["followups"][:2]:
+            if isinstance(f, (list, tuple)) and len(f) >= 2:
+                fu.append({"q": f[0], "a": f[1]})
+        breaks[t["page"]] = {"con": con, "kw": t["keywords"], "bp": bp, "fu": fu}
+    (OUT_DATA / "breaks.js").write_text(
+        "window.MARVIS_BREAKS = " + json.dumps(breaks, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+    _nbp = sum(1 for v in breaks.values() if v["bp"])
+    print("断点回流 %d 张卡（其中 %d 张有真断点原文）" % (len(breaks), _nbp))
+
     n = sum(len(d["cards"]) for d in decks)
     print("母题页 %d | 牌组 %d | 可练卡片 %d" % (len(topics), len(decks), n))
     if drafts:

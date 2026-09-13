@@ -11,8 +11,10 @@
 ```text
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
-  progress.html       进度页（手写，数据存 localStorage）：能力簇进度 + 每日派单 + 闭卷自评 + 欠账减负 + 热力图
-  _data/clusters.js   进度页数据源：10 个能力簇 + 日课母题清单（M3 起计划改由 build.py 生成）
+  progress.html       进度页（手写，数据存 localStorage）：五板块派单（复训/抽检/主线新学/项目线/日课）+ 依赖门控 + 闭卷自评 + 断点回流 + 欠账减负 + 近 7 天回顾 + 热力图
+  _data/clusters.js   进度页数据源：10 个能力簇（含项目线）+ 日课母题清单 + 跨簇前置 after（M3 起计划改由 build.py 生成）
+  _data/breaks.js     断点回流数据（build 生成）：母题页路径 → 上次断点 / 一句话结论 / 恢复关键词 / 追问
+  _tests/             派单引擎回归测试（手跑，build 不管）：node site/_tests/test_dispatch.js 等三个
   modules/            模块学习页（build 生成，勿手改）：{模块}.html 概览 + {模块}-NN-{主线}.html 子页
   topics/             母题页（build 生成，勿手改）
   reviews/            诊断页（build 生成，勿手改）
@@ -28,7 +30,7 @@ site/
 
 ```text
 index.html（训练台）
-  ├─ progress.html              进度与作业：派单 + 闭卷自评 + 欠账减负 + 连续性热力图
+  ├─ progress.html              进度与作业：五板块派单（复训/抽检/主线新学/项目线/日课）+ 加餐 + 闭卷自评 + 近 7 天回顾 + 连续性热力图
   ├─ modules/{模块}.html        模块概览：主线 + 一句话结论 + 边界 + 项目映射
   │    └─ modules/{模块}-NN-….html   主线子页：母题（先答后看）+ 本主线题
   │         └─ topics/{模块}-母题-….html  单卡视图（每个母题右上「单卡 →」）
@@ -82,7 +84,9 @@ PY
 |---|---|---|
 | 早上 5–10 分钟 | 今日到期的母题，先说后翻，点过关/忘了 | `site/index.html` |
 | **每天开工** | **领今日作业（系统派单），做完点开走闭卷自评** | **`site/progress.html`** |
+| 每 7 天 | 抽检轮：5 题连答 · 每题 60 秒 · 中途不给反馈（进度页「开始抽检」按钮） | `site/progress.html` |
 | 学完一个母题 5 分钟内 | 在这张卡上自评一次（遗忘曲线最陡的一段在这） | `site/progress.html` |
+| 掉档（部分/忘了）之后 | 让 AI 把这次的断点写进母题卡「本次断点」——下次复训会带着它回来 | Obsidian |
 | 晚上 | 只清当日作业与欠账，不学新的 | `site/progress.html` |
 | 白天 | 写笔记、讨论、推导 | Obsidian |
 | 讨论完 | `python site/build.py` | 终端 |

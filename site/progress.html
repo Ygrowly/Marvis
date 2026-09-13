@@ -1,265 +1,707 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="0Nw02yCEVGgkxwEuMwU7Xr">
-<head data-page-node-id="2uXqvQYe69qwTmeRzR6njG">
-<meta charset="utf-8" data-page-node-id="GZBWpTiihfittmoSvZRz7b">
-<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="OqAMUEDuPCbQhYf8nJAbme">
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Marvis · 进度</title>
-<link rel="stylesheet" href="_components/marvis.css" data-page-node-id="jDyzIw6whkLoumphiGLYOV">
+<link rel="stylesheet" href="_components/marvis.css">
 </head>
-<body class="mv-page" data-page-node-id="P6PJt0CW5vlzkAdERSnCqK">
-<div class="mv-wrap" data-page-node-id="FpvGjLhVEiPMSt0vHTzQ4X">
+<body class="mv-page">
+<div class="mv-wrap">
 
-  <a class="mv-back" href="index.html" data-page-node-id="HaBZxhS0hMmapoXl3uThXL">← 今日</a>
-  <h1 class="mv-h1" data-page-node-id="HlAXx9bSpyzpeTWholA3qS">进度</h1>
-  <p class="mv-sub" id="subline" data-page-node-id="xlyzPFAQ5EFhJuq51L05L1">等级只由闭卷自评推进，不能手改。写完卡片不算会，说得出口才算。</p>
+  <a class="mv-back" href="index.html">← 今日</a>
+  <h1 class="mv-h1">进度</h1>
+  <p class="mv-sub" id="subline">等级只由闭卷自评推进，不能手改。写完卡片不算会，说得出口才算。</p>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.75rem" data-page-node-id="5g9MToD0lIFvpXjW33GEXO">
-    <button class="mv-btn" onclick="exportJSON()" data-page-node-id="ENLUG8U40oCZzjbLSWrkTc">导出备份</button>
-    <button class="mv-btn" onclick="document.getElementById('impfile').click()" data-page-node-id="iYM36osFiqh6rzmJddNswt">导入备份</button>
-    <input type="file" id="impfile" accept=".json" hidden onchange="importJSON(this)" data-page-node-id="4Z9e3i1QlmXDmEGFqRHKz3">
-    <button class="mv-btn" onclick="clearDebt()" data-page-node-id="eUbXHllrMP2tQWf7T6CBTU">清账重开</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.75rem">
+    <button class="mv-btn" onclick="exportJSON()">导出备份</button>
+    <button class="mv-btn" onclick="document.getElementById('impfile').click()">导入备份</button>
+    <input type="file" id="impfile" accept=".json" hidden onchange="importJSON(this)">
+    <button class="mv-btn" onclick="resetLedger()">清账重开</button>
   </div>
 
-  <div class="mv-ms" id="metrics" data-page-node-id="qGySrI7AI7ydvyYVxaa3m2"></div>
+  <div class="mv-ms" id="metrics"></div>
 
-  <h2 class="mv-h2" data-page-node-id="UNxJqBR0eLARf4rSs4sB6r">能力簇 <small data-page-node-id="q8G07PDCNoXGV6E6tNLacE">只有 L3 能在面试里说出口 · 点开看母题</small></h2>
-  <div id="clusters" data-page-node-id="LVYwsskaeKHILM2YdtyvOr"></div>
+  <h2 class="mv-h2">必做 <small id="needsum">保底：到期复训 + 抽检 + 自适应新题 + 项目线 + 日课</small></h2>
+  <div id="needbox"></div>
 
-  <h2 class="mv-h2" data-page-node-id="7AAt4N6Vs1LUFJeiSK8hYR">独立日课 <small data-page-node-id="geyvFwAH0AH5bJaAcYuwBl">手撕是肌肉记忆，不占模块时间</small></h2>
-  <div id="drillbox" data-page-node-id="ILX9lL6lcyjTsBHpKTO2DE"></div>
+  <h2 class="mv-h2">加餐 <small>有精力再做 · 不完成不计欠账，完成照常升 L</small></h2>
+  <div id="extrabox"></div>
 
-  <h2 class="mv-h2" data-page-node-id="lVezCBDLxcIFlJfDqOotrp">今日作业 <small data-page-node-id="wpYe1NNOelcFDsWd2Fasht">系统派单，不可删 · 欠账如实显示，连欠两天自动减负</small></h2>
-  <div id="assign" data-page-node-id="Rdk1UJVM4SEON1rEce3u5i"></div>
+  <h2 class="mv-h2">能力簇 <small>只有 L3 能在面试里说出口 · 点开看母题</small></h2>
+  <div id="clusters"></div>
 
-  <h2 class="mv-h2" data-page-node-id="TByJ4UN8zJbq8OFXABVuVp">额外完成 <small data-page-node-id="EdZhqQFsuzn6z1YDKAEDcE">不抵消作业，但会记下来</small></h2>
-  <div class="mv-bd" data-page-node-id="JA99DClr298aSMHStzRjBu">
-    <div style="display:flex;gap:.5rem;margin-bottom:.875rem" data-page-node-id="HTPVnb11rXWVaYCzErb3yk">
-      <input class="mv-ask-in" id="extrain" placeholder="今天还做了什么？回车添加" onkeydown="if(event.key==='Enter')addExtra()" data-page-node-id="0gHKcYf6sQPRuqqUG9u1Fx">
-      <button class="mv-btn" onclick="addExtra()" data-page-node-id="Qke4IwKgjo43kSlagTBl6R">添加</button>
-    </div>
-    <div id="extralist" data-page-node-id="fLB1vQiAaoxdJEQJN6texC"></div>
-  </div>
+  <h2 class="mv-h2">独立日课 <small>手撕是肌肉记忆，不占模块时间</small></h2>
+  <div id="drillbox"></div>
 
-  <h2 class="mv-h2" data-page-node-id="tnC6jlOGY47aqtmDmBZiNS">连续性 <small data-page-node-id="FENtdcyidEFHLvAKIWd4kD">never miss twice · 错过不补课不自罚</small></h2>
-  <div class="mv-bd" data-page-node-id="QTyI7v2PnrO5YbxQ9e23pb">
-    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start" data-page-node-id="F5Z7MQNrkRSYLZFaHvyjyw">
-      <div data-page-node-id="ArqOhBdui2DtXus8Mk40Em">
-        <div class="mv-ms-label" data-page-node-id="VimQ6OOFfx2pKlhOD9IFJQ">连续全交</div>
-        <div class="mv-ms-value" id="streakv" data-page-node-id="l0bpwTwmsV2slcaNrqx0wd">0<small data-page-node-id="p7BlpVQwaxyVC8vYAslFFL"> 天</small></div>
+  <h2 class="mv-h2">近 7 天 <small id="recentsum">默认收起 · 抽空点开补评</small></h2>
+  <div id="recent"></div>
+
+  <h2 class="mv-h2">连续性 <small>never miss twice · 错过不补课不自罚</small></h2>
+  <div class="mv-bd">
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div class="mv-ms-label">连续全交</div>
+        <div class="mv-ms-value" id="streakv">0<small> 天</small></div>
       </div>
-      <div style="flex:1;min-width:14rem" data-page-node-id="0pv28lAJec1Kq8zhTGkBma">
-        <div class="mv-ms-label" style="margin-bottom:.5rem" data-page-node-id="XWXGR7iRbOgJ0dQKNpXzW4">近 35 天</div>
-        <div class="mv-pg-heat" id="heat" data-page-node-id="6vIpKCOO9EiZnpWA9G1AGH"></div>
-        <div style="display:flex;gap:.75rem;margin-top:.625rem;font-size:.8125rem;color:var(--mv-muted);flex-wrap:wrap" data-page-node-id="BQk6oJhOAi42AcBSGNnArw">
-          <span data-page-node-id="M1o5bPI2DO9LqI1yKalbbK"><i class="mv-hc h0" data-page-node-id="6JBvPdLOG6WGkVYLRs56nw"></i>没做</span>
-          <span data-page-node-id="VdYT2FEfpDUFeXHB4DTVHI"><i class="mv-hc h1" data-page-node-id="WVIGLqWpfHBNftETAFaG3D"></i>部分</span>
-          <span data-page-node-id="LhgHpg1rElcFJNEvHdwnm7"><i class="mv-hc h2" data-page-node-id="dhVP2drATSMWyBtEafd0jk"></i>全交</span>
+      <div style="flex:1;min-width:14rem">
+        <div class="mv-ms-label" style="margin-bottom:.5rem">近 35 天 <span style="font-weight:400">（只看必做）</span></div>
+        <div class="mv-pg-heat" id="heat"></div>
+        <div style="display:flex;gap:.75rem;margin-top:.625rem;font-size:.8125rem;color:var(--mv-muted);flex-wrap:wrap">
+          <span><i class="mv-hc h0"></i>没做</span>
+          <span><i class="mv-hc h1"></i>部分</span>
+          <span><i class="mv-hc h2"></i>全交</span>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="mv-note" style="margin-top:2rem" data-page-node-id="NGTmfAsi4O107iCZTRp6oR">
-    升级规则：命中 → 升一级并进入 1-3-7-14-30 阶梯；部分 → 停在「能复述」；忘了 → 掉回「读过」且明天重派。
-    L4（面试验证过）暂不开放自评，等真实面试回来补。
+  <h2 class="mv-h2">额外完成 <small>不抵消作业，但会记下来</small></h2>
+  <div class="mv-bd">
+    <div style="display:flex;gap:.5rem;margin-bottom:.875rem">
+      <input class="mv-ask-in" id="extrain" placeholder="今天还做了什么？回车添加" onkeydown="if(event.key==='Enter')addExtra()">
+      <button class="mv-btn" onclick="addExtra()">添加</button>
+    </div>
+    <div id="extralist"></div>
+  </div>
+
+  <div class="mv-note" style="margin-top:2rem">
+    <b>派单规则</b>：复训只派<b>今天到期</b>的（1-3-7-14-30 阶梯），按逾期天数排序，必做预算 4 条，多出来的进加餐、不计欠账。<br>
+    <b>依赖门控</b>：同一能力簇内前一条到 L2 才解锁下一条（所以每簇每天最多派 1 条新题）；跨簇前置写在 <code>_data/clusters.js</code> 的 <code>after</code> 字段里。<br>
+    <b>自适应配额</b>：昨天必做全交 → 今天 2 条新题，前天也全交 → 3 条；有欠账 → 回 1 条；连欠 2 天 → 0 条（减负，只留复训）。<br>
+    <b>项目线</b>：EnergyOps / 数驭穹图 / RuleArena 各 2 条（90 秒骨架 → 决策链），每天 1 条，不占 zone 轮转名额。<br>
+    <b>抽检</b>：每 7 天一轮，从已到 L2 的母题里按「忘得多 → 有断点 → 久没自评」抽 5 题，每题 60 秒口述、连答不回头，结果直接改等级。<br>
+    <b>断点回流</b>：复训卡面和抽检卡面会摊开这条母题上次的<b>断点原文</b>（来自母题卡的「本次断点」），复训从「重做整道题」变成「重做你上次没说出来的那一句」。<br>
+    <b>升级规则</b>：命中 → 升一级并进入 1-3-7-14-30 阶梯；部分 → 停在「能复述」；忘了 → 掉回「读过」且明天重派。
+    L4（面试验证过）暂不开放自评，等真实面试回来补。<br>
     数据存在本机浏览器（localStorage，键名 mv.progress.v1），换机器或清缓存前记得导出备份。
   </div>
 
 </div>
 
-<div class="mv-modal-mask" id="rate" hidden onclick="if(event.target===this)closeRate()" data-page-node-id="xswLCSJLgGKDev5Fh3Tbqm">
-  <div class="mv-modal" style="max-width:34rem" data-page-node-id="fNDwxwN8jFFZHPwsMRxr7A">
-    <div class="mv-modal-head" data-page-node-id="OgLD9IXlvApqOvoxHKbQfL">
-      <span class="mv-modal-title" data-page-node-id="Hy1EGOr4uFAm72eByATyd6">闭卷自评</span>
-      <button class="mv-btn" onclick="closeRate()" data-page-node-id="2k4AOtjIG9VipYdt7NHkep">关闭</button>
+<div class="mv-modal-mask" id="rate" hidden onclick="if(event.target===this)closeRate()">
+  <div class="mv-modal" style="max-width:34rem">
+    <div class="mv-modal-head">
+      <span class="mv-modal-title">闭卷自评</span>
+      <button class="mv-btn" onclick="closeRate()">关闭</button>
     </div>
-    <div id="ratebody" data-page-node-id="jD7EKhYJmLJghyyNMS7d0F"></div>
+    <div id="ratebody"></div>
   </div>
 </div>
 
 <script src="_data/clusters.js"></script>
+<script src="_data/breaks.js"></script>
+<script src="_components/marvis.js"></script>
 <script>
+/* ══════════════════════════════════════════════════════════════
+   常量
+   ══════════════════════════════════════════════════════════════ */
 var KEY = 'mv.progress.v1';
 var VAULT = 'Marvis';
 var GOAL = 0.6;
 var STEPS = [1, 3, 7, 14, 30];
 var LVN = ['未接触', '读过', '能复述', '能口述', '验证过'];
+var SCOREN = { hit: '命中', part: '部分', miss: '忘了' };
 
+var MASTER = 2;        // 门控阈值：前置到 L2 才解锁下一条
+var REV_BUDGET = 4;    // 复训必做预算（条）
+var REV_RELIEVE = 2;   // 减负模式下的复训预算
+var NEW_MAX = 3;       // 自适应新题上限
+var EXTRA_MAX = 4;     // 加餐上限（条）
+var EXTRA_REV_MAX = 2; // 加餐里最多放几条复训溢出
+
+var PROJECT_CID = 'pitch'; // 项目线：这个簇不参与 zone 轮转，单开板块每天 1 条
+var EXAM_GAP = 7;      // 抽检间隔（天）
+var EXAM_N = 5;        // 每轮抽检题数
+var EXAM_SEC = 60;     // 抽检每题限时（秒）
+var PROJ_SEC = 90;     // 项目线口述限时（秒）——骨架是「90 秒骨架」，别用抽检的 60
+var DAYS_KEEP = 180;   // localStorage 里最多留多少天的派单记录（热力图只看 35 天）
+
+var BREAKS = window.MARVIS_BREAKS || {};
+function breakOf(href) { return (href && BREAKS[href]) || null; }
+
+/* ══════════════════════════════════════════════════════════════
+   日期工具
+   ══════════════════════════════════════════════════════════════ */
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 function dstr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 function today() { return dstr(new Date()); }
-function addDays(s, n) { var p = s.split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return dstr(d); }
+function shift(ds, n) {
+  var p = ds.split('-');
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  d.setDate(d.getDate() + n);
+  return dstr(d);
+}
+function daysAgo(n) { return shift(today(), -n); }
+function dayGap(from, to) { return Math.round((new Date(to) - new Date(from)) / 86400000); }
 
+/* ══════════════════════════════════════════════════════════════
+   母题索引
+   ══════════════════════════════════════════════════════════════ */
 function linkOf(t) {
   if (t.href) return t.href;
   if (t.src) return 'obsidian://open?vault=' + VAULT + '&file=' + encodeURIComponent(t.src.replace(/\.md$/, ''));
   return '';
 }
 
-function flat() {
+var FLAT = null, ID2KEY = {};
+function buildFlat() {
   var out = [];
   (window.MARVIS_CLUSTERS || []).forEach(function (c) {
-    c.topics.forEach(function (t) {
-      out.push({ key: c.id + '/' + t.id, cid: c.id, cname: c.name, id: t.id, name: t.name, link: linkOf(t) });
+    c.topics.forEach(function (t, i) {
+      var o = {
+        key: c.id + '/' + t.id, cid: c.id, cname: c.name, zone: c.zone,
+        id: t.id, name: t.name, link: linkOf(t), after: t.after || [], pos: i
+      };
+      out.push(o); ID2KEY[t.id] = o.key;
     });
   });
   return out;
 }
+function flat() { if (!FLAT) FLAT = buildFlat(); return FLAT; }
 function clusterById(id) {
   var r = null;
   (window.MARVIS_CLUSTERS || []).forEach(function (c) { if (c.id === id) r = c; });
   return r;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   状态
+   ══════════════════════════════════════════════════════════════ */
 var S = null;
 
 function load() {
   var raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) {}
   var st = raw ? JSON.parse(raw) : null;
-  if (!st || typeof st !== 'object') st = { lv: {}, days: {}, debt: 0, oweDays: 0, relieve: false, drill: [], extra: {} };
+  if (!st || typeof st !== 'object') st = {};
   if (!st.lv) st.lv = {};
   if (!st.days) st.days = {};
   if (!st.drill) st.drill = [];
+  if (!st.extra) st.extra = {};
+  if (!st.resetAt) st.resetAt = null;
+  if (!st.exam || typeof st.exam !== 'object') st.exam = { lastIssued: null, lastDone: null, rounds: 0 };
   flat().forEach(function (t) {
     if (!st.lv[t.key]) st.lv[t.key] = { l: t.link ? 1 : 0, due: null, last: null, hit: 0, miss: 0 };
   });
   return st;
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert('保存失败：' + e.message); } }
+/* 只留最近 DAYS_KEEP 天的派单记录：热力图看 35 天、近 7 天板块看 7 天，
+   更早的留着只会让每次 save() 都序列化一坨没用的东西 */
+function pruneDays() {
+  var keys = Object.keys(S.days).sort();
+  if (keys.length <= DAYS_KEEP) return;
+  keys.slice(0, keys.length - DAYS_KEEP).forEach(function (k) { delete S.days[k]; });
+}
+function save() {
+  pruneDays();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert('保存失败：' + e.message); }
+}
 function lvOf(key) { return (S.lv[key] && S.lv[key].l) || 0; }
+function isNeed(it) { return it.need !== false; }   // 旧数据没有 need 字段 → 视为必做
 
-function settle() {
-  var t = today();
-  Object.keys(S.days).forEach(function (d) {
+/* ══════════════════════════════════════════════════════════════
+   欠账与连续性：一律实时算，只统计必做条目
+   ══════════════════════════════════════════════════════════════ */
+function needStats(ds) {
+  var d = S.days[ds];
+  if (!d || !d.items || !d.items.length) return null;
+  var need = d.items.filter(isNeed);
+  if (!need.length) return null;
+  var done = need.filter(function (x) { return x.done; }).length;
+  return { need: need.length, done: done, all: done === need.length, items: d.items };
+}
+function debtStats() {
+  var t = today(), debt = 0, oweDays = 0, run = 0;
+  Object.keys(S.days).sort().forEach(function (d) {
     if (d >= t) return;
-    var day = S.days[d];
-    if (day.settled) return;
-    day.settled = true;
-    var it = day.items || [];
-    var done = 0;
-    it.forEach(function (x) { if (x.done) done++; });
-    var owe = it.length - done;
-    if (it.length && owe > 0) { S.debt += owe; S.oweDays += 1; } else if (it.length) { S.oweDays = 0; }
+    if (S.resetAt && d < S.resetAt) return;
+    var st = needStats(d);
+    if (!st) return;
+    if (st.all) { run = 0; } else { debt += st.need - st.done; run += 1; }
+    oweDays = run;
   });
-  S.relieve = S.oweDays >= 2;
+  return { debt: debt, oweDays: oweDays, relieve: oweDays >= 2 };
+}
+function heatLevel(d) {
+  var st = needStats(d);
+  if (!st || st.done === 0) return 0;
+  return st.all ? 2 : 1;
+}
+function streak() {
+  var n = 0;
+  var d = new Date();
+  if (heatLevel(dstr(d)) < 2) d.setDate(d.getDate() - 1);
+  while (heatLevel(dstr(d)) === 2) { n++; d.setDate(d.getDate() - 1); }
+  return n;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   派单引擎
+   ══════════════════════════════════════════════════════════════ */
+
+/* 复训队列：到期日 ≤ 今天，逾期久的优先，同级里 L 低的优先 */
+function reviewQueue() {
+  var t = today();
+  return flat().filter(function (x) {
+    var s = S.lv[x.key];
+    return x.link && s && s.due && s.due <= t;
+  }).sort(function (a, b) {
+    var da = S.lv[a.key].due, db = S.lv[b.key].due;
+    if (da !== db) return da < db ? -1 : 1;
+    return S.lv[a.key].l - S.lv[b.key].l;
+  });
+}
+
+/* 簇完成率 */
+function completion(c) {
+  var n = 0;
+  c.topics.forEach(function (t) { if (lvOf(c.id + '/' + t.id) >= MASTER) n++; });
+  return n / c.topics.length;
+}
+
+/* 簇排序：zone 之间轮转，zone 内按完成率升序。
+   项目线（PROJECT_CID）不参与轮转——它由 projectNext() 单独派。 */
+function clusterOrder() {
+  var all = (window.MARVIS_CLUSTERS || []).slice();
+  var cs = all.filter(function (c) { return c.id !== PROJECT_CID; });
+  var rate = {};
+  cs.forEach(function (c) { rate[c.id] = completion(c); });
+  var zi = {}, zones = [];
+  cs.forEach(function (c) {
+    if (!zi[c.zone]) { zi[c.zone] = []; zones.push(c.zone); }
+    zi[c.zone].push(c);
+  });
+  zones.forEach(function (z) {
+    zi[z].sort(function (a, b) {
+      return (rate[a.id] - rate[b.id]) || (all.indexOf(a) - all.indexOf(b));
+    });
+  });
+  var out = [], i = 0, go = true;
+  while (go) {
+    go = false;
+    zones.forEach(function (z) { if (zi[z][i]) { out.push(zi[z][i]); go = true; } });
+    i++;
+  }
+  return out;
+}
+
+/* 扫描单个簇「下一条该学的」：簇内前一条 ≥L2 + after 全部 ≥L2 才算解锁。
+   返回 null = 这个簇已全部掌握，或被簇内前一条挡着（连候选都算不上）。 */
+function scanOne(c) {
+  for (var i = 0; i < c.topics.length; i++) {
+    var t = c.topics[i], k = c.id + '/' + t.id;
+    if (lvOf(k) >= MASTER) continue;
+    if (i > 0 && lvOf(c.id + '/' + c.topics[i - 1].id) < MASTER) return null;
+    var pre = [], miss = [];
+    if (i > 0) pre.push({ id: c.topics[i - 1].id, lv: lvOf(c.id + '/' + c.topics[i - 1].id) });
+    (t.after || []).forEach(function (d) {
+      var dk = ID2KEY[d];
+      if (!dk) return;                                   // 找不到的 after 视为已满足，不卡死
+      var lv = lvOf(dk);
+      pre.push({ id: d, lv: lv });
+      if (lv < MASTER) miss.push({ id: d, lv: lv });
+    });
+    return {
+      ready: !miss.length,
+      cand: {
+        key: k, id: t.id, name: t.name, cid: c.id, cname: c.name,
+        zone: c.zone, link: linkOf(t), proj: t.proj || null, pre: pre, miss: miss
+      }
+    };
+  }
+  return null;
+}
+
+function scanClusters() {
+  var ready = [], locked = [];
+  clusterOrder().forEach(function (c) {
+    var r = scanOne(c);
+    if (!r) return;
+    (r.ready ? ready : locked).push(r.cand);
+  });
+  return { ready: ready, locked: locked };
+}
+
+/* 项目线：每天派 pitch 簇的下一条 */
+function projectNext() {
+  var c = clusterById(PROJECT_CID);
+  if (!c) return null;
+  var r = scanOne(c);
+  return r && r.ready ? r.cand : null;
+}
+
+/* 从数组里随机取 n 个（不重复） */
 function pickSome(arr, n) {
-  var a = arr.slice();
-  var out = [];
+  var a = arr.slice(), out = [];
   while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]);
   return out;
 }
 
-function reviewPool() {
-  var pool = flat().filter(function (t) { return t.link && lvOf(t.key) >= 1; });
+/* 抽检：7 天一轮，从已到 L2 的母题里抽。
+   权重顺序 = miss 多 → 有断点 → 久没自评 → L 低。最近 2 天自评过的不抽（还热着）。 */
+function examDue() {
+  var e = S.exam || {};
+  if (!e.lastIssued) return true;
+  return dayGap(e.lastIssued, today()) >= EXAM_GAP;
+}
+/* 抽检候选排序：miss 多 → 有断点 → 久没自评 → L 低。最近 2 天自评过的不进池（还热着） */
+function examRanked() {
+  var cutoff = daysAgo(2);
+  var pool = flat().filter(function (x) {
+    var s = S.lv[x.key];
+    return x.link && s && s.l >= MASTER && !(s.last && s.last > cutoff);
+  });
   pool.sort(function (a, b) {
     var sa = S.lv[a.key], sb = S.lv[b.key];
+    var ba = breakOf(a.link) ? 1 : 0, bb = breakOf(b.link) ? 1 : 0;
+    if (sa.miss !== sb.miss) return sb.miss - sa.miss;
+    if (ba !== bb) return bb - ba;
     var la = sa.last || '0000-00-00', lb = sb.last || '0000-00-00';
     if (la !== lb) return la < lb ? -1 : 1;
-    if (sa.l !== sb.l) return sa.l - sb.l;
-    return sb.miss - sa.miss;
+    return sa.l - sb.l;
   });
-  return pool.slice(0, 12);
+  return pool;
+}
+/* 抽检：从上位圈里随机抽——要的是「随机抽考」，不是「按弱点点名」，
+   但候选面收在权重最高的两倍题数内，弱的更容易被抽到 */
+function examPool() {
+  var r = examRanked();
+  return r.length <= EXAM_N ? r : pickSome(r.slice(0, EXAM_N * 2), EXAM_N);
 }
 
-function newPool() {
-  var cand = flat().filter(function (t) { return t.link && lvOf(t.key) <= 1; });
-  var rates = {};
-  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
-    var n = 0;
-    c.topics.forEach(function (t) { if (lvOf(c.id + '/' + t.id) >= 3) n++; });
-    rates[c.id] = n / c.topics.length;
-  });
-  cand.sort(function (a, b) { return rates[a.cid] - rates[b.cid]; });
-  return cand.slice(0, 10);
+/* 自适应新题配额 */
+function quota() {
+  if (S.relieve) return 0;
+  var y = needStats(daysAgo(1)), b = needStats(daysAgo(2));
+  if (y && y.all && b && b.all) return Math.min(3, NEW_MAX);
+  if (y && y.all) return Math.min(2, NEW_MAX);
+  return Math.min(1, NEW_MAX);
+}
+
+/* 手撕：没练过的优先；全练过 → 取最久没练的 */
+function pickDrill() {
+  var D = window.MARVIS_DRILL;
+  if (!D || !D.topics.length) return null;
+  for (var i = 0; i < D.topics.length; i++) {
+    if (S.drill.indexOf('drill/' + D.topics[i].id) < 0) return D.topics[i];
+  }
+  for (var j = 0; j < D.topics.length; j++) {
+    if ('drill/' + D.topics[j].id === S.drill[0]) return D.topics[j];
+  }
+  return D.topics[0];
+}
+
+/* 前置说明串 */
+function preStr(pre) {
+  if (!pre || !pre.length) return '';
+  return '前置 ' + pre.map(function (p) {
+    return p.id + '<span style="color:' + (p.lv >= MASTER ? 'var(--mv-ok)' : 'var(--mv-warn)') + '">' +
+           (p.lv >= MASTER ? '✓L' : 'L') + p.lv + '</span>';
+  }).join(' · ');
+}
+
+/* 断点回流：把这条母题上次的断点原文摊在卡面上，复训从「重做整题」变成「重做错的那一句」 */
+function bpLine(href) {
+  var b = breakOf(href);
+  if (!b || !b.bp) return '';
+  return '<br><b style="color:var(--mv-warn)">上次断点</b>：' + b.bp;
+}
+
+function mkRev(x, need) {
+  var od = dayGap(S.lv[x.key].due, today());
+  return {
+    type: 'rev', key: x.key, need: need, done: false, link: x.link,
+    label: '复训：' + x.name,
+    sub: x.cname + ' · 当前 L' + lvOf(x.key) +
+         (od > 0 ? ' · <b style="color:var(--mv-danger)">逾期 ' + od + ' 天</b>' : ' · 今天到期') +
+         bpLine(x.link)
+  };
+}
+function mkNew(c, need) {
+  return {
+    type: 'new', key: c.key, need: need, done: false, link: c.link,
+    label: '新母题：' + c.name,
+    sub: c.cname + ' · 闭卷 → 补断点 → 费曼' + (preStr(c.pre) ? ' · ' + preStr(c.pre) : '')
+  };
+}
+function mkProj(c, need) {
+  return {
+    type: 'proj', key: c.key, need: need, done: false, link: c.link,
+    label: '项目：' + c.name,
+    sub: (c.proj || c.cname) + ' · 90 秒口述，限时说完，卡壳就重来' +
+         (preStr(c.pre) ? ' · ' + preStr(c.pre) : '') + bpLine(c.link)
+  };
+}
+function mkExam(x, need) {
+  var s = S.lv[x.key];
+  return {
+    type: 'exam', key: x.key, need: need, done: false, link: x.link,
+    label: '抽检：' + x.name,
+    sub: x.cname + ' · 当前 L' + s.l + ' · 命中 ' + (s.hit || 0) + ' 次 · 忘 ' + (s.miss || 0) + ' 次' +
+         bpLine(x.link)
+  };
 }
 
 function buildDay() {
-  var items = [];
-  var used = {};
-  var relieve = S.relieve;
+  var items = [], used = {};
+  var budget = S.relieve ? REV_RELIEVE : REV_BUDGET;
+  if (!S.exam) S.exam = { lastIssued: null, lastDone: null, rounds: 0 };
 
-  var rev = pickSome(reviewPool(), relieve ? 1 : 2);
-  rev.forEach(function (t) {
-    used[t.key] = 1;
-    items.push({ type: 'rev', key: t.key, label: '复训：' + t.name, sub: t.cname + ' · 当前 L' + lvOf(t.key), link: t.link, done: false });
-  });
+  /* ① 复训：必做预算内的进必做，超出的进加餐。
+     整条队列都先占位——否则同一条母题会既进复训又进抽检，被评两次、连升两级 */
+  var q = reviewQueue();
+  q.forEach(function (x) { used[x.key] = 1; });
+  q.slice(0, budget).forEach(function (x) { items.push(mkRev(x, true)); });
+  var revOver = q.length - Math.min(q.length, budget);
 
-  if (!relieve) {
-    var np = newPool().filter(function (t) { return !used[t.key]; });
-    if (np.length) {
-      var t = np[0];
-      used[t.key] = 1;
-      items.push({ type: 'new', key: t.key, label: '新母题：' + t.name, sub: t.cname + ' · 闭卷 → 补断点 → 费曼', link: t.link, done: false });
+  /* ② 新题：配额内进必做，其余进加餐 */
+  var ready = scanClusters().ready.filter(function (c) { return !used[c.key]; });
+  var n = quota();
+  ready.slice(0, n).forEach(function (c) { used[c.key] = 1; items.push(mkNew(c, true)); });
+  var extraNew = ready.slice(n);
+
+  /* ③ 项目线：每天 1 条（EnergyOps / 数驭穹图 / RuleArena 各 2 条，骨架先于决策链） */
+  var pj = projectNext();
+  if (pj) { used[pj.key] = 1; items.push(mkProj(pj, true)); }
+
+  /* ④ 抽检：7 天一轮，从已到 L2 的母题里抽 5 条 */
+  var examN = 0;
+  if (examDue()) {
+    var ep = examPool().filter(function (x) { return !used[x.key]; });
+    if (ep.length) {
+      ep.forEach(function (x) { items.push(mkExam(x, true)); });
+      examN = ep.length;
+      S.exam.lastIssued = today();
     }
   }
 
-  if (!relieve) {
-    var dr = (window.MARVIS_DRILL || { topics: [] }).topics.filter(function (t) {
-      return S.drill.indexOf('drill/' + t.id) < 0;
-    });
-    var d = dr.length ? dr[Math.floor(Math.random() * dr.length)] : (window.MARVIS_DRILL.topics[0] || null);
-    if (d) items.push({ type: 'drill', key: 'drill/' + d.id, label: '手撕：' + d.name, sub: '日课 · 10 分钟限时，关掉 AI 补全', link: d.href, done: false });
-  }
+  /* ⑤ 日课：手撕 + 命功 */
+  var d = pickDrill();
+  if (d) items.push({
+    type: 'drill', key: 'drill/' + d.id, need: true, done: false, link: d.href,
+    label: '手撕：' + d.name, sub: '日课 · 10 分钟限时，关掉 AI 补全'
+  });
+  items.push({
+    type: 'life', key: 'life', need: true, done: false, link: '',
+    label: '命功：八段锦 12 分钟 + 23:00 手机放客厅', sub: '电池优先，不强求跑步'
+  });
 
-  items.push({ type: 'life', key: 'life', label: '命功：八段锦 12 分钟 + 23:00 手机放客厅', sub: '电池优先，不强求跑步', link: '', done: false });
-  return items;
+  /* ⑥ 加餐：复训溢出（最多 2）+ 新题溢出，总数不超过 EXTRA_MAX */
+  q.slice(budget, budget + EXTRA_REV_MAX).forEach(function (x) { items.push(mkRev(x, false)); });
+  var room = EXTRA_MAX - Math.min(revOver, EXTRA_REV_MAX);
+  extraNew.slice(0, Math.max(0, room)).forEach(function (c) { items.push(mkNew(c, false)); });
+
+  return {
+    items: items, revOver: revOver, revBudget: budget, quotaN: n,
+    readyLeft: Math.max(0, ready.length - n), examN: examN
+  };
 }
 
+/* 当天派单只建一次就冻结（保证反复打开不重派、结果稳定）。
+   旧版本建的当天派单（没有 v:2 标记）在还没动手时重建一次，
+   否则今天会缺项目线和抽检板块——已经打过勾的绝不重建，免得丢记录 */
+var DAY_V = 2;
 function ensureDay() {
   var t = today();
-  if (!S.days[t] || !S.days[t].items || !S.days[t].items.length) S.days[t] = { items: buildDay(), settled: false };
+  var d = S.days[t];
+  var stale = d && d.v !== DAY_V && !d.items.some(function (x) { return x.done; });
+  if (!d || !d.items || !d.items.length || stale) {
+    var b = buildDay();
+    S.days[t] = {
+      v: DAY_V, items: b.items, settled: false,
+      revOver: b.revOver, revBudget: b.revBudget, quotaN: b.quotaN,
+      readyLeft: b.readyLeft, examN: b.examN
+    };
+  }
   return S.days[t];
 }
 
-function rate(idx) {
-  var it = S.days[today()].items[idx];
-  if (it.type === 'life') { it.done = !it.done; save(); render(); return; }
+/* ══════════════════════════════════════════════════════════════
+   自评
+   ══════════════════════════════════════════════════════════════ */
+var RATE_DS = null, RATE_IDX = -1;
+
+/* 断点回流：卡面上摊开上次断点（这是提示，不是答案）；
+   恢复关键词、一句话结论和追问折叠起来——闭卷先说，说完再翻。
+   ⚠️ 新题不给这一整块：第一次答案必须由本人闭卷生成，结论就是答案，
+      摆在弹窗里等于把答案放在手边。新题只留一个「打开材料」的链接。 */
+function hintPanel(it) {
+  if (it.type === 'new') return '';
+  var b = breakOf(it.link);
+  var h = '';
+  if (it.type === 'proj' || it.type === 'exam') {
+    var secs = it.type === 'proj' ? PROJ_SEC : EXAM_SEC;
+    h += '<timer-ring seconds="' + secs + '" label="限时口述" note="先说，中途不给反馈"></timer-ring>';
+  }
+  if (b && b.bp) {
+    h += '<div style="margin:1rem 0 0;padding:.75rem 1rem;border:1px solid var(--mv-border);' +
+         'border-radius:var(--mv-radius);background:var(--mv-surface-2);font-size:.875rem;line-height:1.7">' +
+         '<b style="color:var(--mv-warn)">上次断点</b><br>' + b.bp + '</div>';
+  }
+  var after = '';
+  if (b && b.con) after += '<div><b>一句话结论</b>：' + b.con + '</div>';
+  if (b && b.kw && b.kw.length) after += '<div style="margin-top:.5rem"><b>恢复关键词</b>：' + b.kw.join(' · ') + '</div>';
+  if (b && b.fu && b.fu.length) {
+    after += '<div style="margin-top:.5rem"><b>追问</b>：' +
+             b.fu.slice(0, 2).map(function (f) { return f.q; }).join(' ／ ') + '</div>';
+  }
+  if (after) {
+    h += '<details style="margin:.875rem 0 0">' +
+         '<summary style="cursor:pointer;font-size:.8125rem;color:var(--mv-muted)">说完再点开：结论 / 恢复关键词 / 追问</summary>' +
+         '<div class="mv-note" style="margin:.5rem 0 0;color:var(--mv-text)">' + after + '</div></details>';
+  }
+  return h;
+}
+
+function startTimer() {
+  var tr = document.querySelector('#ratebody timer-ring');
+  if (!tr || !tr.toggle) return;
+  var btn = tr.querySelector('[data-a="start"]');
+  if (btn) tr.toggle(btn);
+}
+
+function rate(ds, idx) {
+  var day = S.days[ds];
+  if (!day || !day.items[idx]) return;
+  var it = day.items[idx];
+  if (it.done) return;                       // 已评的只读
+  if (it.type === 'life') { it.done = true; render(); return; }
   if (it.type === 'drill') {
     it.done = true;
-    if (S.drill.indexOf(it.key) < 0) S.drill.push(it.key);
-    save(); render(); return;
+    var p = S.drill.indexOf(it.key);
+    if (p >= 0) S.drill.splice(p, 1);
+    S.drill.push(it.key);                    // 队尾 = 最近练过，队首 = 最久没练
+    render(); return;
   }
   var s = S.lv[it.key];
-  var t = flat().filter(function (x) { return x.key === it.key; })[0];
-  var body = document.getElementById('ratebody');
+  if (!s) return;
+  RATE_DS = ds; RATE_IDX = idx;
   var nextHit = Math.min(3, s.l + 1);
-  body.innerHTML =
-    '<p style="margin:0 0 .375rem;font-size:1.0625rem;font-weight:600">' + it.label.replace(/^(复训|新母题)：/, '') + '</p>' +
+  document.getElementById('ratebody').innerHTML =
+    '<p style="margin:0 0 .375rem;font-size:1.0625rem;font-weight:600">' +
+      it.label.replace(/^(复训|新母题|项目|抽检)：/, '') + '</p>' +
     '<p class="mv-note" style="margin:0 0 1rem">先闭卷写下<b>核心不变量</b>和 <b>3 个恢复关键词</b>，再翻面。忘了就如实点忘了。</p>' +
-    (it.link ? '<p style="margin:0 0 1rem"><a href="' + it.link + '" target="_blank" style="color:var(--mv-accent)">打开材料</a></p>' : '') +
-    '<div class="mv-bd" style="margin-bottom:1.25rem;font-size:.875rem;color:var(--mv-muted)">' +
-    '当前 L' + s.l + '（' + LVN[s.l] + '） · 命中 → L' + nextHit + ' · 部分 → 停在 L2 以内 · 忘了 → 掉回 L1' +
+    (it.link ? '<p style="margin:0 0 .5rem"><a href="' + it.link + '" target="_blank" style="color:var(--mv-accent)">打开材料</a></p>' : '') +
+    '<div class="mv-bd" style="margin:0 0 1rem;font-size:.875rem;color:var(--mv-muted)">' +
+      (ds === today() ? '' : '<b>' + ds + '</b> 的补评 · ') +
+      '当前 L' + s.l + '（' + LVN[s.l] + '） · 命中 → L' + nextHit + ' · 部分 → 停在 L2 以内 · 忘了 → 掉回 L1' +
     '</div>' +
-    '<div style="display:flex;gap:.625rem;flex-wrap:wrap">' +
-    '<button class="mv-btn mv-btn-ok" onclick="doRate(' + idx + ',\'hit\')">命中</button>' +
-    '<button class="mv-btn" onclick="doRate(' + idx + ',\'part\')">部分</button>' +
-    '<button class="mv-btn mv-btn-bad" onclick="doRate(' + idx + ',\'miss\')">忘了</button>' +
+    hintPanel(it) +
+    '<div style="display:flex;gap:.625rem;flex-wrap:wrap;margin-top:1.25rem">' +
+      '<button class="mv-btn mv-btn-ok" onclick="doRate(\'hit\')">命中</button>' +
+      '<button class="mv-btn" onclick="doRate(\'part\')">部分</button>' +
+      '<button class="mv-btn mv-btn-bad" onclick="doRate(\'miss\')">忘了</button>' +
     '</div>';
   document.getElementById('rate').hidden = false;
+  startTimer();
 }
 function closeRate() { document.getElementById('rate').hidden = true; }
 
-function doRate(idx, score) {
-  var t = today();
-  var it = S.days[t].items[idx];
+/* 只改状态，不重绘——抽检要连答 5 题，中间不能刷新 |
+   等级规则和普通自评完全一致，所以抽检和复训共用同一套升降逻辑 */
+function applyRate(ds, idx, score) {
+  var it = S.days[ds].items[idx];
   var s = S.lv[it.key];
-  var from = s.l;
   if (score === 'hit') {
     s.l = Math.min(3, s.l + 1); s.hit++; s.miss = 0;
-    s.due = addDays(t, STEPS[Math.min(s.hit - 1, 4)]);
+    s.due = shift(ds, STEPS[Math.min(s.hit - 1, 4)]);
   } else if (score === 'part') {
-    s.l = Math.max(1, Math.min(s.l, 2)); s.hit = 0; s.miss++; s.due = addDays(t, 1);
+    s.l = Math.max(1, Math.min(s.l, 2)); s.hit = 0; s.miss++; s.due = shift(ds, 1);
   } else {
-    s.l = Math.min(s.l, 1); s.hit = 0; s.miss++; s.due = addDays(t, 1);
+    s.l = Math.min(s.l, 1); s.hit = 0; s.miss++; s.due = shift(ds, 1);
   }
-  s.last = t;
+  s.last = ds;
   it.done = true; it.score = score;
-  save(); closeRate(); render();
 }
 
+function doRate(score) {
+  var it = S.days[RATE_DS].items[RATE_IDX];
+  applyRate(RATE_DS, RATE_IDX, score);
+  render();
+  /* 掉档时把断点闭环补上：断点回流靠母题卡的「本次断点」，不写进去下次就带不回来 */
+  if (score !== 'hit') {
+    var b = breakOf(it.link);
+    document.getElementById('ratebody').innerHTML =
+      '<p style="margin:0 0 .5rem;font-size:1.0625rem;font-weight:600">' +
+        SCOREN[score] + ' · 现在 L' + lvOf(it.key) + '</p>' +
+      '<p class="mv-note" style="margin:0 0 .875rem">这次卡在哪？把闭卷时没说出来的那一句，让 AI 写进母题卡的『本次断点』——' +
+        '下次复训就会带着它回来。</p>' +
+      (b && b.bp ? '<p class="mv-note" style="margin:0 0 .875rem">上次记的是：<b>' + b.bp + '</b></p>' : '') +
+      '<button class="mv-btn mv-btn-primary" onclick="closeRate();render()">知道了</button>';
+    return;
+  }
+  closeRate();
+}
+
+/* ── 抽检轮：连答 N 题，每题限时，中途不给反馈 ── */
+var EXAM_Q = [], EXAM_POS = 0;
+
+function examStart() {
+  var ds = today();
+  EXAM_Q = [];
+  (S.days[ds].items || []).forEach(function (it, i) {
+    if (it.type === 'exam' && !it.done) EXAM_Q.push(i);
+  });
+  if (!EXAM_Q.length) { alert('这一轮抽检已经做完了。'); return; }
+  EXAM_POS = 0;
+  examShow();
+}
+
+function examShow() {
+  var ds = today();
+  var it = S.days[ds].items[EXAM_Q[EXAM_POS]];
+  document.getElementById('ratebody').innerHTML =
+    '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem">' +
+      '<span class="mv-note" style="margin:0"><b>' + (EXAM_POS + 1) + '</b> / ' + EXAM_Q.length + '</span>' +
+      '<span class="mv-note" style="margin:0">' + it.sub.split(' · ')[0] + '</span>' +
+    '</div>' +
+    '<p style="margin:0 0 .875rem;font-size:1.0625rem;font-weight:600">' +
+      it.label.replace(/^抽检：/, '') + '</p>' +
+    hintPanel(it) +
+    '<div style="display:flex;gap:.625rem;flex-wrap:wrap;margin-top:1.25rem">' +
+      '<button class="mv-btn mv-btn-ok" onclick="examRate(\'hit\')">命中</button>' +
+      '<button class="mv-btn" onclick="examRate(\'part\')">部分</button>' +
+      '<button class="mv-btn mv-btn-bad" onclick="examRate(\'miss\')">忘了</button>' +
+      '<button class="mv-btn" onclick="examAbort()">退出（保住已答的）</button>' +
+    '</div>';
+  document.getElementById('rate').hidden = false;
+  startTimer();
+}
+
+function examRate(score) {
+  if (EXAM_POS >= EXAM_Q.length) return;      // 队列走完后的重复点击，忽略
+  var ds = today();
+  applyRate(ds, EXAM_Q[EXAM_POS], score);
+  EXAM_POS++;
+  if (EXAM_POS < EXAM_Q.length) { examShow(); return; }
+  examDone(ds);
+}
+
+function examAbort() { closeRate(); render(); }
+
+function examDone(ds) {
+  S.exam.lastDone = ds;
+  S.exam.rounds = (S.exam.rounds || 0) + 1;
+  var done = S.days[ds].items.filter(function (x) { return x.type === 'exam'; });
+  var hit = done.filter(function (x) { return x.score === 'hit'; }).length;
+  var fell = done.filter(function (x) { return x.score === 'miss'; }).length;
+  document.getElementById('ratebody').innerHTML =
+    '<p style="margin:0 0 .75rem;font-size:1.0625rem;font-weight:600">本轮抽检结束</p>' +
+    '<p class="mv-note" style="margin:0 0 .5rem">命中 <b>' + hit + ' / ' + done.length + '</b>' +
+      (fell ? ' · 掉档 ' + fell + ' 条' : '') + '</p>' +
+    '<p class="mv-note" style="margin:0 0 1.25rem">' +
+      (hit >= done.length - 1
+        ? '验收通过。下一轮 ' + EXAM_GAP + ' 天后。'
+        : '掉档的母题明天会重派，先补它们，别急着开新题。') +
+    '</p>' +
+    '<button class="mv-btn mv-btn-primary" onclick="closeRate();render()">收工</button>';
+  render();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   额外完成 / 清账 / 备份
+   ══════════════════════════════════════════════════════════════ */
 function addExtra() {
   var el = document.getElementById('extrain');
   var v = (el.value || '').trim();
@@ -268,14 +710,14 @@ function addExtra() {
   if (!S.extra[t]) S.extra[t] = [];
   S.extra[t].push(v);
   el.value = '';
-  save(); render();
+  render();
 }
-function delExtra(i) { var t = today(); S.extra[t].splice(i, 1); save(); render(); }
+function delExtra(i) { S.extra[today()].splice(i, 1); render(); }
 
-function clearDebt() {
-  if (!confirm('把累计欠账和连续欠账天数清零，重新开始。确定？')) return;
-  S.debt = 0; S.oweDays = 0; S.relieve = false;
-  save(); render();
+function resetLedger() {
+  if (!confirm('今天之前的必做未完成不再计入欠账。等级、手撕记录和热力图都保留。确定？')) return;
+  S.resetAt = today();
+  render();
 }
 
 function exportJSON() {
@@ -301,22 +743,9 @@ function importJSON(input) {
   input.value = '';
 }
 
-function heatLevel(d) {
-  var day = S.days[d];
-  if (!day || !day.items || !day.items.length) return 0;
-  var done = 0;
-  day.items.forEach(function (x) { if (x.done) done++; });
-  if (done === 0) return 0;
-  return done >= day.items.length ? 2 : 1;
-}
-function streak() {
-  var n = 0;
-  var d = new Date();
-  if (heatLevel(dstr(d)) < 2) d.setDate(d.getDate() - 1);
-  while (heatLevel(dstr(d)) === 2) { n++; d.setDate(d.getDate() - 1); }
-  return n;
-}
-
+/* ══════════════════════════════════════════════════════════════
+   渲染
+   ══════════════════════════════════════════════════════════════ */
 function segs(cnt, total) {
   var out = '';
   for (var l = 4; l >= 1; l--) {
@@ -326,13 +755,77 @@ function segs(cnt, total) {
   return out;
 }
 
+function taskRow(ds, i, it) {
+  var sc = it.score ? ' · 已评：' + SCOREN[it.score] : '';
+  /* 今天的抽检条目不能单独点——抽检是一整轮，走「开始抽检」；
+     往日未评的仍可点开补评 */
+  var clickable = !it.done && (it.type !== 'exam' || ds !== today());
+  var ro = clickable ? ' onclick="rate(\'' + ds + '\',' + i + ')"' : '';
+  return '<div class="mv-cl-item' + (it.done ? ' on' : '') + '"' + ro + '>' +
+    '<div class="mv-cl-box">✓</div>' +
+    '<div class="mv-cl-text">' + it.label +
+    '<div class="mv-cl-sub">' + it.sub + sc + '</div></div></div>';
+}
+
+/* 项目线：三个项目各自 x/2，骨架 → 决策链 */
+function projectBoard() {
+  var c = clusterById(PROJECT_CID);
+  if (!c) return '';
+  var groups = [];
+  c.topics.forEach(function (t) {
+    var p = t.proj || '其他';
+    var g = null;
+    groups.forEach(function (x) { if (x.name === p) g = x; });
+    if (!g) { g = { name: p, items: [] }; groups.push(g); }
+    g.items.push(t);
+  });
+  return groups.map(function (g) {
+    var ok = g.items.filter(function (t) { return lvOf(c.id + '/' + t.id) >= MASTER; }).length;
+    var chips = g.items.map(function (t) {
+      var l = lvOf(c.id + '/' + t.id), lk = linkOf(t);
+      var inner = '<i class="mv-dot lv' + l + '"></i>' + t.name + '<em>L' + l + '</em>';
+      return lk
+        ? '<a class="mv-pg-chip" href="' + lk + '" target="_blank">' + inner + '</a>'
+        : '<span class="mv-pg-chip is-void">' + inner + '</span>';
+    }).join('');
+    return '<div style="margin-bottom:.875rem">' +
+      '<div class="mv-pg-head" style="margin-bottom:.375rem"><span class="mv-pg-name">' + g.name + '</span>' +
+      '<span class="mv-pg-num"><b>' + ok + '</b>/' + g.items.length + '</span></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:.375rem">' + chips + '</div></div>';
+  }).join('');
+}
+
+function board(title, count, rows, note) {
+  return '<div class="mv-cl" style="margin-bottom:1rem">' +
+    '<div class="mv-cl-head"><span class="mv-cl-title">' + title + '</span>' +
+    (count != null ? '<span class="mv-cl-count">' + count + '</span>' : '') + '</div>' +
+    rows +
+    (note ? '<div class="mv-note" style="margin:.875rem 0 0">' + note + '</div>' : '') +
+    '</div>';
+}
+
+function lockedNote(locked) {
+  if (!locked.length) return '';
+  var names = locked.slice(0, 4).map(function (c) {
+    return c.id + '（待 ' + c.miss.map(function (m) { return m.id; }).join('、') + ' 到 L' + MASTER + '）';
+  }).join('；');
+  return '前置未达标，暂不派：' + names + (locked.length > 4 ? ' 等 ' + locked.length + ' 条' : '') + '。';
+}
+
 function render() {
-  var total = flat().length;
-  var l3 = flat().filter(function (t) { return lvOf(t.key) >= 3; }).length;
+  /* ── 全局统计 ── */
+  var debt = debtStats();
+  S.relieve = debt.relieve;
+  var day = ensureDay();
+
+  var all = flat();
+  var total = all.length;
+  var l3 = all.filter(function (t) { return lvOf(t.key) >= 3; }).length;
   var need = Math.max(0, Math.ceil(total * GOAL) - l3);
   var pct = total ? Math.round(l3 / total * 100) : 0;
-  var day = ensureDay();
-  var done = day.items.filter(function (x) { return x.done; }).length;
+
+  var needItems = day.items.filter(isNeed);
+  var needDone = needItems.filter(function (x) { return x.done; }).length;
 
   document.getElementById('metrics').innerHTML =
     '<div class="mv-ms-item"><div class="mv-ms-label">L3+ 合计</div><div class="mv-ms-value">' + l3 + '<small>/' + total + '</small></div></div>' +
@@ -340,6 +833,72 @@ function render() {
     '<div class="mv-ms-item"><div class="mv-ms-label">目标 ' + Math.round(GOAL * 100) + '% 还差</div><div class="mv-ms-value">' + need + '<small> 个母题</small></div></div>' +
     '<div class="mv-ms-item"><div class="mv-ms-label">连续全交</div><div class="mv-ms-value">' + streak() + '<small> 天</small></div></div>';
 
+  /* ── 必做 ── */
+  var gRev = [], gNew = [], gProj = [], gExam = [], gDaily = [], gExtra = [];
+  day.items.forEach(function (it, i) {
+    var row = taskRow(today(), i, it);
+    if (!isNeed(it)) { gExtra.push(row); return; }
+    if (it.type === 'rev') gRev.push(row);
+    else if (it.type === 'new') gNew.push(row);
+    else if (it.type === 'proj') gProj.push(row);
+    else if (it.type === 'exam') gExam.push(row);
+    else gDaily.push(row);
+  });
+
+  var scan = scanClusters();
+  var h = '';
+
+  var extraRevN = day.items.filter(function (x) { return !isNeed(x) && x.type === 'rev'; }).length;
+  h += board('复训', cntDone(day, 'rev'),
+    gRev.length ? gRev.join('') : '<div class="mv-note" style="margin:0">今天没有到期的母题。</div>',
+    (day.revOver > 0
+      ? '另有 <b>' + day.revOver + '</b> 条同样到期，' +
+        (extraRevN > 0 ? '加餐里先放了 ' + extraRevN + ' 条，' : '') +
+        '剩余的明天优先补（必做预算 ' + (day.revBudget || REV_BUDGET) + ' 条，超出的不计欠账）。'
+      : '1-3-7-14-30 阶梯驱动：到期的才派，逾期久的先做。断点会摊在卡面上。'));
+
+  /* 抽检：7 天一轮，只在有题时出现 */
+  if (gExam.length || day.examN) {
+    var eLeft = day.items.filter(function (x) {
+      return isNeed(x) && x.type === 'exam' && !x.done;
+    }).length;
+    h += board('抽检', cntDone(day, 'exam'), gExam.join(''),
+      (eLeft
+        ? '<button class="mv-btn mv-btn-primary" onclick="examStart()">开始抽检（' + eLeft +
+          ' 题 · 每题 ' + EXAM_SEC + ' 秒）</button>' +
+          '<br>连答不回头，中途不给反馈，答完才出结果。掉档的母题明天重派。'
+        : '本轮已完成' +
+          (S.exam.lastIssued ? ' · 下一轮 ' + shift(S.exam.lastIssued, EXAM_GAP) + ' 之后再抽。' : '。')));
+  }
+
+  h += board('主线新学', cntDone(day, 'new'),
+    gNew.length ? gNew.join('') : '<div class="mv-note" style="margin:0">今天不派新题' +
+      (S.relieve ? '（减负模式：先做到 2 条，全交一天后自动恢复）。' : '。') + '</div>',
+    '自适应配额 ' + (day.quotaN != null ? day.quotaN : 0) + ' 条 · ' +
+    (day.readyLeft > 0 ? '还有 ' + day.readyLeft + ' 条可解锁（见加餐）。' : '当前没有更多可解锁的母题。') +
+    (lockedNote(scan.locked) ? '<br>' + lockedNote(scan.locked) : ''));
+
+  h += board('项目线', cntDone(day, 'proj'),
+    (gProj.length ? gProj.join('') :
+      '<div class="mv-note" style="margin:0">' +
+      (projectNext() ? '今天不派项目线（当天派单已冻结）。' : '六条项目母题都已进入复训阶梯。') +
+      '</div>') +
+    '<div style="margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--mv-border)">' +
+      projectBoard() + '</div>',
+    '三个项目各两条：90 秒骨架 → 决策链。骨架到 L2 才解锁决策链。');
+
+  h += board('日课', cntDone(day, 'daily'),
+    gDaily.length ? gDaily.join('') : '<div class="mv-note" style="margin:0">—</div>', '');
+
+  document.getElementById('needbox').innerHTML = h;
+
+  /* ── 加餐 ── */
+  document.getElementById('extrabox').innerHTML =
+    gExtra.length
+      ? board('加餐', gExtra.length + ' 条可选', gExtra.join(''), '做一条算一条，不完成不欠账。')
+      : '<div class="mv-bd"><div class="mv-note" style="margin:0">今天没有可加餐的条目——要么已排进必做，要么被前置锁着。</div></div>';
+
+  /* ── 能力簇 ── */
   var ch = '';
   (window.MARVIS_CLUSTERS || []).forEach(function (c) {
     var cnt = [0, 0, 0, 0, 0];
@@ -350,9 +909,11 @@ function render() {
     c.topics.forEach(function (t) {
       var l = lvOf(c.id + '/' + t.id);
       var nm = t.name;
-      list += t.link
-        ? '<a class="mv-pg-chip" href="' + t.link + '" target="_blank"><i class="mv-dot lv' + l + '"></i>' + nm + '<em>L' + l + '</em></a>'
-        : '<span class="mv-pg-chip is-void"><i class="mv-dot lv0"></i>' + nm + '<em>未建卡</em></span>';
+      list += t.href
+        ? '<a class="mv-pg-chip" href="' + t.href + '" target="_blank"><i class="mv-dot lv' + l + '"></i>' + nm + '<em>L' + l + '</em></a>'
+        : linkOf(t)
+          ? '<a class="mv-pg-chip" href="' + linkOf(t) + '" target="_blank"><i class="mv-dot lv' + l + '"></i>' + nm + '<em>L' + l + '</em></a>'
+          : '<span class="mv-pg-chip is-void"><i class="mv-dot lv0"></i>' + nm + '<em>未建卡</em></span>';
     });
     ch += '<details class="mv-pg-c">' +
       '<summary><div class="mv-pg-head"><span class="mv-pg-name">' + c.name + '<em>' + c.zone + '</em></span>' +
@@ -362,6 +923,7 @@ function render() {
   });
   document.getElementById('clusters').innerHTML = ch;
 
+  /* ── 独立日课 ── */
   var D = window.MARVIS_DRILL;
   if (D) {
     var dn = S.drill.length, dg = D.goal || 30;
@@ -369,51 +931,70 @@ function render() {
       '<div class="mv-bd"><div class="mv-pg-head" style="margin-bottom:.625rem">' +
       '<span class="mv-pg-name">手撕算法<em>日课</em></span>' +
       '<span class="mv-pg-num"><b>' + dn + '</b>/' + dg + ' · ' + Math.round(dn / dg * 100) + '%</span></div>' +
-      '<div class="mv-pg-bar"><i class="mv-lv lv3" style="width:' + (dn / dg * 100) + '%"></i></div>' +
-      '<div class="mv-note" style="margin-top:.625rem">练过的不再重复派；存量卡片 ' + D.topics.length + ' 张，其余按 Hot100 顺序补。</div></div>';
+      '<div class="mv-pg-bar"><i class="mv-lv lv3" style="width:' + Math.min(100, dn / dg * 100) + '%"></i></div>' +
+      '<div class="mv-note" style="margin-top:.625rem">练过的不再重复派，全部练完后按「最久没练」轮转；存量卡片 ' + D.topics.length + ' 张，其余按 Hot100 顺序补。</div></div>';
   }
 
-  var ah = '<div class="mv-cl"><div class="mv-cl-head"><span class="mv-cl-title">今日作业</span>' +
-    '<span class="mv-cl-count">' + done + '/' + day.items.length + '</span></div>';
-  if (S.debt > 0) ah += '<div class="mv-note" style="margin:0 0 .5rem;color:var(--mv-danger)">累计欠账 ' + S.debt + ' 条' + (S.relieve ? ' · 连欠 ' + S.oweDays + ' 天，已自动减负到 ' + day.items.length + ' 条' : '') + '</div>';
-  if (S.relieve) ah += '<div class="mv-note" style="margin:0 0 .5rem">减负不是惩罚：先做到 2 条，全交一天后自动恢复。</div>';
-  day.items.forEach(function (it, i) {
-    ah += '<div class="mv-cl-item' + (it.done ? ' on' : '') + '" onclick="rate(' + i + ')">' +
-      '<div class="mv-cl-box">✓</div>' +
-      '<div class="mv-cl-text">' + it.label +
-      '<div class="mv-cl-sub">' + it.sub + (it.score ? ' · 已评：' + ({ hit: '命中', part: '部分', miss: '忘了' })[it.score] : '') + '</div>' +
-      '</div></div>';
-  });
-  ah += '</div>';
-  document.getElementById('assign').innerHTML = ah;
+  /* ── 近 7 天 ── */
+  var rh = '', rdays = 0, pend = 0;
+  for (var i = 1; i <= 7; i++) {
+    var ds = daysAgo(i), dd = S.days[ds];
+    if (!dd || !dd.items || !dd.items.length) continue;
+    rdays++;
+    var st = needStats(ds);
+    var rows = dd.items.map(function (it, j) { return taskRow(ds, j, it); }).join('');
+    if (st) pend += st.need - st.done;
+    rh += '<details class="mv-pg-c"><summary><div class="mv-pg-head">' +
+      '<span class="mv-pg-name">' + (i === 1 ? '昨日' : ds) +
+      '<em>' + ds + (st && st.all ? ' · 全交' : '') + '</em></span>' +
+      '<span class="mv-pg-num">' + (st ? st.done + '/' + st.need + ' 必做' : dd.items.length + ' 条') + '</span></div></summary>' +
+      '<div style="padding:.75rem 1.25rem 1rem;border-top:1px solid var(--mv-border)">' + rows + '</div></details>';
+  }
+  document.getElementById('recent').innerHTML = rdays
+    ? rh
+    : '<div class="mv-bd"><div class="mv-note" style="margin:0">还没有历史记录。</div></div>';
+  document.getElementById('recentsum').textContent =
+    rdays ? '近 7 天有 ' + rdays + ' 天记录' + (pend ? ' · 待补评 ' + pend + ' 条' : ' · 无待补评') : '默认收起 · 抽空点开补评';
 
-  var ex = S.extra[today()] || [];
-  var eh = ex.length ? '' : '<div class="mv-note" style="margin:0">今天还没有额外完成。</div>';
-  ex.forEach(function (v, i) {
-    eh += '<div style="display:flex;gap:.75rem;align-items:flex-start;padding:.375rem 0;font-size:.9375rem">' +
-      '<span style="color:var(--mv-ok)">+</span><span style="flex:1">' + v + '</span>' +
-      '<button class="mv-btn" style="padding:.125rem .625rem" onclick="delExtra(' + i + ')">删</button></div>';
-  });
-  document.getElementById('extralist').innerHTML = eh;
-
+  /* ── 连续性 ── */
   document.getElementById('streakv').innerHTML = streak() + '<small> 天</small>';
-
   var days = [];
-  var d = new Date();
-  d.setDate(d.getDate() - 34);
-  for (var i = 0; i < 35; i++) { days.push(dstr(d)); d.setDate(d.getDate() + 1); }
+  var d2 = new Date();
+  d2.setDate(d2.getDate() - 34);
+  for (var k = 0; k < 35; k++) { days.push(dstr(d2)); d2.setDate(d2.getDate() + 1); }
   document.getElementById('heat').innerHTML = days.map(function (x) {
     return '<i class="mv-hc h' + heatLevel(x) + '" title="' + x + '"></i>';
   }).join('');
 
-  var sl = document.getElementById('subline');
-  sl.textContent = '等级只由闭卷自评推进，不能手改。' + (S.relieve ? '当前减负模式：先保 2 条。' : '今天 ' + done + '/' + day.items.length + '。');
+  /* ── 额外完成 ── */
+  var ex = S.extra[today()] || [];
+  var eh = ex.length ? '' : '<div class="mv-note" style="margin:0">今天还没有额外完成。</div>';
+  ex.forEach(function (v, i2) {
+    eh += '<div style="display:flex;gap:.75rem;align-items:flex-start;padding:.375rem 0;font-size:.9375rem">' +
+      '<span style="color:var(--mv-ok)">+</span><span style="flex:1">' + v + '</span>' +
+      '<button class="mv-btn" style="padding:.125rem .625rem" onclick="delExtra(' + i2 + ')">删</button></div>';
+  });
+  document.getElementById('extralist').innerHTML = eh;
+
+  /* ── 副标题 ── */
+  document.getElementById('needsum').textContent =
+    '保底 ' + needItems.length + ' 条 · 复训 ' + gRev.length + ' / 新题 ' + gNew.length +
+    ' / 项目 ' + gProj.length + ' / 日课 ' + gDaily.length + (gExam.length ? ' / 抽检 ' + gExam.length : '');
+  document.getElementById('subline').textContent =
+    '等级只由闭卷自评推进，不能手改。' +
+    (S.relieve ? '当前减负模式：先保 ' + gRev.length + ' 条复训。' : '今天 ' + needDone + '/' + needItems.length + '。') +
+    (debt.debt > 0 ? '累计欠账 ' + debt.debt + ' 条。' : '');
+
+  save();
+}
+
+/* 某个类型在必做里的完成计数 */
+function cntDone(day, type) {
+  var a = day.items.filter(function (x) { return isNeed(x) && x.type === type; });
+  return a.filter(function (x) { return x.done; }).length + '/' + a.length;
 }
 
 S = load();
-settle();
-ensureDay();
-save();
 render();
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRate(); });
 </script>

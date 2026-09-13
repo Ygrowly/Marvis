@@ -121,7 +121,9 @@ aliases: [MAP, 正本登记表, 主题地图]
 | `wiki/interview/*复盘*.md`（六段结构） | `site/reviews/*.html` 诊断页 | 第 0 节总评 / 第 1 节问题清单表 / 第 2 节五维评分表 / 第 3 节标准答案（`#### 题号 · 名称`）/ 第 4 节缺失模块表 / 第 5 节下次清单 |
 | 任意 md 里的 `::card` 块 | 补充卡牌组 | 只用于模板覆盖不到的一次性卡 |
 | `site/figures/*.svg` + md 里 `::figure 文件名 \| 标题 \| 说明` | 内联进母题页 | 图由 AI 生成、人审图；不用 mermaid / d3（离线失效） |
-| `site/_data/clusters.js`（手写数据源，M3 起计划改由 `build.py` 生成） | `site/progress.html` 进度页 | 唯一手写页（例外，已登记）：能力簇 × 母题清单、每日派单、证据等级 L0–L4、欠账与自动减负。数据存 localStorage `mv.progress.v1`，**等级只能由闭卷自评推进、不可手改**，换机前用页面上的「导出备份」 |
+| `site/_data/clusters.js`（手写数据源，M3 起计划改由 `build.py` 生成） | `site/progress.html` 进度页 | 唯一手写页（例外，已登记）：能力簇 × 母题清单、每日派单、证据等级 L0–L4、欠账与自动减负。**2026-09-13 起**：派单改为五板块（必做＝复训/抽检/主线新学/项目线/日课 × 加餐 × 近 7 天），复训由 `due` 驱动（1-3-7-14-30），新题按 zone 轮转且受簇内 `after` 门控（前置 ≥ L2），**项目线**单列（EnergyOps / 数驭穹图 / RuleArena 各 2 条），**抽检** 7 天一轮。数据存 localStorage `mv.progress.v1`，**等级只能由闭卷自评推进、不可手改**，换机前用页面上的「导出备份」 |
+| `wiki/topics/{模块}/母题-*.md` 的 `本次断点 / 通过证据 / 恢复关键词 / 一句话结论 / 追问` | `site/_data/breaks.js`（断点回流数据） | `build.py` 自动抽取，键＝母题页路径（与 `clusters.js` 的 `href` 精确对应）。**模板占位符「【待填 …】」一律当空值**，否则进度页会把模板文字当断点摊出来。进度页按它在复训/抽检卡面显示「上次断点」 |
+| —（不在 md→html 流水线上，是构建器自身的回归测试） | `site/_tests/test_dispatch.js`、`test_render.js`、`test_progression.js` | `build.py` 不生成也不消费，`node site/_tests/*.js` 手跑。`test_dispatch` 验派单引擎（门控 / 配额 / 欠账 / 抽检 / 迁移），`test_render` 验渲染（板块 / 标签平衡 / 限时 / 断点），`test_progression` 用假时钟长跑 45 天验**无死锁 + 依赖序 + 抽检节奏**。派单引擎或 `clusters.js` 的 `after` 改动后**必须三个全绿再提交** |
 
 改完正本跑一次 `python site/build.py` 即可刷新视图（`progress.html` 与 `index.html` 是手写页，不受 build 影响，但**必须双向可达**：今日页有「进度与作业」入口，进度页有返回今日）。
 
