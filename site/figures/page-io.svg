@@ -1,0 +1,39 @@
+<svg viewBox="0 0 680 240" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>页是数据库与磁盘之间读写的最小单位</title>
+<desc>磁盘按 4KB 块读写，数据库一次读入整整一页（InnoDB 默认 16KB），页内含几十到几百条记录，所以数据库里没有只读一行的操作。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="40" y="30" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">磁盘：按 4KB 块读写</text>
+<rect x="40" y="42" width="144" height="40" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="112" y="62" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">块 4KB</text>
+<rect x="192" y="42" width="144" height="40" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="264" y="62" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">块 4KB</text>
+<rect x="344" y="42" width="144" height="40" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="416" y="62" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">块 4KB</text>
+<rect x="496" y="42" width="144" height="40" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="568" y="62" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">块 4KB</text>
+
+<path d="M340 82L340 112" fill="none" stroke="#534AB7" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="356" y="97" font-family="system-ui,sans-serif" font-size="12" fill="#534AB7" dominant-baseline="central">一次 IO 读一整页，不是读一行</text>
+
+<text x="40" y="132" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">数据库：一页 = 16KB（InnoDB 默认），内存与磁盘之间搬一次就是这么多</text>
+<rect x="40" y="144" width="600" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<rect x="50" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="95" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+<rect x="148" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="193" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+<rect x="246" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="291" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+<rect x="344" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="389" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+<rect x="442" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="487" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+<rect x="540" y="154" width="90" height="36" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+<text x="585" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#26215C" text-anchor="middle" dominant-baseline="central">记录</text>
+
+<text x="40" y="222" font-family="system-ui,sans-serif" font-size="12" fill="var(--color-text-secondary)" dominant-baseline="central">一次 IO 的成本几乎不随读多少数据变化，所以要让每次 IO 尽量多带数据回来</text>
+</svg>

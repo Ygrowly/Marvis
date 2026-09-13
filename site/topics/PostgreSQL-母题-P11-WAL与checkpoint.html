@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P11 · WAL 与 checkpoint</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P11 · WAL 与 checkpoint</h1>
+    <p class="mv-topic-meta">关联 母题-P13-MVCC与可见性（为什么不需要 undo）· 母题-P12-流复制与逻辑复制（WAL 的另一个用途）· 母题-P15-VACUUM与事务ID回卷（没有 undo 的代价）· 母题-M11-三日志与两阶段提交（MySQL 侧对照） ｜ 正本 wiki/topics/PostgreSQL/母题-P11-WAL与checkpoint.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① WAL 管<strong>正确性</strong>，checkpoint 管<strong>恢复时间</strong>——两件事，但由同一组参数牵动 ② <code class="mv-md-code">synchronous_commit = off</code> <strong>丢的是最近约 600 毫秒的已提交事务，而且是「整段丢」不是「随机丢」</strong> ③ <code class="mv-md-code">full_page_writes</code> 让 checkpoint 越勤、WAL 越大——这是 PG 调优里最经典的两难）· 读完约 12 分钟 · 需要先懂：[[母题-P13-MVCC与可见性]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">MySQL 有 redo / undo / binlog 三套日志，PG 只有一套 WAL。它是怎么保证「提交过的不丢」的？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 为什么需要 WAL</h3>
+<p class="mv-md-p">修改数据时不直接改磁盘数据页（随机 IO 太慢），而是：</p>
+<pre class="mv-md-pre">改内存（shared_buffers 里的数据页）
+  + 把「改了什么」顺序追加到 WAL
+  ↓
+提交时：fsync WAL（保证这次提交已落盘）
+  ↓
+数据页留在内存，稍后由后台批量刷盘</pre>
+<p class="mv-md-p"><strong>两个收益</strong>：① <strong>把随机写换成顺序写</strong>（写入性能）；② <strong>只要 WAL 落盘，即使数据页没刷、机器立刻断电，重启后也能重放出来</strong>（崩溃安全）。</p>
+<p class="mv-md-p"><strong>关键在「提交时 fsync 的是 WAL，不是数据页」</strong>——这就是「提交很快但数据页还没落盘」却依然安全的原因。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. <code class="mv-md-code">synchronous_commit</code>：唯一承诺的落盘点，以及<strong>它到底丢多少</strong></h3>
+<figure-box num="WAL 的三层职责、checkpoint 与整页写放大的代价" title="" note="先写日志再改数据页、三个参数各自管什么、off 模式丢多少、整页写为什么让检查点越勤 WAL 越大"><svg viewBox="0 0 680 440" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>WAL 的三层职责、checkpoint 与整页写放大的代价</title>
+  <desc>顶部是写入路径：修改先写内存数据页并把变更顺序追加到预写日志，提交时同步的是日志而不是数据页，数据页稍后由后台批量刷盘。中间把三件事分开：预写日志负责已提交能否重放，检查点负责重放从哪里开始，同步提交负责提交这个动作等不等落盘。底部是检查点的两个触发条件与整页写的代价：五分钟后超时与一吉字节容量谁先到算谁，写入密集时先到的是容量；检查点之后每个页的第一次修改要写整页镜像，八千一百九十二字节对一百字节，放大八十二倍，占一轮日志的九成八。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">WAL 的三层职责、checkpoint 与整页写放大的代价</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">WAL 管正确性、checkpoint 管恢复时间、synchronous_commit 管提交等不等落盘——三件事要分开谈</text>
+
+  <!-- 写入路径 -->
+  <rect x="30" y="66" width="620" height="70" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">写入路径：提交时 fsync 的是 WAL，不是数据页</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">① 改 shared_buffers 里的数据页　　② 「改了什么」顺序追加到 WAL　　③ 提交时 fsync WAL 并返回成功</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">数据页留在内存、稍后批量刷盘 —— 所以「提交很快但数据页还没落盘」依然安全</text>
+
+  <!-- 三层职责 -->
+  <path d="M30 152 L650 152" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <rect x="30" y="164" width="196" height="80" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">① WAL：正确性</text>
+  <text x="44" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#633806">已提交的能不能重放出来</text>
+  <text x="44" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#633806">靠提交时 fsync WAL 保证</text>
+  <text x="44" y="236" font-family="system-ui,sans-serif" font-size="9" fill="#633806">↓ 调不调 checkpoint 都不影响它</text>
+
+  <rect x="242" y="164" width="196" height="80" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="256" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">② checkpoint：恢复时间</text>
+  <text x="256" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">把恢复起点向前推</text>
+  <text x="256" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">最坏重放量 ≈ max_wal_size</text>
+  <text x="256" y="236" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">恢复时间 = 重放量 ÷ 重放速度</text>
+
+  <rect x="454" y="164" width="196" height="80" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">③ synchronous_commit：等不等</text>
+  <text x="468" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">on（默认）：等 fsync 才返回成功</text>
+  <text x="468" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">off：最多丢 3 × wal_writer_delay</text>
+  <text x="468" y="236" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">= 3 × 200 ms = 600 毫秒</text>
+
+  <!-- checkpoint 触发 -->
+  <path d="M30 262 L650 262" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="286" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">checkpoint 的触发：两个条件「谁先到算谁」</text>
+
+  <rect x="30" y="298" width="300" height="56" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">按时间：checkpoint_timeout = 5 分钟</text>
+  <text x="46" y="336" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">按容量：max_wal_size = 1 GB（软上限）</text>
+  <text x="46" y="350" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">min_wal_size 80 MB · completion_target 0.9</text>
+
+  <rect x="350" y="298" width="300" height="56" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="318" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">WAL 10 MB/s 时：5 分钟产出 3 GB &gt; 1 GB</text>
+  <text x="366" y="336" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">→ 实际间隔 = 1 GB ÷ 10 MB/s = 100 秒</text>
+  <text x="366" y="350" font-family="system-ui,sans-serif" font-size="9" fill="#633806">→ 先到的几乎总是 max_wal_size，不是 5 分钟</text>
+
+  <!-- 整页写 -->
+  <path d="M30 376 L650 376" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="400" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">整页写（full_page_writes）：检查点越勤，WAL 反而越大</text>
+
+  <rect x="30" y="412" width="620" height="24" rx="6" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="429" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">行级记录 100 B ｜ 整页镜像 8192 B → 放大 82 倍 ｜ 20 万个页：1.6 GB vs 20 MB → 整页写占 98.8%</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】<strong>官方给出的合法取值与默认值</strong>：</p>
+<p class="mv-md-p mv-md-quote">合法值是 <code class="mv-md-code">remote_apply</code>、<strong><code class="mv-md-code">on</code>（默认）</strong>、<code class="mv-md-code">remote_write</code>、<code class="mv-md-code">local</code>、<code class="mv-md-code">off</code>。</p>
+<p class="mv-md-p">【事实】<strong>一句很容易被漏掉的限定</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>如果 <code class="mv-md-code">synchronous_standby_names</code> 是空的，那么只有 <code class="mv-md-code">on</code> 和 <code class="mv-md-code">off</code> 是有意义的</strong>——<strong><code class="mv-md-code">remote_apply</code>、<code class="mv-md-code">remote_write</code> 和 <code class="mv-md-code">local</code> 提供的本地同步级别和 <code class="mv-md-code">on</code> 完全一样。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以「配置了 <code class="mv-md-code">remote_apply</code> 就等于更安全」是错的</strong>——<strong>没有备库时，它和 <code class="mv-md-code">on</code> 没有区别。</strong> <strong>这条能一句话问倒背参数的人。</strong></p>
+<p class="mv-md-p">【推导】<strong><code class="mv-md-code">off</code> 到底丢多少？官方给了确切的上界</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>在 <code class="mv-md-code">off</code> 模式下没有等待，所以「向客户端报告成功」和「事务真正安全」之间会有一段延迟。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>最大延迟是 <code class="mv-md-code">wal_writer_delay</code> 的三倍。</strong></p>
+<p class="mv-md-p mv-md-quote"><code class="mv-md-code">wal_writer_delay</code> <strong>默认 200 毫秒</strong>。</p>
+<pre class="mv-md-pre">最大丢失窗口 = 3 × wal_writer_delay
+             = 3 × 200 ms
+             = 【600 毫秒】
+
+按 500 TPS 算：
+  600 ms 内已提交的事务 ≈ 【300 个】</pre>
+<p class="mv-md-p">【结论】<strong>「丢最近若干毫秒」这句话，可以给出确切数字：最多约 600 毫秒，500 TPS 下约 300 个已提交事务。</strong></p>
+<p class="mv-md-p">【事实】<strong>更关键的是它的【性质】——官方明确说了两件事</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>和 <code class="mv-md-code">fsync = off</code> 不同，把 <code class="mv-md-code">synchronous_commit</code> 设成 <code class="mv-md-code">off</code> 【不会带来任何数据库不一致的风险】。</strong></p>
+<p class="mv-md-p mv-md-quote">操作系统或数据库崩溃可能导致一些「号称已提交」的事务丢失，<strong>但数据库的状态会和那些事务【被干净地中止】时完全一样。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>风险是数据丢失，不是数据损坏。</strong> …<strong>因为事务是按提交顺序重放的，所以不可能引入不一致</strong>——例如，<strong>如果事务 B 的改动依赖了先前事务 A 的效果，那么【不可能出现 A 的效果丢了而 B 的效果保留】的情况。</strong></p>
+<p class="mv-md-p">【结论】<strong>所以 <code class="mv-md-code">off</code> 的保证是一个【前缀保证】</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>丢的是「最后那一段」，不是「随机的一部分」。</strong> <strong>数据库永远停在一个自洽的状态上。</strong></p>
+<p class="mv-md-p">【推荐】【事实】<strong>官方给的判断标准非常直接</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>如果客户端会采取依赖「这个事务一定被记住了」的外部动作，就不该用异步提交。例如，银行肯定不会用异步提交来记录「ATM 吐了现金」这个事务。</strong> 但在很多场景（<strong>比如事件日志</strong>）并不需要这种强保证。</p>
+<p class="mv-md-p">【取舍】<strong>所以判据是</strong>：</p>
+<ul class="mv-md-ul"><li><strong>钱、订单、状态机、任何会触发外部副作用的路径</strong>：必须 <code class="mv-md-code">on</code>；</li><li><strong>批量导入、可重建的埋点、可重放的日志</strong>：可以 <code class="mv-md-code">off</code> 换吞吐——<strong>但要在业务层知道「最多丢 600 毫秒的整段」，而不是"顺手关了"。</strong></li></ul>
+<p class="mv-md-p">【事实】<strong>还有一个好用的细节</strong>：<strong>提交模式是【每个事务】可以单独选的</strong>——<strong>所以同一个系统里可以同时跑同步提交和异步提交的事务</strong>，不必全局二选一。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. checkpoint 在做什么</h3>
+<pre class="mv-md-pre">checkpoint 触发
+  ↓
+把「某个 LSN 之前」的所有脏页刷到磁盘
+  ↓
+在 WAL 里记一个 checkpoint 记录
+  ↓
+崩溃恢复时：从最近这个 checkpoint 开始重放 → 而不是从头</pre>
+<p class="mv-md-p"><strong>所以 checkpoint 的收益是「恢复时间」</strong>，不是数据安全。</p>
+<p class="mv-md-p">【事实】<strong>触发它的两条路，以及各自的默认值</strong>：</p>
+<table class="mv-table"><thead><tr><th>参数</th><th>默认</th><th>含义</th></tr></thead><tbody><tr><td><code class="mv-md-code">checkpoint_timeout</code></td><td><strong>5 分钟</strong></td><td><strong>两次自动 checkpoint 之间的最长间隔</strong>（范围 30 秒 ~ 1 天）</td></tr><tr><td><code class="mv-md-code">max_wal_size</code></td><td><strong>1 GB</strong></td><td><strong>两次自动 checkpoint 之间允许 WAL 增长到的上限</strong>（<strong>软上限</strong>：重负载、归档失败、<code class="mv-md-code">wal_keep_size</code> 高时都可能被突破）</td></tr><tr><td><code class="mv-md-code">min_wal_size</code></td><td><strong>80 MB</strong></td><td>WAL 磁盘占用低于它时，旧 WAL 文件<strong>总是被回收复用</strong>而不是删除</td></tr><tr><td><code class="mv-md-code">checkpoint_completion_target</code></td><td><strong>0.9</strong></td><td><strong>把 checkpoint 摊开到几乎整个间隔里</strong>，提供较平稳的 IO 负载</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>「崩溃后要重放多久」是一个可以算出来的数</strong>：</p>
+<pre class="mv-md-pre">WAL 生成速率 = 10 MB/s，checkpoint_timeout = 5 分钟
+  5 分钟产出 = 10 × 300 = 3000 MB = 3 GB &gt; max_wal_size(1 GB)
+  → 所以实际是被【max_wal_size】触发的
+
+checkpoint 间隔 = 1 GB ÷ 10 MB/s = 【100 秒】
+
+最坏恢复量 ≈ max_wal_size = 【1 GB】
+若重放速率约 100 MB/s（可实测）：
+  最坏恢复时间 ≈ 【约 10 秒】</pre>
+<p class="mv-md-p">【结论】<strong>「恢复要多久」不是一个玄学参数，它就是「最坏重放的 WAL 量 ÷ 重放速度」，而最坏重放量的上界就是 <code class="mv-md-code">max_wal_size</code>。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以官方说「调大 <code class="mv-md-code">max_wal_size</code> 会增加崩溃恢复所需的时间」——这句话现在有了量级。</strong></p>
+<p class="mv-md-p">【事实】<strong>官方对 <code class="mv-md-code">checkpoint_completion_target</code> 的建议是「不要调小」</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>减小这个参数是不被推荐的，因为它会让 checkpoint 完成得更快。</strong> 结果是 <strong>checkpoint 期间 IO 速率更高，然后在 checkpoint 完成到下一次调度之间有一段时间 IO 更少</strong>——<strong>也就是把平稳的 IO 变成了抖动的 IO。</strong></p>
+<p class="mv-md-p">【推论】<strong>这就是「为什么默认是 0.9」的答案</strong>：<strong>它把一次 checkpoint 的 IO 摊到几乎整个间隔上——用「更长的完成时间」换「更平稳的负载」。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 那个经典两难：<code class="mv-md-code">full_page_writes</code> 让 checkpoint 越勤、WAL 越大</h3>
+<p class="mv-md-p">【事实】<strong>官方定义</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>当这个参数为 on 时，服务器会在【checkpoint 之后对某个页的第一次修改】时，把【整个页的内容】写进 WAL。</strong></p>
+<p class="mv-md-p mv-md-quote">这样做是必要的：<strong>因为操作系统崩溃时正在进行的页写入可能只完成了一部分</strong>，导致磁盘上的页是「新旧数据混合」的状态。<strong>WAL 里通常存的「行级变更数据」不足以完整恢复这样一个页。</strong></p>
+<p class="mv-md-p">【推导】<strong>算一下这个放大的量级</strong>：</p>
+<pre class="mv-md-pre">一行普通变更的 WAL 记录：约 【100 字节】
+一张页的整页镜像：8 KB = 【8192 字节】
+  → 单次放大 ≈ 82 倍
+
+一轮 checkpoint 间隔内，
+假设有 20 万个页被改到（每页至少"首写"一次）：
+  整页镜像：200,000 × 8 KB = 【1.6 GB】
+  纯行级变更：200,000 × 100 B = 【20 MB】
+
+  → 整页写占了这一轮 WAL 的 1.6 / 1.62 ≈ 【98.8%】</pre>
+<p class="mv-md-p">【结论】<strong>WAL 的主要体积不是「你改了什么」，而是「页的第一个改动点的整页快照」。</strong></p>
+<p class="mv-md-p">【推论】<strong>这直接解释了两件事</strong>：</p>
+<pre class="mv-md-pre">① 为什么 checkpoint 越勤 → WAL 反而越大
+     每轮 checkpoint 都会把「首写整页」的账重新欠一遍
+     → 于是「把 checkpoint 调很勤以缩短恢复时间」
+       会【用 WAL 写放大和 IO 抖动换恢复速度】
+
+② 为什么 wal_compression 值得开
+     它压缩的正是【写入 WAL 的整页镜像】
+     官方支持 pglz / lz4 / zstd（取决于编译选项）
+     → 8 KB 的页通常能压不少，而代价只是重放时的解压</pre>
+<p class="mv-md-p">【取舍】<strong>所以「（checkpoint 间隔、max_wal_size）→（恢复时间、常态 WAL 与 IO）」是同一个旋钮的两头</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>想恢复快 → 调小 max_wal_size / checkpoint_timeout → WAL 写放大变大、IO 更抖。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>想常态平稳 → 调大 → 崩溃后要重放更多。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>这不是一个"哪个更好"的问题，是一个"你的 SLA 要哪个"的问题。</strong></p>
+<p class="mv-md-p">【事实】<strong>要拿数据调、不要凭感觉调</strong>——<strong>注意统计视图在 PG 17 里被拆开了</strong>：</p>
+<pre class="mv-md-pre">pg_stat_checkpointer（PG 17+ 从 pg_stat_bgwriter 拆出）
+  num_timed       按【超时】调度的 checkpoint 次数
+  num_requested   被【请求】的 checkpoint 次数   ← 这个数高说明 max_wal_size 太小
+  num_done        实际完成的次数
+  write_time / sync_time   写盘与同步各花了多少毫秒
+  buffers_written  checkpoint 期间写出的共享缓冲区数</pre>
+<p class="mv-md-p">【推论】<strong>判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong><code class="mv-md-code">num_requested</code> 远大于 <code class="mv-md-code">num_timed</code>，说明 checkpoint 是被 WAL 量逼出来的（<code class="mv-md-code">max_wal_size</code> 相对写入量太小）</strong>——<strong>这时你会看到频繁的 checkpoint 与 IO 抖动。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>反过来，如果 <code class="mv-md-code">num_timed</code> 占绝对多数，说明时间到了才做，<code class="mv-md-code">max_wal_size</code> 还有余量。</strong></p>
+<p class="mv-md-p">【补充】<strong>PG 17 之前的版本里，这些字段在 <code class="mv-md-code">pg_stat_bgwriter</code> 上</strong>——<strong>引用视图名时要说明版本。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 为什么 PG 只有一套日志（不需要 undo）</h3>
+<p class="mv-md-p">MySQL 需要 undo 有两个原因：① 事务回滚；② 给 MVCC 提供旧版本。</p>
+<p class="mv-md-p"><strong>PG 两个都不需要日志层面的 undo</strong>：</p>
+<ul class="mv-md-ul"><li><strong>旧版本</strong>：PG 的 <code class="mv-md-code">UPDATE</code> 是「写新版本 + 标记旧版本」（[[母题-P13-MVCC与可见性]]），<strong>旧版本本来就在堆里</strong>，读的时候按快照挑版本，不需要去 undo log 里拼；</li><li><strong>回滚</strong>：未提交事务的改动在崩溃恢复/回滚时，靠「这个版本的 <code class="mv-md-code">xmin</code> 属于一个未提交事务」判定为不可见即可，<strong>并且由 VACUUM 清掉</strong>。</li></ul>
+<p class="mv-md-p">【推论】<strong>代价：旧版本占用空间、必须靠 VACUUM 回收</strong>——<strong>于是「PG 没有 undo」这件事，直接解释了三件现象</strong>：</p>
+<p class="mv-md-p">1. 为什么 PG 会<strong>表膨胀</strong>（[[母题-P14-长事务与表膨胀]]）； 2. 为什么有 <strong>VACUUM 与事务 ID 回卷</strong>这种 MySQL 不存在的运维风险（[[母题-P15-VACUUM与事务ID回卷]]）； 3. 为什么<strong>长事务在 PG 里格外危险</strong>（它按住了快照，让回收停摆）。</p>
+<p class="mv-md-p"><strong>这条是整条主线五的入口。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 生产怎么配（说这段才像做过线上）</h3>
+<pre class="mv-md-pre">① 关键写路径：synchronous_commit = on（默认，别动）
+② 可重建的批量写入：按事务粒度开 off（最多丢 600ms 的整段，顺序性有保证）
+③ checkpoint 参数：先看 pg_stat_checkpointer 的 num_requested vs num_timed，
+   再决定是放宽（减 IO 抖动）还是收紧（减恢复时间）
+④ 恢复时间是算出来的：最坏重放量 ≈ max_wal_size ÷ 重放速度
+⑤ wal_compression 打开：它压的正是整页写（WAL 体积的大头）
+⑥ 复制场景额外考虑：synchronous_standby_names（P12）</pre>
+<p class="mv-md-p"><strong>第 ③ 步的方法论比结论重要</strong>：<strong>调 checkpoint 之前先拿 <code class="mv-md-code">pg_stat_checkpointer</code> 的数据说话</strong>，而不是「网上说 checkpoint 要调大」。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>说法</th><th>实际情况</th></tr></thead><tbody><tr><td>「PG 的 WAL 就等于 MySQL 的 redo log」</td><td><strong>不准确</strong>。<strong>WAL 同时承担 redo、复制与时间点恢复（经逻辑解码还有部分 binlog 职能）</strong>；<strong>undo 那部分职能被 MVCC 结构替代了</strong></td></tr><tr><td>「<code class="mv-md-code">synchronous_commit = remote_apply</code> 比 <code class="mv-md-code">on</code> 更安全」</td><td><strong>没有备库时两者本地行为完全一样</strong>（官方原文）</td></tr><tr><td>「<code class="mv-md-code">off</code> 会丢随机几个事务」</td><td><strong>丢的是【最后一段】</strong>——<strong>事务按提交顺序重放，不可能出现"A 丢了 B 还在"</strong></td></tr><tr><td>「<code class="mv-md-code">off</code> 可能把数据库搞坏」</td><td><strong>风险是数据丢失，不是数据损坏</strong>——<strong>状态等同于那些事务被干净地中止</strong></td></tr><tr><td>「checkpoint 越勤越安全」</td><td><strong>checkpoint 不影响正确性</strong>，只影响恢复时间；<strong>而且越勤 → 整页写越多 → WAL 反而更大</strong></td></tr><tr><td>「<code class="mv-md-code">full_page_writes</code> 是浪费，应该关掉」</td><td><strong>关掉它会让崩溃后的页损坏无法恢复</strong>；<strong>要省就用 <code class="mv-md-code">wal_compression</code> 而不是关它</strong></td></tr><tr><td>「恢复时间是个玄学参数」</td><td><strong>它 = 最坏重放量 ÷ 重放速度</strong>，而最坏重放量的上界就是 <code class="mv-md-code">max_wal_size</code></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P11-WAL与checkpoint-q1" tag="PostgreSQL" q="某实例 WAL 生成速率 10 MB/s。checkpoint_timeout = 5min、max_wal_size = 1GB。重放速率约 100 MB/s。&#10;问：实际是哪个参数在触发 checkpoint？间隔多久？崩溃后最坏要重放多少、恢复多久？" a="``text&#10;按时间算：5 分钟产出 = 10 MB/s × 300 s = 【3000 MB = 3 GB】&#10;按容量算：max_wal_size = 【1 GB】&#10;3 GB &gt; 1 GB → 【max_wal_size 先到】&#10;→ 实际是被 WAL 量触发的&#10;间隔 = 1 GB ÷ 10 MB/s = 【100 秒】（约 1 分 40 秒，比 5 分钟的设定短得多）&#10;最坏重放量 ≈ max_wal_size = 【1 GB】&#10;最坏恢复时间 ≈ 1 GB ÷ 100 MB/s = 【约 10 秒】&#10;`&#10;【结论】checkpoint_timeout 设成 5 分钟，但实际 100 秒就触发一次——因为写入速率把 max_wal_size 先撑满了。&#10;【推论】这条在面试里很值钱：「我设了 5 分钟」不等于「它是 5 分钟一次」——两个触发条件是「谁先到算谁」，而在写入密集的系统里，先到的几乎总是 max_wal_size。&#10;【补充】这也给了调参的方向：如果你看到 checkpoint 太频繁、IO 抖动，把 max_wal_size 调大才是对症的（checkpoint_timeout` 调大没用——它根本不是触发者）。而代价是恢复时间按同一比例变长。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P11-WAL与checkpoint-q2" tag="PostgreSQL" q="某实例 wal_writer_delay 保持默认，写入 500 TPS，synchronous_commit = off。&#10;问：崩溃最多丢多少事务？这些事务的分布是随机的还是连续的？业务上能接受吗？" a="``text&#10;官方给出的最大延迟 = 3 × wal_writer_delay = 3 × 200 ms = 【600 毫秒】&#10;按 500 TPS：&#10;600 ms 内提交的事务 ≈ 500 × 0.6 = 【300 个】&#10;`&#10;【结论】最多约 300 个已提交事务。&#10;【关键的分布问题】官方明确：是【连续的一段】，不是随机丢失——因为事务按提交顺序重放，而且「不可能出现 A 的效果丢了而 B 的效果保留」（B 依赖 A 时尤其重要）。&#10;【推论】所以业务上的判断可以变得很具体：&#10;`text&#10;可以接受 off 的场景：&#10;埋点、日志、可重建的统计&#10;→ 丢 600ms = 丢最后 300 条记录&#10;→ 而且【顺序完整】——不会出现&quot;半条记录&quot;或&quot;依赖错乱&quot;&#10;必须 on 的场景：&#10;任何会触发外部副作用的路径&#10;→ 官方自己举的例子：【银行不会用异步提交记录 ATM 吐了现金】&#10;→ 因为「吐现金」这个动作一旦发生就不可撤销，&#10;而事务如果丢了，账上就没有这笔支出&#10;`&#10;【结论】判据是「客户端会不会根据这个事务采取不可撤销的外部动作」——这句话比&quot;重要不重要&quot;具体得多。&#10;【补充】它不破坏一致性：官方原话是「数据库状态会和那些事务被干净地中止时完全一样」，风险是数据丢失，不是数据损坏。 所以 off` 的可用范围比很多人想的大——但边界要卡在「外部副作用」上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P11-WAL与checkpoint-q3" tag="PostgreSQL" q="一行普通变更的 WAL 记录约 100 字节。一轮 checkpoint 间隔内，有 20 万个页被改到（每页至少发生一次「首写」）。full_page_writes = on。&#10;问：这一轮 WAL 里，整页镜像占多少比例？这个比例说明了什么？" a="``text&#10;整页镜像：200,000 × 8192 B = 【1.6 GB】&#10;纯行级变更：200,000 × 100 B = 【20 MB】&#10;占比 = 1.6 GB ÷ (1.6 GB + 20 MB) ≈ 【98.8%】&#10;单次放大 = 8192 ÷ 100 ≈ 【82 倍】&#10;`&#10;【结论】WAL 的体积主要不是「你改了什么」，而是「页的第一个改动点的整页快照」。&#10;【推论】这解释了一个反直觉的调参结论：&#10;`text&#10;「把 checkpoint 调勤一点，缩短恢复时间」&#10;→ 每一轮 checkpoint 都会重新欠一遍「首写整页」的账&#10;→ checkpoint 越勤 → 整页写越多 → WAL 越大&#10;→ 用【WAL 写放大 + IO 抖动】换【恢复时间】&#10;所以这不是&quot;哪个更优&quot;，是【你的 SLA 要哪个】&#10;`&#10;【取舍】所以正确的动作是「压体积」而不是「关功能」：&#10;wal_compression 压的正是这些整页镜像——支持 pglz / lz4 / zstd（取决于编译选项），代价只是重放时的解压。 相比关掉 full_page_writes`（那会让崩溃后的半写页无法恢复），压缩是安全的那一侧。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P11-WAL与checkpoint-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;PostgreSQL 的 WAL 就相当于 MySQL 的 redo log，都是用来崩溃恢复的。&quot;" a="三处问题。&#10;1. WAL 承担的功能更多：它同时是崩溃恢复（redo）、复制的基础（流复制直接传 WAL）、时间点恢复（PITR）的载体，而且通过【逻辑解码】还能产出逻辑变更流——对应 MySQL 那边是 redo + binlog 的合并。&#10;2. MySQL 的 undo 在 PG 里没有对应物：undo 的两项职能（回滚、给 MVCC 提供旧版本）在 PG 里由 MVCC 结构本身承担（旧版本留在堆里，[[母题-P13-MVCC与可见性]]）——这不是&quot;PG 用别的方式做了同一件事&quot;，而是&quot;PG 换了一套结构，于是不需要 undo&quot;。&#10;3. 代价不同：MySQL 有 undo 表空间要管；PG 有【表膨胀】和【VACUUM + 事务 ID 回卷】要管（[[母题-P14-长事务与表膨胀]] / [[母题-P15-VACUUM与事务ID回卷]]）。「PG 没有 undo」不是免费的。&#10;【准确说法】&quot;PG 只有一套 WAL，它把 redo 和 binlog 的职能合在了一起；而 undo 的职能被 MVCC 结构替代了。 所以真正要讲清的不是&quot;PG 有什么日志&quot;，而是&quot;它为什么不需要 undo、代价是什么&quot;。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P11-WAL与checkpoint-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我们把 checkpoint_timeout 调小了，这样 checkpoint 更频繁，数据库更安全。&quot;" a="三处问题。&#10;1. checkpoint 和「安全」无关：保证已提交不丢的是 WAL + fsync（synchronous_commit），不是 checkpoint。 checkpoint 只影响「崩溃后要重放多久」——它调不调，数据该丢还是丢、不该丢还是不会丢。&#10;2. 调小它会【放大 WAL】：每轮 checkpoint 都会让「检查点后首写整页」的账重新欠一遍（Q3：整页写占了 WAL 的 98.8%）——所以 checkpoint 越勤，WAL 体积越大、IO 抖动越明显。&#10;3. 而且它可能根本不是触发者：在实际写入密集的系统里，先到的几乎总是 max_wal_size（Q1）——所以调 checkpoint_timeout 可能毫无效果。&#10;【准确说法】&quot;checkpoint 频率是一笔【恢复时间 ↔ 常态 IO】的交易，跟数据安全无关。 要调它，先看 pg_stat_checkpointer 的 num_requested 与 num_timed 谁占多数，确认到底是哪个条件在触发，再动手。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="PostgreSQL/母题-P11-WAL与checkpoint" tag="PostgreSQL" q="WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？" a="WAL 是「先写日志、再改数据页」：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；提交时靠 fsync 保证这个事务的 WAL 已经落盘（synchronous_commit = on），所以崩溃后能用 WAL 把已提交的改动重放出来。checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」——它不影响正确性，只影响崩溃后要重放多久。PG 不需要 undo，是因为旧版本本来就留在堆里（P13），不靠日志回滚。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 的七处差异」里最容易被追问到底的一处</strong>。表面问题只是「PG 用什么日志」，但<strong>深一层会问到「那它为什么不需要 undo」</strong>——答案在 MVCC（[[母题-P13-MVCC与可见性]]），<strong>所以这两道题是一对，答不上 P13 就讲不透 P11。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>WAL 是「先写日志、再改数据页」</strong>：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；<strong>提交时靠 <code class="mv-md-code">fsync</code> 保证这个事务的 WAL 已经落盘</strong>（<code class="mv-md-code">synchronous_commit = on</code>），所以崩溃后能用 WAL 把已提交的改动重放出来。<strong>checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」</strong>——它不影响正确性，只影响<strong>崩溃后要重放多久</strong>。PG 不需要 undo，是因为<strong>旧版本本来就留在堆里</strong>（P13），不靠日志回滚。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>预写日志</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li><strong>off 丢的是三倍 wal_writer_delay ≈ 600ms 的【整段】</strong></li><li>checkpoint 推进恢复起点</li><li><code class="mv-md-code">checkpoint_timeout</code> 5min · <code class="mv-md-code">max_wal_size</code> 1GB</li><li><strong>full_page_writes（检查点后首写整页）</strong></li><li><code class="mv-md-code">wal_compression</code></li><li><code class="mv-md-code">pg_stat_checkpointer</code></li><li>为什么不需要 undo</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 是 <strong>redo（崩溃恢复）+ undo（回滚与 MVCC）+ binlog（复制与时间点恢复）</strong>三套；PG 只有 <strong>WAL</strong> 一套。<strong>注意不要说「PG 的 WAL 相当于 MySQL 的 redo log」</strong>——<strong>WAL 同时承担了 redo、部分 binlog（通过逻辑解码）的功能，而 undo 那部分职能被 MVCC 结构替代了。</strong> <strong>另外 MySQL 的 <code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 才是那个「等不等落盘」的旋钮，语义和 <code class="mv-md-code">synchronous_commit</code> 对应但要分开讲。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">synchronous_commit = off</code> 丢的是已提交事务，为什么还能接受？</strong></strong></p>
+<p class="mv-md-p">因为<strong>它丢的是【连续的最后一段】，而且只丢数据不损坏数据</strong>——<strong>数据库状态等同于那些事务被干净地中止</strong>。<strong>判据是官方的原话：「客户端会不会采取依赖这个事务已被记住的外部动作」</strong>——<strong>银行不会用它记录 ATM 吐现金，但事件日志完全可以用。</strong> <strong>这就是「数量级口径」：不是"会不会丢"，而是"丢多少、丢的是哪一段、能不能补"。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>恢复要多久，怎么估算？</strong></strong></p>
+<p class="mv-md-p"><strong>最坏重放量 ≈ <code class="mv-md-code">max_wal_size</code>（软上限）</strong>，再除以重放速度（可以拿一次真实恢复或压测测出来）。<strong>所以「恢复时间」是可以给出量级的数字，不是玄学参数。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>PG 也有 binlog 吗？</strong></strong></p>
+<p class="mv-md-p"><strong>没有。</strong> 逻辑复制、CDC 靠<strong>逻辑解码</strong>（从 WAL 解出逻辑变更，[[母题-P12-流复制与逻辑复制]]）；MySQL 的 binlog 是 Server 层单独一套逻辑日志。<strong>这是「PG 只有一套日志」的直接后果。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>WAL 会无限增长吗？</strong></strong></p>
+<p class="mv-md-p">不会，回收靠 checkpoint 推进；<strong>但如果开着复制槽而备库/消费者不消费，WAL 就不会被回收</strong>（P12 的经典事故：短时间内能把磁盘写满）。</p>
+<p class="mv-md-p"><strong>5. <strong>能不能关掉 WAL？</strong></strong></p>
+<p class="mv-md-p"><strong>表可以设 <code class="mv-md-code">UNLOGGED</code></strong>（不写 WAL，快，<strong>但崩溃后数据会被清空</strong>），<strong>只适合可重建的中间表</strong>。这是一个真实的工程选项，<strong>值得知道——但也要说清它的代价是"崩溃后整张表归零"。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「调 checkpoint 参数应该看什么？」—— <strong><code class="mv-md-code">pg_stat_checkpointer</code>（PG 17+；之前是 <code class="mv-md-code">pg_stat_bgwriter</code>）</strong>：<strong><code class="mv-md-code">num_requested</code> 远大于 <code class="mv-md-code">num_timed</code> 说明被 WAL 量逼出来的</strong>（该调大 <code class="mv-md-code">max_wal_size</code>）；<strong><code class="mv-md-code">write_time</code> / <code class="mv-md-code">sync_time</code> 告诉你 checkpoint 期间花在写盘和同步上的时间</strong>。<strong>能说出「PG 17 把这个视图拆出来了」，说明你最近真的碰过生产。</strong></li><li>「MySQL 的 redo 和 PG 的 WAL 差在哪？」—— <strong>① PG 的 WAL 还兼作复制源与时间点恢复的载体</strong>（redo 不做这两件事）；<strong>② PG 没有 undo</strong>（其职能被 MVCC 结构替代，代价是膨胀）；<strong>③ MySQL 的 redo 是环形写的物理日志，PG 的 WAL 是按段（默认 16MB）切分的</strong>（[[母题-M11-三日志与两阶段提交]]）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps 的幂等补数</strong>（<strong>「重放不产生副作用」和 WAL 重放是同一个思路</strong>：先判断是否已做过）。 - <strong>RuleArena 的 Checkpoint 与崩溃恢复</strong>（<strong>同样是「任务进度」和「业务事实」分开存——PG 这里也把「恢复起点」和「数据安全」分开了，是同一个设计原则</strong>）。 - <strong>数驭穹图的批量导入</strong>（<strong>正是「可以按事务粒度开 <code class="mv-md-code">off</code>」的场景</strong>——丢 600ms 的整段、顺序完整，而导入可以重跑）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">为什么需要 WAL（顺序写换随机写 + 崩溃安全）→ WAL 怎么保证已提交不丢 → <strong>off 到底丢多少（算出来）</strong> → checkpoint 在做什么 → <strong>整页写的代价（算出来）</strong> → 为什么 PG 只有一套日志（不需要 undo）→ 生产怎么配</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>WAL 管「已提交的能不能重放出来」（正确性），checkpoint 管「重放要从多久之前开始」（恢复时间）。</strong> 两件事，<strong>但它们由同一组参数牵动</strong>——checkpoint 越勤，恢复越快，常态 IO 压力越大。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「提交 fsync 的是 WAL」以及三层职责的分工；<strong>能算出 <code class="mv-md-code">off</code> 的最大丢失窗口（3 × 200ms = 600ms / 约 300 个事务）并说清它是【连续的一段】、只丢数据不损坏数据</strong>；<strong>能算出「哪个条件在触发 checkpoint」（10 MB/s 时是 max_wal_size，约 100 秒）与最坏恢复时间（1 GB ÷ 100 MB/s ≈ 10 秒）</strong>；<strong>能算出整页写的占比（98.8%）并解释「checkpoint 越勤 WAL 越大」的两难</strong>；<strong>能说出 <code class="mv-md-code">wal_compression</code> 压的正是整页镜像、以及 <code class="mv-md-code">pg_stat_checkpointer</code> 在 PG 17 被拆出来</strong>；<strong>能用「不需要 undo」推演出表膨胀这条链</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

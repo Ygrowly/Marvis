@@ -1,0 +1,67 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>VACUUM 的两条时间线：空间回收与冻结防回卷</title>
+  <desc>顶部是空间回收的三条路：普通清理只把空间标记为可复用、文件不变；重写整张表才能真正缩小，但要排他锁、等量磁盘和大量日志；在线重建不长时间持锁，适合大表。中间是冻结的三级阶梯与默认值：五千万事务开始冻结，一点五亿转激进扫描，两亿强制防回卷，而激进扫描要访问每一个可能含未冻结事务标识的页，本例是二十倍读写放大。底部是回卷倒计时：事务标识可用范围约二十一亿，每秒五百个事务时是四十八点六天，每秒五千个时只剩四点九天；官方口径是一张表最多二十亿个事务不被清理，超过就可能造成数据丢失。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">VACUUM 的两条时间线：空间回收与冻结防回卷</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「回收」要拆成两个动作：标记为可复用 ≠ 还给操作系统；而冻结是另一条独立的时间线</text>
+
+  <!-- 三条重建路 -->
+  <path d="M30 66 L650 66" stroke="#D8D5CC" stroke-width="1.2" fill="none" opacity="0"/>
+  <rect x="30" y="60" width="196" height="100" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="44" y="80" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">普通 VACUUM</text>
+  <text x="44" y="98" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">移除死行版本、清理索引条目</text>
+  <text x="44" y="116" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">把空间标记为【可供将来复用】</text>
+  <text x="44" y="134" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">文件大小不变</text>
+  <text x="44" y="152" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">轻锁 · autovacuum 日常做</text>
+
+  <rect x="242" y="60" width="196" height="100" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="256" y="80" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#8A3A28">VACUUM FULL / CLUSTER</text>
+  <text x="256" y="98" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">重写整张表到新文件</text>
+  <text x="256" y="116" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">真正把空间还给操作系统</text>
+  <text x="256" y="134" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">排他锁（不可读写）</text>
+  <text x="256" y="152" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">+ 等量磁盘 + 大量 WAL</text>
+
+  <rect x="454" y="60" width="196" height="100" rx="8" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="468" y="80" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C5A20">pg_repack（大表在线）</text>
+  <text x="468" y="98" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">用类似在线建索引的思路重建</text>
+  <text x="468" y="116" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">不长时间持锁</text>
+  <text x="468" y="134" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">真正缩小文件</text>
+  <text x="468" y="152" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">代价：额外空间 + 过程复杂</text>
+
+  <!-- 冻结阶梯 -->
+  <path d="M30 180 L650 180" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="204" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">冻结的三级阶梯（默认值）：一条独立于空间的时间线</text>
+
+  <rect x="30" y="216" width="196" height="70" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="44" y="236" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">① 5000 万事务</text>
+  <text x="44" y="254" font-family="monospace,sans-serif" font-size="8.5" fill="#6B6A65">vacuum_freeze_min_age</text>
+  <text x="44" y="272" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">超过这个年龄的行才【值得】冻结</text>
+
+  <rect x="242" y="216" width="196" height="70" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="256" y="236" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#633806">② 1.5 亿事务</text>
+  <text x="256" y="254" font-family="monospace,sans-serif" font-size="8.5" fill="#633806">vacuum_freeze_table_age</text>
+  <text x="256" y="272" font-family="system-ui,sans-serif" font-size="9" fill="#633806">转【激进扫描】</text>
+
+  <rect x="454" y="216" width="196" height="70" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="236" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">③ 2 亿事务</text>
+  <text x="468" y="254" font-family="monospace,sans-serif" font-size="8.5" fill="#8A3A28">autovacuum_freeze_max_age</text>
+  <text x="468" y="272" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">强制防回卷（关了 autovacuum 也会启动）</text>
+
+  <rect x="30" y="296" width="620" height="40" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="314" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">激进扫描 = 访问【每一个可能含未冻结事务标识的页】，不只是含死元组的页</text>
+  <text x="46" y="330" font-family="monospace,sans-serif" font-size="9" fill="#633806">200 万页的表：常规扫 10 万页（5% 有死元组）vs 激进扫 200 万页 → 20 倍 IO</text>
+
+  <!-- 回卷倒计时 -->
+  <path d="M30 348 L650 348" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="372" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">回卷倒计时：PG 里唯一一处「运维不到位会真的丢数据」的机制</text>
+
+  <rect x="30" y="384" width="300" height="60" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="404" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">事务标识可用范围 ≈ 2³¹ ≈ 21 亿</text>
+  <text x="46" y="422" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">500 TPS  → 21 亿 ÷ 500 ≈ 48.6 天</text>
+  <text x="46" y="438" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">5000 TPS → 21 亿 ÷ 5000 ≈ 4.9 天</text>
+
+  <rect x="350" y="384" width="300" height="60" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="404" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">官方口径（逐字）</text>
+  <text x="366" y="422" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">一张表最多 20 亿个事务不被 VACUUM</text>
+  <text x="366" y="438" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">超过就可能造成【数据丢失】→ 宁可拒绝新事务</text>
+</svg>

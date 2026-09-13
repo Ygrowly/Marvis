@@ -194,7 +194,7 @@ aliases: [AI开发, AI应用, 能力台账]
 | A09 | 上下文管理 | 区分系统指令、会话、检索、工具结果、状态；会压缩、裁剪和排序 | G/M2 | RuleArena |
 | A10 | State / Memory / Context | 区分权威业务状态、Agent 状态、短期上下文和长期记忆 | G/M2 | RuleArena、EnergyOps |
 | A11 | Workflow / 状态机 | 能用显式节点、状态、条件和失败分支表达稳定业务流程 | E/M2 | EnergyOps、RuleArena |
-| A12 | MCP / Skill / Tool 设计 | 会定义职责、Schema、权限、错误语义、幂等性和可观测字段 | E/M2 | EnergyOps 25 个 MCP 工具 |
+| A12 | MCP / Skill / Tool 设计 | 会定义职责、Schema、权限、错误语义、幂等性和可观测字段 | E/M2 | EnergyOps 30 个 MCP 工具 |
 | A13 | 多 Agent 取舍 | 能说明何时单 Agent/Workflow 足够，何时需要角色分工和并行 | G/U | RuleArena |
 | A14 | 副作用与幂等 | 区分 ToolCallID 与业务幂等键；处理重试、重复执行、未知结果 | E/M2 | EnergyOps、Pi-Agent 学习 |
 | A15 | Checkpoint 与恢复 | 能设计 checkpoint 时机、权威状态查询、恢复与重复副作用防护 | E/M2 | EnergyOps、Pi-Agent 学习 |
@@ -452,7 +452,7 @@ aliases: [AI开发, AI应用, 能力台账]
 - 外部平台数据接入，`raw → interval → hourly → daily` 数据链路；
 - 质量状态、乱序补数、partial 透明度、checkpoint、自愈；
 - APScheduler 调度、异常规则、告警、通知、重试和状态查询；
-- 25 个 MCP 工具、R0/R1/R2 风险等级、真实业务闭环；
+- 30 个 MCP 工具、R0/R1/R2 风险等级、真实业务闭环；
 - 月度水电费黄金对账、年度看板、逐单元格回归；
 - 适合证明：B/Python、数据库、数据质量、任务调度、测试、可靠性、业务交付。
 

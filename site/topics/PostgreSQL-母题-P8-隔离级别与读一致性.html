@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P8 · 隔离级别与读一致性</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P8 · 隔离级别与读一致性</h1>
+    <p class="mv-topic-meta">关联 母题-P9-序列化失败与重试（40001 怎么处理）· 母题-P10-无间隙锁与锁变体（PG 为什么不用间隙锁）· 母题-P13-MVCC与可见性（快照的底层）· 母题-P14-长事务与表膨胀（快照留得越久，回收越难）· 母题-M8-隔离级别与ACID（MySQL 侧对照） ｜ 正本 wiki/topics/PostgreSQL/母题-P8-隔离级别与读一致性.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① <strong>PG 默认是 READ COMMITTED</strong>，不是 MySQL 的 RR——这是最容易说错的一条 ② 级别在 PG 里承诺的是「你能看到什么」，不是「你不会失败」——<strong>级别越高，越可能被要求重试</strong> ③ PG 用「快照 + 报错重试」换掉了 MySQL 的「加锁等待」）· 读完约 12 分钟 · 需要先懂：[[母题-P13-MVCC与可见性]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">同一个事务里执行两次 <code class="mv-md-code">SELECT</code>，结果不一样。这是 bug 吗？该把级别调高吗？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 默认值：第一处必须说对的差异</h3>
+<figure-box num="三种隔离级别的快照粒度与失败方式" title="" note="快照在语句级还是事务级、四种标准级别在 PG 里的实际行为、RR 写冲突报四千零一、级别越高越可能被要求重试"><svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>三种隔离级别的快照粒度与失败方式</title>
+  <desc>顶部对比两种快照粒度：读已提交下每条语句开始时各取一次快照，所以同一事务内两次查询结果可能不同；可重复读下整个事务共用一个快照，顺带把幻读也挡掉了。中间是四种标准级别在 PostgreSQL 里的实际行为表，其中读未提交被静默升成读已提交，所以内部只实现三种。底部是同一个写冲突场景在两种级别下的不同表现：可重复读直接报序列化失败并要求重试整个事务，读已提交则对更新后的版本重新求值条件并继续，一个显式一个静默。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">三种隔离级别的快照粒度与失败方式</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">PG 承诺的从来不是「你不会失败」，而是「你能看到什么」——级别越高，静默的不一致越少，显式失败越多</text>
+
+  <!-- 快照粒度 -->
+  <rect x="30" y="66" width="300" height="100" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">READ COMMITTED（PG 默认）</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">快照：<tspan font-weight="600">每条语句</tspan>开始时各取一次</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">同一事务内两条 SELECT 可以读到不同结果</text>
+  <text x="46" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→【这不是 bug，是规范行为】</text>
+  <text x="46" y="161" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">写冲突：对更新后的版本重新求值 WHERE，继续</text>
+
+  <rect x="350" y="66" width="300" height="100" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">REPEATABLE READ（快照隔离）</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">快照：<tspan font-weight="600">整个事务</tspan>共用一个</text>
+  <text x="366" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">顺带挡掉幻读 —— 比 SQL 标准更强</text>
+  <text x="366" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 所以 PG 不需要间隙锁</text>
+  <text x="366" y="161" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">写冲突：直接回滚整个事务并报错</text>
+
+  <!-- 级别表 -->
+  <path d="M30 184 L650 184" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="208" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">四种标准级别在 PG 里的实际行为（PG 内部只实现三种）</text>
+
+  <rect x="30" y="220" width="620" height="26" rx="4" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">级别</text>
+  <text x="216" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">脏读</text>
+  <text x="316" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">不可重复读</text>
+  <text x="436" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">幻读</text>
+  <text x="556" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">序列化异常</text>
+
+  <text x="46" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Read uncommitted</text>
+  <text x="216" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">标准允许 · PG 不会</text>
+  <text x="316" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+  <text x="436" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+  <text x="556" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+
+  <text x="46" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Read committed</text>
+  <text x="216" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+  <text x="436" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+  <text x="556" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+
+  <text x="46" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Repeatable read</text>
+  <text x="216" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="436" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">标准允许 · PG 不会</text>
+  <text x="556" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+
+  <text x="46" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Serializable（SSI）</text>
+  <text x="216" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="436" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="556" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会（靠中止实现）</text>
+
+  <!-- 同一个写冲突，两种表现 -->
+  <path d="M30 356 L650 356" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="380" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">同一个场景：A 要改的那一行，已被 B 改过并提交</text>
+
+  <rect x="30" y="392" width="300" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="412" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">REPEATABLE READ → 显式失败</text>
+  <text x="46" y="432" font-family="monospace,sans-serif" font-size="9" fill="#633806">ERROR: could not serialize access due to concurrent update</text>
+
+  <rect x="350" y="392" width="300" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="412" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">READ COMMITTED → 静默继续</text>
+  <text x="366" y="432" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">忽略已删的行，否则改更新后的版本；WHERE 会重新求值</text>
+</svg>
+</figure-box>
+<table class="mv-table"><thead><tr><th></th><th>MySQL（InnoDB）</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>默认隔离级别</td><td><strong>REPEATABLE READ</strong></td><td><strong>READ COMMITTED</strong></td></tr><tr><td>幻读防护</td><td>next-key lock（间隙锁）</td><td><strong>无间隙锁</strong>，靠快照 / SSI</td></tr><tr><td>写冲突表现</td><td><strong>等待锁</strong>（可能超时/死锁）</td><td><strong>报 <code class="mv-md-code">40001</code>，让应用重试</strong></td></tr><tr><td>RR 下的写冲突</td><td>等待 / 死锁</td><td><strong>直接报错中止</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>为什么这个默认值差异重要</strong>：MySQL 的 RR 让很多「本来会出现的读不一致」被默认挡住，所以从 MySQL 过来的人<strong>习惯性地假设「事务内读是一致的」</strong>；而 PG 默认不保证这一点。<strong>面试里只要开口说「PG 默认也是 RR」，后面所有关于并发行为的判断都会被怀疑。</strong></p>
+<p class="mv-md-p">【事实】<strong>PG 其实只实现了三种级别</strong>——官方原话：</p>
+<p class="mv-md-p mv-md-quote"><strong>在 PostgreSQL 里你可以请求四种标准级别，但内部只实现了三种不同的隔离级别——PG 的 Read Uncommitted 模式的行为等同于 Read Committed。</strong></p>
+<p class="mv-md-p mv-md-quote">（因为这是把标准级别映射到 PG 的 MVCC 架构上唯一合理的做法。）</p>
+<p class="mv-md-p"><strong>所以「PG 支持四种级别」这句话是错的</strong>：<strong>你写 <code class="mv-md-code">READ UNCOMMITTED</code> 也不会读到脏数据，它被静默升成了 RC。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 快照粒度：理解一切的关键</h3>
+<table class="mv-table"><thead><tr><th>级别</th><th>快照什么时候取</th></tr></thead><tbody><tr><td><strong>READ COMMITTED（默认）</strong></td><td><strong>每条语句开始时</strong>各取一次</td></tr><tr><td><strong>REPEATABLE READ（PG 的快照隔离）</strong></td><td><strong>事务里第一条非事务控制语句开始时</strong>取一次，整个事务都用它</td></tr><tr><td><strong>SERIALIZABLE</strong></td><td>同上，<strong>外加一层序列化异常检测</strong></td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>官方对 RC 的措辞把三件事一次说清</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>一个 <code class="mv-md-code">SELECT</code>（不带 <code class="mv-md-code">FOR UPDATE/SHARE</code>）只看到【查询开始之前】已提交的数据</strong>，它既看不到未提交的数据，也看不到<strong>在本查询执行期间</strong>被其他事务提交的改动。</p>
+<p class="mv-md-p mv-md-quote"><strong>而且要注意：即使在一个事务里，两条相继的 <code class="mv-md-code">SELECT</code> 也可能看到不同的数据</strong>——只要在第一条开始之后、第二条开始之前有别的事务提交了改动。</p>
+<p class="mv-md-p"><strong>所以 RC 下</strong>：</p>
+<pre class="mv-md-pre">事务 A                                    事务 B
+BEGIN
+SELECT balance  → 100
+                                          UPDATE ... COMMIT（改成 80）
+SELECT balance  → 80     ← 同一事务，结果变了</pre>
+<p class="mv-md-p"><strong>这不是 bug</strong>——两条语句各自取了自己的快照，各自看到了当时已提交的最新数据。</p>
+<p class="mv-md-p"><strong>RR 下</strong>这两条都会返回 100（整个事务用同一快照）——<strong>这才叫「可重复读」。</strong></p>
+<p class="mv-md-p">【事实】<strong>PG 的 RR 比 SQL 标准更强</strong>——官方原话：</p>
+<p class="mv-md-p mv-md-quote"><strong>这是一个比 SQL 标准对该级别的要求【更强】的保证</strong>，它阻止了表 13.1 里描述的所有现象，<strong>除了序列化异常</strong>。<strong>标准只描述每个级别必须提供的【最低】保护，所以更强的保证是被允许的。</strong></p>
+<p class="mv-md-p">【推导】<strong>强在哪，用官方那张表看最清楚</strong>：</p>
+<table class="mv-table"><thead><tr><th>级别</th><th>脏读</th><th>不可重复读</th><th>幻读</th><th>序列化异常</th></tr></thead><tbody><tr><td>Read uncommitted</td><td><strong>标准允许，但 PG 里不会</strong></td><td>可能</td><td>可能</td><td>可能</td></tr><tr><td>Read committed</td><td>不会</td><td><strong>可能</strong></td><td><strong>可能</strong></td><td>可能</td></tr><tr><td>Repeatable read</td><td>不会</td><td>不会</td><td><strong>标准允许，但 PG 里不会</strong></td><td>可能</td></tr><tr><td>Serializable</td><td>不会</td><td>不会</td><td>不会</td><td>不会</td></tr></tbody></table>
+<p class="mv-md-p">【结论】<strong>PG 的 RR 是「快照隔离」——它挡住幻读靠的是「整事务一个快照」，不是靠锁。</strong> <strong>这就是为什么 PG 不需要间隙锁</strong>（[[母题-P10-无间隙锁与锁变体]]）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「PG 的 RR 和 MySQL 的 RR 都叫 Repeatable Read，但机制完全不同」？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. RR 的代价：写冲突直接报错【事实】</h3>
+<p class="mv-md-p">这是 PG 最反直觉、也最能体现「快照 + 报错重试」哲学的一段。<strong>官方原文</strong>：</p>
+<p class="mv-md-p mv-md-quote"><code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">DELETE</code> / <code class="mv-md-code">MERGE</code> / <code class="mv-md-code">SELECT FOR UPDATE</code> / <code class="mv-md-code">SELECT FOR SHARE</code> 和 <code class="mv-md-code">SELECT</code> 一样<strong>只找【事务开始时刻】已提交的目标行</strong>。但这样一行<strong>可能已经被另一个并发事务改过或锁住了</strong>。这时 RR 事务会等第一个更新者提交或回滚。</p>
+<p class="mv-md-p mv-md-quote"><strong>如果第一个更新者提交了（并且真的改过或删除了该行，而不只是加锁），那么 RR 事务会被回滚，报：</strong></p>
+<p class="mv-md-p mv-md-quote">```</p>
+<p class="mv-md-p mv-md-quote">ERROR:  could not serialize access due to concurrent update</p>
+<p class="mv-md-p mv-md-quote">```</p>
+<p class="mv-md-p mv-md-quote"><strong>因为 RR 事务不能修改或锁住那些【在它开始之后】被其他事务改过的行。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>应用收到这条错误时，应该中止当前事务并从头重试整个事务。</strong></p>
+<p class="mv-md-p">【推导】<strong>两种级别的同一个场景，结果完全不一样</strong>：</p>
+<pre class="mv-md-pre">场景：事务 A 在 RR 下 UPDATE 一行，这一行已被事务 B 改过并提交
+
+【RR】
+  → A 报 40001，整个事务作废
+  → 应用必须从头重试
+  → 但 A 看到的数据从头到尾是一致的
+
+【RC】
+  → 官方原话：A 会【忽略被删的行】，否则【对更新后的版本施加自己的操作】
+  → 而且命令的 WHERE 条件会被【重新求值】，看新版本是否仍匹配
+  → A 不报错，但 A 的视角【变了】</pre>
+<p class="mv-md-p">【推论】<strong>这就是那道题的答案</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>PG 把「数据可能已经变了」这个事实，在 RC 下处理成「重新读最新的」，在 RR 下处理成「报错让你重来」。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>前者静默、不中断；后者显式、要重试。</strong></p>
+<p class="mv-md-p"><strong>没有哪个更"好"——RC 的代价是可能产生业务层面的不一致，RR 的代价是可能失败。</strong> <strong>选级别，本质上是在选「你想要哪种代价」。</strong></p>
+<p class="mv-md-p">【事实】<strong>那为什么 PostgreSQL 官方建议应用"必须准备重试"？</strong> 因为官方对 RC 之外的级别有一句明确的提醒：</p>
+<p class="mv-md-p mv-md-quote"><strong>使用这个级别的应用【必须准备好因为序列化失败而重试事务】。</strong></p>
+<p class="mv-md-p">【纠正常见误解】<strong>这条同样适用于 RC</strong>——<strong>RC 下 <code class="mv-md-code">UPDATE</code> 冲突不报错，但它"重新读最新版本再改"这件事本身，就可能让业务逻辑的前提失效</strong>（你基于旧值做的判断，被应用到了新值上）。<strong>所以"RC 不会失败"是错觉：它只是把失败从【数据库报错】挪到了【业务结果不对】。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「把隔离级别调高」不是免费的——它把什么换成了什么？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. Serializable：不额外阻塞，只检测并中止【事实】</h3>
+<p class="mv-md-p"><strong>官方原文</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>这个级别的工作方式和 Repeatable Read 完全一样，【除了】它还会监控那些可能让并发执行的结果与任何串行顺序都不一致的条件。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>这种监控除了 RR 本来就有的阻塞之外，【不引入任何额外的阻塞】</strong>——但监控本身有开销，而且<strong>一旦检测到可能造成序列化异常的条件，就会触发一次序列化失败。</strong></p>
+<p class="mv-md-p">【推导】<strong>用官方那个例子把 SSI 在防什么讲清</strong>：</p>
+<pre class="mv-md-pre">初始：class=1 有 (10, 20)，class=2 有 (100, 200)
+
+事务 A（Serializable）：SELECT SUM(value) WHERE class=1  → 30
+                      INSERT (class=2, 30)
+事务 B（Serializable）：SELECT SUM(value) WHERE class=2  → 300
+                      INSERT (class=1, 300)
+
+两边都提交时：
+  如果是 RR → 【两个都被允许提交】
+  但没有任何串行顺序能产生这个结果：
+    若 A 先执行，B 会算出 330
+    若 B 先执行，A 会算出 330
+  → Serializable 会让其中一个提交、另一个回滚并报：
+     ERROR:  could not serialize access due to read/write dependencies among transactions</pre>
+<p class="mv-md-p">【结论】<strong>SSI 防的是「单独看每个事务都没问题、但合起来没有任何串行顺序能解释」这件事</strong>——<strong>这叫写偏斜（write skew），RR 挡不住它。</strong></p>
+<p class="mv-md-p">【推论】<strong>判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>RR 保证「你看到的一致」，Serializable 保证「结果能解释成某种串行顺序」。</strong> <strong>后者更强，但失败率也更高</strong>——<strong>因为它检测的范围更大。</strong></p>
+<p class="mv-md-p">【事实】<strong>一个很实用的特例</strong>：<strong>可延迟的只读事务</strong>（<code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code>）<strong>读到的数据在读到的那一刻就是有效的</strong>——因为它会<strong>等到能拿到一个保证没有这类问题的快照之后才开始读</strong>。<strong>做长报表、一致性快照导出时，这是最干净的做法。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 一个连带的坑：序列不是事务性的【事实】</h3>
+<p class="mv-md-p"><strong>官方专门用一段 "Important" 提醒</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>有些 PostgreSQL 数据类型和函数在事务行为上有特殊规则。特别是：对序列的改动（因此也包括 <code class="mv-md-code">serial</code> 声明列的那个计数器）【对其他所有事务立即可见】，而且【即使改动它的事务中止了也不会回滚】。</strong></p>
+<p class="mv-md-p">【推论】<strong>这是「自增主键为什么一定有洞」的第二个原因</strong>（第一个是「分配出去就算用过」）——<strong>它是事务可见性模型的一个明确例外</strong>。<strong>在 RR 事务里，你可能看不到别人刚提交的行，但你一定能看到自增值已经跳过去了。</strong> <strong>面试里能主动说出这条，说明你读的是文档而不是二手总结。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「事务里回滚了，自增值也该回退」这个期待是错的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 快照的隐藏成本：它挡住了 VACUUM</h3>
+<p class="mv-md-p">【推导】<strong>隔离级别选得越高，持有的快照越旧、越久——而旧快照是 VACUUM 的天敌</strong>：</p>
+<pre class="mv-md-pre">一张表写 500 TPS
+一个 RR / Serializable 事务跑了 10 分钟
+
+这个事务的快照固定在开始那一刻
+  → 它【之后产生的所有死元组都不能被回收】
+  → 10 × 60 × 500 = 【30 万个死元组被压住】
+
+后果：表膨胀、索引膨胀、查询越来越慢
+（这正是主线五的主题，见 P14 / P15）</pre>
+<p class="mv-md-p">【结论】<strong>「把级别调高更安全」这句话，在 PG 里还有一个反向代价：它让表膨胀得更快。</strong></p>
+<p class="mv-md-p">【取舍】<strong>所以正确的动作是</strong>：</p>
+<ul class="mv-md-ul"><li><strong>默认保持 RC</strong>——绝大多数业务读不需要事务级一致性；</li><li><strong>只在真正需要「事务内一致读」的地方</strong>（对账、生成报表、跨表一致性校验）<strong>提升到 RR，而且把事务做得尽量短</strong>；</li><li><strong>不要"为了安全"把全局默认调成 RR</strong>——<strong>那是把全局的事务时长都变成了膨胀源。</strong></li></ul>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「全局调高隔离级别」在 PG 里是一个会反噬的决定？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>说法</th><th>实际情况</th></tr></thead><tbody><tr><td>「PG 默认也是 RR」</td><td><strong>PG 默认是 READ COMMITTED</strong>；MySQL 才是 RR</td></tr><tr><td>「PG 支持四种隔离级别」</td><td><strong>内部只实现三种</strong>——<code class="mv-md-code">READ UNCOMMITTED</code> 被静默当成 RC</td></tr><tr><td>「同一事务两次读不同是 bug」</td><td><strong>RC 下是规范行为</strong>——每条语句各取一次快照</td></tr><tr><td>「调高到 RR 就没有并发问题了」</td><td><strong>RR 挡不住写偏斜</strong>（那是 Serializable 的活），<strong>而且写冲突会变成 40001</strong></td></tr><tr><td>「40001 是数据库出故障了」</td><td><strong>是隔离级别的正常输出</strong>——应用的正确答案是<strong>重试整个事务</strong>，不是加锁</td></tr><tr><td>「Serializable 会让并发变慢（到处加锁）」</td><td><strong>官方明确：除了 RR 本来就有的阻塞，它不引入额外阻塞</strong>；代价是<strong>监控开销 + 更高的中止率</strong></td></tr><tr><td>「事务回滚了，自增值也要回退」</td><td><strong>序列不是事务性的</strong>——<strong>立即可见、不回滚</strong></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P8-隔离级别与读一致性-q1" tag="PostgreSQL" q="某业务在 RR 下跑，两个事务争抢同一行的概率是 5%（也就是说，有 5% 的事务会在提交前遇到「这行已被别人改过并提交」）。&#10;问：一个事务平均要执行几次才能成功？如果把冲突概率提高到 30% 呢？" a="``text&#10;每次尝试失败的概率 = p（遇到写冲突 → 40001）&#10;成功的概率 = 1 − p&#10;期望尝试次数 = 1 / (1 − p)     ← 与乐观锁同源的公式&#10;p = 5%  → 1 / 0.95 ≈ 【1.05 次】&#10;p = 30% → 1 / 0.70 ≈ 【1.43 次】&#10;p = 90% → 1 / 0.10 = 【10 次】&#10;p → 100% → 【发散】——事务永远成功不了&#10;``&#10;【结论】低冲突时重试几乎不要钱（5% 时多跑 5% 的次数）；高冲突时会雪崩——90% 冲突时平均要跑 10 次，等于把数据库负载放大 10 倍，而负载越高冲突越高——这是正反馈。&#10;【推论】判据：&#10;重试策略的适用边界是【低冲突】。 一旦冲突率上去，正确动作是改变访问模式（缩短事务、拆分热点、串行化那一小段），而不是加大重试次数。&#10;【补充】重试必须带退避与次数上限——固定间隔的立即重试，在冲突期只会把冲突推得更高（[[母题-M16-乐观锁与悲观锁]] 里算过同一件事）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P8-隔离级别与读一致性-q2" tag="PostgreSQL" q="一张表 500 TPS 写入。一个 RR 事务持续了 10 分钟才提交。&#10;问：这个事务让多少死元组无法被回收？这对系统意味着什么？" a="``text&#10;RR 事务的快照固定在它开始的那一刻&#10;→ 它开始之后产生的死元组，在它结束前【都不能被 VACUUM 回收】&#10;压住的死元组 ≈ 10 × 60 × 500 = 【30 万个】&#10;``&#10;【结论】30 万个死元组，占了这段时间写入的全部——它们会被复制到所有索引里，而不只是表里。&#10;【推论】判据：&#10;在 PG 里，一个事务的【时长】直接等于它给整张表造成的膨胀量。 所以「事务要短」在 PG 里不是风格建议，是有明确数量关系的运行要求（[[母题-P14-长事务与表膨胀]]）。&#10;【补充】这里有个反直觉的连锁：为了「更安全」把级别调高 → 事务因为要重试而变长 → 快照留得更久 → 膨胀更快 → 查询更慢 → 事务更慢。 这是一个正反馈环，也是&quot;全局调高隔离级别&quot;最危险的后果。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读 + 计算</span></div><flip-card card-id="PostgreSQL/母题-P8-隔离级别与读一致性-q3" tag="PostgreSQL" q="同一段业务代码，两种方案：&#10;方案 A：RC，实测有 1% 的请求因为「读到的两份数据来自不同时刻」而产生业务错误，这些错误是静默的（用户看到一笔错账）。&#10;方案 B：RR，实测有 5% 的事务报 40001，应用会自动重试（平均重试 1/0.95 ≈ 1.05 次）。&#10;问：哪一个更&quot;安全&quot;？判断的依据是什么？" a="``text&#10;方案 A 的代价：&#10;1% 的请求 → 业务错误&#10;→ 【静默】：没有任何信号、没有日志、没有重试&#10;→ 发现方式：用户投诉 / 对账不平&#10;方案 B 的代价：&#10;5% 的事务 → 40001&#10;→ 【显式】：有错误码、能监控、能重试&#10;→ 重试成本：总尝试次数 ×1.05，即数据库负载 +5%&#10;→ 发现方式：错误率仪表盘&#10;``&#10;【结论】方案 B 更安全——不是因为它的失败率更低（5% &gt; 1%），而是因为它的失败是【显式的、可自愈的】。&#10;【推论】判据（这条可以直接当面试答案用）：&#10;「静默的错」和「响亮的错」不是一个量级的问题。&#10;静默的错会一路走到用户那里；响亮的错会在监控上停住，并且能被自动重试消化掉。&#10;所以在一致性敏感的场景，正确的方向是「宁可失败，不要读错」。&#10;【取舍】但这不是「一律用 RR」——如果那 1% 的业务错误本来就无关紧要（比如展示用的推荐位），RR 那 5% 的重试与更长的事务反而是纯成本。 判断标准是：这份数据读错了，代价由谁承担。&#10;【补充】方案 B 还需要一个前提才成立：应用必须真的实现了幂等重试。如果重试逻辑不幂等，5% 的 40001 会变成 5% 的重复扣款——那它就从&quot;更安全&quot;变成了&quot;更危险&quot;（[[母题-P19-唯一约束与UPSERT]] 里的幂等键正是为此）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P8-隔离级别与读一致性-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我们线上用 PostgreSQL，默认应该是 RR，和 MySQL 一样，所以不需要特别设隔离级别。&quot;" a="三处问题。&#10;1. PG 的默认是 READ COMMITTED——这是 PG 与 MySQL 最容易说错的一条。PG 的 RR 需要显式 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ。&#10;2. 「PG 支持四种级别」也不对：内部只实现三种——READ UNCOMMITTED 被静默当成 RC，所以你写它也不会读到脏数据（官方原话：这是映射到 MVCC 架构唯一合理的做法）。&#10;3. 两边同名的 RR 机制完全不同：PG 的 RR 是快照隔离，不用间隙锁、挡幻读靠快照、写冲突直接报 40001；MySQL 的 RR 用 next-key lock，写冲突表现为等待锁（[[母题-P10-无间隙锁与锁变体]]）。&#10;【准确说法】&quot;PG 默认 READ COMMITTED，所以「同一事务里两次 SELECT 结果不同」在默认配置下是【规范行为】。 要事务内一致，显式提到 REPEATABLE READ，并且应用要准备好重试 40001。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P8-隔离级别与读一致性-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;线上偶尔报 could not serialize access due to concurrent update，这是数据库有问题，我们打算给那些行加显式锁来避免它。&quot;" a="四处问题。&#10;1. 这不是故障，是隔离级别的正常输出：它是 PG 明确设计出来用来在快照隔离下保护一致性的**（官方原文就写了这条错误的完整含义）。&#10;2. 它的标准处理是重试整个事务，不是加锁：官方原文：「应用收到这条错误时，应该中止当前事务并从头重试整个事务。」 加锁是把&quot;报错&quot;改回&quot;等待&quot;——也就是把 PG 的哲学换成 MySQL 的哲学，但 PG 没有为此优化的锁机制。&#10;3. 加锁会引入新的失败模式：等待 → 锁超时 / 死锁，而这两样比 40001 更难处理（40001 有明确的重试语义，锁超时没有）。&#10;4. 如果它发生得太频繁，问题在别处：Q1 的算式说明冲突率一高，重试就会雪崩——那时该改的是事务的粒度与热点分布，不是加锁。&#10;【准确说法】&quot;40001 是「让你重来一次」的信号，标准动作是幂等重试。 如果重试率超过可接受范围，说明事务太长或热点太集中——要改的是访问模式，不是把快照隔离换回锁等待。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">PG 默认是 RC 还是 RR？同一事务内两次查询为什么会看到不同结果？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="PostgreSQL/母题-P8-隔离级别与读一致性" tag="PostgreSQL" q="PG 默认是 RC 还是 RR？同一事务内两次查询为什么会看到不同结果？" a="PG 默认 READ COMMITTED。RC 下每条语句开始时取一次快照，所以同一事务里的两条 SELECT 之间如果有别的事务提交，你就会看到不同的结果——这是规范允许的不可重复读。要事务内一致就提到 REPEATABLE READ（PG 的 RR 是快照隔离，整个事务一个快照，而且连幻读也一并挡住了）；但 PG 的 RR 遇到写冲突会直接报 40001 让你重试，它不靠间隙锁把冲突挡住（那是 MySQL 的做法，见 [[母题-P10-无间隙锁与锁变体]]）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 最容易说错的七处」里的第一条</strong>——<strong>MySQL 默认 RR，PG 默认 RC</strong>。而且它的反直觉程度最高：<strong>「同一事务内读到不一样的结果」在 PG 的默认级别下不算 bug，是规范行为。</strong> 如果这条说错，后面 MVCC、锁、膨胀全都跟着错。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">PG 默认 <strong>READ COMMITTED</strong>。RC 下<strong>每条语句开始时取一次快照</strong>，所以同一事务里的两条 <code class="mv-md-code">SELECT</code> 之间如果有别的事务提交，你就会看到不同的结果——<strong>这是规范允许的不可重复读</strong>。要事务内一致就提到 <strong>REPEATABLE READ</strong>（PG 的 RR 是快照隔离，整个事务一个快照，<strong>而且连幻读也一并挡住了</strong>）；<strong>但 PG 的 RR 遇到写冲突会直接报 <code class="mv-md-code">40001</code> 让你重试</strong>，它不靠间隙锁把冲突挡住（那是 MySQL 的做法，见 [[母题-P10-无间隙锁与锁变体]]）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>默认 RC</li><li>每条语句一个快照 vs 每事务一个快照</li><li><strong>RR = 快照隔离且挡幻读</strong></li><li><strong>RR 写冲突报 40001</strong></li><li>Serializable = 不额外阻塞、只检测中止</li><li>快照留久 = 挡住 VACUUM</li><li>必须准备重试</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 默认 RR、PG 默认 RC</strong>；<strong>MySQL 靠 next-key lock 挡幻读、PG 靠快照</strong>；<strong>MySQL 写冲突表现为等待、PG 表现为 40001</strong>；<strong>MySQL 的 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 没有 PG 那四种变体</strong>（PG 有 <code class="mv-md-code">FOR NO KEY UPDATE</code> / <code class="mv-md-code">FOR KEY SHARE</code> 这些更弱的锁，选对能大幅减少冲突）。<strong>能把「同名级别、不同机制」说清，这道题就满分。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 为什么不加间隙锁？</strong></strong></p>
+<p class="mv-md-p"><strong>因为它用快照隔离，幻读已经被快照挡住了，不需要用锁挡。</strong> <strong>加间隙锁会让并发插入互相阻塞</strong>（MySQL 的死锁大头就来自这里）。<strong>这是 PG 用「快照 + 报错」换「锁 + 等待」的一个具体体现</strong>（[[母题-P10-无间隙锁与锁变体]]）。</p>
+<p class="mv-md-p"><strong>2. <strong>Serializable 是不是就万无一失了？</strong></strong></p>
+<p class="mv-md-p"><strong>一致性上万无一失，可用性上更容易失败</strong>：<strong>它连写偏斜都检测，所以中止率更高</strong>。<strong>而且它要求「读到的数据在事务成功提交前都不算数」</strong>——<strong>包括只读事务</strong>（除非用 <code class="mv-md-code">READ ONLY DEFERRABLE</code>）。<strong>所以它适合"正确性压倒一切"的场景，不适合高并发写入的常规业务。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>40001 和死锁（40P01）有什么区别？</strong></strong></p>
+<p class="mv-md-p"><strong>40001 是「你的快照过期了，重来一次就好」，没有等待、没有资源占用</strong>；<strong>死锁是「两个事务互相等对方的锁」，需要一个被牺牲掉</strong>。<strong>前者是快照隔离的正常输出，后者是加锁模型的固有代价</strong>——<strong>PG 两种都有，但 40001 是它主动选择的。</strong></p>
+<p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">FOR UPDATE</code> 能不能替代提高隔离级别？</strong></strong></p>
+<p class="mv-md-p"><strong>能替代一部分</strong>。<strong><code class="mv-md-code">SELECT ... FOR UPDATE</code> 在 RC 下也会锁住读到的行，所以"读-改-写"这种最常见的竞态可以直接用它防住</strong>，不必升到 RR。<strong>PG 还有四种变体</strong>（<code class="mv-md-code">FOR UPDATE</code> / <code class="mv-md-code">FOR NO KEY UPDATE</code> / <code class="mv-md-code">FOR SHARE</code> / <code class="mv-md-code">FOR KEY SHARE</code>），<strong>选最弱的那一个能显著减少锁冲突</strong>（[[母题-P10-无间隙锁与锁变体]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>只读副本上的读一致性怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>副本上的默认也是 RC，但副本有额外一层：复制延迟</strong>。<strong>要在副本上做「事务内一致读」，RR 只保证副本自身快照一致，不保证读到主库最新</strong>——<strong>要读最新得走主库，或者用复制槽 / <code class="mv-md-code">pg_last_wal_replay_lsn()</code> 做等待</strong>（[[母题-P12-流复制与逻辑复制]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「MySQL 的 RR 和 PG 的 RR 差多少？」—— <strong>三处</strong>：① <strong>MySQL RR 用 next-key lock 挡幻读，PG 用快照挡</strong>；② <strong>MySQL RR 写冲突是等待（可超时/死锁），PG RR 写冲突是报 40001</strong>；③ <strong>MySQL RR 事务内的一致性读更"重"（因为要维护锁），PG 更轻但要处理重试</strong>。<strong>两边同名的级别不是同一件东西</strong>（[[母题-M8-隔离级别与ACID]]）。</li><li>「为什么 PG 文档反复强调"应用必须准备重试"？」—— <strong>因为 PG 的一致性模型把失败【暴露】给应用了</strong>：<strong>RC 下它把失败藏进业务结果里，RR/Serializable 下它明确报错。</strong> <strong>这条提醒本身，就是「PG 把选择权交给应用」的体现。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena 的状态机更新</strong>（<code class="mv-md-code">status</code> 条件更新——<strong>这正是 RC 下「WHERE 重新求值」发挥作用的场景：两个 worker 抢同一个任务，第二个会发现条件不再匹配</strong>）。 - <strong>EnergyOps 的对账与聚合</strong>（<strong>需要事务内一致读 → 显式 RR，并且事务要短</strong>）。 - <strong>数驭穹图的目录/权限校验</strong>（<strong>读一致性敏感 → 值得用 RR；但如果并发写少，RC 就够</strong>）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 默认 RC（对比 MySQL 的 RR）→ 快照粒度差异（语句 vs 事务）→ 所以「两次查询不同」是规范行为 → RR 的代价是写冲突要报 40001 → RC 下 UPDATE 的特殊行为 → Serializable 做了什么 → 快照的隐藏成本 → 怎么选</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>隔离级别在 PG 里承诺的是「你能看到什么」，不是「你不会失败」。</strong> 级别越高，看到的越一致，但<strong>越可能被要求重试</strong>——这是 PG 与 MySQL 的哲学差异：<strong>PG 用「快照 + 报错重试」换掉了「加锁等待」。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能一口说出 <strong>PG 默认 RC</strong>（并纠正「默认 RR」）；<strong>能说清 RC 与 RR 的快照粒度差异，并解释「同一事务两次读不同」为什么是规范行为</strong>；<strong>能说出 PG 的 RR 挡幻读、且这是比 SQL 标准更强的保证</strong>；<strong>能准确描述 RR 下的写冲突表现为 40001 并要求重试整个事务，而 RC 下是重新求值 WHERE</strong>；<strong>能算出重试期望次数 1/(1−p) 并说出它的适用边界</strong>；<strong>能说出 Serializable 不引入额外阻塞、以及它防的是写偏斜</strong>；<strong>能说出序列不是事务性的、以及长事务快照会压住多少死元组</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

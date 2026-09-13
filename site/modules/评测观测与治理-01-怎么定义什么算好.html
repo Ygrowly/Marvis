@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一 · 怎么定义什么算好</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="评测观测与治理.html">← 评测观测与治理 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">评测观测与治理 · 主线 一</span>
+    <h1 class="mv-topic-title">怎么定义什么算好</h1>
+    <p class="mv-topic-meta">这条线在回答：指标分层、数据集、谁来判分</p>
+  </div>
+  <p class="mv-line-lead">覆盖度 vs 成本；自动判分的规模 vs 人工判分的深度</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">E1</span><span class="mv-mt-name">怎么设计一套评测——测什么、拿什么测、谁来判分、多少样本才够</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/评测观测与治理-母题-E1-评测集设计与pass^k.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">面试官问——"你们怎么评测这个系统？用一个什么分数衡量？"</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<strong>评测的第一性原理是"把模糊目标变成可比较、可复现、可定位的判断"</strong>，所以它必须<strong>分层</strong>。<strong>指标分六层</strong>：业务结果 / 任务结果 / <strong>过程</strong>（诊断价值最高）/ 工程 / 资源 / <strong>安全</strong>——<strong>安全单独门禁，不参与平均</strong>，因为把它放进平均等于允许"用高质量文案换一次越权"（业务 80、任务 85、过程 70、工程 90、资源 75、<strong>安全 10</strong> 的平均分是 68.3，看起来"刚及格"）。<strong>数据集分五层</strong>：<strong>Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优</strong>——<strong>看多了就变成 Dev 了</strong>（真实案例：训练集打平、held-out 差 11.9 个点）。<strong>判分四级且顺序不能反</strong>：<strong>能确定性判断的不用模型 Judge</strong>（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。<strong>稳定性和能力要分开测</strong>：<strong>pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）</strong>——p=0.9 时 <strong>pass^5 只有 59%、pass^10 只有 34.9%</strong>；反过来，<strong>要求 pass^5 = 90% 意味着单次要做到 97.9%</strong>。最后，<strong>样本量决定分辨率</strong>：200 条约 ±2.1%，<strong>想论证"改进了 2 个点"需要约 900 条</strong>。</p><ul class="mv-kw"><li><strong>指标六层</strong>（业务 / 任务 / <strong>过程</strong> / 工程 / 资源 / <strong>安全单独门禁</strong>）</li><li>综合分会掩盖严重错误（68.3 分的例子）</li><li><strong>数据集五层</strong>（Dev 可反复看，其余四层不行）</li><li>holdout 的必要性（训练集打平、held-out 差 11.9 点）</li><li>**grader 顺序：Code</li><li>Rule &gt; Reference &gt; Model Judge &gt; Human**</li><li>rubric 六条（<strong>别把长度语气误当正确</strong>）</li><li><strong>pass@k 测上限、pass^k 测稳定</strong>（0.9⁵ = 59%）</li><li>200 条约 ±2.1%，900 条分辨 2 点</li><li>评测集要审计（<strong>别把错题 benchmark 当目标</strong>）</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>评测不是"算出一个数"，是"把模糊目标变成可比较、可复现、可定位的判断"。</strong> 所以它必须分层——<strong>因为不同的层回答不同的问题，把它们压在一起，就一个都答不了。</strong></p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>如何评测一个 Agent？</strong></strong></p><p class="mv-md-p"><strong>从真实任务构造可重置环境；分结果、过程、工程、安全和业务指标；规则 / 代码 grader 优先，语义用校准过的模型 Judge；保存完整轨迹；离线回归后再 shadow / A-B；线上 Bad Case 回流。</strong>（这是 study/07 的 Q1 标准答案，<strong>注意它把"可重置环境"放在第一位</strong>——[[母题-E2-Trace与可观测性]] 会展开。）</p><p class="mv-md-p"><strong>2. <strong>LLM-as-a-Judge 有什么问题？</strong></strong></p><p class="mv-md-p"><strong>偏差（偏爱长回答）、漂移（同输入不同时间不同结果）、自洽幻觉（给自己打高分）</strong>。<strong>所以要用人工样本校准、记录 grader 版本、并且只用在确定性判分覆盖不到的地方。</strong></p><p class="mv-md-p"><strong>3. <strong>Golden Set 怎么维护？</strong></strong></p><p class="mv-md-p"><strong>版本化；去重；检查泄漏；定期审计"坏题"</strong>；<strong>来源要包含真实失败与用户纠正</strong>（不只是专家构造）。<strong>关键是"它不能参与调优"</strong>——否则它就退化成 Dev 集。</p><p class="mv-md-p"><strong>4. <strong>模型输出非确定，CI 怎么做？</strong></strong></p><p class="mv-md-p"><strong>看 pass^k 而不是单次</strong>；<strong>固定随机种子与环境 fixture</strong>；<strong>门禁用"通过率不低于阈值 + 置信区间"</strong>，而不是"这一次过了就行"（[[母题-E3-回归门禁与发布卡口]] 展开）。</p><p class="mv-md-p"><strong>5. <strong>怎么评估新模型是否值得切换？</strong></strong></p><p class="mv-md-p"><strong>同一套 holdout 上对比，看 pass^k、P95 延迟、单任务成本三件事</strong>；<strong>而且要重跑消融</strong>——因为 prompt 是针对旧模型写的（[[母题-C3-Prompt版本管理与回归]]、[[母题-C5-模型选型与降级三角]]）。</p></collapse-panel><p class="mv-note">正本：wiki/topics/评测观测与治理/母题-E1-评测集设计与pass^k.md</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">5 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">2</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">E1</span><button class="mv-qdone" data-k="评测观测与治理-q2" type="button">未掌握</button></div><flip-card card-id="评测观测与治理-q2" tag="评测观测与治理" q="指标该怎么分层，为什么不能用一个综合分" a="【E1】评测的第一性原理是&quot;把模糊目标变成可比较、可复现、可定位的判断&quot;，所以它必须分层。指标分六层：业务结果 / 任务结果 / 过程（诊断价值最高）/ 工程 / 资源 / 安全——安全单独门禁，不参与平均，因为把它放进平均等于允许&quot;用高质量文案换一次越权&quot;（业务 80、任务 85、过程 70、工程 90、资源 75、安全 10 的平均分是 68.3，看起来&quot;刚及格&quot;）。数据集分五层：Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优——看多了就变成 Dev 了（真实案例：训练集打平、held-out 差 11.9 个点）。判分四级且顺序不能反：能确定性判断的不用模型 Judge（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。稳定性和能力要分开测：pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）——p=0.9 时 pass^5 只有 59%、pass^10 只有 34.9%；反过来，要求 pass^5 = 90% 意味着单次要做到 97.9%。最后，样本量决定分辨率：200 条约 ±2.1%，想论证&quot;改进了 2 个点&quot;需要约 900 条。&#10;&#10;展开：先破&quot;一个综合分&quot;（给 68.3 的例子）→ 指标六层（点明过程层是诊断价值最高的）→ 数据集五层与&quot;哪层能调优&quot; → pass@k vs pass^k（给衰减算式）→ grader 四级与顺序（给 19.7% vs 52.2%）→ 样本量与分辨率 → 评测集的审计 → 收束到&quot;分层才能定位&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">3</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">E1</span><button class="mv-qdone" data-k="评测观测与治理-q3" type="button">未掌握</button></div><flip-card card-id="评测观测与治理-q3" tag="评测观测与治理" q="Golden Set 怎么建、怎么维护" a="【E1】评测的第一性原理是&quot;把模糊目标变成可比较、可复现、可定位的判断&quot;，所以它必须分层。指标分六层：业务结果 / 任务结果 / 过程（诊断价值最高）/ 工程 / 资源 / 安全——安全单独门禁，不参与平均，因为把它放进平均等于允许&quot;用高质量文案换一次越权&quot;（业务 80、任务 85、过程 70、工程 90、资源 75、安全 10 的平均分是 68.3，看起来&quot;刚及格&quot;）。数据集分五层：Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优——看多了就变成 Dev 了（真实案例：训练集打平、held-out 差 11.9 个点）。判分四级且顺序不能反：能确定性判断的不用模型 Judge（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。稳定性和能力要分开测：pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）——p=0.9 时 pass^5 只有 59%、pass^10 只有 34.9%；反过来，要求 pass^5 = 90% 意味着单次要做到 97.9%。最后，样本量决定分辨率：200 条约 ±2.1%，想论证&quot;改进了 2 个点&quot;需要约 900 条。&#10;&#10;展开：先破&quot;一个综合分&quot;（给 68.3 的例子）→ 指标六层（点明过程层是诊断价值最高的）→ 数据集五层与&quot;哪层能调优&quot; → pass@k vs pass^k（给衰减算式）→ grader 四级与顺序（给 19.7% vs 52.2%）→ 样本量与分辨率 → 评测集的审计 → 收束到&quot;分层才能定位&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">4</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">E1</span><button class="mv-qdone" data-k="评测观测与治理-q4" type="button">未掌握</button></div><flip-card card-id="评测观测与治理-q4" tag="评测观测与治理" q="样本量多少才够，怎么知道改进是真的" a="【E1】评测的第一性原理是&quot;把模糊目标变成可比较、可复现、可定位的判断&quot;，所以它必须分层。指标分六层：业务结果 / 任务结果 / 过程（诊断价值最高）/ 工程 / 资源 / 安全——安全单独门禁，不参与平均，因为把它放进平均等于允许&quot;用高质量文案换一次越权&quot;（业务 80、任务 85、过程 70、工程 90、资源 75、安全 10 的平均分是 68.3，看起来&quot;刚及格&quot;）。数据集分五层：Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优——看多了就变成 Dev 了（真实案例：训练集打平、held-out 差 11.9 个点）。判分四级且顺序不能反：能确定性判断的不用模型 Judge（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。稳定性和能力要分开测：pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）——p=0.9 时 pass^5 只有 59%、pass^10 只有 34.9%；反过来，要求 pass^5 = 90% 意味着单次要做到 97.9%。最后，样本量决定分辨率：200 条约 ±2.1%，想论证&quot;改进了 2 个点&quot;需要约 900 条。&#10;&#10;展开：先破&quot;一个综合分&quot;（给 68.3 的例子）→ 指标六层（点明过程层是诊断价值最高的）→ 数据集五层与&quot;哪层能调优&quot; → pass@k vs pass^k（给衰减算式）→ grader 四级与顺序（给 19.7% vs 52.2%）→ 样本量与分辨率 → 评测集的审计 → 收束到&quot;分层才能定位&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">5</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">E1</span><button class="mv-qdone" data-k="评测观测与治理-q5" type="button">未掌握</button></div><flip-card card-id="评测观测与治理-q5" tag="评测观测与治理" q="LLM-as-a-Judge 有什么问题" a="【E1】评测的第一性原理是&quot;把模糊目标变成可比较、可复现、可定位的判断&quot;，所以它必须分层。指标分六层：业务结果 / 任务结果 / 过程（诊断价值最高）/ 工程 / 资源 / 安全——安全单独门禁，不参与平均，因为把它放进平均等于允许&quot;用高质量文案换一次越权&quot;（业务 80、任务 85、过程 70、工程 90、资源 75、安全 10 的平均分是 68.3，看起来&quot;刚及格&quot;）。数据集分五层：Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优——看多了就变成 Dev 了（真实案例：训练集打平、held-out 差 11.9 个点）。判分四级且顺序不能反：能确定性判断的不用模型 Judge（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。稳定性和能力要分开测：pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）——p=0.9 时 pass^5 只有 59%、pass^10 只有 34.9%；反过来，要求 pass^5 = 90% 意味着单次要做到 97.9%。最后，样本量决定分辨率：200 条约 ±2.1%，想论证&quot;改进了 2 个点&quot;需要约 900 条。&#10;&#10;展开：先破&quot;一个综合分&quot;（给 68.3 的例子）→ 指标六层（点明过程层是诊断价值最高的）→ 数据集五层与&quot;哪层能调优&quot; → pass@k vs pass^k（给衰减算式）→ grader 四级与顺序（给 19.7% vs 52.2%）→ 样本量与分辨率 → 评测集的审计 → 收束到&quot;分层才能定位&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">6</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">E1</span><button class="mv-qdone" data-k="评测观测与治理-q6" type="button">未掌握</button></div><flip-card card-id="评测观测与治理-q6" tag="评测观测与治理" q="为什么&quot;能确定性判断的不用模型 Judge&quot;" a="【E1】评测的第一性原理是&quot;把模糊目标变成可比较、可复现、可定位的判断&quot;，所以它必须分层。指标分六层：业务结果 / 任务结果 / 过程（诊断价值最高）/ 工程 / 资源 / 安全——安全单独门禁，不参与平均，因为把它放进平均等于允许&quot;用高质量文案换一次越权&quot;（业务 80、任务 85、过程 70、工程 90、资源 75、安全 10 的平均分是 68.3，看起来&quot;刚及格&quot;）。数据集分五层：Dev 可以反复看，Golden / Holdout / Adversarial / Online 不能拿来调优——看多了就变成 Dev 了（真实案例：训练集打平、held-out 差 11.9 个点）。判分四级且顺序不能反：能确定性判断的不用模型 Judge（10 项检查全用模型只有 19.7% 全对，60% 确定化后 52.2%）。稳定性和能力要分开测：pass@k 测能力上限（有一个能用的就行），pass^k 测稳定性（每次都要对）——p=0.9 时 pass^5 只有 59%、pass^10 只有 34.9%；反过来，要求 pass^5 = 90% 意味着单次要做到 97.9%。最后，样本量决定分辨率：200 条约 ±2.1%，想论证&quot;改进了 2 个点&quot;需要约 900 条。&#10;&#10;展开：先破&quot;一个综合分&quot;（给 68.3 的例子）→ 指标六层（点明过程层是诊断价值最高的）→ 数据集五层与&quot;哪层能调优&quot; → pass@k vs pass^k（给衰减算式）→ grader 四级与顺序（给 19.7% vs 52.2%）→ 样本量与分辨率 → 评测集的审计 → 收束到&quot;分层才能定位&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav next" href="评测观测与治理-02-怎么看见为什么.html">二 · 怎么看见为什么 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

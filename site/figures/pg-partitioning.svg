@@ -1,0 +1,50 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>分区的两类收益与它的硬限制</title>
+  <desc>顶部是三种分区方式：按值区间、按枚举集合、按哈希取模。中间对比两类收益：第一类是分区裁剪，五亿行按二十四个月分区后查一个月只扫约两千一百万行，但不带分区键的查询要扫全部二十四个分区、反而更慢，而且裁剪只由分区边界驱动、与索引无关。第二类是丢弃即归档：删两千一百万行会产生堆与每个索引各两千一百万个死元组，而摘掉一个分区是元数据操作、零死元组、几乎不写日志，还能挂回来。底部是硬限制：唯一约束的列必须包含所有分区键列，因为组成约束的独立索引只能在各自分区内强制唯一性，跨分区唯一性在分区结构里没有答案。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">分区的两类收益与它的硬限制</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">分区不是「把大表变小表」，是「把管理粒度变细」——收益全部来自「能只碰一部分」</text>
+
+  <!-- 三种方式 -->
+  <rect x="30" y="66" width="620" height="54" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">三种声明式分区</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">RANGE：值区间（时间、ID 段）　　LIST：枚举集合（租户、区域）　　HASH：哈希打散（没有天然分区键，只想摊开压力）</text>
+
+  <!-- 收益一：裁剪 -->
+  <path d="M30 132 L650 132" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="156" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">收益一：分区裁剪（规划器证明该分区不可能含有满足条件的行）</text>
+
+  <rect x="30" y="168" width="300" height="76" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">✓ 带分区键：只碰一个分区</text>
+  <text x="46" y="206" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">5 亿 ÷ 24 个月 ≈ 2100 万行</text>
+  <text x="46" y="224" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">→ 降到 1/24 ≈ 4.2%</text>
+  <text x="46" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">另：分区替代了索引上层节点，热分区索引更易常驻内存</text>
+
+  <rect x="350" y="168" width="300" height="76" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="188" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">✗ 不带分区键：反而更慢</text>
+  <text x="366" y="206" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">24 个分区【每个都要扫】+ 结果合并</text>
+  <text x="366" y="224" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 比不分区还慢</text>
+  <text x="366" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">且裁剪只由分区边界驱动，【与索引无关】</text>
+
+  <!-- 收益二：丢弃 -->
+  <path d="M30 258 L650 258" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="282" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">收益二：丢弃即归档（官方：完全避免了批量 DELETE 带来的 VACUUM 开销）</text>
+
+  <rect x="30" y="294" width="300" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="314" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">DELETE 掉一个月（2100 万行）</text>
+  <text x="46" y="332" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">堆：2100 万个死元组</text>
+  <text x="46" y="348" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">索引：3 个索引各 2100 万个死条目</text>
+  <text x="46" y="364" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 一起膨胀 + 一轮大清理 + 文件也不变小</text>
+
+  <rect x="350" y="294" width="300" height="72" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="366" y="314" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">DETACH / DROP 一个分区</text>
+  <text x="366" y="332" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">元数据操作，瞬时完成</text>
+  <text x="366" y="348" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">零死元组 · 零膨胀 · 几乎零 WAL</text>
+  <text x="366" y="364" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">DETACH 后可再挂回来（可回滚）；热表用 CONCURRENTLY</text>
+
+  <!-- 硬限制 -->
+  <path d="M30 382 L650 382" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <rect x="30" y="394" width="620" height="50" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="414" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">硬限制：唯一约束 / 主键的列必须包含【所有分区键列】</text>
+  <text x="46" y="432" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">原因：组成约束的独立索引只能在【各自分区内】强制唯一性——跨分区唯一性在分区结构里没有答案</text>
+</svg>

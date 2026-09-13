@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M14 · 主从复制与延迟</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M14 · 主从复制与延迟</h1>
+    <p class="mv-topic-meta">关联 母题-M11-三日志与两阶段提交（binlog 的来源与一致性保证）· 母题-M13-长事务为什么危险（大事务的另一层危害）· 母题-M15-数据增长治理（读写分离在五步里的位置）· 母题-P12-流复制与逻辑复制（PG 侧同构） ｜ 正本 wiki/topics/MySQL/母题-M14-主从复制与延迟.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 复制的是变更不是数据页 ② 延迟有三类来源，其中两类是结构性的 ③ "读到旧数据"该怎么答，以及为什么不能 sleep）· 读完约 12 分钟 · 需要先懂：[[母题-M11-三日志与两阶段提交]]（binlog）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">读写分离上线后，用户反馈"刚提交的数据看不到"。为什么？怎么解决？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：复制的是"变更"，不是数据页</h3>
+<figure-box num="主从复制：延迟从哪来，读到旧数据怎么办" title="" note="上半部分是复制三步与延迟的三个来源；下半部分是按优先级排的三层解法，以及为什么不能用 sleep"><svg viewBox="0 0 680 372" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>主从复制：延迟从哪来，读到旧数据怎么办</title>
+  <desc>上半部分画复制三步：主库提交时写 binlog，从库 IO 线程拉取写入 relay log，从库 SQL 线程重放。中间标出延迟的三个来源——回放并行度永远不超过主库、大事务必须整体重放、从库自身慢。下半部分是按优先级排的三层解法，以及为什么不能用 sleep。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">主从复制：延迟从哪来，读到旧数据怎么办</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">复制的是「变更」（binlog），不是数据页——所以「追不上」是结构性的，不是故障</text>
+
+  <!-- 复制三步 -->
+  <rect x="30" y="70" width="150" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="105" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">主库</text>
+  <text x="105" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">提交时写 binlog</text>
+
+  <path d="M182 92 L216 92" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figreplication-lag-svg-rp-ar)"/>
+
+  <rect x="220" y="70" width="160" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="300" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">从库 IO 线程</text>
+  <text x="300" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">拉 binlog → 写 relay log</text>
+
+  <path d="M382 92 L416 92" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figreplication-lag-svg-rp-ar)"/>
+
+  <rect x="420" y="70" width="160" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="500" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">从库 SQL 线程</text>
+  <text x="500" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">重放变更</text>
+
+  <text x="596" y="89" font-family="system-ui,sans-serif" font-size="10" fill="#633806">← 追不上</text>
+  <text x="596" y="105" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　就是在这里</text>
+
+  <!-- 延迟三源 -->
+  <text x="30" y="146" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">延迟的三个来源</text>
+
+  <rect x="30" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">① 回放并行度不足</text>
+  <text x="44" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">主库能多线程并发写，从库回放</text>
+  <text x="44" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">受「事务之间有没有冲突」限制——</text>
+  <text x="44" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">并行度永远 ≤ 主库</text>
+
+  <rect x="240" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="254" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">② 大事务</text>
+  <text x="254" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">一个事务在 binlog 里是一条记录，</text>
+  <text x="254" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">必须整体重放。主库跑 10 分钟，</text>
+  <text x="254" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">从库也要 10 分钟（期间不可见）</text>
+
+  <rect x="450" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="464" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">③ 从库自身慢</text>
+  <text x="464" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">机器更差；Row 格式下</text>
+  <text x="464" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">表没有主键 → 更新退化成全表扫</text>
+  <text x="464" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">（所以「每表都要有主键」是复制问题）</text>
+
+  <!-- 三层解法 -->
+  <path d="M30 254 L650 254" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="278" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">读到旧数据：三层解法（按优先级）</text>
+
+  <rect x="30" y="288" width="200" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="44" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">① 读己之写（回主库）</text>
+  <text x="44" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">刚提交就要展示的那次读</text>
+
+  <rect x="240" y="288" width="200" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="254" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">② 会话内粘主库</text>
+  <text x="254" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">写后 N 秒内的读都走主库</text>
+
+  <rect x="450" y="288" width="200" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="464" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">③ 延迟超阈值降级</text>
+  <text x="464" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">兜底，不是常规路径</text>
+
+  <text x="30" y="362" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">为什么不能 sleep：延迟是波动的，sleep 时长没有依据，而且把「正确性」建立在「猜测延迟足够小」上。</text>
+
+  <defs>
+    <marker id="figreplication-lag-svg-rp-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+  </defs>
+</svg>
+</figure-box>
+<pre class="mv-md-pre">主库：事务提交时写 binlog（两阶段提交保证 redo / binlog 一致，M11）
+        ↓
+从库 IO 线程：连主库拉 binlog，写入本地 relay log
+        ↓
+从库 SQL 线程：重放 relay log 里的变更</pre>
+<p class="mv-md-p">【推导】<strong>复制的对象是 binlog（变更流），不是数据页</strong>——这个前提直接推出一件事：</p>
+<p class="mv-md-p mv-md-quote"><strong>从库是"追赶者"，不是"镜像"。它必须把主库做过的事重做一遍。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以"追不上"是</strong>结构性的<strong>，不是故障。</strong> 只要主库的写入速度超过从库的重放速度，延迟就会累积。<strong>任何"让从库更实时"的手段，本质上都是在提高重放速度——而不是消除这个结构。</strong></p>
+<p class="mv-md-p"><strong>binlog 三种格式</strong>（M11 已展开，这里只串一遍）：<strong>Statement</strong>（记 SQL，省空间但非确定函数会主从漂移）/ <strong>Row</strong>（记每行前后镜像，精确但大）/ <strong>Mixed</strong>（自动切换）。<strong>现代生产主流是 Row</strong>（数据安全优先）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"从库应该很快"不是一个可以依赖的假设？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 延迟的三类来源</h3>
+<table class="mv-table"><thead><tr><th>#</th><th>来源</th><th>说明</th><th>是结构性的吗</th></tr></thead><tbody><tr><td><strong>① 回放并行度不足</strong></td><td>主库可以多线程并发写，从库回放受"事务之间有没有冲突"限制</td><td><strong>并行度永远 ≤ 主库</strong></td><td><strong>是</strong></td></tr><tr><td><strong>② 大事务</strong></td><td>一个事务在 binlog 里是<strong>一条记录，必须整体重放</strong></td><td>主库跑 10 分钟，从库也要 10 分钟，<strong>期间这个事务的变更对从库不可见</strong></td><td><strong>是</strong>（只要还有大事务）</td></tr><tr><td><strong>③ 从库自身慢</strong></td><td>机器差 / <strong>Row 格式下表没有主键，更新退化成全表扫</strong></td><td>靠"找到那一行"来应用</td><td>否（可修）</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">2.1 并行度为什么是瓶颈【推导】</h4>
+<pre class="mv-md-pre">主库写入 100,000 TPS
+按库并行：只有 4 个库 → 并行度 4
+  从库能力 = 4 × 25,000 = 100,000 TPS
+  → 刚好打平，任何波动都会落后
+
+按 WRITESET 并行（8.0）：并行度可到 32
+  从库能力 = 32 × 25,000 = 800,000 TPS
+  → 8 倍余量</pre>
+<p class="mv-md-p">【推论】<strong>"按库并行"的天花板就是库的数量。</strong> 所以从"按库"升级到"按 WRITESET"（行级判断冲突）不是为了更快，是<strong>为了把并行度从"库数"这个硬上限里解放出来</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 大事务的延迟能算出来【推导】</h4>
+<pre class="mv-md-pre">一个 100 万行的 UPDATE，主库跑 10 分钟（600 秒）
+  从库要整体重放 → 延迟 ≈ 600 秒
+
+拆成 1000 批（每批 1000 行，约 0.6 秒）
+  从库每批独立重放 → 延迟降到约 0.6 秒
+
+降到 1/1000</pre>
+<p class="mv-md-p">【推论】<strong>这正好是 [[母题-M13-长事务为什么危险]] "批量要分批"的另一个理由</strong>——同一个动作，同时治了锁持有、undo 峰值、主从延迟三个问题。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 无主键表的代价【推导】</h4>
+<pre class="mv-md-pre">一个 UPDATE 影响 1000 行，表 1000 万行（每页 16 行 → 62.5 万页）
+
+表有主键：按主键定位 1000 次，每次约 3 次 IO
+        = 3,000 次 IO
+
+表无主键（Row 格式）：每行都要全表扫才能找到
+        = 1000 × 62.5 万页 = 6.25 亿页读
+
+量级比 ≈ 20 万倍</pre>
+<p class="mv-md-p">【推论】<strong>"每张表都要有主键"不只是规范，是复制性能问题。</strong> 面试里能说出"无主键表在 Row 格式下会拖慢从库回放"，<strong>说明你真的理解复制在做什么</strong>（而不是背了三步流程）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么把从库换成更好的机器，只能治三类延迟里的一类？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 缓解手段</h3>
+<pre class="mv-md-pre">① 并行复制（按库 → 按事务 → 按 WRITESET）
+② 拆大事务（分批提交——M13 的公共答案）
+③ 表必须有主键
+④ 从库别用"淘汰的旧机器"
+⑤ 监控延迟指标，超阈值告警
+⑥ 半同步复制（semi-sync）：主库至少等一个从库收到 binlog</pre>
+<p class="mv-md-p">【取舍】<strong>注意 ⑥ 解决的不是延迟</strong>：<strong>半同步解决的是"主库挂了丢不丢"（RPO），不解决"从库读到旧数据"。</strong> <strong>这两件事经常被混为一谈</strong>——能主动分开说，是这道题的加分点。PG 侧对应的是 <code class="mv-md-code">synchronous_commit</code> / <code class="mv-md-code">synchronous_standby_names</code>（[[母题-P12-流复制与逻辑复制]]），同样是"用提交延迟换 RPO"。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"上了半同步"仍然可能读到旧数据？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 读到旧数据：三层解法（按优先级）【事实】</h3>
+<pre class="mv-md-pre">① 关键读回主库（读己之写）
+   用户提交后立刻展示的那次读（订单详情、提交结果页）必须读主库。
+   实现：写路径打标记，同会话/同用户的后续一次读路由到主库。
+
+② 会话内粘主库
+   "这个用户在这个会话里，写后 N 秒内的读都走主库"——比 ① 粒度粗，但实现简单。
+
+③ 延迟超阈值降级
+   延迟指标超过阈值时，读操作直接回主库（或降级响应）。
+   ——这是兜底，不是常规路径。</pre>
+<h4 class="mv-md-h mv-md-h4">4.1 为什么不能 sleep【推导】</h4>
+<pre class="mv-md-pre">① sleep 的时长没有依据——延迟是波动的，你不知道该睡多久
+② 它把【正确性】建立在【猜测延迟足够小】上
+③ 高峰期 sleep 完还是旧的——因为追赶速度本来就落后</pre>
+<p class="mv-md-p">【推论】<strong>这三条合起来说明：sleep 不是"简单方案"，是"把正确性交给运气"。</strong> 面试里主动说清这一点，比背出三层解法更能体现你想过。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 一个更根本的视角【取舍】</h4>
+<p class="mv-md-p"><strong>"读旧数据"很多时候不是复制的问题，是业务语义问题</strong>——<strong>"提交后立刻展示"这种读，本来就不该从副本读。</strong></p>
+<p class="mv-md-p">【推论】<strong>先把"哪些读必须强一致"定义清楚，再谈路由</strong>——<strong>这个顺序不能反</strong>。反过来做（先上读写分离，再到处打补丁）会得到一个到处都是例外的路由规则。数驭穹图里"新鲜度要求决定访问模式"就是这个思路的现成表达。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 什么时候才该上读写分离【取舍】</h3>
+<p class="mv-md-p"><strong>先问一句：读压力真的把主库打满了吗？</strong></p>
+<p class="mv-md-p">如果没有，<strong>先做索引与慢查询（[[母题-M7-慢查询与SQL优化手段]]）、缓存与预聚合</strong>——<strong>读写分离的代价是"必须处理延迟语义"，这个复杂度不是免费的</strong>（[[母题-M15-数据增长治理]] 的五步顺序里它排在第四）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"从库应该很快，延迟是异常"</td><td><strong>延迟是结构性的</strong>：复制的是变更流，从库必须重做一遍；<strong>并行度永远 ≤ 主库</strong>。所以"追不上"是常态，不是故障</td></tr><tr><td>"上了半同步就不会读到旧数据"</td><td><strong>半同步解决的是 RPO（主库挂了丢不丢），不是读一致性</strong>。它只保证"至少一个从库收到了 binlog"，<strong>不保证从库已经重放完</strong></td></tr><tr><td>"读到旧数据就 sleep 一下再读"</td><td><strong>三处错</strong>：延迟波动所以时长没依据；把正确性建立在猜测上；高峰期睡完还是旧的。<strong>正确做法是读己之写 / 会话粘主库 / 超阈值降级</strong></td></tr><tr><td>"表没主键只是规范问题"</td><td><strong>是复制性能问题</strong>：Row 格式下无主键的更新<strong>退化成全表扫</strong>，量级差到 20 万倍。这直接拖慢从库回放</td></tr><tr><td>"加从库能解决压力"</td><td><strong>只降读压力，写压力一点没降</strong>；而且<strong>主从同步本身消耗主库资源</strong>。写瓶颈要靠拆（分库分表）或异步化（消息队列）</td></tr><tr><td>"并行复制开了就能追上"</td><td>并行度受<strong>事务冲突</strong>限制（按库并行时受库数限制）。而且它只治"回放并行度不足"这一类，<strong>治不了大事务</strong>——大事务必须整体重放</td></tr><tr><td>"PT 的延迟数字很准"</td><td><code class="mv-md-code">Seconds_Behind_Master</code> <strong>不精确</strong>：主库空闲时它会归零（哪怕 binlog 还没传完），从库卡住时也可能不准。<strong>生产要配合 GTID 位点综合判断</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>复制是"至少存在延迟的"——所以"哪些读可以走从库"是业务决策，不是技术默认值。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M14-主从复制与延迟-q1" tag="MySQL" q="主库写入 100,000 TPS，单线程回放能力约 25,000 TPS。&#10;问：按库并行（4 个库）和按 WRITESET 并行（32 路）分别能提供多少回放能力？哪一种能追得上主库？" a="``text&#10;按库并行（并行度 = 库数 = 4）：&#10;回放能力 = 4 × 25,000 = 100,000 TPS&#10;→ 与主库【刚好打平】——没有任何余量，一旦有波动就落后&#10;按 WRITESET 并行（并行度 32）：&#10;回放能力 = 32 × 25,000 = 800,000 TPS&#10;→ 8 倍余量，能追&#10;``&#10;【结论】&quot;按库并行&quot;的天花板就是库的数量。 所以升级到&quot;按 WRITESET&quot;（行级判断事务冲突）不是为了更快，是为了把并行度从&quot;库数&quot;这个硬上限里解放出来。&#10;【补充】但并行度永远有上限：同一行的并发修改无法并行（必须按顺序重放）。所以&quot;主库在同一个热行上高频写&quot;这种负载，从库一定追不上——这不是并行度的问题，是重放语义的问题。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M14-主从复制与延迟-q2" tag="MySQL" q="一个批量任务要 UPDATE 100 万行，在主库上耗时 10 分钟。主从异步复制。&#10;问：这段时间里从库的延迟是多少？如果拆成 1000 批（每批 1000 行、约 0.6 秒），延迟变成多少？" a="``text&#10;单事务（一条 binlog 记录）：&#10;从库必须【整体重放】→ 重放耗时 ≈ 主库的 10 分钟&#10;延迟 ≈ 600 秒&#10;而且这 600 秒内，这个事务的全部变更对从库【都不可见】&#10;拆成 1000 批：&#10;每批在从库独立重放，约 0.6 秒&#10;延迟 ≈ 0.6 秒&#10;降到 1/1000&#10;``&#10;【结论】大事务的延迟不是&quot;按行累加&quot;，是&quot;整块不可见&quot;。 所以它比同等数据量的小事务严重得多——从库要么看到全部，要么什么都看不到。&#10;【补充】这正是 [[母题-M13-长事务为什么危险]] &quot;批量要分批&quot;的另一个理由：同一个动作（分批）同时治了锁持有、undo 峰值、主从延迟三件事。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M14-主从复制与延迟-q3" tag="MySQL" q="Row 格式下，一个 UPDATE 影响了 1000 行，表有 1000 万行（每页 16 行）。从库要&quot;找到这些行&quot;才能应用变更。&#10;问：表有主键和表没有主键，从库分别要做多少 IO？差多少倍？" a="``text&#10;表页数 = 1000万 ÷ 16 = 62.5 万页&#10;有主键：&#10;按主键定位 1000 次，每次约 3 次随机 IO&#10;= 3,000 次 IO&#10;没有主键（Row 格式退化成全表扫描）：&#10;每行都要扫全表才能找到&#10;= 1000 × 62.5 万页 = 6.25 亿次页读&#10;倍率 ≈ 6.25亿 ÷ 3,000 ≈ 20 万倍&#10;``&#10;【结论】&quot;每张表都要有主键&quot;不是规范洁癖，是复制性能问题。 一张无主键的大表上跑批量更新，会把从库回放直接拖死。&#10;【补充】这也是为什么 DBA 见到无主键表会如临大敌——它在主库上只是&quot;不够优雅&quot;，在从库上是灾难（[[母题-M5-引擎与表设计基本盘]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M14-主从复制与延迟-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们上了半同步复制，主库要等从库确认才提交，所以不会读到旧数据了。&quot;" a="把两个不同的问题混成了一个。&#10;半同步解决的是 RPO：主库至少等一个从库收到 binlog 才返回。它保证的是&quot;主库此时挂了，这条数据不会丢&quot;。&#10;它不解决读一致性：从库收到 binlog ≠ 已经重放完。SQL 线程可能还在追赶——所以从库上仍然可能读到旧数据。&#10;【准确说法】&quot;半同步是用提交延迟换 RPO，不是用来保证读一致性的。要解决'读到旧数据'，要靠读己之写 / 会话粘主库 / 延迟超阈值降级这套路由策略——两件事要分开说。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M14-主从复制与延迟-q5" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;读写分离后，从库读到旧数据，我们让前端 sleep 200 毫秒再重试一次就好了。&quot;" a="三处错。&#10;1. sleep 的时长没有依据：延迟是波动的，200ms 是从哪来的？高峰期它可能是 5 秒。&#10;2. 它把&quot;正确性&quot;建立在&quot;猜测延迟足够小&quot;上：这不是工程方案，是概率赌注。&#10;3. 高峰期 sleep 完还是旧的：因为追赶速度本来就落后（Q1 里按库并行刚好打平，任何波动都落后），睡再久也追不上累积的延迟。&#10;【准确说法】&quot;先定义清楚哪些读必须强一致，再按优先级做路由：① 读己之写（把刚写完就要展示的那次读路由回主库）② 会话内粘主库 ③ 延迟超阈值时整体降级回主库。sleep 是'把正确性交给运气'，不是解法。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">主从复制的原理是什么？延迟到底从哪来——换成&quot;更好的机器&quot;能解决吗？读到旧数据该怎么处理？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M14-主从复制与延迟" tag="MySQL" q="主从复制的原理是什么？延迟到底从哪来——换成&quot;更好的机器&quot;能解决吗？读到旧数据该怎么处理？" a="主库提交时写 binlog → 从库 IO 线程拉取并写入 relay log → 从库 SQL 线程重放。关键是复制的是&quot;变更流&quot;不是数据页，所以从库是追赶者，&quot;追不上&quot;是结构性的。延迟有三个来源：① 回放并行度永远 ≤ 主库（按库并行时天花板就是库数——4 个库 × 25,000 = 100,000 TPS，与主库刚好打平）；② 大事务必须整体重放（主库跑 10 分钟，从库也 10 分钟，期间变更对从库完全不可见）；③ 从库自身慢（Row 格式下无主键表退化成全表扫，量级差 20 万倍——所以&quot;每张表都要有主键&quot;是复制性能问题）。&quot;读到旧数据&quot;的三层解法按优先级：读己之写 → 会话粘主库 → 延迟超阈值降级；不能用 sleep（延迟波动、时长无依据、把正确性建立在猜测上）。注意半同步解决的是 RPO，不是读一致性——这两件事最常被混为一谈。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>读写分离是"数据增长"最常用的第一步</strong>，而它的<strong>第一个现实坑就是"从库不是绝对实时的"</strong>（原始素材原话）。<strong>这道题的难点不在背原理，而在延迟的三类来源能不能讲清、以及"读到旧数据"的解法为什么不能是"sleep 一下再读"。</strong> 它和 [[母题-P12-流复制与逻辑复制]] 是同构对照，<strong>也是数驭穹图接入层设计的直接背景</strong>。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>主库提交时写 binlog → 从库 IO 线程拉取并写入 relay log → 从库 SQL 线程重放</strong>。关键是<strong>复制的是"变更流"不是数据页</strong>，所以从库是追赶者，<strong>"追不上"是结构性的</strong>。延迟有三个来源：<strong>① 回放并行度永远 ≤ 主库</strong>（按库并行时天花板就是库数——4 个库 × 25,000 = 100,000 TPS，与主库刚好打平）；<strong>② 大事务必须整体重放</strong>（主库跑 10 分钟，从库也 10 分钟，<strong>期间变更对从库完全不可见</strong>）；<strong>③ 从库自身慢</strong>（Row 格式下<strong>无主键表退化成全表扫，量级差 20 万倍</strong>——所以"每张表都要有主键"是复制性能问题）。<strong>"读到旧数据"的三层解法按优先级</strong>：<strong>读己之写 → 会话粘主库 → 延迟超阈值降级</strong>；<strong>不能用 sleep</strong>（延迟波动、时长无依据、把正确性建立在猜测上）。注意<strong>半同步解决的是 RPO，不是读一致性</strong>——这两件事最常被混为一谈。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>binlog → relay log → 重放</li><li>复制的是变更不是数据页</li><li>从库是追赶者</li><li>并行度 ≤ 主库（按库并行的天花板 = 库数）</li><li>大事务整体重放、期间不可见</li><li>Row 格式无主键退化成全表扫（20 万倍）</li><li>并行复制按库→按事务→按 WRITESET</li><li>拆大事务</li><li>表必须有主键</li><li><strong>半同步 = RPO ≠ 读一致性</strong></li><li>读己之写 → 会话粘主库 → 超阈值降级</li><li>不要 sleep</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 靠 binlog（Server 层逻辑日志）+ IO/SQL 线程 + relay log；PG 靠 WAL 字节流（物理流复制）或 WAL 逻辑解码（逻辑复制）</strong>。<strong>MySQL 没有"进程模型连接贵"的问题；PG 没有 binlog 这个东西</strong>。<strong>「PG 用 binlog 做复制」是明确错误。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 Row 格式更安全但更大？</strong></strong></p>
+<p class="mv-md-p"><strong>Statement 记 SQL</strong>，遇到 <code class="mv-md-code">NOW()</code> / <code class="mv-md-code">UUID()</code> 这类非确定函数<strong>主从执行结果可能不同（主从漂移）</strong>；<strong>Row 记每行的前后镜像</strong>，重放绝对精确，<strong>但一条批量 UPDATE 会把每一行的变化都记下来，日志量暴涨</strong>。<strong>Mixed 是折中。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>读写分离之后，主库的压力真的降了吗？</strong></strong></p>
+<p class="mv-md-p"><strong>读压力降了，写压力一点没降</strong>；而且<strong>主从同步本身消耗主库资源</strong>。<strong>所以"加从库"解决的是读瓶颈，不是写瓶颈</strong>——写瓶颈要么靠拆（分库分表），要么靠异步化（消息队列）。</p>
+<p class="mv-md-p"><strong>3. <strong>延迟指标准吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不精确</strong>：它衡量的是"从库 SQL 线程处理到的位置与主库当前时间的差"，<strong>主库空闲时它会归零</strong>（哪怕 binlog 还没传完），从库卡住时也可能不准。<strong>生产要配合 GTID 位点综合判断。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>GTID 是什么？</strong></strong></p>
+<p class="mv-md-p"><strong>全局事务 ID</strong>，让从库定位"我回放到哪了"不再依赖文件名 + 偏移量，<strong>主从切换、搭建新从库都因此简单很多</strong>。知道作用即可。</p>
+<p class="mv-md-p"><strong>5. <strong>异步复制下主库挂了会丢数据吗？</strong></strong></p>
+<p class="mv-md-p"><strong>会</strong>。异步复制下主库提交不等从库确认；<strong>半同步能缓解（等至少一个从库收到）</strong>，代价是提交延迟变长。<strong>这是 [[母题-P12-流复制与逻辑复制]] "同步/异步取舍"的 MySQL 版。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「CDC 是怎么做的？」——本质上就是<strong>消费 binlog</strong>（数驭穹图的接入层就是这么干的）。<strong>理解"复制三步"是理解 CDC 的前提</strong>。</li><li>「读写分离的分库分表什么关系？」——<strong>读写分离解决读瓶颈，分库分表解决容量与写瓶颈</strong>。两者层次不同，<strong>不能互相替代</strong>（[[母题-M15-数据增长治理]]）。</li><li>「从库能不能当备份？」——<strong>不能替代备份</strong>。从库上的误操作（<code class="mv-md-code">DROP TABLE</code>）会照样同步过去；而且从库本身也可能故障。<strong>备份是另一条独立的链。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图的接入层</strong>（MySQL 源用 Binlog 做 CDC，PG 源用逻辑复制 / WAL）——<strong>本卡的"复制三步"是它的机制基础</strong>。 - <strong>EnergyOps 的报表查询</strong>（能容忍延迟才走副本——<strong>与 [[母题-P12-流复制与逻辑复制]] 的结论一致</strong>）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">复制三步 + "复制的是变更"这个前提 → 延迟三源（①②是结构性的）→ 缓解手段（并点明半同步治的不是这个）→ <strong>读到旧数据的三层解法 + 为什么不用 sleep</strong> → 什么时候才该上读写分离 → 收束到"延迟是结构性的"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>复制是"至少存在延迟的"，读写分离的正确性必须显式设计，不能靠"从库应该很快"。</strong> ——<strong>所以"哪些读可以走从库"是业务决策，不是技术默认值。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能画出复制三步并指出延迟的三类来源；<strong>能算出按库并行与 WRITESET 的回放能力差</strong>；<strong>能算出大事务的 600 秒延迟与分批后的 1/1000</strong>；<strong>能算出无主键表的 20 万倍代价</strong>；能给出"读到旧数据"的三层解法并解释为什么不用 sleep；能分清半同步（RPO）与读一致性；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

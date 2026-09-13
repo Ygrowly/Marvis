@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M3 · 聚簇索引与回表</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M3 · 聚簇索引与回表</h1>
+    <p class="mv-topic-meta">关联 母题-M1-为什么用B+树 · 母题-M2-联合索引与最左前缀 · 母题-M5-引擎与表设计基本盘 · 母题-P2-堆表与回表 ｜ 正本 wiki/topics/MySQL/母题-M3-聚簇索引与回表.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 索引组织表 vs 堆表 ② 回表为什么是随行数增长的 ③ 覆盖索引怎么看）· 读完约 10 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]、[[母题-M2-联合索引与最左前缀]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">同一条 SQL，有时加个索引就快 10 倍，有时加了没用。<code class="mv-md-code">EXPLAIN</code> 出来怎么看它到底走没走索引、慢在哪一步？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：一张表可以有两种存法</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 两种存法【事实】</h4>
+<p class="mv-md-p">这是理解回表之前必须先有的一张底图：</p>
+<table class="mv-table"><thead><tr><th>存法</th><th>表本身长什么样</th><th>代表</th></tr></thead><tbody><tr><td><strong>堆表</strong>（heap-organized）</td><td>一张<strong>无序的大堆</strong>，行按写入顺序堆放；所有索引都是"指向堆里某一行"的目录</td><td>PostgreSQL、Oracle</td></tr><tr><td><strong>索引组织表</strong>（index-organized）</td><td><strong>表本身就是一个 B+ 树</strong>，按主键排好；行就住在主键索引的叶子节点里</td><td>InnoDB</td></tr></tbody></table>
+<p class="mv-md-p"><strong>定义要说准</strong>：在索引组织表里，"主键索引"和"表"<strong>是同一个东西</strong>——不是两张数据结构，是一张。这就是"聚簇"（clustered）的含义：<strong>数据与主键索引聚集在一起。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 InnoDB 为什么选索引组织表【取舍】</h4>
+<p class="mv-md-p"><strong>换来的好处</strong>：</p>
+<ul class="mv-md-ul"><li><strong>按主键查一次就拿到整行</strong>——少一次查找。主键查询（<code class="mv-md-code">WHERE id = ?</code>）是后台系统里最高频的访问路径。</li><li>主键相邻的行<strong>物理相邻</strong>——按主键范围扫是顺序 IO，不是随机 IO。</li></ul>
+<p class="mv-md-p"><strong>付出的代价</strong>：</p>
+<ul class="mv-md-ul"><li><strong>主键不能随便选。</strong> 主键一变，整棵树的物理组织就变（见 [[母题-M5-引擎与表设计基本盘]] 的自增主键与页分裂）。</li><li><strong>所有二级索引都被"传染"。</strong> 二级索引必须带上主键（下一节讲），所以<strong>主键越宽，所有二级索引一起变胖</strong>。</li></ul>
+<p class="mv-md-p"><strong>结论一句话</strong>：InnoDB 用"<strong>每次主键查询省一次查找</strong>"换"<strong>主键长度影响全表所有索引</strong>"。这是个真实取舍，不是免费午餐。</p>
+<h3 class="mv-md-h mv-md-h3">2. 两种索引的叶子装什么</h3>
+<figure-box num="聚簇索引与二级索引的叶子节点对比" title="" note="聚簇索引叶子存完整一行；二级索引叶子只存索引列加主键，取别的列就要回表"><svg viewBox="0 0 680 302" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>聚簇索引与二级索引的叶子节点，以及回表</title>
+<desc>聚簇索引叶子存完整一行，二级索引叶子只存索引列加主键；取非索引列必须拿主键回聚簇索引再查一次，这叫回表。</desc>
+<defs>
+<marker id="figclustered-vs-secondary-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="34" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">同一张表，两种索引的叶子节点里装的东西不一样</text>
+<rect x="40" y="48" width="290" height="132" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="70" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">聚簇索引（主键）</text>
+<rect x="58" y="84" width="254" height="38" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="70" y="103" font-family="ui-monospace,monospace" font-size="11" fill="#412402" dominant-baseline="central">主键 ｜ status ｜ time ｜ priority ｜ …</text>
+<text x="58" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">叶子 = 完整的一行</text>
+<text x="58" y="162" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">一次查找就拿到整行</text>
+<rect x="350" y="48" width="290" height="132" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="368" y="70" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">二级索引 (status, time)</text>
+<rect x="368" y="84" width="254" height="38" rx="8" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="380" y="103" font-family="ui-monospace,monospace" font-size="11" fill="#2C2C2A" dominant-baseline="central">status ｜ time ｜ 主键 id</text>
+<text x="368" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">叶子 = 索引列 + 主键（主键必须带上）</text>
+<text x="368" y="162" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">查到的是 id，不是整行</text>
+<rect x="40" y="200" width="600" height="88" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="58" y="220" width="246" height="36" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="181" y="238" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">① 走二级索引定位，拿到 id</text>
+<path d="M310 238 L368 238" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#figclustered-vs-secondary-svg-arrow)"/>
+<rect x="376" y="220" width="246" height="36" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="499" y="238" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">② 拿 id 回聚簇索引取整行 ＝ 回表</text>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">命中 N 行 → N 次回表，每次都是一次 B+ 树查找 → 成本随命中行数线性增长</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">2.1 聚簇索引（主键索引）</h4>
+<pre class="mv-md-pre">叶子节点 = 完整的一行  (id, status, next_retry_time, priority, …)</pre>
+<p class="mv-md-p">所以 <code class="mv-md-code">WHERE id = 123</code> 是<strong>一次 B+ 树下降</strong>（M1 算过：约 3 层）就直接拿到整行。<strong>这也是"主键查询最快"的机制来源。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 二级索引（普通索引）</h4>
+<pre class="mv-md-pre">索引 (status, next_retry_time) 的叶子 = (status, next_retry_time, id)
+                                                          ↑ 主键必须带上</pre>
+<p class="mv-md-p">【推导】<strong>为什么必须带主键</strong>：索引项要能回答"这一项对应哪一行"。堆表里这个答案是"物理地址"；InnoDB 里没有独立物理地址，<strong>主键就是那行的地址</strong>。所以二级索引的叶子 = 索引列 + 主键。</p>
+<p class="mv-md-p"><strong>两个直接推论</strong>：</p>
+<p class="mv-md-p">1. <strong>主键越短，所有二级索引越小</strong>（见 3.3 的量化）。 2. <strong>二级索引天然包含主键列</strong>——所以 <code class="mv-md-code">SELECT id</code> 走二级索引时<strong>本来就不回表</strong>，这是白拿的。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 一个常被忽略的后果</h4>
+<p class="mv-md-p">一张表有 5 个二级索引时，<strong>主键被复制了 5 份</strong>（每个索引的叶子里都有一份）。</p>
+<p class="mv-md-p"><strong>所以"主键长度"这个选择的成本不是乘以 1，而是乘以"二级索引个数 + 1"。</strong> 这是 [[母题-M5-引擎与表设计基本盘]] "别用 UUID 当主键"这句话在存储层面的真实证据。</p>
+<h3 class="mv-md-h mv-md-h3">3. 回表：把它算出来，而不是当名词记住</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 定义</h4>
+<p class="mv-md-p"><strong>回表（back to table / row lookup）</strong>：用一个<strong>不包含所需列</strong>的二级索引定位到记录后，拿索引叶子里带的主键值，<strong>回到聚簇索引再查一次取出整行</strong>。</p>
+<p class="mv-md-p">关键：<strong>它是第二次独立的 B+ 树查找</strong>，不是"顺便读一下"。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 一次查询的完整成本拆解</h4>
+<pre class="mv-md-pre">-- 索引 (status, next_retry_time)，表里有 1000 万行
+SELECT id, status, next_retry_time, priority
+FROM task
+WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();   -- 命中约 1000 行</pre>
+<table class="mv-table"><thead><tr><th>步骤</th><th>成本</th></tr></thead><tbody><tr><td>① 定位</td><td>二级索引下降 ~3 层 ≈ 3 次 IO（前两层大概率在缓存）</td></tr><tr><td>② 扫索引项</td><td>1000 个索引项在叶子层连续排列 → 顺序读，几十次 IO</td></tr><tr><td>③ <strong>取 <code class="mv-md-code">priority</code></strong></td><td><strong>不在二级索引里 → 1000 次回表</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>步骤 ③ 是唯一随命中行数线性增长的项。</strong></p>
+<table class="mv-table"><thead><tr><th>命中行数</th><th>② 扫索引</th><th>③ 回表次数</th></tr></thead><tbody><tr><td>10</td><td>十几次</td><td>10</td></tr><tr><td>1000</td><td>几十次</td><td>1000</td></tr><tr><td>100 万</td><td>几百次（顺序）</td><td><strong>100 万</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>这就是"命中 1000 行比命中 10 行危险得多"的量化版本</strong>：树高始终是 3 层，但回表次数跟着行数走。</p>
+<h4 class="mv-md-h mv-md-h4">3.3 为什么回表贵——不只是"多几次 IO"</h4>
+<p class="mv-md-p">两个放大因素：</p>
+<p class="mv-md-p">1. <strong>它是随机 IO。</strong> ② 扫索引是顺序的（叶子连成链表，M1 讲过），但 ③ 要按主键值去树的<strong>任意位置</strong>取行——<strong>每一次都是一个独立位置</strong>。顺序 IO 有预读和块对齐的优惠，随机 IO 没有。 2. <strong>它破坏了 M2 好不容易挣来的收益。</strong> M2 的功夫都花在"把扫描量从 100 万压到 3.3 万"；如果每一条都要回表，<strong>省下来的扫描量就以另一张账单付回去了。</strong></p>
+<p class="mv-md-p">【推论】<strong>判断一条查询快不快，不能只看 <code class="mv-md-code">EXPLAIN</code> 里扫了多少行，还要看这些行有多少需要回表。</strong></p>
+<h3 class="mv-md-h mv-md-h3">4. 覆盖索引：让索引自己把答案答完</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 定义与判据</h4>
+<p class="mv-md-p"><strong>覆盖索引（covering index）</strong>：查询需要的<strong>所有列</strong>都出现在这条索引里（索引列 + 主键），因此<strong>不需要回表</strong>。</p>
+<pre class="mv-md-pre">-- 索引改成 (status, next_retry_time, priority)
+SELECT id, status, next_retry_time, priority   -- id 本来就在二级索引里
+FROM task
+WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();   -- 不再回表</pre>
+<p class="mv-md-p"><strong>判据只有一个</strong>：<code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">Extra</code> 里出现 <strong><code class="mv-md-code">Using index</code></strong>。</p>
+<p class="mv-md-p">【事实】<strong>这里有个容易混淆的点</strong>：<code class="mv-md-code">Using index</code> 表示"覆盖"，<code class="mv-md-code">key</code> 有值表示"走了索引"，两件事不同。<strong>走了索引 ≠ 不回表。</strong></p>
+<h4 class="mv-md-h mv-md-h4">4.2 代价（必须说全，否则会答成"能覆盖就覆盖"）</h4>
+<table class="mv-table"><thead><tr><th>代价</th><th>具体表现</th></tr></thead><tbody><tr><td><strong>索引变宽</strong></td><td>每多一列，叶子每条索引项都变长 → 每页装的项变少 → <strong>树可能多一层</strong>、缓存命中率下降</td></tr><tr><td><strong>写放大</strong></td><td>索引要跟着每次 <code class="mv-md-code">INSERT</code> / <code class="mv-md-code">UPDATE</code> 维护；列越多，写入越慢。<strong>更新被覆盖的列时，索引要改</strong></td></tr><tr><td><strong>优化器负担</strong></td><td>索引数量多，优化器的选择空间变大，选错计划的概率上升</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">4.3 什么时候值得</h4>
+<p class="mv-md-p">【取舍】<strong>判据是"读的频率 × 命中行数"是否显著大于"写的频率"。</strong></p>
+<ul class="mv-md-ul"><li><strong>值得</strong>：高频、窄、命中行数多的查询（列表页、报表、任务调度取批）——<strong>这里省下的是几千次回表</strong></li><li><strong>不值得</strong>：写多读少的表、命中行数极少（命中 3 行，回表 9 次 IO，无所谓）、或者只在夜间跑一次的分析查询</li></ul>
+<p class="mv-md-p"><strong>不要为了"看起来优化过"而给每张表加宽索引。</strong> 索引是欠写入的债。</p>
+<h3 class="mv-md-h mv-md-h3">5. <code class="mv-md-code">EXPLAIN</code> 只先看四个字段</h3>
+<table class="mv-table"><thead><tr><th>字段</th><th>看什么</th><th>信号</th></tr></thead><tbody><tr><td><code class="mv-md-code">type</code></td><td>访问类型</td><td>好 → 坏：<code class="mv-md-code">const</code> &gt; <code class="mv-md-code">eq_ref</code> &gt; <code class="mv-md-code">ref</code> &gt; <code class="mv-md-code">range</code> &gt; <code class="mv-md-code">index</code> &gt; <code class="mv-md-code">ALL</code>。<strong>出现 <code class="mv-md-code">ALL</code> 就是全表扫</strong></td></tr><tr><td><code class="mv-md-code">key</code></td><td>实际用了哪个索引</td><td><code class="mv-md-code">NULL</code> = 没走索引；和预期不符就看 <code class="mv-md-code">possible_keys</code></td></tr><tr><td><code class="mv-md-code">rows</code></td><td><strong>预估</strong>扫描行数</td><td>越小越好，但它是<strong>估算</strong>且<strong>不含回表成本</strong>（见 Q3）</td></tr><tr><td><code class="mv-md-code">Extra</code></td><td>额外动作</td><td><code class="mv-md-code">Using index</code> = 覆盖；<strong><code class="mv-md-code">Using filesort</code> / <code class="mv-md-code">Using temporary</code> 是明确的优化信号</strong></td></tr></tbody></table>
+<p class="mv-md-p">素材里那句话可以直接当口诀：<strong>出现 <code class="mv-md-code">Using filesort</code> 或 <code class="mv-md-code">Using temporary</code>，基本说明这条 SQL 还有优化空间。</strong></p>
+<p class="mv-md-p">【推导】<strong>这四个字段的阅读顺序是有逻辑的</strong>：<code class="mv-md-code">type</code> → 有没有走索引 → <code class="mv-md-code">key</code> → 走了哪条 → <code class="mv-md-code">rows</code> → 要扫多少 → <code class="mv-md-code">Extra</code> → 还要不要排序/临时表/回表。<strong>按这个顺序读，就不会看到 <code class="mv-md-code">ALL</code> 还在纠结 <code class="mv-md-code">Extra</code>。</strong></p>
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"加了索引就快"</td><td>【推导】索引只保证<strong>定位</strong>便宜。真实成本 = 扫描行数 + <strong>回表次数</strong>，后者可能才是大头</td></tr><tr><td>"树高 3 层所以很快"</td><td>【推导】树高对任何查询都一样，解释不了差异。差异在扫了多少行、回了多少次表</td></tr><tr><td>"<code class="mv-md-code">Extra</code> 里没有 <code class="mv-md-code">filesort</code> 就说明优化到位了"</td><td>【取舍】只能说明排序免掉了。回表次数和扫描行数可能仍然很差</td></tr><tr><td>"只要覆盖索引就免回表，所以越宽越好"</td><td>【取舍】索引变宽会让<strong>写入</strong>和<strong>所有其他查询</strong>一起变慢（见 4.2）</td></tr><tr><td>"PG 和 MySQL 一样，主键就是数据"</td><td>【事实】<strong>PG 是堆表</strong>，所有索引叶子存 <code class="mv-md-code">ctid</code>，<strong>都要回表</strong>；<code class="mv-md-code">CLUSTER</code> 只做一次性重排、不持久。见 [[母题-P2-堆表与回表]]</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M3-聚簇索引与回表-q1" tag="MySQL" q="一条查询命中 1000 行，需要的 priority 列不在二级索引里。请拆开算：「二级索引 + 回表」和「覆盖索引」的成本差在哪一步、差多少？" a="步骤 · 二级索引 + 回表 · 覆盖索引&#10;① 定位 · ~3 次 IO · ~3 次 IO&#10;② 扫 1000 个索引项 · 顺序读，约几十次 IO · 同样几十次&#10;③ 取 priority · 1000 次回表（每条一次 B+ 树查找，缓存不命中时每次约 3 次随机 IO） · 0&#10;差异全部在 ③，量级是 0 → 1000。 而且 ③ 是随机 IO、② 是顺序 IO——所以真实差距比&quot;1000 对 0&quot;还要大。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M3-聚簇索引与回表-q2" tag="MySQL" q="一张表有 5 个二级索引，主键从 BIGINT（8B）换成 UUID（36B）。二级索引的空间会怎么变？" a="每个二级索引的叶子都存主键 → 每条索引项多 28B。&#10;若某二级索引平均每条原本约 50B → 变成 78B，膨胀约 1.56 倍&#10;每页能装的索引项减少约 36% → 树可能多一层，且缓存能装下的索引页变少&#10;5 个二级索引全部受影响，不是只影响主键索引&#10;这就是&quot;别用 UUID 当主键&quot;的存储层证据——代价不在主键本身，在被复制的 5 份。&#10;【补充】这也解释了为什么 InnoDB 里更常见的折中是自增 BIGINT + 业务唯一键：把 UUID 放到普通唯一索引上，主键仍然保持窄。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M3-聚簇索引与回表-q3" tag="MySQL" q="EXPLAIN 显示 rows = 10，type = ref，但这条 SQL 实测很慢。可能是什么原因？" a="rows 只是预估的扫描行数，它有两个盲区：&#10;1. 它是估算值，来自统计信息；统计信息过期（比如刚批量导入）会严重低估。&#10;2. 它不含回表成本。 假设这 10 行每行都要回表，且回表的目标页都不在 Buffer Pool 里 → 10 × 3 = 约 30 次随机 IO。而同一次比较里，另一条扫 100 行的覆盖索引全程顺序读，可能只要十几次 IO——反而更快。&#10;所以&quot;rows 小就一定快&quot;不成立。 正确的读法是：rows × （是否回表）一起看。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M3-聚簇索引与回表-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;二级索引查到的是主键，再顺便去主键索引里读一下整行，成本不高。&quot;" a="&quot;顺便&quot;这个词错了。 回表是第二次独立的 B+ 树查找，不是&quot;顺路读一下&quot;：&#10;位置独立：按主键值去树的任意位置，每次都是随机 IO；而扫二级索引是顺序的。&#10;次数随行数增长：命中 N 行就是 N 次查找。这是整条查询里唯一随数据量放大的项。&#10;准确说法：回表是&quot;每条命中行各付一次随机 B+ 树查找&quot;，成本随命中行数线性增长。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M3-聚簇索引与回表-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 的主键索引也是聚簇的，主键就是数据本身，所以和 InnoDB 一样按主键查最快。&quot;" a="前半句错了。PG 是堆表，没有聚簇索引。 在 PG 里：&#10;表是一堆无序的行，所有索引（包括主键索引）叶子都存 ctid（物理位置），都要回表&#10;CLUSTER 命令能按某个索引重排一次数据，但这是一次性操作、不会持久——后续写入又变回无序&#10;所以准确的对比是：InnoDB 用&quot;索引组织表&quot;让主键查询少一次回表；PG 用&quot;堆表&quot;换取更新时不必移动整棵树（行在原地改，索引只更新 ctid 指向）。&#10;说成&quot;PG 也有聚簇索引&quot;是典型的把 MySQL 语义套到 PG 上——面试里这句会被直接抓住。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M3-聚簇索引与回表" tag="MySQL" q="聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？" a="InnoDB 是索引组织表——主键索引的叶子就是整行数据，二级索引的叶子只是「索引列 + 主键」。所以&quot;先用二级索引、再取非索引列&quot;要付出两次 B+ 树查找的代价，这就是回表；它随命中行数线性增长，且是随机 IO。覆盖索引把需要的列全放进索引里，让第二次查找消失（Extra 出现 Using index）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">InnoDB 是<strong>索引组织表</strong>——主键索引的叶子就是整行数据，二级索引的叶子只是「索引列 + 主键」。所以"先用二级索引、再取非索引列"要付出<strong>两次 B+ 树查找</strong>的代价，这就是<strong>回表</strong>；它随命中行数线性增长，且是随机 IO。<strong>覆盖索引把需要的列全放进索引里，让第二次查找消失</strong>（<code class="mv-md-code">Extra</code> 出现 <code class="mv-md-code">Using index</code>）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>索引组织表 vs 堆表</li><li>主键即数据</li><li>二级索引叶子 = 索引列 + 主键</li><li>主键被复制 N+1 份</li><li>回表 = 第二次查找、随行数增长、随机 IO</li><li>覆盖索引 = 免掉第二次</li><li>代价是写放大</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>这条最该记牢</strong>——PG 是堆表，<strong>所有索引都是二级索引、都要回表</strong>，没有"按主键查只要一次"这回事（PG 的 Index Only Scan 依赖 visibility map，见 [[母题-P2-堆表与回表]]）。<strong>面试时把 InnoDB 的聚簇语义套到 PG 上，是最容易被抓的方言错误。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然覆盖索引能免回表，为什么不全表都建宽索引？</strong></strong></p>
+<p class="mv-md-p">索引是<strong>欠写入的债</strong>：越宽，每次 <code class="mv-md-code">INSERT</code>/<code class="mv-md-code">UPDATE</code> 维护成本越高、页里能装的项越少、树还可能多一层。而且索引多了会干扰优化器的选择。<strong>覆盖是给热点查询的，不是给全表的。</strong></p>
+<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">rows</code> 很小就一定快吗？</strong></strong></p>
+<p class="mv-md-p">不一定。它是<strong>估算值</strong>，且<strong>不含回表成本</strong>。扫 10 行的回表可能比扫 100 行的覆盖索引还慢。</p>
+<p class="mv-md-p"><strong>3. <strong><code class="mv-md-code">SELECT *</code> 为什么在 InnoDB 里代价更高？</strong></strong></p>
+<p class="mv-md-p">它几乎必然需要回表（<code class="mv-md-code">*</code> 里的列不可能全在一条二级索引里），而且<strong>不可能被覆盖</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么建议自增主键而不是 UUID？</strong></strong></p>
+<p class="mv-md-p">两个层面：① <strong>写入</strong>层面，随机主键导致页分裂（见 [[母题-M5-引擎与表设计基本盘]]）；② <strong>存储</strong>层面，36B 主键被复制进<strong>每一个</strong>二级索引。<strong>第二点比第一点更常被忽略。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>索引下推（ICP）和覆盖索引的区别？（ICP 减少<strong>回表次数</strong>，覆盖索引<strong>免掉回表</strong>）</li><li>为什么 <code class="mv-md-code">ORDER BY id</code> 在 InnoDB 里几乎免费，PG 里不一定？（InnoDB 数据按主键物理有序，PG 堆表无序）</li><li>二级索引能不能反向遍历？（能。B+ 树叶子是双向链表，M1 讲过为什么是双向）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 四层事实表那条"20 多秒"的链路——<strong>优化顺序里"先修范围与 JOIN、再建联合索引、最后才上缓存"</strong>（见 projects/EnergyOps 第 3 篇），本质就是在按 M2（扫描量）与 M3（回表次数）依次处理。数驭穹图的元数据检索同理。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">索引组织表 vs 堆表（为什么 InnoDB 这么选）→ 两种索引的叶子装什么 → 二级索引为什么要带主键 → 回表的成本拆解（定位 / 扫描 / 回表三段，只有第三段随行数增长、且是随机 IO）→ 覆盖索引免掉它（<code class="mv-md-code">Using index</code>）与它的代价（写放大、索引变宽）→ <code class="mv-md-code">EXPLAIN</code> 四字段的阅读顺序 → 方言（PG 是堆表）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>InnoDB 把"表"和"主键索引"合成了一份数据结构。</strong> 好处是按主键查只需一次下降；代价是<strong>主键出现在每一个二级索引里</strong>，于是"主键怎么选"变成了全表级的成本问题，而"取不在索引里的列"变成了一次额外查找。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：对一条真实 SQL 说清「它会不会回表、为什么、要不要做覆盖」，并在 <code class="mv-md-code">EXPLAIN</code> 里指出证据（<code class="mv-md-code">Using index</code> / <code class="mv-md-code">type</code> / <code class="mv-md-code">rows</code>），<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

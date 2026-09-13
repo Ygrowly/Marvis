@@ -1,0 +1,27 @@
+<svg viewBox="0 0 680 312" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>联合索引的字典序与最左前缀</title>
+<desc>索引 (status, next_retry_time) 按字典序排成一条线；status 等值切出一个连续区间，单独用 next_retry_time 找不到连续区间。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="34" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">索引 (status, next_retry_time) 的叶子层 —— 按字典序排成一条线</text>
+<rect x="40" y="50" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="140" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">status = 'PENDING'</text>
+<text x="140" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<rect x="240" y="50" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="340" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">status = 'RUNNING'</text>
+<text x="340" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<rect x="440" y="50" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="540" y="72" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">status = 'DONE'</text>
+<text x="540" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">段内 time 递增</text>
+<path d="M46 122 L234 122" stroke="#BA7517" stroke-width="1.5" fill="none" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="140" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">status = 'PENDING' 命中一个连续区间，扫完就能停</text>
+<path d="M40 172 L640 172" stroke="#A32D2D" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+<text x="40" y="192" font-family="system-ui,sans-serif" font-size="12" fill="#501313" dominant-baseline="central">单独用 next_retry_time 范围查：每段内部有序，段与段之间无序 → 找不到一个连续区间</text>
+<rect x="40" y="214" width="600" height="78" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="60" y="238" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">最左前缀不是一条规则，是「有序区间必须连续」的后果</text>
+<text x="60" y="260" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">按 (a, b) 排好序后：a 的等值条件切出一个连续段，段内 b 有序 → 两个条件都省 IO</text>
+<text x="60" y="280" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">只用 b：每个 a 段里各有一段，段之间不连续 → 只能逐段扫，等于没省</text>
+</svg>

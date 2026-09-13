@@ -1,0 +1,64 @@
+<svg viewBox="0 0 680 428" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>四种行锁的冲突矩阵与选档位的收益</title>
+  <desc>顶部是四种行锁的冲突矩阵：键共享锁只与更新排他锁冲突，共享锁与不更新键的排他锁也冲突，更新排他锁与所有档位都冲突。中间说明两件事：普通更新拿的是不更新键的排他锁，但如果改的列上有可用于外键的唯一索引就会升级成更新排他锁；外键检查用的是最弱的键共享锁，所以子表插入通常不会被被引用行的普通更新挡住。底部对比等待行为：PostgreSQL 默认无限期等待冲突锁释放，只有死锁检测会在一秒后介入；MySQL 则有五十秒的锁等待超时。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">四种行锁的冲突矩阵与选档位的收益</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">PG 没有间隙锁——它把「锁多强」做成四档可选，选对能直接换回吞吐，选错要么挡不住、要么挡太多</text>
+
+  <!-- 冲突矩阵 -->
+  <rect x="30" y="66" width="620" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">冲突矩阵（官方表 13.3）：✗ = 冲突，空白 = 可共存</text>
+
+  <text x="330" y="110" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#6B6A65">已持有 →</text>
+
+  <text x="46" y="132" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#6B6A65">请求 ↓</text>
+  <text x="326" y="132" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">KEY SHARE</text>
+  <text x="410" y="132" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">SHARE</text>
+  <text x="476" y="132" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">NO KEY UPDATE</text>
+  <text x="578" y="132" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">UPDATE</text>
+
+  <text x="46" y="152" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A">FOR KEY SHARE</text>
+  <text x="346" y="152" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+
+  <text x="46" y="170" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A">FOR SHARE</text>
+  <text x="430" y="170" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="598" y="170" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A">FOR NO KEY UPDATE</text>
+  <text x="430" y="188" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="504" y="188" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="598" y="188" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+
+  <text x="46" y="206" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">FOR UPDATE</text>
+  <text x="346" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="430" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="504" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+  <text x="598" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">✗</text>
+
+  <text x="330" y="222" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">← 只有它和一切都冲突</text>
+
+  <!-- 两档位的实际归属 -->
+  <path d="M30 208 L650 208" stroke="#D8D5CC" stroke-width="1" fill="none" opacity="0"/>
+  <path d="M30 232 L650 232" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="256" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">你写的 SQL 实际拿的是哪一档</text>
+
+  <rect x="30" y="268" width="300" height="70" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="288" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">普通 UPDATE（改普通字段）</text>
+  <text x="46" y="306" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→ FOR NO KEY UPDATE（弱档）</text>
+  <text x="46" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">✓ 不阻塞子表插入的 FOR KEY SHARE 检查</text>
+
+  <rect x="350" y="268" width="300" height="70" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="288" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">UPDATE 改【有可用外键的唯一索引】的列</text>
+  <text x="366" y="306" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">→ 升级为 FOR UPDATE（强档）</text>
+  <text x="366" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">✗ 阻塞子表插入 —— 阻塞占比 0% → 50%</text>
+
+  <!-- 无限等锁 -->
+  <path d="M30 352 L650 352" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="376" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">等不到锁会怎样：PG 与 MySQL 完全不同</text>
+
+  <rect x="30" y="388" width="300" height="34" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="409" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">PG：<tspan font-weight="600">默认无限期等待</tspan>——死锁检测 1 秒后才介入</text>
+
+  <rect x="350" y="388" width="300" height="34" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="409" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">MySQL：innodb_lock_wait_timeout 默认 50 秒后报错</text>
+</svg>

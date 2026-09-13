@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 E4 · 成本控制与限流</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/评测观测与治理.html">← 评测观测与治理 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">评测观测与治理</span>
+    <h1 class="mv-topic-title">母题 E4 · 成本控制与限流</h1>
+    <p class="mv-topic-meta">关联 母题-C6-成本与长上下文截断（四类价钱与降本顺序）· 母题-C5-模型选型与降级三角（降级是最大的一次 prompt 变更）· 母题-A1-计划执行循环与停止条件（预算是七种不是一种）· 母题-E6-灰度发布与回滚（降级与回滚的分工） ｜ 正本 wiki/topics/评测观测与治理/母题-E4-成本控制与限流.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 成本要先归因再动手 ② 限流要分四层放 ③ 降级不是"换个模型名"）· 读完约 11 分钟 · 需要先懂：[[母题-C6-成本与长上下文截断]]、[[母题-A1-计划执行循环与停止条件]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们怎么控成本？如果账单翻倍了你怎么查？限流限在哪里？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：成本要先归因，再动手</h3>
+<figure-box num="限流要分四层放，降级要按「保什么」设计" title="" note="四个限流位置、三级降级链路；底部是成本归因的顺序：先动大头"><svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>限流要分四层放，降级要按「保什么」设计</title>
+  <desc>上面是限流的四个位置：入口处限总量、按租户限公平、按工具限外部依赖、按模型限最贵的资源。只在入口限流，一个租户的突发就能打满下游；只在最贵的资源限流，错误暴露得太晚。下面是降级链路：主模型不可用时切到备用配置，把「不可用」换成「质量下降」，而这个交换是否可接受取决于业务。底部是成本归因的顺序——先动大头。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">限流要分四层放，降级要按「保什么」设计</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">限流保护的不是「系统」，是「某一条具体的资源」——位置放错，保护的就是错的东西</text>
+
+  <!-- 四层限流 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 限流的四个位置</text>
+
+  <rect x="30" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="103" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">入口 · 总量</text>
+  <text x="103" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">防整体过载</text>
+  <text x="103" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">最早、最粗</text>
+
+  <rect x="188" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="261" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">租户 · 公平</text>
+  <text x="261" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">防单租户打满</text>
+  <text x="261" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">否则入口限流形同虚设</text>
+
+  <rect x="346" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="419" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">工具 · 外部</text>
+  <text x="419" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">保护第三方配额</text>
+  <text x="419" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">（超了会被对方限）</text>
+
+  <rect x="504" y="88" width="146" height="60" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="577" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">模型 · 成本</text>
+  <text x="577" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">RPM / TPM 与预算</text>
+  <text x="577" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">最贵、也最容易失控</text>
+
+  <!-- 降级 -->
+  <path d="M30 172 L650 172" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="196" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 降级链路：把「不可用」换成「质量下降」</text>
+
+  <rect x="30" y="208" width="180" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="120" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">主配置（贵、准）</text>
+  <text x="120" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">限流 / 超时 / 故障</text>
+
+  <path d="M212 231 L252 231" stroke="#BA7517" stroke-width="1.4" fill="none" marker-end="url(#figcost-and-limit-svg-el-ar)"/>
+
+  <rect x="256" y="208" width="180" height="46" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="346" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">备用配置（已验证）</text>
+  <text x="346" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">不是「顺手切一个」</text>
+
+  <path d="M438 231 L478 231" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#figcost-and-limit-svg-el-ar2)"/>
+
+  <rect x="482" y="208" width="168" height="46" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="566" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">仍不可用</text>
+  <text x="566" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">排队 / 降级答复 / 拒绝</text>
+
+  <!-- 底部 -->
+  <path d="M30 274 L650 274" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="296" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">成本要先归因再动手：模型输入 60% · 模型输出 20% · 工具 15% · 存储 5%</text>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">砍工具最多省 15%；而把输入那 60% 里的缓存命中率做到 80%，能省 60% × 80% × 90% ≈ <tspan font-weight="600">43%</tspan>。</text>
+  <text x="30" y="338" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以顺序是：<tspan font-weight="600">先动大头，先做无损的</tspan>——提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 调档位（换质量）。</text>
+
+  <defs>
+    <marker id="figcost-and-limit-svg-el-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/></marker>
+    <marker id="figcost-and-limit-svg-el-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/></marker>
+  </defs>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>假设一个 Agent 系统的日成本构成是</strong>：</p>
+<pre class="mv-md-pre">模型输入     60%
+模型输出     20%
+工具调用     15%
+存储         5%</pre>
+<p class="mv-md-p">【推导】<strong>算一下"先动哪一刀"</strong>：</p>
+<pre class="mv-md-pre">先砍工具（占 15%）：
+  最多省 15%
+
+先提缓存命中率（作用于输入的 60%）：
+  假设输入里 80% 是可缓存的稳定前缀
+  命中后按 0.1× 计价（[[母题-C6-成本与长上下文截断]]）
+  省下 = 60% × 80% × 90% ≈ 43%</pre>
+<p class="mv-md-p">【结论】<strong>两个动作的收益差约 3 倍</strong>——<strong>而"砍工具"还会损失能力，"提命中率"是无损的。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以顺序是"先动大头，先做无损的"</strong>（[[母题-C6-成本与长上下文截断]] 的降本四层）：</p>
+<pre class="mv-md-pre">① 提缓存命中率   —— 无损，量级最大
+② 去 prompt 拐杖 —— 双赢（同时提质）
+③ 压缩 / 少放    —— 有损，要留指针
+④ 调 effort / 换模型 —— 换质量，要 held-out 验证</pre>
+<p class="mv-md-p">【取舍】<strong>"账单翻倍了怎么查"的正确回答是"先归因"</strong>：</p>
+<pre class="mv-md-pre">按【功能 / 租户 / 任务类型 / 模型 / 环节】拆开成本
+→ 定位到"是哪一类请求涨了"还是"单次成本涨了"
+→ 前者是流量问题，后者是效率问题 —— 【两件事的解法完全不同】</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们做了缓存和压缩"这句话，不能回答"账单为什么翻倍"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 限流要分四层放【推导】</h3>
+<p class="mv-md-p">【推导】<strong>只在入口限流的漏洞</strong>：</p>
+<pre class="mv-md-pre">入口限流 1000 QPS —— 看似保护了系统
+但一个租户可以占满这 1000 QPS
+  → 其他租户全部被拒
+  → 【入口限流保护了系统，但没有保护公平】
+
+而且 Agent 的一个请求可能触发几十次模型调用与工具调用
+  → 1000 QPS 的入口流量，下游可能是 30,000 QPS
+  → 【入口限流根本保护不了最贵的那个资源】</pre>
+<p class="mv-md-p">【事实】<strong>四个位置，各保护一样东西</strong>：</p>
+<table class="mv-table"><thead><tr><th>位置</th><th>保护什么</th><th>放太后面的后果</th></tr></thead><tbody><tr><td><strong>入口 · 总量</strong></td><td>整体不过载</td><td>—— （最早、最粗）</td></tr><tr><td><strong>租户 / 用户 · 公平</strong></td><td>防单租户打满</td><td>没有它 → 入口限流对其他租户无意义</td></tr><tr><td><strong>工具 · 外部依赖</strong></td><td>第三方配额（会被对方限）</td><td>没有它 → 被对方限流时错误暴露得晚</td></tr><tr><td><strong>模型 · RPM / TPM 与预算</strong></td><td><strong>最贵、最容易失控的资源</strong></td><td>没有它 → 成本失控（[[母题-A1-计划执行循环与停止条件]] 的七种预算）</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>"限流"这个动作的本质是"保护某一条具体的资源"</strong>——<strong>所以要先问"我在保护什么"，再决定限流放哪</strong>。<strong>放错了位置，保护的就是错的东西。</strong></p>
+<p class="mv-md-p">【事实】<strong>超限之后不只是"拒绝"</strong>（这一点最容易被漏掉）：</p>
+<pre class="mv-md-pre">① 排队（有界的等待 —— 无界排队等于把过载变成超时）
+② 降级（切到备用配置 / 更小的模型）
+③ 拒绝（快速失败，并给出可行动的错误）</pre>
+<p class="mv-md-p">【推论】<strong>"无界排队"是最差的处理</strong>——<strong>它把"立刻被拒"变成了"等 30 秒后被拒"</strong>，<strong>而等待期间连接、内存都被占着</strong>（[[母题-M4-索引代价与大表变更]] 的 MDL 连锁是同一个形状）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们在网关做了限流"这句话，对 Agent 系统来说远远不够？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 降级：把"不可用"换成"质量下降"【推导】</h3>
+<p class="mv-md-p">【事实】<strong>三级降级链路</strong>：</p>
+<pre class="mv-md-pre">主配置（贵、准）
+   ↓ 限流 / 超时 / 故障
+备用配置（已验证）
+   ↓ 仍不可用
+排队 / 降级答复 / 拒绝</pre>
+<p class="mv-md-p">【推导】<strong>算一下降级的收益</strong>：</p>
+<pre class="mv-md-pre">某服务主配置的可用性是 99%
+每天 1,000 个请求 → 约 10 个失败
+
+加降级链路后，可用性提到 99.9%
+→ 约 1 个失败，另外 9 个变成"质量下降的结果"</pre>
+<p class="mv-md-p">【取舍】<strong>这笔交换是否划算，取决于业务</strong>：</p>
+<pre class="mv-md-pre">能接受"质量降一点但一定有结果"  → 降级是对的
+宁可失败也不能给错的结果        → 【不该降级，该拒绝】</pre>
+<p class="mv-md-p">【推论】<strong>所以"降级"不是一个技术默认值，是一次业务决策</strong>——<strong>面试里能说出"要看业务能不能接受质量下降"，比说"我们有降级链路"更像设计过。</strong></p>
+<p class="mv-md-p">【事实】<strong>一条硬要求</strong>（[[母题-C5-模型选型与降级三角]]）：<strong>备用配置必须是"已经用你自己的评测验证过的"，不是"顺手切一个"。</strong></p>
+<p class="mv-md-p">【推论】<strong>理由</strong>：<strong>换模型是最大的一次 prompt 变更</strong>——<strong>旧 prompt 是针对旧模型写的</strong>（[[母题-C3-Prompt版本管理与回归]]）。<strong>"顺手切一个"的结果是"可用性上去了、质量掉得比预期多"，而且你测不出来。</strong></p>
+<p class="mv-md-p">【事实】<strong>还有一条容易被漏掉</strong>：<strong>降级本身必须可观测</strong>——<strong>不知道自己在降级，比降级本身更危险</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们有降级"这句话，必须先回答"降级后质量底线是什么"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 成本归因的四个维度【事实】</h3>
+<p class="mv-md-p">【推导】<strong>"账单翻倍"要先答一个问题：是"量"涨了还是"单价"涨了</strong>：</p>
+<pre class="mv-md-pre">量涨了：流量上升 / 重试变多 / 步数变多 / 上下文变长
+单价涨了：换了更贵的模型 / 缓存命中率下降 / effort 调高了 / 输出变长</pre>
+<p class="mv-md-p">【事实】<strong>四个归因维度</strong>：</p>
+<table class="mv-table"><thead><tr><th>维度</th><th>拆开看什么</th><th>典型发现</th></tr></thead><tbody><tr><td><strong>功能 / 链路</strong></td><td>哪个功能花的钱</td><td>某个实验性功能占了 40% 预算</td></tr><tr><td><strong>租户 / 用户</strong></td><td>谁花得多</td><td>一个租户的重试风暴</td></tr><tr><td><strong>任务类型</strong></td><td>哪类任务贵</td><td>长任务 vs 短问答差一个数量级</td></tr><tr><td><strong>环节</strong></td><td>输入 / 输出 / 工具 / 缓存</td><td><strong>输入往往是大头，而它最容易被缓存优化</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>"环节"这一维最重要</strong>——<strong>因为它直接对应"该动哪一刀"</strong>：</p>
+<pre class="mv-md-pre">输入占大头    → 提缓存命中率（无损、量级大）
+输出占大头    → 收输出 / 调 effort（换质量）
+工具占大头    → 合并工具调用（[[母题-A2-工具调用与MCP边界]] 的 consolidation）
+存储占大头    → 降采样 / 缩短保留期（[[母题-E2-Trace与可观测性]] 的采样策略）</pre>
+<p class="mv-md-p">【推论】<strong>这就是"先归因再动手"的具体形态</strong>——<strong>没有归因，你只能凭"哪个词听起来更有道理"来选择动作。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"成本优化"这件事，第一步不是"上手段"而是"拆账单"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"我们加了缓存、压缩、换了小模型"</td><td><strong>这是清单，不是方法</strong>。<strong>要先归因</strong>：账单涨了是"量涨了"还是"单价涨了"？<strong>拆到"输入 / 输出 / 工具 / 存储"才对应得上动作</strong>——<strong>先动大头、先做无损的</strong>（提命中率 ≈ 43% vs 砍工具 15%）</td></tr><tr><td>"限流在网关做就够了"</td><td><strong>入口限流只保护整体不过载</strong>。<strong>一个租户就能占满入口配额</strong>（所以要有租户级）；<strong>而 Agent 一个请求会触发几十次下游调用</strong>（所以要有工具级与模型级）。<strong>四个位置各保护一样东西</strong></td></tr><tr><td>"超限就排队，排到就好了"</td><td><strong>无界排队是最差的处理</strong>——<strong>它把"立刻被拒"变成"等 30 秒后被拒"，而等待期间连接和内存都被占着</strong>。<strong>排队必须有界</strong>，超了要走降级或拒绝</td></tr><tr><td>"降级就是把模型换小的"</td><td><strong>不是"换模型名"，是"换一组已经用你的评测验证过的配置"</strong>——<strong>因为换模型是最大的一次 prompt 变更</strong>（旧 prompt 是针对旧模型写的）。<strong>"顺手切一个"会让可用性上去了、质量掉得比预期多，而且你测不出来</strong></td></tr><tr><td>"降级了但没人知道"</td><td><strong>降级本身必须可观测</strong>——<strong>"不知道自己在降级，比降级本身更危险"</strong>（[[母题-C5-模型选型与降级三角]]）。<strong>要有触发条件打点 + 质量底线告警</strong></td></tr><tr><td>"成本优化就是把贵的地方调便宜"</td><td><strong>贵 ≠ 该动</strong>。<strong>要看"边际收益"</strong>：<strong>输入占 60% 且可缓存 → 动它省 43%；工具占 15% → 动它最多省 15% 还损失能力</strong>。<strong>先动大头、先做无损的</strong></td></tr><tr><td>"降级总是比失败好"</td><td><strong>不一定</strong>。<strong>能接受"质量降一点但一定有结果" → 降级对；宁可失败也不能给错结果 → 该拒绝。</strong>（[[母题-C4-幻觉的成因与可控性]] 的"错误 vs 弃答分开定价"在这里再次成立）</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>成本控制的第一性原理是"先归因、再动手、先动大头、先做无损的"；而限流的本质是"保护某一条具体资源"——所以它必须分四层放。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="评测观测与治理/母题-E4-成本控制与限流-q1" tag="评测观测与治理" q="某 Agent 系统的日成本构成：模型输入 60%、模型输出 20%、工具调用 15%、存储 5%。模型 Opus 5，缓存读价 0.1×。&#10;问：&quot;砍掉一半工具调用&quot;和&quot;把输入的缓存命中率做到 80%&quot;，分别能省多少？" a="``text&#10;【砍一半工具调用】：&#10;工具占 15% → 砍一半 = 省 7.5%&#10;【提缓存命中率到 80%】：&#10;输入占 60%，其中 80% 命中&#10;命中部分按 0.1× 计价 → 省下该部分的 90%&#10;省 = 60% × 80% × 90% = 43.2%&#10;`&#10;【结论】两者差约 6 倍——而砍工具还会损失能力，提命中率是无损的。&#10;【推论】这就是&quot;先动大头、先做无损的&quot;的量化依据：&#10;`text&#10;① 提缓存命中率   —— 无损，量级最大（本例 43%）&#10;② 去 prompt 拐杖 —— 双赢（降本 + 提质）&#10;③ 压缩 / 少放    —— 有损，必须留指针&#10;④ 调 effort / 换模型 —— 换质量，要 held-out 验证&#10;``"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="评测观测与治理/母题-E4-成本控制与限流-q2" tag="评测观测与治理" q="某服务主配置的可用性是 99%，每天 1,000 个请求。加降级链路后可用性提到 99.9%。&#10;问：两种情况下&quot;没有结果&quot;的请求各是多少？降级把什么换成了什么？" a="``text&#10;无降级：&#10;失败 = 1000 × 1% = 10 个请求【没有结果】&#10;有降级：&#10;完全失败 = 1000 × 0.1% = 1 个&#10;另外 9 个【有结果，但质量下降】&#10;`&#10;【结论】降级把&quot;不可用&quot;换成&quot;质量下降&quot;——失败数从 10 降到 1，但代价是 9 个请求的结果质量不如预期。&#10;【取舍】这笔交换是否划算取决于业务：&#10;`text&#10;能接受&quot;质量降一点但一定有结果&quot;  → 降级是对的&#10;宁可失败也不能给错的结果        → 【应该拒绝，而不是降级】&#10;``&#10;【推论】&quot;降级总是比失败好&quot;是错的——这跟 [[母题-C4-幻觉的成因与可控性]] 的&quot;错误 vs 弃答分开定价&quot;是同一个道理：降级后的结果是&quot;降级的答案&quot;，你得先判断&quot;降级的答案&quot;和&quot;没有答案&quot;哪个对业务更糟。&#10;【补充】而且备用配置必须是验证过的——&quot;顺手切一个模型&quot;会让质量掉得比预期多，而且因为它只在故障时才生效，你平时测不到。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="评测观测与治理/母题-E4-成本控制与限流-q3" tag="评测观测与治理" q="某 Agent 系统只在网关做了限流（1000 QPS）。上线后出现两个现象：&#10;``text&#10;现象一：某个大租户做批量任务时，其他租户的请求大量被拒&#10;现象二：网关没到 1000 QPS，但模型的 TPM 已经被打满&#10;``&#10;问：这两个现象各自说明了什么？该加哪一层限流？" a="现象一 → 缺&quot;租户级&quot;限流：&#10;``text&#10;入口限流保护的是&quot;系统总量&quot;，不保护&quot;公平&quot;&#10;一个租户占满 1000 QPS&#10;→ 其他租户全部被拒&#10;→ 【入口限流保护了系统，但没有保护公平】&#10;`&#10;现象二 → 缺&quot;模型级&quot;限流：&#10;`text&#10;Agent 的【一个请求】可能触发几十次模型调用与工具调用&#10;1000 QPS 的入口流量 → 下游可能是 30,000 QPS&#10;→ 网关看流量正常，但模型的 TPM 已经满了&#10;→ 【入口限流根本保护不了最贵的那个资源】&#10;``&#10;【结论】限流要分四层放，每层保护一样东西：入口（总量）· 租户（公平）· 工具（外部配额）· 模型（RPM/TPM 与预算）。&#10;【推论】&quot;限流&quot;的本质是&quot;保护某一条具体的资源&quot;——所以要先问&quot;我在保护什么&quot;，再决定放哪。放错了位置，保护的就是错的东西。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E4-成本控制与限流-q4" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;我们的成本优化做了三件事：加了缓存、做了上下文压缩、换了个更小的模型。&quot;" a="三处问题。&#10;1. 这是清单，不是方法。没有归因就动手，等于在赌&quot;贵的地方就是该动的地方&quot;——而&quot;贵&quot;和&quot;该动&quot;不是一回事（Q1：输入占 60% 时，动它能省 43%；工具占 15% 时，动它最多省 7.5% 还损失能力）。&#10;2. 顺序可能反了。正确顺序是&quot;先做无损的&quot;：提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 换模型（换质量）。&quot;先换小模型&quot;是最早动到质量的那一刀。&#10;3. &quot;换更小的模型&quot;没说是怎么验证的。换模型是最大的一次 prompt 变更（旧 prompt 是针对旧模型写的），必须走 held-out 验收（[[母题-C3-Prompt版本管理与回归]]、[[母题-C5-模型选型与降级三角]]）。&#10;【准确说法】&quot;先拆账单（按功能 / 租户 / 任务类型 / 环节），找到&quot;是量涨了还是单价涨了&quot;，然后先动大头、先做无损的。换模型是最后一刀，而且要验证。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E4-成本控制与限流-q5" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;请求进来先排队，排到了自然就处理了，不用拒绝。&quot;" a="三处问题。&#10;1. 无界排队是最差的处理：它把&quot;立刻被拒&quot;变成&quot;等 30 秒后被拒&quot;——而等待期间连接、内存、协程都被占着（[[母题-M4-索引代价与大表变更]] 的 MDL 连锁就是这个形状：排队本身会放大故障）。&#10;2. 排队必须有界：超过界要么降级、要么快速失败。&quot;有界队列 + 明确的超时&quot;是基本要求。&#10;3. &quot;排到了自然就处理&quot;假设了&quot;下游会恢复&quot;：如果是持续过载，队列只会越排越长，最后所有请求都在超时——相当于系统完全不可用，但每个请求都白占了几十秒资源。&#10;【准确说法】&quot;超限的处理顺序是：有界排队 → 降级 → 快速失败（带可行动的错误）。排队是&quot;给短时抖动一点缓冲&quot;，不是&quot;过载的解决方案&quot;。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">成本失控时该先动哪一刀——以及&quot;限流&quot;这个动作，到底在保护什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="评测观测与治理/母题-E4-成本控制与限流" tag="评测观测与治理" q="成本失控时该先动哪一刀——以及&quot;限流&quot;这个动作，到底在保护什么？" a="成本控制的第一性原理是&quot;先归因、再动手、先动大头、先做无损的&quot;。先拆账单（按功能 / 租户 / 任务类型 / 环节拆），先回答&quot;是量涨了还是单价涨了&quot;——两件事的解法完全不同。环节这一维最重要，因为它直接对应动作：输入占大头就提缓存命中率（无损，本例能省 43%）、输出占大头就收输出 / 调 effort、工具占大头就 consolidation、存储占大头就降采样。降本有顺序且不可颠倒：提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 调 effort / 换模型（换质量）。限流的本质是&quot;保护某一条具体的资源&quot;，所以要分四层放：入口（总量）· 租户（公平）· 工具（外部配额）· 模型（RPM / TPM 与预算）——只做入口限流，一个租户就能占满配额，而且 Agent 一个请求会触发几十次下游调用，网关看起来正常但模型 TPM 已经满了。超限后的处理顺序是&quot;有界排队 → 降级 → 快速失败&quot;，无界排队是最差的（把&quot;立刻被拒&quot;变成&quot;等 30 秒后被拒&quot;）。降级的本质是把&quot;不可用&quot;换成&quot;质量下降&quot;——这笔交换划不划算取决于业务（能不能接受质量降一点），而且备用配置必须是用你自己的评测验证过的，不是&quot;顺手切一个&quot;。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>最容易答成清单</strong>（"我们加了缓存、做了压缩、换了小模型"）。<strong>能说出"先归因再动手、先动大头"以及"限流保护的是具体某条资源"才算过关。</strong> 而且它和 [[母题-C6-成本与长上下文截断]] 是一对——<strong>C6 讲"钱花在哪"，E4 讲"怎么管住它"。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>成本控制的第一性原理是"先归因、再动手、先动大头、先做无损的"</strong>。<strong>先拆账单</strong>（按功能 / 租户 / 任务类型 / <strong>环节</strong>拆），先回答"<strong>是量涨了还是单价涨了</strong>"——<strong>两件事的解法完全不同</strong>。<strong>环节这一维最重要，因为它直接对应动作</strong>：输入占大头就提缓存命中率（<strong>无损，本例能省 43%</strong>）、输出占大头就收输出 / 调 effort、工具占大头就 consolidation、存储占大头就降采样。<strong>降本有顺序且不可颠倒</strong>：<strong>提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 调 effort / 换模型（换质量）</strong>。<strong>限流的本质是"保护某一条具体的资源"，所以要分四层放</strong>：<strong>入口（总量）· 租户（公平）· 工具（外部配额）· 模型（RPM / TPM 与预算）</strong>——<strong>只做入口限流，一个租户就能占满配额，而且 Agent 一个请求会触发几十次下游调用，网关看起来正常但模型 TPM 已经满了</strong>。<strong>超限后的处理顺序是"有界排队 → 降级 → 快速失败"</strong>，<strong>无界排队是最差的</strong>（把"立刻被拒"变成"等 30 秒后被拒"）。<strong>降级的本质是把"不可用"换成"质量下降"</strong>——<strong>这笔交换划不划算取决于业务</strong>（能不能接受质量降一点），<strong>而且备用配置必须是用你自己的评测验证过的</strong>，不是"顺手切一个"。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>先归因再动手</strong>（量涨了 vs 单价涨了）</li><li>四维归因（功能 · 租户 · 任务类型 · <strong>环节</strong>）</li><li>降本顺序（<strong>提命中率 → 去拐杖 → 压缩 → 调档位</strong>）</li><li>先动大头（<strong>43% vs 7.5%</strong>）</li><li><strong>限流四层</strong>（入口·租户·工具·模型）</li><li>限流的本质 = <strong>保护某一条具体资源</strong></li><li>超限处理：<strong>有界排队 → 降级 → 快速失败</strong>（无界排队最差）</li><li>可用性 99% → 99.9%（<strong>10 个失败 → 1 个 + 9 个质量下降</strong>）</li><li><strong>降级是业务决策不是技术默认</strong></li><li>备用配置必须<strong>验证过</strong></li><li><strong>降级必须可观测</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Agent 的成本怎么控？</strong></strong></p>
+<p class="mv-md-p"><strong>按环节拆</strong>：<strong>输入（提缓存命中率，无损且量级最大）→ 输出（收输出 / 调 effort）→ 工具（consolidation，[[母题-A2-工具调用与MCP边界]]）→ 存储（采样，[[母题-E2-Trace与可观测性]]）</strong>。<strong>而且要按预算分档</strong>（[[母题-A1-计划执行循环与停止条件]] 的七种预算）。</p>
+<p class="mv-md-p"><strong>2. <strong>限流该限在哪里？</strong></strong></p>
+<p class="mv-md-p"><strong>四层都要</strong>：<strong>入口</strong>（总量，最早最粗）、<strong>租户</strong>（公平，否则入口限流对其他租户无意义）、<strong>工具</strong>（保护第三方配额）、<strong>模型</strong>（RPM / TPM 与成本，最贵最容易失控）。</p>
+<p class="mv-md-p"><strong>3. <strong>超限之后怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>有界排队 → 降级 → 快速失败</strong>（带可行动的错误）。<strong>关键是"排队必须有界"</strong>——无界排队会把过载悄悄变成全局超时。</p>
+<p class="mv-md-p"><strong>4. <strong>降级链路怎么设计？</strong></strong></p>
+<p class="mv-md-p"><strong>三个要求</strong>：<strong>① 已验证</strong>（备用配置要过 held-out 门禁）② <strong>有明确的质量底线</strong>（降级目标是保住可用性，不是保住质量）③ <strong>可观测</strong>（降级本身要打点报警——<strong>不知道自己在降级，比降级更危险</strong>）。</p>
+<p class="mv-md-p"><strong>5. <strong>成本和质量的取舍谁来定？</strong></strong></p>
+<p class="mv-md-p"><strong>能回答"一次失败值多少钱"的人</strong>。<strong>工程能给的是曲线</strong>（成本 vs 质量），<strong>把曲线交给业务方选点</strong>，比工程师替业务拍板更安全（[[母题-C5-模型选型与降级三角]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「P95 延迟和成本是不是一回事？」——<strong>不是，但它们经常同向</strong>。<strong>P95 高往往因为步数多 / 上下文长，而这两样也直接推高成本</strong>。<strong>但它们是两个独立的门禁指标</strong>（[[母题-E3-回归门禁与发布卡口]]）——<strong>成本降了但 P95 涨了，不一定能发。</strong></li><li>「怎么防重试风暴打爆成本？」——<strong>这是成本失控最常见的原因之一</strong>（raw 里的真实事故：队列积压 → 扩副本 → LLM 429 → 超时重入队 → 风暴）。<strong>手段</strong>：<strong>分层重试</strong>（只让一层重试，[[母题-A3-失败恢复与幂等]]）、<strong><code class="mv-md-code">max_retries</code> 预算</strong>、<strong>退避 + 抖动</strong>（[[母题-M16-乐观锁与悲观锁]]）、<strong>按租户限流</strong>。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps</strong>：<strong>P95 重构的量化口径</strong>——<strong>要补齐样本数 / 并发 / 硬件 / 统计窗口才算硬证据</strong>；<strong>结算的三道质量门</strong>里的成本门。 - <strong>数驭穹图</strong>：<strong>SQL 结果过大写 Artifact</strong>——<strong>这是"减少新增"而不是"压缩历史"，两者要配合</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先归因（四个维度 + "量 vs 单价"）→ <strong>降本顺序与"先动大头"的算式</strong> → <strong>限流四层与各自的保护对象</strong> → 超限的三种处理（强调有界）→ <strong>降级是把什么换成什么</strong>（给可用性算式 + 业务判据 + 必须验证 + 必须可观测）→ 收束到"先看清再动手"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>成本要先归因，限流要先问"保护什么"。</strong> 两件事的共同点是：<strong>都不能从"上一个手段"开始，而要从"看清问题的形状"开始</strong>——<strong>代价最高的一刀，往往是最后才该动的那个。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"先归因再动手"并给出四个归因维度；<strong>能算出"提命中率 43% vs 砍工具 7.5%"</strong>；能说出降本四层的顺序与理由；<strong>能说出限流四层各保护什么</strong>，并解释为什么入口限流不够（租户公平 + 一个请求触发几十次下游）；<strong>能算出 99% → 99.9% 的失败数变化并说清降级把什么换成了什么</strong>；能说出降级的三个要求；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

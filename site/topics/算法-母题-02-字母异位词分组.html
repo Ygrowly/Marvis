@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 02 · 字母异位词分组</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 02 · 字母异位词分组</h1>
+    <p class="mv-topic-meta">关联 母题-01-两数之和 · 母题-03-最长连续序列 ｜ 正本 wiki/topics/算法/母题-02-字母异位词分组.md</p>
+  </div>
+
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">给定一个字符串数组，把互为字母异位词的字符串归到同一组（字母种类与数量完全相同、顺序无关）。返回所有分组。</p></div>
+  </div>
+
+
+
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何把一组元素按「等价特征」归到同一组？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="算法/母题-02-字母异位词分组" tag="算法" q="如何把一组元素按「等价特征」归到同一组？" a="把每个元素映射成一个可哈希的标准化键，再用键做分组。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：迁移价值极高：任何「分组 / 去重 / 归一化」问题都是这个模型。面试常从这里考哈希键的设计能力。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">把每个元素映射成一个可哈希的标准化键，再用键做分组。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>等价特征</li><li>可哈希键</li><li>排序元组 或 26 位频次数组</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 排序键和计数键怎么选？</strong></p>
+<p class="mv-md-p">字符集固定（26 个小写字母）用计数键更优，字符集大或含 Unicode 用排序键更稳</p>
+<p class="mv-md-p"><strong>2. 为什么列表不能直接当字典键？</strong></p>
+<p class="mv-md-p">可变对象不可哈希，元组不可变所以可以</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 242 有效的字母异位词（退化版：只判断两个串）</li><li>LC 438 找到字符串中所有字母异位词（滑动窗口 + 频次比较）</li><li>变体：按字符集大小选键——字符集固定用计数键 O(k)，字符集大退回排序键 O(k log k)</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">日志/标识归一化：大小写、空格、全半角差异先标准化成一个键，再做聚类或去重。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：混用了排序键和计数键两套方案；不清楚为什么列表不能作键；对字符串误用 +=</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">讲解</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">你的核心方向对了：<strong>把异位词转换成相同的分组标识，再用哈希表分组</strong>。当前主要有三个断点：</p>
+<p class="mv-md-p">1. 混用了“排序字符”和“字符计数”两种方案。 2. Python 的字典不能作为另一个字典的键。 3. 分组结果应该是字符串列表，不能直接对字符串做 <code class="mv-md-code">+=</code>。</p>
+<h3 class="mv-md-h mv-md-h3">逐项纠正</h3>
+<p class="mv-md-p">1. 判断方法：</p>
+<p class="mv-md-p">可以将两个字符串排序，排序结果相同就是字母异位词。</p>
+<p class="mv-md-p">2. 分组标识：</p>
+<p class="mv-md-p">你的 <code class="mv-md-code">['a', 'e', 't']</code> 思路正确，但列表不可哈希，不能作为字典键。应转换成：</p>
+<pre class="mv-md-pre">key = tuple(sorted(s))</pre>
+<p class="mv-md-p"><code class="mv-md-code">"eat"</code>、<code class="mv-md-code">"tea"</code>、<code class="mv-md-code">"ate"</code> 都会得到：</p>
+<pre class="mv-md-pre">('a', 'e', 't')</pre>
+<p class="mv-md-p">3. 哈希表结构：</p>
+<p class="mv-md-p">不是“存字符及出现次数”，而是：</p>
+<p class="mv-md-p">键保存字符串的标准化特征，值保存具有该特征的所有原字符串。</p>
+<pre class="mv-md-pre">{
+    ('a', 'e', 't'): ['eat', 'tea', 'ate']
+}</pre>
+<p class="mv-md-p">4. 循环不变量：</p>
+<p class="mv-md-p">你已经接近了，更准确地说：</p>
+<p class="mv-md-p">每次开始处理新字符串前，哈希表已经按照统一分组标识，正确保存了所有已遍历字符串。</p>
+<p class="mv-md-p">5. 排序方案代码：</p>
+<pre class="mv-md-pre">def group_anagrams(strs):
+    groups = {}
+
+    for s in strs:
+        key = tuple(sorted(s))
+
+        if key not in groups:
+            groups[key] = []
+
+        groups[key].append(s)
+
+    return list(groups.values())</pre>
+<p class="mv-md-p">复杂度：</p>
+<p class="mv-md-p">+ 设字符串数量为 (n)，每个字符串平均长度为 (k)。 + 排序每个字符串需要 (O(k\log k))。 + 总时间复杂度：(O(nk\log k))。 + 空间复杂度：(O(nk))。</p>
+<p class="mv-md-p">+ n：字符串数量 + k：每个字符串的平均长度</p>
+<p class="mv-md-p">每个字符串排序需要 O(klogk)，共处理 n 个字符串：</p>
+<p class="mv-md-p">+  时间复杂度：O(nklogk) +  空间复杂度：O(nk)</p>
+<p class="mv-md-p">不变量是它始终满足的性质：</p>
+<p class="mv-md-p">每次开始处理新字符串前，<code class="mv-md-code">group</code> 已经按照排序后的字符元组，正确分组了所有已遍历字符串。</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">异位词具有相同的字符排序结果，因此用排序元组作为哈希键，用列表收集原字符串。</p>
+<p class="mv-md-p">异位词的字符排序结果相同，用排序后的元组作为哈希键，用列表收集属于同一组的原字符串。</p>
+<p class="mv-md-p">列表是可变对象，因此不可哈希，不能作为字典键；</p>
+<p class="mv-md-p">字典键要求对象的哈希值在其生命周期中保持稳定。列表内容可以修改，如果允许作为键，修改后字典就无法可靠地定位原来的键。元组不可变，并且其中的字符也可哈希，所以可以作为键。</p>
+<pre class="mv-md-pre">def group_anagrams(strs):
+    groups = {}
+
+    for s in strs:
+        count = [0] * 26
+
+        for c in s:
+            count[ord(c) - ord('a')] += 1
+
+        key = tuple(count)
+
+        if key not in groups:
+            groups[key] = []
+
+        groups[key].append(s)
+
+    return list(groups.values())</pre>
+<p class="mv-md-p">为什么异位词的键相同：</p>
+<p class="mv-md-p">异位词包含的字母种类及每个字母的出现次数完全相同，所以生成的 26 位计数元组相同。</p>
+<p class="mv-md-p">复杂度：</p>
+<p class="mv-md-p">+  时间：O(nk)，需要遍历每个字符串的每个字符。 +  空间：O(nk)，主要用于保存全部输出字符串；计数数组本身是固定的 O(26)=O(1)。</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">字符范围固定为 26 个小写字母 → 用 26 位频次数组表示字符串 → 转成可哈希元组作为分组键 → 一次遍历完成分组。</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

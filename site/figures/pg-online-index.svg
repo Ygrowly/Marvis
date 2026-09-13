@@ -1,0 +1,68 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>在线建索引：两遍扫描换掉长锁，代价是失败会留下静默的无效索引</title>
+  <desc>上面是两种建索引方式的对比：普通建索引只扫一遍表但全程挡住写入，并发建索引扫两遍且要等待事务结束，换来的是一开始就不挡住写入。中间是并发建索引的三段式——先把索引以无效身份登记进系统表，再做两次全表扫描，最后标记有效；中途失败就停在无效状态，而无效索引不被查询使用、却照付写入与维护成本，唯一索引还会继续强制唯一性。底部是堆内元组这条免费通道的两个条件与两样收益。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">在线建索引：两遍扫描换掉长锁，代价是失败会留下静默的无效索引</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">普通建索引把「挡住写入」换成「只扫一遍」；并发建索引把「只扫一遍」换成「两次扫描 + 等待」——没有人拿到免费的午餐</text>
+
+  <!-- 对比 -->
+  <rect x="30" y="66" width="300" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">普通 CREATE INDEX</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">扫描：全表【一遍】就把索引建完</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">代价：全程挡住写入（读不受影响）</text>
+  <text x="46" y="144" font-family="system-ui,sans-serif" font-size="10" fill="#633806">15 分钟 ≈ 积压 45 万次写 → 连接池耗尽</text>
+
+  <rect x="350" y="66" width="300" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">CREATE INDEX CONCURRENTLY</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">扫描：全表【两遍】+ 每遍前后等事务结束</text>
+  <text x="366" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">代价：慢 2–3 倍、资源占用高、不能在事务里</text>
+  <text x="366" y="144" font-family="system-ui,sans-serif" font-size="10" fill="#633806">换来：不在同一时刻堵住所有人</text>
+
+  <!-- 三段式 -->
+  <path d="M30 172 L650 172" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="196" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">并发建索引的三段式：先以【无效】身份登记，扫两遍，最后才标记有效</text>
+
+  <rect x="30" y="208" width="146" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="42" y="228" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">① invalid 登记</text>
+  <text x="42" y="245" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">一个事务</text>
+
+  <rect x="188" y="208" width="146" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="200" y="228" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">② 扫描①：建索引</text>
+  <text x="200" y="245" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">开始前等改表的事务</text>
+
+  <rect x="346" y="208" width="146" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="358" y="228" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">③ 扫描②：补增量</text>
+  <text x="358" y="245" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">结束后等旧快照结束</text>
+
+  <rect x="504" y="208" width="146" height="46" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="516" y="228" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">④ 标记 valid</text>
+  <text x="516" y="245" font-family="system-ui,sans-serif" font-size="9" fill="#633806">≠ 优化器马上能用</text>
+
+  <path d="M176 231 L188 231" stroke="#9A9891" stroke-width="1.2" fill="none"/>
+  <path d="M184 227 L188 231 L184 235 Z" fill="#9A9891"/>
+  <path d="M334 231 L346 231" stroke="#9A9891" stroke-width="1.2" fill="none"/>
+  <path d="M342 227 L346 231 L342 235 Z" fill="#9A9891"/>
+  <path d="M492 231 L504 231" stroke="#9A9891" stroke-width="1.2" fill="none"/>
+  <path d="M500 227 L504 231 L500 235 Z" fill="#9A9891"/>
+
+  <!-- 失败分叉 -->
+  <path d="M261 254 L261 272" stroke="#B4553F" stroke-width="1.2" fill="none"/>
+  <path d="M257 268 L261 272 L265 268 Z" fill="#B4553F"/>
+  <rect x="30" y="274" width="620" height="46" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="293" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#8A3A28">✗ 中途失败（死锁 / 唯一性冲突）→ 索引【停在 invalid】，不回滚</text>
+  <text x="46" y="311" font-family="system-ui,sans-serif" font-size="10" fill="#8A3A28">不被查询使用 · 但每次写入都要维护、每轮 VACUUM 都要处理 · 唯一索引仍继续强制唯一性 —— 约束在，索引不在</text>
+
+  <!-- HOT -->
+  <path d="M30 342 L650 342" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="366" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">堆内元组（HOT）：PG 给写放大留的一条免费通道</text>
+
+  <rect x="30" y="378" width="300" height="60" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="397" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">两个条件（都要满足）</text>
+  <text x="46" y="414" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">① 更新的列【不在任何索引里】  ② 新版本能放进同一页</text>
+  <text x="46" y="430" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">（fillfactor 默认 100，调小它只是提高第 ② 条的概率）</text>
+
+  <rect x="350" y="378" width="300" height="60" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="397" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">两样收益（第二样常被漏掉）</text>
+  <text x="366" y="414" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">① 不写新索引项：4 次元组写 → 1 次</text>
+  <text x="366" y="430" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">② 中间版本可在正常运行中就地清掉，不必等 VACUUM</text>
+</svg>

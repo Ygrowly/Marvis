@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二 · SQL 执行与优化</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL · 主线 二</span>
+    <h1 class="mv-topic-title">SQL 执行与优化</h1>
+    <p class="mv-topic-meta">这条线在回答：一条 SQL 怎么走、慢在哪</p>
+  </div>
+  <p class="mv-line-lead">EXPLAIN <strong>ANALYZE</strong>、估计行数 vs 实际行数、Bitmap Heap Scan</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P6</span><span class="mv-mt-name">EXPLAIN 和 EXPLAIN ANALYZE 的区别；看计划应该看哪几行</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P6-执行计划怎么看.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">同一条 SQL，开发环境 50ms，线上 8s。你怎么用执行计划找出差别在哪，而不是靠猜？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：<code class="mv-md-code">EXPLAIN</code> 只给<strong>估算</strong>（估计行数、估算代价），<code class="mv-md-code">EXPLAIN ANALYZE</code> 会<strong>真的执行</strong>并给出<strong>实际行数、实际耗时、循环次数、排序/哈希有没有落盘</strong>；看计划有固定顺序——<strong>先看「估计 vs 实际行数」的偏差，再看扫描方式是否合理，再看 JOIN 算法与两侧规模，再看 Sort/Hash 有没有落盘，最后看 loops 有没有暴露 N+1</strong>。</p><ul class="mv-kw"><li>估算 vs 实测</li><li><strong>rows vs actual rows（每循环，要乘 loops）</strong></li><li>Buffers</li><li>Sort Method external merge</li><li>Bitmap Heap Scan</li><li>Nested Loop 与 Hash Join</li><li>BUFFERS 选项</li><li>代价是任意单位</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>计划里的错误几乎总是先出现在「估计行数」上。</strong> 所以看计划的第一动作永远是比对估计与实际——<strong>偏差大的那个节点，就是问题所在节点</strong>，不需要通读整棵树。</p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么估计会差那么多？</strong></strong></p><p class="mv-md-p">三类原因：<strong>统计信息过期</strong>、<strong>列之间有关联但统计是独立的</strong>（「城市=北京」和「区=海淀」相乘会把行数估得极小）、<strong>条件是表达式或函数导致无法估算</strong>。对应三种修法见 [[母题-P7-统计信息与慢查询定位]]。<strong>答这题要说「优化器不是猜的，它是按你给的统计算的」。</strong></p><p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">EXPLAIN ANALYZE</code> 会不会本身改变行为？</strong></strong></p><p class="mv-md-p"><strong>会。</strong> ① 它真的执行，<strong>所以有副作用风险</strong>；② <strong><code class="mv-md-code">ANALYZE</code> 会强制用真实参数生成计划，而真实运行可能用的是预编译的通用计划</strong>——<strong>所以「EXPLAIN ANALYZE 里很快、线上很慢」是可能发生的</strong>。这条能把两个母题串起来。<strong>③ 官方还提醒：<code class="mv-md-code">ANALYZE</code> 用随机采样估统计，重跑一次 <code class="mv-md-code">ANALYZE</code> 后 cost 估算可能变化，即使数据分布没变。</strong></p><p class="mv-md-p"><strong>3. <strong>Seq Scan 一定比 Index Scan 慢吗？</strong></strong></p><p class="mv-md-p"><strong>不一定。</strong> 命中比例高时顺序读整表比「索引 + 大量随机回表」更快。<strong>能说出「Seq Scan 也是一种正确选择」，就脱离了「索引崇拜」。</strong></p><p class="mv-md-p"><strong>4. <strong>怎么对比两个计划的优劣？</strong></strong></p><p class="mv-md-p">看<strong>实际耗时</strong>与 <strong>Buffers</strong>，<strong>而不是「估算代价」</strong>；估算代价只能用于同结构比较。<strong>要 <code class="mv-md-code">ANALYZE</code> 真跑、固定参数、跑多次取稳定值。</strong></p><p class="mv-md-p"><strong>5. <strong><code class="mv-md-code">Bitmap Heap Scan</code> 后面接 <code class="mv-md-code">Sort</code> 说明什么？</strong></strong></p><p class="mv-md-p">说明<strong>索引没有提供所需顺序</strong>（它按物理顺序读堆），<strong>所以还得排一次</strong>。<strong>要排序就应该考虑让索引顺序直接匹配 <code class="mv-md-code">ORDER BY</code>。</strong></p></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P6-执行计划怎么看.md</p></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">P7</span><span class="mv-mt-name">估计行数与实际行数差很多说明什么；怎么修</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/PostgreSQL-母题-P7-统计信息与慢查询定位.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">优化器把「只返回 10 行」的条件估成了 100 万行，于是选了 <code class="mv-md-code">Seq Scan</code>。你要不要直接加个索引？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：偏差来自三类原因——<strong>统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数</strong>；对应三种修法——<strong><code class="mv-md-code">ANALYZE</code>（或调 autovacuum 的 analyze 阈值）、<code class="mv-md-code">CREATE STATISTICS</code> 建扩展统计、建表达式索引或改写 SQL</strong>。定位慢查询的第一站是 <strong><code class="mv-md-code">pg_stat_statements</code></strong>（按总耗时排序，先治「最贵的」），再对单条用 <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>。</p><ul class="mv-kw"><li>pg_stat_statements</li><li>ANALYZE</li><li>autovacuum analyze 阈值（50 + 10%）</li><li>n_distinct 与 MCV</li><li>直方图桶数</li><li><strong>独立假设</strong></li><li>CREATE STATISTICS（ndistinct · dependencies · mcv）</li><li>表达式与函数</li><li>generic plan 陷阱</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>优化器不是在猜，它是在拿统计信息算代价。</strong> 所以「计划不对」的排查顺序永远是：<strong>先问信息对不对，再问 SQL 形状对不对，最后才问索引够不够。</strong></p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">CREATE STATISTICS</code> 具体解决什么？</strong></strong></p><p class="mv-md-p"><strong>解决「多列相关」</strong>。典型场景：<code class="mv-md-code">city</code> 和 <code class="mv-md-code">district</code>（海淀一定在北京，两列强相关）、<code class="mv-md-code">status</code> 和 <code class="mv-md-code">deleted_at</code>（删掉的行不再是活跃态）。<strong>优化器原本假设独立相乘，扩展统计给它真实的联合分布。</strong> <strong>官方提醒：<code class="mv-md-code">mcv</code> 统计只建在【实际会一起出现在条件里】的列组合上，否则只是浪费 ANALYZE 与规划时间。</strong></p><p class="mv-md-p"><strong>2. <strong>统计信息准了，计划还是差怎么办？</strong></strong></p><p class="mv-md-p">那就不是信息层的问题：<strong>要么是 SQL 形状让优化器没有好选项</strong>（比如为了复用而写了一个过度参数化的语句 → generic plan），<strong>要么是代价模型对当前硬件不准</strong>（IO 与 CPU 的相对代价随 SSD/内存变化）。此时可以考虑：<strong>改写 SQL</strong>、<strong>用 CTE 的物化提示控制形状</strong>、或（<strong>谨慎地</strong>）调代价参数。<strong>但默认先怀疑前两层——改代价参数是最容易掩盖问题的一步。</strong></p><p class="mv-md-p"><strong>3. <strong><code class="mv-md-code">ANALYZE</code> 和 <code class="mv-md-code">VACUUM ANALYZE</code> 有什么区别？</strong></strong></p><p class="mv-md-p"><strong><code class="mv-md-code">VACUUM</code> 回收空间</strong>（[[母题-P15-VACUUM与事务ID回卷]]），<strong><code class="mv-md-code">ANALYZE</code> 只更新统计信息</strong>；<code class="mv-md-code">VACUUM ANALYZE</code> 是顺带一起做。<strong>autovacuum 默认两个都做，但两者的触发阈值是独立的</strong>——<strong>所以「表一直在被 VACUUM」不代表「统计信息是新的」。</strong></p><p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">pg_stat_statements</code> 能不能看出 N+1？</strong></strong></p><p class="mv-md-p">能：<strong>同一形状的语句 <code class="mv-md-code">calls</code> 极高、每次 <code class="mv-md-code">rows</code> 很小</strong>，就说明应用在循环里查数据库。<strong>这是从数据库侧发现应用问题的有效手段。</strong></p><p class="mv-md-p"><strong>5. <strong>只读副本上的统计信息要不要管？</strong></strong></p><p class="mv-md-p"><strong>要</strong>。<strong>统计信息不是复制的对象里的"数据"，它是每台实例各自 <code class="mv-md-code">ANALYZE</code> 出来的</strong>——<strong>只读副本如果从不分析，它的计划可能和主库完全不一样</strong>（[[母题-P12-流复制与逻辑复制]]）。<strong>这一条说出来，说明你运维过真实的主从。</strong></p></collapse-panel><p class="mv-note">正本：wiki/topics/PostgreSQL/母题-P7-统计信息与慢查询定位.md</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">4 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">13</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P6</span><button class="mv-qdone" data-k="PostgreSQL-q13" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q13" tag="PostgreSQL" q="EXPLAIN 和 EXPLAIN ANALYZE 有什么区别？看计划主要看什么？" a="【P6】EXPLAIN 只给估算（估计行数、估算代价），EXPLAIN ANALYZE 会真的执行并给出实际行数、实际耗时、循环次数、排序/哈希有没有落盘；看计划有固定顺序——先看「估计 vs 实际行数」的偏差，再看扫描方式是否合理，再看 JOIN 算法与两侧规模，再看 Sort/Hash 有没有落盘，最后看 loops 有没有暴露 N+1。&#10;&#10;展开：两种 EXPLAIN 的差别（估算 vs 实测）→ loops 的语义（最容易看错的一条） → 看计划的五步顺序 → 每个节点该问什么 → 一个真实例子（20 多秒那条）→ 注意事项（ANALYZE 会真跑、代价是任意单位）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">14</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">P7</span><button class="mv-qdone" data-k="PostgreSQL-q14" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q14" tag="PostgreSQL" q="估计行数和实际行数差很多说明什么？怎么解决？" a="【P7】偏差来自三类原因——统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数；对应三种修法——ANALYZE（或调 autovacuum 的 analyze 阈值）、CREATE STATISTICS 建扩展统计、建表达式索引或改写 SQL。定位慢查询的第一站是 pg_stat_statements（按总耗时排序，先治「最贵的」），再对单条用 EXPLAIN (ANALYZE, BUFFERS)。&#10;&#10;展开：统计信息从哪来、估什么 → 三类偏差原因与三种修法（各算一笔） → 定位慢查询的工具链（pg_stat_statements → EXPLAIN ANALYZE）→ 一个隐蔽陷阱（generic plan）→ 优化顺序&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">15</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P6</span><button class="mv-qdone" data-k="PostgreSQL-q15" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q15" tag="PostgreSQL" q="Seq Scan / Index Scan / Index Only Scan / Bitmap Heap Scan 分别什么时候出现？" a="【P6】EXPLAIN 只给估算（估计行数、估算代价），EXPLAIN ANALYZE 会真的执行并给出实际行数、实际耗时、循环次数、排序/哈希有没有落盘；看计划有固定顺序——先看「估计 vs 实际行数」的偏差，再看扫描方式是否合理，再看 JOIN 算法与两侧规模，再看 Sort/Hash 有没有落盘，最后看 loops 有没有暴露 N+1。&#10;&#10;展开：两种 EXPLAIN 的差别（估算 vs 实测）→ loops 的语义（最容易看错的一条） → 看计划的五步顺序 → 每个节点该问什么 → 一个真实例子（20 多秒那条）→ 注意事项（ANALYZE 会真跑、代价是任意单位）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">16</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">P7</span><button class="mv-qdone" data-k="PostgreSQL-q16" type="button">未掌握</button></div><flip-card card-id="PostgreSQL-q16" tag="PostgreSQL" q="慢查询怎么定位？pg_stat_statements 是干什么的？" a="【P7】偏差来自三类原因——统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数；对应三种修法——ANALYZE（或调 autovacuum 的 analyze 阈值）、CREATE STATISTICS 建扩展统计、建表达式索引或改写 SQL。定位慢查询的第一站是 pg_stat_statements（按总耗时排序，先治「最贵的」），再对单条用 EXPLAIN (ANALYZE, BUFFERS)。&#10;&#10;展开：统计信息从哪来、估什么 → 三类偏差原因与三种修法（各算一笔） → 定位慢查询的工具链（pg_stat_statements → EXPLAIN ANALYZE）→ 一个隐蔽陷阱（generic plan）→ 优化顺序&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="PostgreSQL-01-索引与表设计.html">← 一 · 索引与表设计</a><a class="mv-line-nav next" href="PostgreSQL-03-事务与锁.html">三 · 事务与锁 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent 运行时与工具模块卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">Agent 运行时与工具模块卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/Agent运行时与工具/Agent运行时与工具模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>8</b> 个母题</span>
+    <span class="mv-stat-i"><b>24</b> 道题（<b>15</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>8</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="Agent运行时与工具-01-循环怎么转、什么时候停.html"><span class="mv-line-no">一</span><span class="mv-line-name">循环怎么转、什么时候停</span><span class="mv-line-q">模型怎么在循环里做决定，什么算"做完"</span><span class="mv-line-st">母题 2 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Agent运行时与工具-02-中断与失败之后怎么继续.html"><span class="mv-line-no">二</span><span class="mv-line-name">中断与失败之后怎么继续</span><span class="mv-line-q">进程重启、工具超时、用户确认之后怎么不出错</span><span class="mv-line-st">母题 3 · 题 8</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Agent运行时与工具-03-风险与复杂度怎么管.html"><span class="mv-line-no">三</span><span class="mv-line-name">风险与复杂度怎么管</span><span class="mv-line-q">权限、多 Agent、计划会变</span><span class="mv-line-st">母题 3 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="RuleArena（规则竞技场）· 主承载项目"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>显式 FSM 编排</strong>（准备 → 取证 → 各角色审查 → 合并 → 确定性验证 → 人工确认 → 完成）；<strong>Thread/Run/Step/Checkpoint/Artifact/Event 数据模型</strong>；<strong>每个步骤记录 Prompt/Model/Tool/Rule 版本</strong></li><li>解决什么问题：<strong>高风险修复发布前 interrupt</strong>；<strong>从任一步 fork 比较不同策略</strong>；<strong>Replay 默认使用记录的工具结果</strong></li><li>踩过的坑：<strong>一开始想过用 LangGraph 的自由编排，最后没用</strong>——它的控制流由框架决定，而这个项目的卖点恰恰是「流程确定性」：<strong>发布门禁的每一步都必须可复现、可审计</strong>，裁决不能落在一个模型驱动的调度器手里。用自由编排等于把「可证明」换成了「大概率」。</li><li>决策与取舍：<strong>三种终止原因必须各占一个码</strong>——<code class="mv-md-code">completed_verified</code>（结果通过验证）/ <code class="mv-md-code">budget_exhausted</code>（预算耗尽）/ <code class="mv-md-code">unrecoverable_error</code>（证据冲突等不可恢复）。<strong>合成一个「失败了」会毁掉归因</strong>：预算耗尽说明任务太难或预算太紧，该调参；证据冲突说明规则或 Oracle 有问题，该查设计。<strong>终止原因是 Eval 的输入，不是一个日志字段。</strong></li><li>对应母题：【A4】【A8】</li></ul></div></collapse-panel><collapse-panel title="EnergyOps（金山园区能耗）· 最硬的证据区"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>Hook 链 + R0/R1/R2 风险分级</strong>（这是简历最硬的一条 bullet）；<strong>30 个 MCP 工具封装</strong>、6 类 Capability Bundle</li><li>解决什么问题：<strong>Agent 在跑，但危险动作被 Hook 拦住</strong></li><li>踩过的坑：<strong>一开始想用 Prompt 约束代替 Hook</strong>——「你已经拿到了审批，可以执行了」。<strong>Prompt 是说服，Hook 是强制</strong>：模型可能幻觉出一个不存在的审批、或把上一次的审批用到这一次。改成 Before Tool Hook 里<strong>校验一次性确认令牌</strong>（绑定动作摘要 + 版本 + 期望状态）后，越权才真正归零。</li><li>决策与取舍：<strong>30 个工具按 6 类业务域分组，不是平铺</strong>——平铺的代价是每次请求都要付全部工具定义的 token，且<strong>相似命名的工具会互相干扰选择</strong>（选择的准确率随工具数下降）。<strong>少用且重的（结算、批量）标记延迟加载</strong>，用到时才通过工具搜索引入；高频查询类常驻。</li><li>对应母题：【A2】【A3】【A6】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>意图路由</strong>（该走 RAG 还是 NL2SQL 还是直接回答）；<strong>五层安全</strong></li><li>解决什么问题：<strong>Agent 的计划依赖领域判断</strong>——路由错了后面全错</li><li>踩过的坑：<strong>意图路由错一步，后面全错</strong>——把「本月销售额」路由到 NL2SQL 是对的，但把「为什么下降」也当成一次取数就会漏掉归因。早期没有独立的路由阶段，模型会直接选工具，<strong>错误要到结果出来才暴露，且无法归因到哪一环</strong>。</li><li>决策与取舍：<strong>「先判断意图」是把一次不可归因的失败拆成可归因的两段</strong>：路由错 → 看路由的输入输出；生成错 → 看 SQL。<strong>全给模型则是把两个问题混成一个</strong>，出错时只能说「答错了」，说不出错在哪。这也是六阶段链路存在的理由——<strong>可归因 &gt; 看起来更聪明</strong>。</li><li>对应母题：【A2】【A7】</li></ul></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

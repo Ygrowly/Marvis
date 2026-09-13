@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M12 · 崩溃恢复</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M12 · 崩溃恢复</h1>
+    <p class="mv-topic-meta">关联 母题-M11-三日志与两阶段提交 · 母题-M8-隔离级别与ACID · 母题-M9-MVCC · 母题-P11-WAL与checkpoint ｜ 正本 wiki/topics/MySQL/母题-M12-崩溃恢复.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 崩溃时只有三种状态 ② 幂等靠 LSN 而不是靠"只做一次" ③ 裁决依据是 binlog 完整性）· 读完约 9 分钟 · 需要先懂：[[母题-M11-三日志与两阶段提交]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">数据库在「事务提交到一半」时断电。重启后它怎么知道哪些事务该重做、哪些该回滚？会不会把已经提交的又回滚掉？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把"恢复"这个问题拆小</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 崩溃瞬间，一个事务只可能是三种状态【事实】</h4>
+<p class="mv-md-p">这是全卡的地基。<strong>不要一上来就想"恢复算法"，先问"崩溃那一刻，每种状态留下了什么痕迹"。</strong></p>
+<table class="mv-table"><thead><tr><th>崩溃时的状态</th><th>数据页</th><th>日志留下了什么</th><th>恢复动作</th></tr></thead><tbody><tr><td><strong>还没提交</strong></td><td>可能已改内存</td><td>redo 里没有 commit、binlog 没写</td><td><strong>undo 回滚</strong></td></tr><tr><td><strong>已经提交</strong></td><td><strong>可能还没落盘</strong></td><td>redo 已 commit、binlog 已完整</td><td><strong>redo 重放补上</strong></td></tr><tr><td><strong>提交到一半</strong></td><td>不确定</td><td>redo 是 <strong>prepare</strong>，binlog 可能完整也可能不完整</td><td><strong>看 binlog 裁决</strong> ← 本题题眼</td></tr></tbody></table>
+<p class="mv-md-p"><strong>注意第二行</strong>："已提交"的事务，它的<strong>数据页也可能还没落盘</strong>（因为 WAL —— 提交只保证日志落盘，不保证数据页落盘，[[母题-M11-三日志与两阶段提交]]）。<strong>这正是需要 redo 重放的原因。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 由此得到恢复只能回答三个问题【推导】</h4>
+<pre class="mv-md-pre">① 哪些该重做？        → 已提交的（redo 重放）
+② 哪些该回滚？        → 未提交的（undo 回滚）
+③ 怎么保证重做不做两遍？→ 幂等（下一个问题）</pre>
+<p class="mv-md-p"><strong>上面那张三状态表已经把 ① ② 回答完了</strong>：<strong>"状态"来自日志，"动作"由状态决定。</strong> 恢复的每一步都不是"猜"出来的。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"恢复不会把已提交的事务回滚掉"？</p>
+<p class="mv-md-p mv-md-quote">因为<strong>已提交的事务在 redo 里留下了 commit 标记</strong>——这不是猜，是<strong>读日志读出来的确定结论</strong>。</p>
+<h3 class="mv-md-h mv-md-h3">2. redo 重放：幂等从哪里来</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 恢复为什么可能"做两遍"</h4>
+<p class="mv-md-p">【推导】崩溃可能发生在恢复过程中（比如重放到一半又断电）。<strong>如果重放不是幂等的，第二次恢复就会把某些改动应用两遍</strong>——某些操作（比如"在某个位置追加"）做两遍就错了。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 LSN：让"是否已做过"变得可判断【事实】</h4>
+<p class="mv-md-p"><strong>LSN（Log Sequence Number，日志序列号）</strong>：日志的单调递增编号。<strong>关键点</strong>：<strong>每个数据页的头部也存着自己最后一次被修改对应的 LSN。</strong></p>
+<p class="mv-md-p">于是重放一条 redo 之前，只要比一次：</p>
+<pre class="mv-md-pre">页.LSN &gt;= redo.LSN   →  这条改动已经落盘了 → 跳过
+页.LSN &lt;  redo.LSN   →  还没应用 → 写进内存页（并更新页的 LSN）</pre>
+<figure-box num="崩溃恢复的四步" title="" note="定位起点 → redo 重放（按 LSN 跳过）→ 用 binlog 裁决 prepare → undo 回滚未提交"><svg viewBox="0 0 680 282" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>崩溃恢复的四个步骤</title>
+<desc>从 check point 起重放 redo（按页 LSN 跳过已落盘的），用 binlog 完整性裁决 prepare 事务，最后用 undo 回滚未提交的事务。</desc>
+<defs>
+<marker id="figcrash-recovery-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">重启后的恢复：四步</text>
+<rect x="40" y="44" width="600" height="42" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="65" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" dominant-baseline="central">崩溃瞬间，每个事务只可能是三种状态：未提交 ／ 已提交 ／ 提交到一半（prepare）</text>
+<rect x="40" y="102" width="138" height="76" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="109" y="124" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">① 定位起点</text>
+<text x="109" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">从最近一次</text>
+<text x="109" y="166" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">check point 开始</text>
+<rect x="194" y="102" width="138" height="76" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="263" y="124" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">② redo 重放</text>
+<text x="263" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">比较页 LSN</text>
+<text x="263" y="166" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">已落盘的跳过</text>
+<rect x="348" y="102" width="138" height="76" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="417" y="124" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">③ 裁决 prepare</text>
+<text x="417" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#412402" text-anchor="middle" dominant-baseline="central">binlog 全 → 提交</text>
+<text x="417" y="166" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">不全 → 回滚</text>
+<rect x="502" y="102" width="138" height="76" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="571" y="124" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">④ undo 回滚</text>
+<text x="571" y="146" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">未提交的事务</text>
+<text x="571" y="166" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">反向撤销</text>
+<path d="M180 140 L190 140" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figcrash-recovery-svg-arrow)"/>
+<path d="M334 140 L344 140" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figcrash-recovery-svg-arrow)"/>
+<path d="M488 140 L498 140" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#figcrash-recovery-svg-arrow)"/>
+<rect x="40" y="198" width="600" height="64" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="220" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">顺序不能反：先 redo 重放、再 undo 回滚 —— 反过来会在「已提交但数据页未落盘」时把数据回滚掉。</text>
+<text x="58" y="242" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">redo 重放是幂等的（按页 LSN 判断是否已做过），所以恢复途中再崩也没关系，重启后继续。</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">2.3 幂等的本质（这句话比结论值钱）</h4>
+<p class="mv-md-p mv-md-quote">【推导】<strong>幂等不是"不去做"，而是"做之前能判断是否已做过"。</strong></p>
+<p class="mv-md-p"><strong>redo 重放的幂等，不是靠锁、不是靠"只允许做一次"的机制，而是靠"每个页自带 LSN 这个状态标记"。</strong></p>
+<p class="mv-md-p">【类推】这个模式可以迁移到任何重放系统：</p>
+<ul class="mv-md-ul"><li>业务层的<strong>幂等键</strong>：写之前先查"这个请求处理过没有"</li><li><strong>ActionReceipt</strong>（RuleArena 的做法）：把"已经执行过"变成一条可查的记录</li><li>消息队列的<strong>去重表</strong>：同一模式</li></ul>
+<p class="mv-md-p"><strong>所以"怎么保证幂等"的标准答案不是"加锁"，而是"留下一个能判断已做过的状态"。</strong></p>
+<h3 class="mv-md-h mv-md-h3">3. undo 回滚，以及顺序为什么不能反</h3>
+<p class="mv-md-p">redo 重放结束后，内存里已经包含了「已提交」和「prepare 待裁决」的修改。接下来：</p>
+<ul class="mv-md-ul"><li><strong>已提交</strong> → 保留</li><li><strong>未提交</strong> → 用 <strong>undo log 反向撤销</strong>（undo 存的是前镜像，正好用来恢复原状）</li></ul>
+<p class="mv-md-p"><strong>顺序必须是「先 redo 重放，再 undo 回滚」</strong>【推导】<strong>——</strong> 反过来会出问题：</p>
+<p class="mv-md-p mv-md-quote">如果先 undo：一个<strong>已提交但数据页未落盘</strong>的事务，在内存里被当成"未提交"处理（因为数据页还没体现它），于是被回滚掉。<strong>这就是丢已提交数据。</strong></p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote"><strong>redo 重放的作用正是"先把所有已提交的事务在内存里补出来"</strong>，让后续的撤销判断有正确的输入。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"先 undo 再 redo"会丢数据？</p>
+<h3 class="mv-md-h mv-md-h3">4. 题眼：prepare 状态怎么裁决</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 为什么 InnoDB 自己判不了【推导】</h4>
+<p class="mv-md-p">redo 里状态是 <code class="mv-md-code">prepare</code> 的事务，处于一个<strong>"日志说它写过了，但没人说它算不算成功"</strong>的中间态。InnoDB 光看自己的 redo，<strong>无法判断该提交还是回滚</strong>。</p>
+<p class="mv-md-p"><strong>决定权在 binlog</strong> —— 因为两阶段提交的第三步（"把 redo 改成 commit"）<strong>必须在 binlog 落盘成功之后才能做</strong>。所以：</p>
+<pre class="mv-md-pre">redo = prepare
+   ├─ binlog 完整（该事务的 binlog 记录已写完，可校验）
+   │     → 视为成功：把 redo 改成 commit，数据保留
+   └─ binlog 不完整 / 不存在
+         → 视为失败：用 undo 回滚</pre>
+<h4 class="mv-md-h mv-md-h4">4.2 为什么这个判据是对的【推导】</h4>
+<p class="mv-md-p">按 2PC 的顺序反推：</p>
+<table class="mv-table"><thead><tr><th>binlog 状态</th><th>说明 2PC 走到哪一步</th><th>逻辑结论</th></tr></thead><tbody><tr><td><strong>完整</strong></td><td>第二步成功了</td><td><strong>这个事务已经对外宣布过成功</strong>（binlog 是复制的源头）→ <strong>必须让它生效</strong>，否则从库执行了而主库没有</td></tr><tr><td><strong>不完整</strong></td><td>第二步没成功</td><td><strong>这个事务从未对外宣布</strong>→ <strong>必须回滚</strong>，否则主库有效而从库没有</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>这是"崩溃恢复"和"主从一致性"在同一处收口的地方——不是两套逻辑，是一套。</strong></p>
+<h3 class="mv-md-h mv-md-h3">5. 恢复要多久（把成本算出来）</h3>
+<p class="mv-md-p">【推导】恢复时间 ≈ <strong>需要重放的 redo 量 ÷ 重放速度</strong>。而"需要重放的量"由 <strong>check point 的位置</strong>决定：</p>
+<pre class="mv-md-pre">check point 越靠后（越新）→ 需要重放的 redo 越少 → 恢复越快</pre>
+<p class="mv-md-p"><strong>这看起来是"让 check point 越新越好"，但代价在另一边</strong>【取舍】：</p>
+<table class="mv-table"><thead><tr><th>让 check point 更频繁前移</th><th>结果</th></tr></thead><tbody><tr><td>需要<strong>更频繁地刷脏页</strong></td><td>正常运行时多了大量<strong>随机 IO</strong>（写数据页是随机的，M11 的 1.2）→ <strong>写入性能下降</strong></td></tr><tr><td>崩溃恢复时间</td><td><strong>变短</strong></td></tr></tbody></table>
+<p class="mv-md-p mv-md-quote"><strong>同一组参数，同时决定"恢复时间"和"正常运行时的刷脏压力"。不能只调一边。</strong></p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote"><strong>这又是一个"取舍而不是最优解"的地方</strong>——面试时能说出这两面，比答"把 check point 调密一点"有价值得多。</p>
+<h3 class="mv-md-h mv-md-h3">6. 生产配置：为什么主库都配「双一」</h3>
+<table class="mv-table"><thead><tr><th>参数</th><th>值</th><th>作用</th></tr></thead><tbody><tr><td><code class="mv-md-code">innodb_flush_log_at_trx_commit</code></td><td><strong>1</strong></td><td>每次提交 <code class="mv-md-code">fsync</code> redo</td></tr><tr><td><code class="mv-md-code">sync_binlog</code></td><td><strong>1</strong></td><td>每次提交 <code class="mv-md-code">fsync</code> binlog</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>两个都为 1，事务的"提交成功"才算真的落到磁盘</strong>——这才是"接口返回成功之后断电也不丢"的前提。</p>
+<p class="mv-md-p"><strong>只配一个会怎样</strong>：redo 保证了主库能恢复，但 binlog 丢了 → <strong>从库缺数据</strong>；或者反过来。<strong>两边的安全级别必须匹配，否则一致性从最弱的那一环漏出去。</strong></p>
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"恢复是靠猜或者靠事务开始时间"</td><td>【推导】靠<strong>日志状态</strong>。崩溃瞬间每个事务只有三种状态，<strong>每种状态都有明确的日志痕迹</strong>，动作由痕迹决定</td></tr><tr><td>"已提交的事务肯定已经在磁盘上了"</td><td>【事实】不一定。<strong>WAL 只保证日志落盘</strong>，数据页可能还在内存里 —— <strong>这正是要 redo 重放的原因</strong></td></tr><tr><td>"重放和回滚的顺序无所谓"</td><td>【推导】<strong>必须先 redo 重放再 undo 回滚</strong>。反过来会在"已提交但页未落盘"时丢掉已提交的数据</td></tr><tr><td>"恢复中断（又崩了）会出问题"</td><td>【推导】没关系。redo 重放<strong>按页 LSN 判断是否已应用</strong>，是幂等的；重启后从最新 check point 继续即可。<strong>系统不怕反复崩，怕的是重放不幂等</strong></td></tr><tr><td>"恢复时间长是磁盘慢"</td><td>【取舍】更主要的原因是 <strong>check point 落后太多</strong>（要重放的日志多）。<strong>而 check point 的推进频率同时影响正常写入性能</strong>，不能单边调</td></tr><tr><td>"PG 也有 prepare/commit 的两阶段日志状态"</td><td>【事实】<strong>没有</strong>。PG 只有 WAL 一套日志，<strong>不存在"两份日志要协调"的问题</strong>，所以没有 2PC 的日志状态；它的恢复是"重放 WAL + 回滚未提交元组"（[[母题-P11-WAL与checkpoint]]）</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q1" tag="MySQL" q="redo 生成速率约 100 MB/s，崩溃时 check point 落后 30 秒。重放（顺序读 + 应用）速度按 300 MB/s 估。&#10;问：恢复大约要多久？想缩短它，代价在哪？" a="待重放量 = 100 MB/s × 30s = 3 GB&#10;恢复时间 ≈ 3 GB ÷ 300 MB/s ≈ 10 秒&#10;缩短它的唯一手段是让 check point 更靠前——即更频繁地把脏页刷到磁盘。&#10;【代价】刷脏页是随机写（M11 的 1.2：随机写比顺序写慢 2–3 个数量级）。check point 推得越勤，正常运行时的写入性能越差。&#10;所以这是同一组参数的两面：&#10;check point 推进 · 恢复时间 · 正常运行写入性能&#10;更频繁 · 变短 · 变差&#10;更少 · 变长 · 变好&#10;没有&quot;都变好&quot;的选项——面试时能把这句说出来，比背&quot;把 check point 调密&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q2" tag="MySQL" q="重启后，日志里发现三个事务：&#10;① redo 有 commit 标记 ② redo 是 prepare，且它的 binlog 记录完整 ③ redo 是 prepare，binlog 里找不到它&#10;分别怎么处理？为什么？" a="事务 · 状态 · 处理 · 依据&#10;① · 已提交 · 保留（必要时 redo 重放把数据页补上） · redo 里的 commit 标记&#10;② · 提交到一半 · 提交（把 redo 改成 commit） · 2PC 第二步成功了 = 已对外宣布过成功，必须生效，否则从库有主库没有&#10;③ · 提交到一半 · 回滚（用 undo 撤销） · 2PC 第二步没成功 = 从未对外宣布，必须回滚，否则主库有从库没有&#10;三者的动作都不是猜的——状态来自日志，动作由状态决定。这就是&quot;恢复靠自证，不靠猜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q3" tag="MySQL" q="恢复进行到一半，又断电了。再次重启时会不会出问题？为什么？" a="不会出问题。&#10;因为 redo 重放是幂等的：每条 redo 应用前都比较数据页头部的 LSN 与这条 redo 的 LSN——已经应用过的（页.LSN &gt;= redo.LSN）直接跳过。所以再重启时从最新的 check point 继续重放即可，不会重复应用。&#10;幂等的来源是&quot;每个页自带 LSN 这个状态标记&quot;，不是&quot;只允许做一次&quot;的锁。&#10;【推论】系统不怕反复崩，怕的是重放不幂等。 这个判据可以迁移：设计任何重试/重放机制时，先问&quot;能不能判断已做过&quot;，而不是先问&quot;怎么保证只做一次&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;崩溃恢复的原理是：比较各个事务的开始时间，开始得早且日志写完了的就提交，没写完的就回滚。&quot;" a="&quot;比较开始时间&quot;是错的，恢复不看时间，看状态。&#10;准确的做法是读日志留下的状态标记：&#10;日志里的状态 · 结论&#10;redo 有 commit · 已提交 → 保留&#10;redo 是 prepare + binlog 完整 · 视为提交&#10;redo 是 prepare + binlog 不完整 · 回滚&#10;redo 没有该事务的提交痕迹 · 未提交 → 回滚&#10;为什么不能靠时间：事务的&quot;开始时间&quot;和&quot;是否提交&quot;没有任何必然关系——一个很早就开始的事务可能一直没提交；一个刚开的事务可能已经提交。&#10;&quot;依赖时间推断状态&quot;在分布式系统里是典型的错误设计——状态必须被显式记录，而不是被推断。 这一点同样适用于业务层的幂等设计。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M12-崩溃恢复-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;PostgreSQL 崩溃恢复也是靠 redo 重放 + 用 binlog 裁决 prepare 事务，和 MySQL 一样。&quot;" a="&quot;靠 binlog 裁决 prepare&quot;是错的——PG 没有 binlog，也没有 prepare/commit 这套日志状态。&#10;PostgreSQL 只有 WAL 一套日志：&#10;恢复 = 重放 WAL + 回滚未提交的元组&#10;复制也走 WAL（流复制 / WAL 归档），不依赖第二份逻辑日志&#10;旧的元组版本留在堆里，靠 VACUUM 回收&#10;【推导】所以 PG 从一开始就不存在&quot;两份日志要协调&quot;的问题 —— 而两阶段提交恰恰是 MySQL 为了解决这个问题才发明的。&#10;MySQL · PostgreSQL&#10;日志 · redo + undo + binlog · WAL 一套&#10;恢复关键步骤 · redo 重放 → 用 binlog 裁决 prepare → undo 回滚 · 重放 WAL + 回滚未提交元组&#10;一致性协调 · 需要（2PC） · 不需要（单一日志天然一致）&#10;把 MySQL 的&quot;binlog 裁决&quot;套到 PG 上，是把两边最容易混的地方说反了。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M12-崩溃恢复" tag="MySQL" q="崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？" a="恢复 = redo 重放 + undo 回滚。重启后从 check point 起顺序重放 redo（每页自带 LSN，已落盘的直接跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的撤销。提交到一半（prepare）的事务由 binlog 的完整性裁决——binlog 完整就提交，不完整就回滚。顺序不能反：必须先 redo 再 undo。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">恢复 = <strong>redo 重放 + undo 回滚</strong>。重启后从 check point 起顺序重放 redo（<strong>每页自带 LSN，已落盘的直接跳过，所以重放幂等</strong>），把<strong>已提交</strong>的事务补上；再用 undo 把<strong>未提交</strong>的撤销。<strong>提交到一半（prepare）的事务由 binlog 的完整性裁决</strong>——binlog 完整就提交，不完整就回滚。<strong>顺序不能反：必须先 redo 再 undo。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>崩溃时只有三种状态</li><li>已提交的页也可能还在内存</li><li>动作由日志状态决定、不靠猜</li><li><strong>幂等 = 做之前能判断是否已做过</strong></li><li>页 LSN 比较</li><li>prepare 靠 binlog 裁决</li><li>先 redo 后 undo</li><li>check point 位置决定恢复时长（且与写入性能是同一组参数的两面）</li><li>双一</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PG 没有 binlog、没有 prepare/commit 两阶段日志状态</strong>——它只有 WAL，恢复是"重放 WAL + 回滚未提交元组"，复制也走 WAL。<strong>"PG 也靠 binlog 裁决"这个说法一说出来就是错的。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>恢复要重放多久？</strong></strong></p>
+<p class="mv-md-p">取决于 <strong>check point 的位置</strong>。它越新，要重放的越少、恢复越快；但推进它需要更频繁刷脏页，<strong>代价是正常运行时更多的随机 IO</strong>。<strong>同一组参数的两面。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>恢复途中又崩了怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>没关系</strong>。重放按页 LSN 跳过已应用的，是幂等的，重启后从最新 check point 继续。<strong>不怕反复崩，怕重放不幂等。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>为什么不会重复执行已提交的事务？</strong></strong></p>
+<p class="mv-md-p"><strong>数据页自带 LSN，重放前先比较</strong>，已落盘的直接跳过。</p>
+<p class="mv-md-p"><strong>4. <strong>主从不一致是怎么被崩溃窗口造出来的？</strong></strong></p>
+<p class="mv-md-p">不做 2PC 时的两个反向窗口：redo 写完 binlog 没写就崩 → 主库有从库没有；binlog 写完 redo 没写就崩 → 从库有主库没有（M11）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「MySQL 宕机重启后为什么不会重复执行已提交事务？」——页 LSN 比较（幂等重放的标准答案）</li><li>「redo log 是无限增长的吗？」——不是，固定大小循环写，边界靠 check point</li><li>「恢复过程中最怕什么？」——<strong>怕重放不幂等</strong>，不是怕崩</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">EnergyOps 的<strong>幂等补数</strong>（窗口重跑不会重复计费，与 redo 重放是同一个"做之前先判断是否已做过"的模式）；<strong>RuleArena 的 Worker 崩溃恢复</strong>——<code class="mv-md-code">projects/RuleArena/04-idempotency-and-recovery.md</code> 里的「崩溃位置矩阵」（调用前 / 请求已发未提交 / 事务已提交未返回 / Checkpoint 落后）<strong>几乎就是这张三状态表的业务版</strong>。<strong>这是"数据库机制"和"业务设计"共用同一个骨架的典型案例</strong>，面试里讲这个连接比背恢复步骤更能体现理解。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">崩溃瞬间的三状态表 → 恢复只回答三个问题（重做谁/回滚谁/怎么不重复）→ redo 重放为什么幂等（页 LSN）→ <strong>幂等的本质是"能判断已做过"而不是"只做一次"</strong> → 为什么必须先 redo 后 undo → prepare 靠 binlog 完整性裁决（并解释为什么这个判据对）→ 恢复时间与 check point 的两面性 → 双一 → 方言（PG 没有 binlog 裁决这套）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>恢复的正确性不靠"猜"，靠"日志状态"。</strong> 每个事务在崩溃瞬间只有三种可能——没开始、已提交、提交到一半。<strong>前两种由日志标记无歧义地确定，第三种由两阶段提交给出的裁决规则唯一确定。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能只靠「三状态表 + 两个崩溃窗口」把整条恢复逻辑推一遍；能说清"为什么 binlog 完整就提交"；能说出幂等的本质是"能判断已做过"，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<svg viewBox="0 0 680 442" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>上下文窗口里装了什么，四种手段各作用在哪一段</title>
+  <desc>上半部分把一次请求的 1M 窗口拆成六段——系统提示、工具定义、历史摘要、近期消息、工具结果、本次输出，其中输出与 thinking 也占窗口、缓存命中的前缀照样占窗口；下方四个手段分别作用于不同段：选择作用于工具结果与证据、压缩把历史压成摘要、隔离让子任务不进主窗口、缓存只作用于稳定前缀且只改价格不改占用。下半部分用两条曲线说明为什么长会话贵：最后一轮 prompt 大小线性增长，而累计计费是平方增长，两者相差 (n+1)/2 倍。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">上下文窗口里装了什么，四种手段各作用在哪一段</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">窗口是「一次调用的视图」：每轮重新装配、重新付钱、重新争夺注意力</text>
+
+  <!-- ============ 面板一：窗口构成 + 四种手段 ============ -->
+  <text x="30" y="82" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">① 一次请求里，窗口装的是什么</text>
+  <text x="232" y="82" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">（1M = 容量上限，不等于能用的信息量）</text>
+
+  <rect x="44" y="96" width="592" height="50" rx="8" fill="#EFECE4" stroke="#D8D5CC"/>
+
+  <rect x="50" y="102" width="86" height="38" rx="5" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="93" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">系统提示</text>
+
+  <rect x="140" y="102" width="86" height="38" rx="5" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="183" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">工具定义</text>
+
+  <rect x="230" y="102" width="82" height="38" rx="5" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="271" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">历史摘要</text>
+
+  <rect x="316" y="102" width="100" height="38" rx="5" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="366" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">近期消息</text>
+
+  <rect x="420" y="102" width="120" height="38" rx="5" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="480" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">工具结果 / 证据</text>
+
+  <rect x="544" y="102" width="86" height="38" rx="5" fill="#F7F6F3" stroke="#D8D5CC" stroke-dasharray="3 2"/>
+  <text x="587" y="125" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">本次输出</text>
+
+  <text x="44" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">虚线段也是要算的：模型生成的 token（含 thinking）占窗口；缓存命中的前缀照样占窗口——缓存改的是价格，不是占用。</text>
+
+  <!-- 四个手段卡片 -->
+  <path d="M112 208 L112 176" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#cb-ar)"/>
+  <rect x="44" y="210" width="136" height="86" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="112" y="232" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">选择 Selection</text>
+  <text x="112" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">只放当前步骤所需</text>
+  <text x="112" y="270" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">分阶段加载，不一次注入</text>
+  <text x="112" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">→ 工具结果 / 证据段</text>
+
+  <path d="M264 208 L264 176" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#cb-ar2)"/>
+  <rect x="196" y="210" width="136" height="86" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="264" y="232" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806" text-anchor="middle">压缩 Compression</text>
+  <text x="264" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">历史 → 摘要（有损）</text>
+  <text x="264" y="270" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">先保 recall，再提 precision</text>
+  <text x="264" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">摘要必须留可回溯指针</text>
+
+  <path d="M416 208 L416 176" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#cb-ar)"/>
+  <rect x="348" y="210" width="136" height="86" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="416" y="232" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">隔离 Isolation</text>
+  <text x="416" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">子任务用独立窗口</text>
+  <text x="416" y="270" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">大产物写外存留引用</text>
+  <text x="416" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">只回传 1–2K 结论</text>
+
+  <path d="M568 208 L568 176" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#cb-ar)"/>
+  <rect x="500" y="210" width="136" height="86" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="568" y="232" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">缓存 Caching</text>
+  <text x="568" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">只作用于稳定前缀</text>
+  <text x="568" y="270" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">读 0.1x、写 1.25x</text>
+  <text x="568" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">省的是钱，不是窗口</text>
+
+  <!-- ============ 面板二：成本曲线 ============ -->
+  <text x="30" y="332" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">② 为什么长会话贵：历史每一轮都要重发一遍</text>
+
+  <path d="M72 380 L72 352 M72 380 L392 380" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="72" y="396" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第 1 轮</text>
+  <text x="392" y="396" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">第 n 轮</text>
+
+  <path d="M72 376 L392 350" stroke="#8A877E" stroke-width="1.6" fill="none"/>
+  <text x="300" y="344" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">最后一轮 prompt 大小（线性 k·n）</text>
+
+  <path d="M72 376 Q260 372 392 310" stroke="#BA7517" stroke-width="1.6" fill="none"/>
+  <text x="196" y="322" font-family="system-ui,sans-serif" font-size="10" fill="#633806">累计计费 token（平方 k·n(n+1)/2）</text>
+
+  <rect x="424" y="344" width="226" height="52" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="440" y="366" font-family="system-ui,sans-serif" font-size="11" fill="#633806">40 轮 · 每轮 15K：最后 600K，累计 12.3M</text>
+  <text x="440" y="386" font-family="system-ui,sans-serif" font-size="11" fill="#633806">相差 (n+1)/2 = 20.5 倍</text>
+
+  <defs>
+    <marker id="cb-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="cb-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>

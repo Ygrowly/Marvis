@@ -1,0 +1,35 @@
+<svg viewBox="0 0 680 292" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>LRU 缓存中哈希表与双向链表的关系</title>
+<desc>哈希表视图与链表视图指向同一批 Node 实体，两者必须同步增删，只删一边会留下幽灵节点。</desc>
+<defs>
+<marker id="lru-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="340" y="42" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">同一份缓存状态，两个视图</text>
+
+<rect x="36" y="80" width="176" height="96" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="52" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#444441">哈希表视图</text>
+<text x="52" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#5F5E5A">负责 O(1) 定位</text>
+<text x="52" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">1 → node₁</text>
+<text x="52" y="170" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">2 → node₂</text>
+
+<rect x="252" y="80" width="176" height="96" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="268" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#0C447C">Node 实体</text>
+<text x="268" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#185FA5">一份真实状态</text>
+<text x="268" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#0C447C">node₁ ⇄ node₂</text>
+
+<rect x="468" y="80" width="176" height="96" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="484" y="104" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#444441">链表视图</text>
+<text x="484" y="126" font-family="system-ui,sans-serif" font-size="12" fill="#5F5E5A">负责 O(1) 调序</text>
+<text x="484" y="150" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">head ⇄ node₁</text>
+<text x="484" y="170" font-family="ui-monospace,monospace" font-size="12" fill="#185FA5">node₂ ⇄ tail</text>
+
+<path d="M214 128 L248 128" fill="none" stroke="#888780" stroke-width="1.5" marker-start="url(#lru-arrow)" marker-end="url(#lru-arrow)"/>
+<path d="M430 128 L464 128" fill="none" stroke="#888780" stroke-width="1.5" marker-start="url(#lru-arrow)" marker-end="url(#lru-arrow)"/>
+
+<rect x="36" y="210" width="608" height="56" rx="10" fill="#FCEBEB" stroke="#E24B4A" stroke-width="0.5"/>
+<text x="340" y="233" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#791F1F">只删链表 → 哈希表留下已淘汰节点 ｜ 只删哈希表 → 链表留下无效节点</text>
+<text x="340" y="253" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#A32D2D">两边必须同步增删</text>
+</svg>

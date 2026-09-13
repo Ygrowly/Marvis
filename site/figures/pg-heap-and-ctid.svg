@@ -1,0 +1,58 @@
+<svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>PG 的索引只是路标：索引给位置，取行要回堆</title>
+  <desc>左边是堆表：数据页无序，行按写入顺序散落。中间是 B 树索引：有序，叶子存键值和 ctid，ctid 指向物理位置。右边是取行的两条路径：默认要按 ctid 逐个读堆页，这就是回表；只有当可见性映射说明这一页所有版本都可见时，才可以直接用索引里的值跳过堆，这叫 Index Only Scan。底部说明 Index Only Scan 的隐含条件依赖 VACUUM 的维护，以及怎么用 Heap Fetches 判断真假。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">PG 的索引只是路标：索引给位置，取行要回堆</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">MySQL 的主键就是数据本身；PG 的所有索引都只是「指向数据的路标」——这一条决定了后面所有差异</text>
+
+  <!-- 堆 -->
+  <rect x="30" y="66" width="150" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="105" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">表（堆）</text>
+  <rect x="46" y="98" width="118" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="105" y="112" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">数据页 8KB · 无序</text>
+  <rect x="46" y="124" width="118" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="105" y="138" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">行按写入顺序散落</text>
+  <rect x="46" y="150" width="118" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="105" y="164" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">行与行之间无顺序保证</text>
+
+  <!-- 索引 -->
+  <rect x="200" y="66" width="180" height="120" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="290" y="88" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">B-tree 索引（另一套文件）</text>
+  <rect x="216" y="98" width="148" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="290" y="112" font-family="system-ui,sans-serif" font-size="9" fill="#2C2C2A" text-anchor="middle">有序，键 → 位置</text>
+  <rect x="216" y="124" width="148" height="34" rx="4" fill="#FFFFFF" stroke="#BA7517"/>
+  <text x="290" y="138" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">叶子：(键值, ctid)</text>
+  <text x="290" y="151" font-family="system-ui,sans-serif" font-size="8.5" fill="#633806" text-anchor="middle">ctid = (页号, 页内偏移)</text>
+
+  <!-- 两条路径 -->
+  <rect x="404" y="66" width="246" height="54" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="420" y="86" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">默认路径：回表</text>
+  <text x="420" y="104" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">按 ctid 逐个读堆页 → 随机 IO，次数随命中行数线性增长</text>
+
+  <rect x="404" y="130" width="246" height="56" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="420" y="150" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">例外：Index Only Scan</text>
+  <text x="420" y="168" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">条件不是「列齐了」，而是</text>
+  <text x="420" y="182" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">【可见性映射说这一页所有版本都可见】</text>
+
+  <path d="M382 100 L402 96" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#p2-ar)"/>
+  <path d="M382 150 L402 156" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#p2-ar2)"/>
+
+  <!-- 底部 -->
+  <path d="M30 206 L650 206" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="230" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">所以 Index Only Scan 的隐含条件是你一直在 VACUUM</text>
+  <rect x="30" y="242" width="300" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="262" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">某页全可见 → 直接用索引里的值，跳过堆</text>
+  <text x="46" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#633806">该页有死元组 → 必须回堆确认可见性（退化）</text>
+
+  <rect x="350" y="242" width="300" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="262" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">怎么判断真假优化</text>
+  <text x="366" y="282" font-family="system-ui,sans-serif" font-size="10" fill="#633806">看 EXPLAIN ANALYZE 的 Heap Fetches：不是 0 就还在回堆</text>
+
+  <text x="30" y="320" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">INCLUDE 列：<tspan font-weight="600">把「只为覆盖而加」的列挂在叶子，不参与最左前缀</tspan>——既保持索引键简洁，又拿到覆盖能力。</text>
+  <text x="30" y="336" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">反过来，聚合表更新频繁 → 可见性映射常年不干净 → 拿不到 Index Only Scan，优化重心应放在「减少扫描与回表行数」。</text>
+
+  <defs>
+    <marker id="p2-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/></marker>
+    <marker id="p2-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/></marker>
+  </defs>
+</svg>

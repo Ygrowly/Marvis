@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 G4 · 引用绑定与证据可追溯</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/RAG与检索.html">← RAG与检索 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">RAG与检索</span>
+    <h1 class="mv-topic-title">母题 G4 · 引用绑定与证据可追溯</h1>
+    <p class="mv-topic-meta">关联 母题-G3-重排与召回质量（引用的是重排后的证据）· 母题-G5-RAG评测与幻觉率（引用完整性是答案指标之一）· 母题-C4-幻觉的成因与可控性（"错误与弃答分开定价"）· 母题-C2-结构化输出与JSON可靠性（"要求引用"是 prompt，"验证引用"才是机制） ｜ 正本 wiki/topics/RAG与检索/母题-G4-引用绑定与证据可追溯.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 引用不是文末列链接 ② 关键动作是"生成后验证"而不是"要求引用" ③ 拒答是把"自信的错误"换成"坦白的不知道"）· 读完约 11 分钟 · 需要先懂：[[母题-C4-幻觉的成因与可控性]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的 RAG 怎么保证可追溯？用户凭什么相信这个答案是对的？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：引用要解决的是"谁承担校验成本"</h3>
+<p class="mv-md-p">【推导】<strong>问一个更根本的问题：用户看到一段答案，他凭什么判断哪句可信？</strong></p>
+<pre class="mv-md-pre">① 粗引用（文末列链接）：
+   正文 10 条结论没有任何标记，文末给 3 个链接
+   → 用户无法判断哪一句有依据
+   → 只能二选一：全信，或者全不信
+   → 校验成本 = 【全部结论】
+   → 而且错的那几条照样造成损失
+
+② 细引用（逐条绑片段）：
+   每条结论后面绑到具体片段 [doc_12#p3]
+   找不到支撑引用的结论【直接撤掉】
+   → 用户只需抽查可疑的那几条
+   → 校验成本 = 【可疑的那几条】</pre>
+<p class="mv-md-p">【结论】<strong>引用的粒度决定"校验成本由谁承担"</strong>——<strong>粗引用是把成本全推给读者，细引用是把成本在生成时就付掉。</strong></p>
+<figure-box num="引用的粒度决定校验成本由谁承担" title="" note="粗引用逼用户全信或全不信；细引用把校验成本降到可疑项，且错的结论根本不会出现"><svg viewBox="0 0 680 316" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>引用的粒度决定校验成本由谁承担</title>
+  <desc>左边是粗引用：答案正文没有任何标记，文末列三个链接。用户无法判断哪一句有依据，只能选择全信或全不信——校验成本是全部结论。右边是细引用：每条结论后面绑到具体片段，找不到支撑的结论直接撤掉。用户只需要抽查可疑的那几条，校验成本从全部降到可疑。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">引用的粒度决定校验成本由谁承担</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「文末列几个链接」不是引用，是把校验成本全部推给读者</text>
+
+  <!-- 粗引用 -->
+  <rect x="30" y="66" width="300" height="150" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 粗引用（文末列链接）</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">正文：这里有 10 条结论，没有任何标记</text>
+  <text x="46" y="130" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">文末：参考资料 1 / 2 / 3</text>
+  <text x="46" y="156" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用户无法判断哪一句有依据，只能：</text>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　全信 → 错的那 2 条照样造成损失</text>
+  <text x="46" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　全不信 → 对的 8 条也白做</text>
+  <text x="46" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">校验成本 = 全部结论</text>
+
+  <!-- 细引用 -->
+  <rect x="350" y="66" width="300" height="150" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">② 细引用（逐条绑片段）</text>
+  <text x="366" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 1 …… [doc_12#p3]</text>
+  <text x="366" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 2 …… [doc_07#p1]</text>
+  <text x="366" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">结论 3 …… 找不到支撑引用 → <tspan font-weight="600">撤掉</tspan></text>
+  <text x="366" y="172" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用户只需抽查可疑的那几条</text>
+  <text x="366" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">错的结论根本不会出现</text>
+  <text x="366" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">校验成本 = 可疑的那几条</text>
+
+  <!-- 底部 -->
+  <path d="M30 236 L650 236" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="260" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">关键动作不是「要求模型给引用」，而是「生成之后回头验证引用」</text>
+  <text x="30" y="280" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">把每条结论回头去原文里找支撑，找不到就撤稿——这是机制，不是提示词。「要求引用」只是 prompt，模型照样会编引用。</text>
+  <text x="30" y="302" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">代价：逐条验证会让 token 成本接近翻倍，所以通常只对高风险结论做（金额、权限、生效时间这类）。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们在文末列了参考链接"不算可追溯？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 关键动作是"生成后验证"，不是"要求引用"【推导】</h3>
+<p class="mv-md-p">【事实】Anthropic 文档里的三段式做法：</p>
+<pre class="mv-md-pre">① 允许弃答：显式给模型"说不知道"的许可
+② 先摘录、再作答：对长文档（&gt;20k token），先逐字摘出相关原文，再基于摘录作答
+③ 生成后验证：起草完，要求模型【回头为每条结论找支撑引用】；
+              找不到支撑的那条，【直接撤掉】并标记</pre>
+<p class="mv-md-p">【推导】<strong>为什么"要求引用"不够</strong>：</p>
+<pre class="mv-md-pre">"要求引用" 是 prompt 层的东西 —— 它改的是概率分布
+"验证引用" 是机制层的东西 —— 它是一条独立的检查步骤
+
+模型完全可以编一个看起来像引用的东西（比如引一个不存在的片段编号）
+而 prompt 拦不住它，因为编引用和编结论是同一个机制</pre>
+<p class="mv-md-p">【推论】<strong>这跟 [[母题-C2-结构化输出与JSON可靠性]] 那条结论是同一条</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"要求"改的是概率，"验证"才是机制。</strong></p>
+<p class="mv-md-p">【事实】<strong>这一条在 [[母题-C4-幻觉的成因与可控性]] 里被点过一次名</strong>：Anthropic 把它叫"生成后自查撤稿"——<strong>每条结论回原文找支撑，找不到就撤</strong>。<strong>它是治"有据不依"那一类幻觉的正解。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们在 prompt 里要求模型必须给引用"这句话经不起追问？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 验证的代价能算出来【推导】</h3>
+<pre class="mv-md-pre">一条回答有 10 条结论，逐条验证引用：
+  每次验证输入约 800 token（问题 + 结论 + 候选原文）
+  每次验证输出约 50 token（是否找到 + 引用位置）
+  验证总量 = 10 × (800 + 50) = 8,500 token
+
+生成本身（对照）：
+  输入约 4,000 token（上下文）+ 输出约 500 token = 4,500 token
+
+验证成本 / 生成成本 = 8,500 / 4,500 ≈ 1.9 倍</pre>
+<p class="mv-md-p">【结论】<strong>逐条验证会让 token 成本接近翻倍。</strong></p>
+<p class="mv-md-p">【取舍】<strong>所以生产上通常只对"高风险结论"做逐条验证</strong>：</p>
+<pre class="mv-md-pre">值得验证的：金额、权限、生效时间、涉及外部副作用的结论
+不必验证的：寒暄、过渡句、从证据直接摘录的原文</pre>
+<p class="mv-md-p">【推论】<strong>这也是"引用绑定"要和"证据重要性"一起设计的原因</strong>——<strong>不是所有结论都值得花同样的验证成本。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 拒答：把"自信的错误"换成"坦白的不知道"【推导】</h3>
+<p class="mv-md-p">【事实】<strong>应该拒答或澄清的条件</strong>（study/03 的清单）：</p>
+<pre class="mv-md-pre">① 没有召回足够证据
+② 多个权威来源相互冲突
+③ 用户身份不足（权限）
+④ 问题超出知识库边界
+⑤ 时间、主体或指标口径不明确</pre>
+<h4 class="mv-md-h mv-md-h4">4.1 拒答的收益能算出来【推导】</h4>
+<p class="mv-md-p">【推导】<strong>这跟 [[母题-C4-幻觉的成因与可控性]] 里"错误和弃答分开定价"是同一条原理</strong>：</p>
+<pre class="mv-md-pre">设 20% 的查询没有足够证据。
+错误（自信答错）的代价 = 10 单位（客诉 / 返工 / 信任损失）
+弃答的代价            = 1 单位（转人工兜底）
+
+不拒答：那 20% 全部变成错误 → 0.2 × 10 = 2.0 单位
+拒答：  那 20% 转人工        → 0.2 × 1  = 0.2 单位</pre>
+<p class="mv-md-p">【结论】<strong>代价降到 1/10。</strong></p>
+<p class="mv-md-p">【推论】<strong>"拒答显得系统能力弱"是反的</strong>——<strong>用户对"自信的错误"的容忍度，远低于对"坦白的不知道"的容忍度。</strong> 这也是为什么汇报要用<strong>错误率</strong>而不是准确率。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 引用绑定还必须在生成之后再做一次鉴权【事实】</h4>
+<p class="mv-md-p">【事实】study/03 的一条要求容易被漏掉：<strong>"引用和下载再次鉴权"</strong>。</p>
+<p class="mv-md-p">【推论】<strong>理由和 [[母题-G2-向量与关键词的混合检索]] 里"权限必须在召回前生效"是同一个</strong>：</p>
+<pre class="mv-md-pre">召回时过滤了，但从"召回完成"到"用户看到答案"之间，
+权限可能已经变了（撤权、角色变更、文档删除）
+→ 所以展示引用时还要再验一次</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"拒答"不是能力不足，而是设计的一部分？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 好的引用长什么样【事实】</h3>
+<p class="mv-md-p">【事实】study/03 给的标准（这一条可以直接背）：</p>
+<pre class="mv-md-pre">① 关键结论【逐项绑定】来源片段
+② 引用可定位到【文档 / 章节 / 版本】
+③ 计算结果绑定 SQL / 工具运行 ID
+④ 用户能检查原始证据
+⑤ 引用不存在、或不支持结论时【判失败】（不是警告，是失败）</pre>
+<p class="mv-md-p">【推论】<strong>第 ③ 条是企业问数场景特有的</strong>：<strong>SQL 的结果也要能追溯</strong>——<strong>引用绑定 Schema 版本、SQL AST、运行 ID 和结果摘要</strong>（数驭穹图的真实做法）。</p>
+<p class="mv-md-p">【推论】<strong>第 ⑤ 条是关键</strong>：<strong>引用不支持结论 = 这条结论失败</strong>，而不是"打个标记继续展示"。<strong>判失败才能进评测</strong>（[[母题-G5-RAG评测与幻觉率]] 的 Citation completeness 就是测这个）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"引用就是文末列参考链接"</td><td><strong>那不是引用，是把校验成本全推给读者</strong>。用户无法判断哪句有依据，只能全信或全不信。<strong>细引用把校验成本在生成时就付掉</strong>——而且找不到支撑的结论<strong>根本不出现</strong></td></tr><tr><td>"在 prompt 里要求模型给引用就行了"</td><td><strong>不够</strong>。"要求引用"是 prompt（改概率），"<strong>验证引用</strong>"才是机制（独立检查步骤）。<strong>模型完全可以编一个看起来像引用的片段编号</strong>——因为它编引用和编结论是同一个机制</td></tr><tr><td>"拒答显得系统能力弱"</td><td><strong>反了</strong>。拒答是把"自信的错误"（代价 10 单位）换成"坦白的不知道"（代价 1 单位）——<strong>总代价降到 1/10</strong>。<strong>用户对自信错误的容忍度远低于对不知道的</strong></td></tr><tr><td>"召回时过滤了权限就够了"</td><td><strong>不够</strong>。从"召回完成"到"用户看到答案"之间，<strong>权限可能已经变了</strong>（撤权、角色变更、文档删除）。所以<strong>展示引用和下载时要再次鉴权</strong></td></tr><tr><td>"引用存在就说明结论对"</td><td><strong>引用存在 ≠ 引用支持结论</strong>。要区分"引了一个真实存在的片段"和"这个片段确实支撑这条结论"——<strong>后者才是 faithfulness</strong>（[[母题-G5-RAG评测与幻觉率]]）</td></tr><tr><td>"所有结论都做逐条验证"</td><td><strong>成本会接近翻倍</strong>（Q3）。<strong>只对高风险结论做</strong>：金额、权限、生效时间、涉及副作用的。其余靠"从证据直接摘录"来保证</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>可追溯不是"给个出处"，是"让每句话都有据可查，没据的那句不出现"——前一半靠绑定，后一半靠拒答。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G4-引用绑定与证据可追溯-q1" tag="RAG与检索" q="一条回答有 10 条结论，逐条验证引用。每次验证输入约 800 token、输出约 50 token。生成本身是输入 4,000 + 输出 500。&#10;问：验证的 token 总量是多少？是生成成本的几倍？这对方案设计意味着什么？" a="``text&#10;验证总量 = 10 × (800 + 50) = 8,500 token&#10;生成本身 = 4,000 + 500 = 4,500 token&#10;倍数 = 8,500 / 4,500 ≈ 1.9 倍&#10;``&#10;【结论】逐条验证会让 token 成本接近翻倍。&#10;【推论】所以生产上通常只对高风险结论做逐条验证：金额、权限、生效时间、涉及外部副作用的结论值得；寒暄、过渡句、从证据直接摘录的原文不必。&#10;【补充】另一条更省的路径是先摘录再作答（对长文档）：要求模型先逐字摘出相关原文，再基于摘录作答——这样&quot;引用&quot;在生成时就已经产生了，验证只需核对摘录是否真的在原文里（可以用代码做，不需要模型）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G4-引用绑定与证据可追溯-q2" tag="RAG与检索" q="设 20% 的查询没有足够证据。自信答错的代价是 10 单位（客诉 / 返工 / 信任损失），弃答转人工的代价是 1 单位。&#10;问：不拒答和拒答两种策略下，总代价分别是多少？如果错误代价是 50 单位而不是 10 呢？" a="``text&#10;不拒答（那 20% 全变成错误）：&#10;0.2 × 10 = 2.0 单位&#10;拒答（那 20% 转人工）：&#10;0.2 × 1 = 0.2 单位&#10;代价比 = 0.2 / 2.0 = 1/10&#10;`&#10;错误代价换成 50 单位时：&#10;`text&#10;不拒答：0.2 × 50 = 10.0 单位&#10;拒答：  0.2 × 1  =  0.2 单位&#10;代价比 = 1/50&#10;``&#10;【结论】错误越贵，拒答越值钱——比例从 1/10 拉大到 1/50。&#10;【推论】这跟 [[母题-C4-幻觉的成因与可控性]] 里&quot;错误和弃答必须分开定价&quot;完全同源：只要把两者同价，算出来的结论就是错的。所以做这个判断之前必须先回答：在你的业务里，一次&quot;自信的错误&quot;值多少次&quot;转人工&quot;？"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G4-引用绑定与证据可追溯-q3" tag="RAG与检索" q="某系统 10 条结论里有 2 条是错的。用户校验一条结论要约 30 秒。&#10;问：粗引用（文末列链接）和细引用（逐条绑片段）下，用户的校验成本各是多少？" a="``text&#10;粗引用：&#10;正文里没有任何标记，用户无法判断哪条可疑&#10;→ 要判断必须逐条核对 → 10 × 30 秒 = 300 秒&#10;→ 或者放弃核验，全信 → 那 2 条错误照样造成损失&#10;细引用：&#10;每条结论都绑了来源，用户可以只查可疑的&#10;→ 即使查 2 条可疑的 → 2 × 30 秒 = 60 秒&#10;→ 而且【找不到支撑引用的结论已经被撤掉】，2 条错误里可能有一条压根没出现&#10;``&#10;【结论】校验成本从&quot;全部&quot;降到&quot;可疑&quot;（例子里 300 秒 → 60 秒）。而更值钱的是&quot;错的结论压根不出现&quot;——撤销发生在生成阶段，用户的校验成本直接归零。&#10;【推论】这就是&quot;引用粒度&quot;的真正价值：它不是&quot;方便用户核对&quot;，是把校验从&quot;事后逐条检查&quot;变成&quot;事前自动过滤&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G4-引用绑定与证据可追溯-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们在文末列出了三条参考链接，用户可以去核对，所以系统的可追溯性没问题。&quot;" a="三处问题。&#10;1. 粒度太粗，用户无法定位：正文里 10 条结论没有任何标记，用户不知道哪条对应哪个链接——只能全信或全不信。校验成本等于全部结论（Q3：300 秒 vs 60 秒）。&#10;2. 引用必须能定位到&quot;文档 / 章节 / 版本&quot;，而不只是一个文档标题——同一份文档有多个版本时，&quot;引了这份文档&quot;等于没引。&#10;3. 漏掉了最关键的一步：找不到支撑引用的结论应该直接撤掉，而不是&quot;打个标记继续展示&quot;。&quot;引用不存在或不支持结论时判失败&quot;——这是 study/03 明写的第 ⑤ 条。&#10;【准确说法】&quot;可追溯 = 逐条绑定 + 可定位到版本 + 找不到支撑就撤稿。前两条是格式要求，第三条是机制——而机制才是真正起作用的那个。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G4-引用绑定与证据可追溯-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们的 RAG 要求模型必须给出引用，所以不会出现无依据的回答。&quot;" a="&quot;要求&quot;改的是概率，&quot;验证&quot;才是机制。&#10;1. 模型完全可以编一个看起来像引用的东西——比如引一个不存在的片段编号、或者引一个真实存在但不支持该结论的片段。编引用和编结论是同一个机制，prompt 拦不住。&#10;2. 正确做法是生成后回头验证：每条结论去原文里找支撑，找不到的直接撤掉。Anthropic 文档里管这叫&quot;生成后自查撤稿&quot;。&#10;3. 还要能区分&quot;引用存在&quot;和&quot;引用支持结论&quot;：前者只要片段编号对就行，后者才是 faithfulness（[[母题-G5-RAG评测与幻觉率]] 的答案指标之一）。&#10;【准确说法】&quot;'要求引用'是 prompt，'验证引用'是机制——两者不能互相替代。只看引用存在与否，检查不出'引了但不支持'这一类错误。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">怎么让答案的每一句都能回到原文——以及当回不去的时候，系统该做什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="RAG与检索/母题-G4-引用绑定与证据可追溯" tag="RAG与检索" q="怎么让答案的每一句都能回到原文——以及当回不去的时候，系统该做什么？" a="可追溯不是&quot;给个出处&quot;，是让每句话都有据可查、没据的那句不出现。粗引用（文末列链接）把校验成本全推给读者——用户无法判断哪句可疑，只能全信或全不信；细引用（逐条绑片段 + 可定位到版本）把校验成本降到&quot;可疑的那几条&quot;。关键动作不是&quot;要求模型给引用&quot;，而是&quot;生成之后回头验证引用&quot;——把每条结论回原文找支撑，找不到的直接撤掉（Anthropic 管这叫&quot;生成后自查撤稿&quot;）。理由是：&quot;要求&quot;改的是概率，&quot;验证&quot;才是机制——模型完全可以编一个看起来像引用的东西。代价：逐条验证会让 token 成本接近翻倍（10 条结论 ≈ 8,500 token vs 生成 4,500 token），所以只对高风险结论做（金额、权限、生效时间）。拒答是设计的一部分：把&quot;自信的错误&quot;（10 单位）换成&quot;坦白的不知道&quot;（1 单位），总代价降到 1/10——错误越贵，拒答越值钱。最后，引用和下载要再次鉴权——权限从召回到展示之间可能已经变了。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是 RAG 面试里<strong>最容易被答浅的一题</strong>——大多数人的答案是"我们在文末列了参考链接"。<strong>但真正的问题是：谁来承担校验成本。</strong> 引用的本质不是"给个出处"，是<strong>把验证的工作从"读者全量核对"降到"抽查可疑项"</strong>。而且这一题直接连着"拒答"——<strong>一个不拒答的 RAG 系统，等于把幻觉的责任推给了用户。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">可追溯不是"给个出处"，是<strong>让每句话都有据可查、没据的那句不出现</strong>。<strong>粗引用（文末列链接）把校验成本全推给读者</strong>——用户无法判断哪句可疑，只能全信或全不信；<strong>细引用（逐条绑片段 + 可定位到版本）把校验成本降到"可疑的那几条"</strong>。<strong>关键动作不是"要求模型给引用"，而是"生成之后回头验证引用"</strong>——把每条结论回原文找支撑，<strong>找不到的直接撤掉</strong>（Anthropic 管这叫"生成后自查撤稿"）。理由是：<strong>"要求"改的是概率，"验证"才是机制</strong>——模型完全可以编一个看起来像引用的东西。<strong>代价</strong>：逐条验证会让 token 成本接近翻倍（10 条结论 ≈ 8,500 token vs 生成 4,500 token），所以<strong>只对高风险结论做</strong>（金额、权限、生效时间）。<strong>拒答是设计的一部分</strong>：把"自信的错误"（10 单位）换成"坦白的不知道"（1 单位），<strong>总代价降到 1/10</strong>——错误越贵，拒答越值钱。最后，<strong>引用和下载要再次鉴权</strong>——权限从召回到展示之间可能已经变了。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>引用粒度决定校验成本由谁承担</li><li>粗引用 300 秒 vs 细引用 60 秒</li><li><strong>"要求引用"是 prompt，"验证引用"才是机制</strong></li><li>生成后自查撤稿（找不到支撑就撤）</li><li>逐条验证成本 ≈ 2 倍，只对高风险结论做</li><li>先摘录再作答（引用在生成时产生）</li><li>拒答把代价降到 1</li><li>10，错误越贵越值钱</li><li>引用要能定位到文档·章节·版本</li><li>SQL 结果绑运行 ID</li><li>引用和下载再次鉴权</li><li>引用不支持结论 = 判失败</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>引用怎么做到"可追溯"而不是文末列链接？</strong></strong></p>
+<p class="mv-md-p"><strong>逐条绑定 + 可定位到文档/章节/版本 + 找不到支撑就撤稿</strong>。计算类结论还要<strong>绑定 SQL / 工具运行 ID</strong>（这样用户能重跑）。</p>
+<p class="mv-md-p"><strong>2. <strong>什么情况下应该拒答？</strong></strong></p>
+<p class="mv-md-p">五条：<strong>没有召回足够证据、多个权威来源冲突、用户身份不足、超出知识库边界、时间/主体/口径不明确</strong>。<strong>冲突时不强行合成唯一答案</strong>，而是显式返回证据（RuleArena 的做法）。</p>
+<p class="mv-md-p"><strong>3. <strong>怎么防止 RAG 越权？</strong></strong></p>
+<p class="mv-md-p"><strong>身份进入检索层、ACL filter 先于召回</strong>；<strong>缓存按租户 / 权限分区</strong>；<strong>引用和下载再次鉴权</strong>；<strong>做跨租户与撤权测试</strong>；<strong>日志避免记录敏感原文</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>长文档怎么保证 grounding？</strong></strong></p>
+<p class="mv-md-p">对超过 <strong>20k token</strong> 的文档，<strong>先要求逐字摘出相关原文（找不到就明说"没找到"），再基于摘录作答</strong>。这样引用在生成时就产生了，验证可以用代码做（核对摘录是否真在原文里）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「引用能不能防幻觉？」——<strong>能防一部分，但引用本身也会被编</strong>。所以关键动作是<strong>生成后自查</strong>：每条结论回头去原文找支撑，找不到就撤稿。<strong>"要求引用"是 prompt，"验证引用"才是机制。</strong></li><li>「多轮对话里引用会不会失效？」——<strong>会</strong>。上一轮的结论进了下一轮上下文就变成"已确认事实"。<strong>所以摘要里要标注哪些是已验证事实、哪些是模型推断</strong>，关键状态回权威源重查（[[母题-C1-上下文组装与窗口预算]]）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>引用绑定 Schema 版本、SQL AST、运行 ID 和结果摘要</strong>——<strong>这是"引用要能重跑"的最强形态</strong>（用户不仅能核对，还能自己重跑一遍 SQL）。 - <strong>RuleArena</strong>：<strong>冲突规则显式返回证据，不强行合成唯一答案</strong>——<strong>这是"拒答"的正例</strong>，也是本卡第 4 节五条拒答条件里"多个权威来源冲突"的真实版本。 - <strong>EnergyOps</strong>：<strong>故障建议要引用日志 / 指标 Artifact 和操作手册</strong>——<strong>"证据"有两种形态</strong>（实时数据和静态文档），引用格式要能区分。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先问"谁来承担校验成本" → 粗引用 vs 细引用的成本对比 → <strong>关键动作是生成后验证（不是要求引用）</strong> → 验证的成本与取舍 → 拒答的定价（错误 vs 弃答）→ 好引用的五条标准 → 再次鉴权 → 收束到"绑定 + 撤稿"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>可追溯的前一半是"绑定"，后一半是"撤稿"。</strong> 绑定解决"每句话能查"；<strong>撤稿解决"没据的话不出现"</strong>——<strong>而后者才是让用户敢信的那个动作</strong>，因为它把校验从"事后逐条检查"变成了"事前自动过滤"。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"引用粒度决定校验成本由谁承担"；<strong>能算出逐条验证的成本倍数（≈1.9 倍）</strong>；<strong>能算出拒答的代价比（1/10，错误越贵越值钱）</strong>；<strong>能算出粗引用与细引用的校验成本（300 秒 vs 60 秒）</strong>；能说出"要求引用 vs 验证引用"的区别并解释为什么 prompt 拦不住编引用；能背出好引用的五条标准与拒答的五条条件；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

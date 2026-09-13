@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P16 · 分区表</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P16 · 分区表</h1>
+    <p class="mv-topic-meta">关联 母题-P15-VACUUM与事务ID回卷（DROP 分区正好绕开了 VACUUM）· 母题-P14-长事务与表膨胀（分区的第二个收益就是治膨胀）· 母题-P4-索引代价与在线建索引（分区上的索引不能直接 CONCURRENTLY）· 母题-P6-执行计划怎么看（裁剪效果要在 EXPLAIN 里看）· 母题-P19-唯一约束与UPSERT（唯一约束要带分区键） ｜ 正本 wiki/topics/PostgreSQL/母题-P16-分区表.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 分区的收益全部来自<strong>「能只碰一部分」</strong>——只扫一部分（裁剪）、只丢一部分（DROP 分区） ② <strong>唯一约束必须包含分区键</strong>，因为每个分区是独立索引，<strong>跨分区唯一性它管不了</strong> ③ 分区多了<strong>规划时间和内存</strong>都会涨——<strong>它不是免费的把大表变小表</strong>）· 读完约 11 分钟 · 需要先懂：[[母题-P14-长事务与表膨胀]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">一张 5 亿行的表，查询永远带时间范围，而且每月要清掉两年前的数据。该不该分区？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 三种分区方式</h3>
+<figure-box num="分区的两类收益与它的硬限制" title="" note="三种分区方式的适用场景、裁剪的两条前提、丢弃分区与批量删除的代价对比、唯一约束必须带分区键的原因"><svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>分区的两类收益与它的硬限制</title>
+  <desc>顶部是三种分区方式：按值区间、按枚举集合、按哈希取模。中间对比两类收益：第一类是分区裁剪，五亿行按二十四个月分区后查一个月只扫约两千一百万行，但不带分区键的查询要扫全部二十四个分区、反而更慢，而且裁剪只由分区边界驱动、与索引无关。第二类是丢弃即归档：删两千一百万行会产生堆与每个索引各两千一百万个死元组，而摘掉一个分区是元数据操作、零死元组、几乎不写日志，还能挂回来。底部是硬限制：唯一约束的列必须包含所有分区键列，因为组成约束的独立索引只能在各自分区内强制唯一性，跨分区唯一性在分区结构里没有答案。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">分区的两类收益与它的硬限制</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">分区不是「把大表变小表」，是「把管理粒度变细」——收益全部来自「能只碰一部分」</text>
+
+  <!-- 三种方式 -->
+  <rect x="30" y="66" width="620" height="54" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">三种声明式分区</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">RANGE：值区间（时间、ID 段）　　LIST：枚举集合（租户、区域）　　HASH：哈希打散（没有天然分区键，只想摊开压力）</text>
+
+  <!-- 收益一：裁剪 -->
+  <path d="M30 132 L650 132" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="156" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">收益一：分区裁剪（规划器证明该分区不可能含有满足条件的行）</text>
+
+  <rect x="30" y="168" width="300" height="76" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">✓ 带分区键：只碰一个分区</text>
+  <text x="46" y="206" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">5 亿 ÷ 24 个月 ≈ 2100 万行</text>
+  <text x="46" y="224" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">→ 降到 1/24 ≈ 4.2%</text>
+  <text x="46" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">另：分区替代了索引上层节点，热分区索引更易常驻内存</text>
+
+  <rect x="350" y="168" width="300" height="76" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="188" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">✗ 不带分区键：反而更慢</text>
+  <text x="366" y="206" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">24 个分区【每个都要扫】+ 结果合并</text>
+  <text x="366" y="224" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 比不分区还慢</text>
+  <text x="366" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">且裁剪只由分区边界驱动，【与索引无关】</text>
+
+  <!-- 收益二：丢弃 -->
+  <path d="M30 258 L650 258" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="282" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">收益二：丢弃即归档（官方：完全避免了批量 DELETE 带来的 VACUUM 开销）</text>
+
+  <rect x="30" y="294" width="300" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="314" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#8A3A28">DELETE 掉一个月（2100 万行）</text>
+  <text x="46" y="332" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">堆：2100 万个死元组</text>
+  <text x="46" y="348" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">索引：3 个索引各 2100 万个死条目</text>
+  <text x="46" y="364" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 一起膨胀 + 一轮大清理 + 文件也不变小</text>
+
+  <rect x="350" y="294" width="300" height="72" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="366" y="314" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">DETACH / DROP 一个分区</text>
+  <text x="366" y="332" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">元数据操作，瞬时完成</text>
+  <text x="366" y="348" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">零死元组 · 零膨胀 · 几乎零 WAL</text>
+  <text x="366" y="364" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">DETACH 后可再挂回来（可回滚）；热表用 CONCURRENTLY</text>
+
+  <!-- 硬限制 -->
+  <path d="M30 382 L650 382" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <rect x="30" y="394" width="620" height="50" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="414" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">硬限制：唯一约束 / 主键的列必须包含【所有分区键列】</text>
+  <text x="46" y="432" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">原因：组成约束的独立索引只能在【各自分区内】强制唯一性——跨分区唯一性在分区结构里没有答案</text>
+</svg>
+</figure-box>
+<table class="mv-table"><thead><tr><th>方式</th><th>按什么分</th><th>典型场景</th></tr></thead><tbody><tr><td><strong>RANGE</strong></td><td>值区间</td><td><strong>时间</strong>（按月 / 按季）、ID 段</td></tr><tr><td><strong>LIST</strong></td><td>枚举值集合</td><td>租户 / 区域 / 类别</td></tr><tr><td><strong>HASH</strong></td><td>哈希取模，均匀打散</td><td><strong>没有天然分区键</strong>、只想把单表压力摊开</td></tr></tbody></table>
+<p class="mv-md-p"><strong>PG 的分区是「声明式的」</strong>：建表时就声明分区键和分区子表，<strong>插入时由数据库路由</strong>（早年的继承 + 触发器手工方案已经是历史）。</p>
+<p class="mv-md-p">【事实】<strong>官方给的收益清单里，有一条常被忽略</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>分区有效地【替代了索引的上层树节点】，让被频繁使用的那些索引部分更有可能放进内存。</strong></p>
+<p class="mv-md-p">【推论】<strong>这条独立于「裁剪」，值得单独说</strong>：<strong>即使查询不裁剪，一个按时间分区的表，它的「热分区」的索引更小、更容易常驻内存</strong>——<strong>这是 B-tree 深度之外的另一层收益</strong>（[[母题-P2-堆表与回表]]）。</p>
+<p class="mv-md-p">【事实】<strong>默认分区</strong>：<strong>没有默认分区时，插入一个落在所有分区之外的值会直接报错</strong>——<strong>这是第一个常见坑</strong>（也是"分区键选错"的最早信号）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 收益一：分区裁剪（查询变快）</h3>
+<p class="mv-md-p">【事实】<strong>官方对裁剪机制的描述</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>规划器会检查每一个分区的定义，并【证明该分区不需要被扫描】——因为它不可能含有满足 <code class="mv-md-code">WHERE</code> 条件的行。</strong></p>
+<p class="mv-md-p">【推导】<strong>算一下裁剪的收益</strong>：</p>
+<pre class="mv-md-pre">表 5 亿行，按月分成 24 个分区（约 2 年）
+
+查询：WHERE stat_date &gt;= '2026-01-01' AND stat_date &lt; '2026-02-01'
+  → 只扫 2026-01 那一个分区
+  → 扫描量：5 亿 → 【约 2100 万行】（5 亿 ÷ 24）
+  → 降到 【1/24 ≈ 4.2%】
+
+如果查询不带分区键（比如只按 device_id 查）：
+  → 裁剪失效，24 个分区【每个都要扫】
+  → 5 亿行全扫 + 结果合并
+  → 【比不分区还慢】（多了 24 次扫描的固定开销与合并）</pre>
+<p class="mv-md-p">【判据】<strong>这是评估分区是否值得的第一道门槛</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>分区键必须出现在大部分查询条件里。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>如果查询经常不带分区键，分区是负收益——不是"没效果"，是"更慢"。</strong></p>
+<p class="mv-md-p">【纠正常见误解】<strong>一个反直觉的官方说明</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>分区裁剪【只由分区键隐式定义的约束驱动，与索引是否存在无关】。因此不需要在分区键列上定义索引。</strong></p>
+<p class="mv-md-p">【推论】<strong>这句话解释了一个常见困惑</strong>：<strong>「我在分区键上建了索引，为什么还是没裁剪？」</strong>——<strong>因为裁剪看的是【分区的边界定义】，不是索引。</strong> <strong>索引影响的是"分区内部怎么扫"，裁剪影响的是"要不要碰这个分区"——两件事。</strong></p>
+<p class="mv-md-p">【事实】<strong>第二类前提：条件要与分区边界「可推断」</strong>。<strong>用 <code class="mv-md-code">date_trunc</code> / 表达式包住分区键，规划器可能无法裁剪</strong>——<strong>这和 [[母题-P3-部分索引与表达式索引]] 里的「谓词必须可证明蕴含」是同一类问题。</strong></p>
+<p class="mv-md-p">【事实】<strong>裁剪发生在两个时刻，第二个时刻容易被忽略</strong>：</p>
+<table class="mv-table"><thead><tr><th>时刻</th><th>什么时候能裁</th><th>在哪看</th></tr></thead><tbody><tr><td><strong>规划时</strong></td><td>条件里的值是常量</td><td><code class="mv-md-code">EXPLAIN</code> 的分区列表</td></tr><tr><td><strong>执行时</strong></td><td>值来自<strong>预处理语句的参数、子查询、嵌套循环的内侧</strong></td><td><strong><code class="mv-md-code">EXPLAIN ANALYZE</code> 的 <code class="mv-md-code">loops</code></strong>（官方原话：<strong>要仔细检查 <code class="mv-md-code">loops</code> 属性</strong>）</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>这里有两个坑，官方都点出来了</strong>：</p>
+<pre class="mv-md-pre">① 执行时才被裁掉的分区，【不会出现在 EXPLAIN 或 EXPLAIN ANALYZE 里】
+   → 你以为没裁，其实裁了；或者反过来
+② 但在执行初始阶段被裁掉的分区，【仍然会在执行开始时被加锁】
+   → 所以"裁剪了"不等于"完全没碰到它"</pre>
+<p class="mv-md-p">【补充】<strong>裁剪可以用 <code class="mv-md-code">enable_partition_pruning</code> 关掉</strong>——<strong>这是排查"到底裁了没有"的一个开关。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「我在分区键上建了索引」并不等于「查询会被裁剪」？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 收益二：丢弃即归档（这是更值钱的那个）</h3>
+<p class="mv-md-p"><strong>不分区的表</strong>，清理两年前数据只能 <code class="mv-md-code">DELETE</code>：</p>
+<pre class="mv-md-pre">DELETE FROM facts WHERE stat_date &lt; '2024-09-01';
+  ↓
+逐行标死 → 产生海量死元组 → 表与索引一起膨胀 → 要等 VACUUM 回收（P14/P15）
+  ↓
+而且回收后文件也不变小（P15）</pre>
+<p class="mv-md-p"><strong>分区表</strong>：</p>
+<pre class="mv-md-pre">ALTER TABLE facts DETACH PARTITION facts_2024_08;   -- 摘掉
+DROP TABLE facts_2024_08;                            -- 或直接丢弃</pre>
+<p class="mv-md-p">【事实】<strong>官方的措辞把两边的差距说得非常直接</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>用 <code class="mv-md-code">DROP TABLE</code> 丢掉单个分区、或者做 <code class="mv-md-code">ALTER TABLE DETACH PARTITION</code>，【比批量操作快得多】。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>这些命令还【完全避免了】批量 <code class="mv-md-code">DELETE</code> 带来的 <code class="mv-md-code">VACUUM</code> 开销。</strong></p>
+<p class="mv-md-p">【推导】<strong>把代价算出来</strong>：</p>
+<pre class="mv-md-pre">删掉一个月的数据 = 2100 万行
+
+DELETE 路线：
+  2100 万个死元组（堆）
+  × 每个索引各 2100 万个死条目
+  → 表与【所有索引】一起膨胀
+  → 触发一轮大清理（要读这些页）
+  → 而且文件不会变小（P15）
+  → 还占了 WAL、还要传去备库
+
+DROP / DETACH 路线：
+  → 元数据操作
+  → 【零死元组、零膨胀、几乎零 WAL】
+  → 瞬时完成
+  → 而且 DETACH 之后还能再挂回来（可回滚）</pre>
+<p class="mv-md-p">【结论】<strong>差的不是几倍，是「一次大清理」和「一次元数据操作」的区别。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>所以「有持续清理需求的大表」应该在设计阶段就分区</strong>——<strong>这不是优化，是避免了后面必然出现的膨胀问题。</strong> <strong>这条把主线五和主线六合成了一条线。</strong></p>
+<p class="mv-md-p">【事实】<strong><code class="mv-md-code">DETACH</code> 还有一个在线版本</strong>：<code class="mv-md-code">ALTER TABLE ... DETACH PARTITION ... CONCURRENTLY</code>——<strong>它需要额外一次表扫描，但拿的锁更轻</strong>。<strong>这一点很重要：默认的 <code class="mv-md-code">DETACH</code> 会拿一个较强的锁，在热表上会阻塞写入。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 代价与限制（不说这段就等于没评估）</h3>
+<table class="mv-table"><thead><tr><th>限制</th><th>说明</th></tr></thead><tbody><tr><td><strong>唯一约束 / 主键要带分区键</strong></td><td><strong>跨分区的唯一性无法用普通唯一索引保证</strong>。所以唯一键必须包含分区键，或者用别的机制兜底。<strong>这是最常被忽略、也最容易在业务上炸的一条。</strong></td></tr><tr><td><strong>分区上建索引不能用 <code class="mv-md-code">CONCURRENTLY</code></strong></td><td>只能在父表建「无效索引」再逐个分区 <code class="mv-md-code">CONCURRENTLY</code> 建、再 <code class="mv-md-code">ATTACH</code>（见下）</td></tr><tr><td><strong>分区数量影响规划时间与内存</strong></td><td>分区越多，规划器要枚举的候选越多 → <strong>规划耗时上升</strong>；<strong>而且官方警告：服务器内存消耗可能随时间显著增长，尤其是很多会话都碰到大量分区时</strong></td></tr><tr><td><strong>跨分区查询没有并行优势</strong></td><td>不裁剪时，多个分区各自扫描，聚合要合并（有并行改善，但<strong>不能指望它抵消设计问题</strong>）。</td></tr><tr><td><strong>外键、约束、触发器的行为更复杂</strong></td><td>子表独立管理，迁移/变更脚本更啰嗦。</td></tr><tr><td><strong>统计信息按分区维护</strong></td><td>分区多了 autovacuum/ANALYZE 的对象也变多（<strong>又回到 VACUUM 负担</strong>）。</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>「唯一约束要带分区键」的机制，官方说得很清楚</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>要在分区表上创建唯一约束或主键约束，分区键不能包含表达式或函数调用，而且【约束的列必须包含所有分区键列】。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>这个限制存在的原因是：【组成约束的那些独立索引只能在各自的分区内直接强制唯一性】；因此，必须由【分区结构本身】来保证不同分区之间没有重复。</strong></p>
+<p class="mv-md-p">【推导】<strong>这句话把「为什么」讲透了</strong>：</p>
+<pre class="mv-md-pre">分区表上的索引是「虚拟」的——真正的数据在【各个分区的子索引】里
+
+所以唯一性只能被拆成两半保证：
+  分区内部   → 由该分区的唯一索引保证  ✔
+  分区之间   → 索引管不了  ✗ 只能靠【分区键本身在逻辑上排他】
+
+如果约束包含分区键：
+  → 两条"重复"的行只要分区键不同，它们本来就不该算重复
+  → 而如果分区键相同，它们必然落在【同一个分区】→ 那个分区的唯一索引能管
+  → 逻辑闭合 ✔
+
+如果约束不包含分区键：
+  → 同样的键值可能落在不同分区 → 谁都不知道被谁重复了
+  → 没有任何一个索引能拦得住</pre>
+<p class="mv-md-p">【结论】<strong>这不是 PG 的实现缺陷，是「分区」这个结构的数学后果。</strong></p>
+<p class="mv-md-p">【推论】<strong>它在业务上的表现是</strong>：<strong>「我想按时间分区，但业务主键是 <code class="mv-md-code">order_id</code> 全局唯一」——这两个需求直接冲突。</strong> <strong>可选的三条路</strong>：<strong>① 把分区键加进唯一键（<code class="mv-md-code">UNIQUE (order_id, stat_date)</code>，代价是同一 <code class="mv-md-code">order_id</code> 在不同分区可以重复，通常不可接受）</strong>；<strong>② 不分区（改用别的增长手段）</strong>；<strong>③ 用应用层的全局唯一机制兜底</strong>（比如另一个不分区的小表做注册表，或者用分布式 ID 保证出生即唯一）。<strong>第 ③ 条在生产上最常见。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「按时间分区的订单表 + 订单号全局唯一」这两个需求会打架？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 分区上建索引的那个麻烦（P4 的后续）</h3>
+<p class="mv-md-p">【事实】<strong>官方的说明与绕过方式</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>分区表的一个限制是【不能使用 <code class="mv-md-code">CONCURRENTLY</code> 限定符】，这可能带来很长的锁时间。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>为了避免这一点，可以先用 <code class="mv-md-code">CREATE INDEX ON ONLY</code> 在分区表上创建索引——它会把这个新索引标记为【无效】，从而阻止它被自动应用到已有分区。</strong></p>
+<p class="mv-md-p mv-md-quote">然后<strong>在每个分区上分别用 <code class="mv-md-code">CONCURRENTLY</code> 建索引</strong>，再用 <code class="mv-md-code">ALTER INDEX ... ATTACH PARTITION</code> <strong>挂到父索引上</strong>。</p>
+<p class="mv-md-p mv-md-quote"><strong>当所有分区的索引都挂上去之后，父索引会自动被标记为有效。</strong></p>
+<pre class="mv-md-pre">CREATE INDEX measurement_usls_idx ON ONLY measurement (unitsales);
+CREATE INDEX CONCURRENTLY measurement_usls_200602_idx
+    ON measurement_y2006m02 (unitsales);
+ALTER INDEX measurement_usls_idx ATTACH PARTITION measurement_usls_200602_idx;
+-- …对每个分区重复…</pre>
+<p class="mv-md-p">【推论】<strong>这段和 P4 直接接上，而且多了一层</strong>：<strong>在分区表上做在线建索引，不是"一条 CONCURRENTLY"，是一套【父表建空壳 → 各分区并发建 → 逐个挂接】的流程。</strong> <strong>而它恰好也用到 P4 里的那个状态：无效索引</strong>——<strong>只不过这里的"无效"是</strong>故意<strong>的、是流程的一部分。</strong></p>
+<p class="mv-md-p">【取舍】<strong><code class="mv-md-code">UNIQUE</code> / <code class="mv-md-code">PRIMARY KEY</code> 也能用同样的手法</strong>，<strong>但代价更大</strong>：<strong>约束的索引是隐式创建的</strong>——<strong>所以要先把约束加在父表上（<code class="mv-md-code">ALTER TABLE ONLY ... ADD UNIQUE</code>），再逐分区加、再 <code class="mv-md-code">ATTACH</code>。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 回到题目做判断</h3>
+<p class="mv-md-p">条件是：<strong>① 数据大（5 亿行）② 查询永远带时间（有天然分区键，可裁剪）③ 每月要清两年前数据（有批量清理需求）</strong>。</p>
+<p class="mv-md-p"><strong>三条全中 → 该分区，按 <code class="mv-md-code">stat_date</code> 做 RANGE 分区（按月或按季）。</strong></p>
+<p class="mv-md-p">【推论】<strong>判据要能反向使用</strong>——<strong>下面任何一种情况就不该分区</strong>：</p>
+<pre class="mv-md-pre">✗ 查询不带分区键（裁不掉，反而更慢）
+✗ 没有批量清理需求（只用到一半收益）
+✗ 数据量不大（几百万行以内，普通索引就够了）
+✗ 业务要求跨分区的唯一约束，而分区键进不了唯一键，也没有应用层兜底
+  → 这一条最硬，往往是"不能分区"的决定性理由</pre>
+<p class="mv-md-p">【取舍】<strong>还有一个判断维度是"分多少个"</strong>：</p>
+<pre class="mv-md-pre">太少（比如按年分）：裁剪粒度粗，收益有限
+太多（比如按天分，几年就上千个）：
+  → 规划时间与内存上升（官方明确警告）
+  → autovacuum / ANALYZE 的对象变多
+
+经验区间：按【月】或【季】，把总数控制在【几十到几百】这个量级
+  → 也就是官方那句「保持分区数量适中」的具体化</pre>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>说法</th><th>实际情况</th></tr></thead><tbody><tr><td>「分区就是把大表拆成小表，一定更快」</td><td><strong>不带分区键的查询会更慢</strong>（24 个分区各扫一遍 + 合并）</td></tr><tr><td>「在分区键上建索引就能裁剪」</td><td><strong>裁剪只由分区边界驱动，与索引无关</strong>（官方原话）</td></tr><tr><td>「分区表的唯一约束和普通表一样」</td><td><strong>必须包含所有分区键列</strong>，否则<strong>跨分区唯一性无人保证</strong></td></tr><tr><td>「<code class="mv-md-code">DELETE</code> 掉旧数据和 <code class="mv-md-code">DROP</code> 分区差不多」</td><td><strong>差一个量级</strong>：官方说 DROP/DETACH <strong>完全避免</strong>了批量 DELETE 的 VACUUM 开销</td></tr><tr><td>「分区多了只是慢一点」</td><td><strong>官方警告：规划时间与内存消耗都会上升，而且内存可能【随时间持续增长】</strong></td></tr><tr><td>「<code class="mv-md-code">DETACH</code> 是瞬时且不阻塞的」</td><td><strong>默认 <code class="mv-md-code">DETACH</code> 会拿较强的锁</strong>——<strong>热表上要用 <code class="mv-md-code">DETACH PARTITION ... CONCURRENTLY</code></strong></td></tr><tr><td>「分区表上的索引可以直接 <code class="mv-md-code">CONCURRENTLY</code>」</td><td><strong>不能</strong>——<strong>要用「父表建空壳 + 逐分区 CONCURRENTLY + ATTACH」那套流程</strong></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P16-分区表-q1" tag="PostgreSQL" q="一张 5 亿行的表按月分成 24 个分区。查询一个月的数据。&#10;问：裁剪把扫描量降到多少？如果查询只按 device_id（不带时间），会变成什么样？" a="``text&#10;带时间条件：&#10;只扫 1 个分区 = 5 亿 ÷ 24 ≈ 【2100 万行】&#10;降到 【1/24 ≈ 4.2%】&#10;不带分区键（只按 device_id）：&#10;→ 裁剪失效，24 个分区【每个都要扫】&#10;→ 5 亿行全扫 + 【24 次扫描的固定开销】+ 结果合并&#10;→ 【比不分区还慢】&#10;`&#10;【结论】分区键在不在查询条件里，决定了分区是「快 24 倍」还是「更慢」。&#10;【推论】判据：&#10;评估分区是否值得的第一道门槛不是「数据有多大」，是「大部分查询带不带分区键」。&#10;不带 → 分区是负收益，不是&quot;没效果&quot;。&#10;【补充】而且「带没带」还要看能不能裁**：用 date_trunc(stat_date)` 这类表达式包住分区键，规划器可能证不出裁剪。**"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P16-分区表-q2" tag="PostgreSQL" q="接上题。现在要清掉两年前的那一个月（2100 万行），表上有 3 个索引。&#10;问：DELETE 和 DROP PARTITION 各产生什么代价？" a="``text&#10;DELETE 路线：&#10;堆：2100 万个死元组&#10;索引：3 个索引各 2100 万个死条目&#10;→ 表与 3 个索引【一起膨胀】&#10;→ 触发一轮大清理（要读这些页）&#10;→ 文件不会变小（P15）&#10;→ 还要写 WAL、还要传给所有备库&#10;DROP / DETACH 路线：&#10;→ 元数据操作&#10;→ 【零死元组、零膨胀、几乎零 WAL】&#10;→ 瞬时完成&#10;→ DETACH 后可再挂回来（可回滚）&#10;`&#10;【结论】官方原话：这些命令【完全避免了】批量 DELETE 带来的 VACUUM` 开销。&#10;【推论】这就是「分区把膨胀问题从根上绕过」的意思——注意是&quot;绕过&quot;不是&quot;解决&quot;：&#10;不是分区的清理更高效，是分区让&quot;清理&quot;这个动作根本不需要发生。&#10;数据不是被删除的，是整块被摘掉的。&#10;【补充】这一条决定了「该不该分区」的第二道门槛：有没有【持续的、按分区键的】批量清理需求。 没有的话，你只拿到了一半收益（裁剪），却付了全部复杂度。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读 + 计算</span></div><flip-card card-id="PostgreSQL/母题-P16-分区表-q3" tag="PostgreSQL" q="某系统按天分区，3 年下来有 1000 个分区。一条典型的短查询（单条主键查，执行约 1 ms）。&#10;问：分区数量会带来什么代价？为什么官方说这是「保持分区数量适中」的理由？" a="``text&#10;官方明确两点：&#10;① 规划时间随分区数上升&#10;② 内存消耗上升，而且【可能随时间显著增长】，&#10;尤其是【很多会话都碰到大量分区】时&#10;估算（口径写在算式里）：&#10;假设每个候选分区的枚举开销约 0.05 ms&#10;1000 个分区 → 规划耗时 ≈ 50 ms&#10;而查询本身只要 1 ms&#10;→ 【规划占了总耗时的 98%】&#10;`&#10;【结论】在短查询上，规划时间可以压倒执行时间——这是分区数量真正的天花板。&#10;【推论】官方那句「内存可能随时间显著增长」还有第二层意思：它是【每个会话】的内存——100 个会话各自持有大量分区的规划缓存，乘起来就是实例级的压力。&#10;【取舍】所以分区数量的设计原则是：&#10;`text&#10;按【月】或【季】分（而不是按天）&#10;→ 三年 = 36 个或 12 个分区，而不是 1000 个&#10;→ 裁剪粒度对「查一个月/一个季度」的场景足够&#10;按【天】分只在两种情况下值得：&#10;① 清理需求本身就是按天的（比如只保留 30 天）&#10;② 单天数据量已经大到&quot;一个月一个分区&quot;仍然过大&#10;``&#10;【补充】这条也解释了「为什么要按业务查询的粒度设计分区，而不是按数据产生的粒度」——分区的客户是查询和清理，不是写入。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P16-分区表-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我们要按 stat_date 给订单表分区，顺便把 order_id 设成主键，这样既有分区又有全局唯一。&quot;" a="四处问题。&#10;1. 这两个需求直接冲突：官方原话是「约束的列必须包含所有分区键列」——因为组成约束的那些独立索引只能在各自分区内强制唯一性。 所以 PRIMARY KEY (order_id) 在按 stat_date 分区的表上建不出来。&#10;2. 加进分区键会让语义变错：PRIMARY KEY (order_id, stat_date) 意味着「同一个 order_id 在不同分区可以重复」——对一个订单号来说，这通常是不可接受的。&#10;3. 机制上的原因值得说清：同一个 order_id 如果落在不同分区，没有任何一个分区的索引能看到另一边的重复——&quot;谁重复了谁&quot;这件事在分区结构里根本没有答案。&#10;4. 可选的三条路：① 不分区（换别的增长手段）；② 换一个能进唯一键的分区键；③ 用应用层/外部的全局唯一机制兜底（分布式 ID、或者一张不分区的小注册表）。第 ③ 条在生产上最常见。&#10;【准确说法】&quot;分区键是「管理粒度」的声明，也是「唯一性边界」的声明。 想按时间分区又想全局唯一，就得接受唯一性由分区之外的机制保证——这不是 PG 的限制，是分区这个结构的数学后果。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P16-分区表-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;表大了，我按 stat_date 分个区，以后查询就都快了。&quot;" a="三处问题。&#10;1. 只有「带分区键的查询」会快：不带分区键的查询要扫所有分区（Q1）——比不分区还慢。&#10;2. 还要看「能不能裁」：用表达式包住分区键（date_trunc(stat_date) = ?）可能裁不掉，这和部分索引的「谓词必须可证明蕴含」是同一类问题（[[母题-P3-部分索引与表达式索引]]）。&#10;3. 分区的另一半收益是清理，不是查询：如果只有查询变快这一个目标，先试索引——分区真正的独特价值在「DROP 分区 = 瞬时清理」那一条（Q2）。&#10;【准确说法】&quot;分区的判据不是「数据大」，是「数据大 + 大部分查询带分区键 + 有按分区键的批量清理需求」。 三条不齐，分区只会增加复杂度。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">PG 的分区表有哪几种？什么规模才值得分？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="PostgreSQL/母题-P16-分区表" tag="PostgreSQL" q="PG 的分区表有哪几种？什么规模才值得分？" a="PG 是声明式分区——PARTITION BY RANGE / LIST / HASH。它的主要收益有两个：① 分区裁剪（查询带分区键时只扫相关分区）；② 批量删除变成 DROP/DETACH 分区（比 DELETE 便宜得多，而且官方明确说它完全避免了 DELETE 带来的 VACUUM 开销）。代价：分区键必须进大部分查询条件、分区太多会有规划开销、跨分区唯一约束做不了（除非约束里带上分区键）、运维更复杂。所以判据不是「数据大」，而是「数据大 + 天然有分区键 + 有批量清理需求」。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「数据增长」这条主线里唯一真正改变架构形状的手段</strong>——加索引、加缓存都还在「同一张表」里打转，<strong>分区改变的是「表的数量和管理粒度」</strong>。而且它和主线五直接合流：<strong>「按月丢弃分区」同时解决了膨胀问题</strong>（P14/P15 的根治方案就是它）。<strong>能看出这两个事是同一件事，是这条线的价值。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">PG 是<strong>声明式分区</strong>——<code class="mv-md-code">PARTITION BY RANGE / LIST / HASH</code>。它的主要收益有两个：<strong>① 分区裁剪</strong>（查询带分区键时只扫相关分区）；<strong>② 批量删除变成 <code class="mv-md-code">DROP</code>/<code class="mv-md-code">DETACH</code> 分区</strong>（比 <code class="mv-md-code">DELETE</code> 便宜得多，而且<strong>官方明确说它完全避免了 <code class="mv-md-code">DELETE</code> 带来的 VACUUM 开销</strong>）。<strong>代价</strong>：分区键必须进大部分查询条件、分区太多会有规划开销、<strong>跨分区唯一约束做不了</strong>（除非约束里带上分区键）、运维更复杂。<strong>所以判据不是「数据大」，而是「数据大 + 天然有分区键 + 有批量清理需求」。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>声明式分区</li><li>RANGE LIST HASH</li><li>分区裁剪（规划时 + 执行时）</li><li><strong>裁剪只由分区键驱动，与索引无关</strong></li><li>分区即批量删除（<strong>绕开 VACUUM</strong>）</li><li><strong>唯一约束必须包含分区键</strong></li><li><strong>分区上建索引不能直接 CONCURRENTLY</strong></li><li>分区多 = 规划时间 + 内存</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 原生分区的限制比 PG 硬得多</strong>——<strong>官方原文：<code class="mv-md-code">Foreign keys not supported for partitioned InnoDB tables</code>（分区 InnoDB 表【不支持外键】）</strong>，不是"限制更多"而是<strong>完全不支持</strong>；<strong>此外分区键必须出现在每个唯一键里（这一点两边一样）</strong>，但 MySQL 的工具链更少，<strong>实践中常直接用应用层分表</strong>。<strong>PG 的声明式分区是近年加强的重点，能力更完整</strong>（<strong>运行时裁剪、<code class="mv-md-code">DETACH CONCURRENTLY</code>、默认分区都是 MySQL 分区不具备或更弱的</strong>）。<strong>「我们用的是 PG 的分区表」这句话本身就是一条可以主动说的差异。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>分区数量和性能是什么关系？</strong></strong></p>
+<p class="mv-md-p"><strong>不是线性变好，是先好后坏</strong>：<strong>裁剪的收益随分区数上升，但规划时间与内存也上升</strong>。<strong>官方明确警告内存可能随时间显著增长，尤其是很多会话都碰到大量分区时。</strong> <strong>所以按「月/季」分、总数几十到几百，是把两条曲线折中的经验值。</strong></p>
+<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">DETACH</code> 会不会阻塞写入？</strong></strong></p>
+<p class="mv-md-p"><strong>默认的 <code class="mv-md-code">DETACH</code> 会拿较强的锁</strong>；<strong>热表上要用 <code class="mv-md-code">ALTER TABLE ... DETACH PARTITION ... CONCURRENTLY</code></strong>——<strong>它需要额外一次表扫描，但锁更轻。</strong> <strong>这条如果不知道，会在生产上直接把写入卡住。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>分区表上怎么做在线建索引？</strong></strong></p>
+<p class="mv-md-p"><strong>不能用一条 <code class="mv-md-code">CONCURRENTLY</code></strong>。<strong>要先用 <code class="mv-md-code">CREATE INDEX ON ONLY</code> 在父表建一个【无效】索引（阻止它自动应用到已有分区），再在每个分区上分别 <code class="mv-md-code">CONCURRENTLY</code> 建，最后逐个 <code class="mv-md-code">ALTER INDEX ... ATTACH PARTITION</code></strong>；<strong>全部挂上后父索引会自动变为有效。</strong> <strong>注意这里的"无效"是【故意】的、是流程的一部分</strong>——<strong>和 P4 里那个"失败留下的无效索引"是同一个状态、完全不同的含义。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>默认分区为什么必须建？</strong></strong></p>
+<p class="mv-md-p"><strong>没有默认分区时，插入一个落在所有分区之外的值会直接报错</strong>。<strong>这在生产上意味着"某天凌晨的写入突然全部失败"</strong>——<strong>所以设计时要么建默认分区兜底，要么保证有自动建分区的任务。</strong> <strong>两者选一个，不能不选。</strong></p>
+<p class="mv-md-p"><strong>5. <strong><code class="mv-md-code">enable_partition_pruning</code> 是干什么的？</strong></strong></p>
+<p class="mv-md-p"><strong>它是裁剪的开关</strong>。<strong>排查"到底裁了没有"的时候，可以关掉它做对比</strong>；<strong>而执行时才被裁掉的分区不会出现在 <code class="mv-md-code">EXPLAIN</code> 里，要看 <code class="mv-md-code">EXPLAIN ANALYZE</code> 的 <code class="mv-md-code">loops</code></strong>（官方原话）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「<code class="mv-md-code">HASH</code> 分区什么时候用？」—— <strong>当没有天然分区键、只想把单表压力摊开时</strong>（比如高并发的队列表）。<strong>它拿不到"裁剪"的收益（哈希没法按范围裁），但能拿到"每张子表更小、索引更容易常驻内存"的收益</strong>——<strong>这一点和 RANGE 分区共享。</strong> <strong>所以 HASH 分区的定位是"摊开写入压力"，不是"加快范围查询"。</strong></li><li>「分区和分表（应用层）该选哪个？」—— <strong>PG 的声明式分区由数据库保证路由与约束，应用不需要知道分区存在</strong>；<strong>应用层分表要自己维护路由、跨表查询、聚合</strong>。<strong>所以能用声明式分区就别自己分表</strong>；<strong>只有"要分到不同实例"时才必须应用层分。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps 的四层事实表</strong>（<strong>5 亿行 + 查询永远带时间 + 每月清两年前 —— 三条全中，是教科书级的分区场景</strong>）。 - <strong>RuleArena 的 Run 历史表</strong>（<strong>同样按时间增长、同样有清理需求；但它的 <code class="mv-md-code">run_id</code> 是全局唯一的——所以要么不分区，要么分区键进不了唯一键时用外部机制兜底</strong>）。 - <strong>数驭穹图的接入日志</strong>（<strong>只保留 30 天的场景：按天分区 + <code class="mv-md-code">DROP</code> 过期的，比 DELETE 干净得多</strong>）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">分区的三种方式 → <strong>收益一：分区裁剪（含"条件必须带分区键"）</strong> → <strong>收益二：丢弃即归档（绕开 VACUUM，算一笔对比）</strong> → <strong>代价与限制（唯一约束那一条最致命）</strong> → <strong>分区上建索引的那个麻烦（ONLY + ATTACH）</strong> → 回到题目做判断 → 与膨胀治理合流</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>分区不是「把大表变小表」，而是「把一张表的管理粒度变细」。</strong> 它的收益全部来自「<strong>能只碰一部分</strong>」——<strong>只扫一部分（裁剪）、只丢一部分（DROP 分区）</strong>。<strong>没有这两类操作的场景，分区只会增加复杂度。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出分区的两类收益并<strong>算出裁剪的 1/24 与「不带分区键会更慢」</strong>；<strong>能算出 <code class="mv-md-code">DELETE</code> 与 <code class="mv-md-code">DROP</code> 分区在死元组与索引上的差别</strong>；<strong>能说清「唯一约束必须包含所有分区键列」的机制原因（不是背限制）</strong>；<strong>能说出分区上建索引的 <code class="mv-md-code">ONLY</code> + <code class="mv-md-code">ATTACH</code> 绕法与"这里的无效索引是故意的"</strong>；<strong>能说出分区数量的天花板（规划时间 + 内存）并给出按月的经验区间</strong>；<strong>能说出 <code class="mv-md-code">DETACH CONCURRENTLY</code> 与默认 <code class="mv-md-code">DETACH</code> 的锁差别</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

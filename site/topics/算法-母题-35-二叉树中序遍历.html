@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 35 · 二叉树的中序遍历</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 35 · 二叉树的中序遍历</h1>
+    <p class="mv-topic-meta">关联 母题池-36道推导 · 其他树形母题 ｜ 正本 wiki/topics/算法/母题-35-二叉树中序遍历.md</p>
+  </div>
+
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">给定一棵二叉树，返回它的中序遍历结果（左 → 根 → 右）。</p></div>
+  </div>
+
+
+
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">二叉树三种遍历顺序怎么写，迭代版又怎么写？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="算法/母题-35-二叉树中序遍历" tag="算法" q="二叉树三种遍历顺序怎么写，迭代版又怎么写？" a="左—根—右；迭代版把递归悄悄用的「调用栈 + 返回地址」拆成显式的 stack + cur——一路向左压到底，弹出才输出，再跳右子树。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：一切树题的地基。面试常追问迭代版和 Morris，用来看你对「显式栈替代递归」是否真的理解。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">左—根—右；迭代版把递归悄悄用的「调用栈 + 返回地址」拆成显式的 <code class="mv-md-code">stack + cur</code>——一路向左压到底，弹出才输出，再跳右子树。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>左根右</li><li>显式栈</li><li>一路向左压到底</li><li>弹出即输出</li><li>再跳右子树</li><li>BST 有序性</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 迭代版为什么容易写错？</strong></p>
+<p class="mv-md-p">要显式维护两件状态：<code class="mv-md-code">stack</code> 记「欠账的祖先」、<code class="mv-md-code">cur</code> 记「走到哪」，并守住三条：循环条件 <code class="mv-md-code">cur or stack</code> 缺一不可、压栈必须写在 <code class="mv-md-code">cur = cur.left</code> <strong>之前</strong>（覆盖前备份）、pop 之后必须接 <code class="mv-md-code">cur = cur.right</code>（弹出后改向）</p>
+<p class="mv-md-p"><strong>2. BST 的中序遍历为什么是有序的？</strong></p>
+<p class="mv-md-p"><strong>左子树的全部节点</strong> &lt; 根 &lt; 右子树的全部节点（注意是<strong>子树级</strong>性质，不是孩子级），而中序 = 左子树中序 + 根 + 右子树中序，拼接天然升序。反例锚点：左孩子的右孙子比它爹大、但仍然小于根。由此推出 LC 98 验证 BST 的经典错误：只查 <code class="mv-md-code">left.val &lt; node.val &lt; right.val</code> 是错的，必须维护上下界，或检查中序序列严格递增</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 144 前序 / LC 145 后序（改访问顺序即可）</li><li>LC 102 层序遍历（换 BFS 队列）</li><li>LC 98 验证二叉搜索树（利用中序有序性）</li><li>进阶：Morris 遍历 O(1) 空间</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">树形结构的展开顺序：组织架构、目录树、分类体系的递归渲染都用中序/前序骨架。凡是「要在遍历到某个节点时，它的左子树已经处理完毕」的题，都是这条骨架。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：迭代版已补（递归 → 显式栈的映射、不变量、统一骨架、栈里存什么的三条卡点）。仍缺：Morris 遍历 O(1) 空间、后序迭代版、用显式栈解 LC 173/230。</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">讲解</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<h3 class="mv-md-h mv-md-h2">二、推导</h3>
+<h3 class="mv-md-h mv-md-h3">2.1 顺序定义与递归版</h3>
+<p class="mv-md-p">中序遍历顺序：</p>
+<pre class="mv-md-pre">左子树 → 当前节点 → 右子树</pre>
+<p class="mv-md-p">例如：</p>
+<pre class="mv-md-pre">1
+     \
+      2
+     /
+    3</pre>
+<p class="mv-md-p">中序遍历结果：</p>
+<pre class="mv-md-pre">[1, 3, 2]</pre>
+<p class="mv-md-p">完整代码：</p>
+<pre class="mv-md-pre">def inorder_traversal(root):
+    result = []
+
+    def traverse(node):
+        if not node:
+            return
+
+        traverse(node.left)
+        result.append(node.val)
+        traverse(node.right)
+
+    traverse(root)
+    return result</pre>
+<p class="mv-md-p">复杂度：</p>
+<pre class="mv-md-pre">时间：O(n)，每个节点访问一次
+空间：O(h)，取决于递归调用链的最大深度</pre>
+<p class="mv-md-p">其中：</p>
+<pre class="mv-md-pre">平衡二叉树：O(log n)
+退化成链表：O(n)</pre>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">遇空返回，按照“左—根—右”递归，每个节点的值在左子树遍历完成后加入结果。</p>
+<h3 class="mv-md-h mv-md-h3">2.2 迭代版：显式栈</h3>
+<p class="mv-md-p"><strong>为什么中序的迭代版比前序难</strong></p>
+<p class="mv-md-p">前序是「看到就输出」，所以弹出即打印；中序必须是「先欠着，等左子树还完债再输出」。递归版靠<strong>调用栈</strong>同时保存了两件事——<code class="mv-md-code">node</code>（我在哪）和返回地址（我该干嘛）；写成迭代就得把这两件事拆开、显式摆在台面上：</p>
+<table class="mv-table"><thead><tr><th>递归里的东西</th><th>迭代里的对应物</th><th>含义</th></tr></thead><tbody><tr><td><code class="mv-md-code">node</code> 参数</td><td><code class="mv-md-code">stack</code></td><td>已经路过、但还没轮到输出的祖先（欠的账）</td></tr><tr><td>返回地址（PC）</td><td><code class="mv-md-code">cur</code></td><td>我正往哪棵子树里钻（走到哪了）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>口诀：一路向左压到底，弹出即输出，然后跳右子树。</strong></p>
+<pre class="mv-md-pre">def inorder_traversal(root):
+    result = []
+    stack = []
+    cur = root
+
+    while cur or stack:          # 两件状态任一非空就要继续
+        while cur:               # 阶段一：一路向左，沿途全部压栈
+            stack.append(cur)
+            cur = cur.left
+
+        cur = stack.pop()        # 阶段二：左边到底了，还债
+        result.append(cur.val)
+        cur = cur.right          # 转向右子树，下一轮又会一路向左
+
+    return result</pre>
+<p class="mv-md-p"><strong>不变量</strong>（面试要能口头说出来）</p>
+<p class="mv-md-p mv-md-quote">外层循环每一轮开始时：<code class="mv-md-code">stack</code> 自底向顶，恰好是从根一路向左下来的那条<strong>祖先链</strong>；链上每个节点的左子树都还没处理完（所以都欠着），而<strong>下一个该输出的就是栈顶</strong>。<code class="mv-md-code">cur</code> 指向下一步要深入的子树根，为 <code class="mv-md-code">None</code> 就表示「左边走不动了，该还债」。</p>
+<p class="mv-md-p"><strong>为什么循环条件是 <code class="mv-md-code">cur or stack</code>（缺一不可）</strong></p>
+<ul class="mv-md-ul"><li>只写 <code class="mv-md-code">while stack</code>：初始时 <code class="mv-md-code">stack</code> 为空、<code class="mv-md-code">cur = root</code>，直接不进循环，整棵树丢掉。</li><li>只写 <code class="mv-md-code">while cur</code>：弹出一个节点后 <code class="mv-md-code">cur = cur.right</code> 若为空，<code class="mv-md-code">cur</code> 变 <code class="mv-md-code">None</code>，但栈里还有欠账，会提前退出。</li></ul>
+<h3 class="mv-md-h mv-md-h3">2.3 一套骨架，两种遍历</h3>
+<p class="mv-md-p">中序和前序共用同一套骨架，唯一区别是<strong>输出发生在哪一刻</strong>：</p>
+<pre class="mv-md-pre"># 前序：压栈的同时就输出（根先出，路过即可还）
+        while cur:
+            result.append(cur.val)   # ← 唯一多出来的一行
+            stack.append(cur)
+            cur = cur.left
+        cur = stack.pop()
+        cur = cur.right</pre>
+<p class="mv-md-p">一句话记：<strong>前序在「下去」的路上输出，中序在「上来」的路上输出</strong>。后序要记录「上次访问的节点」或用双栈反转，属于另一套骨架，单独成卡。</p>
+<h3 class="mv-md-h mv-md-h3">2.4 高频卡点：栈里到底存什么</h3>
+<p class="mv-md-p"><strong>卡点一：「已经 <code class="mv-md-code">res.append</code> 过了，为什么还要压栈？」</strong></p>
+<p class="mv-md-p">因为<strong>访问 ≠ 处理完</strong>。一个节点在这套骨架里要活两辈子：</p>
+<table class="mv-table"><thead><tr><th>阶段</th><th>什么时候</th><th>干什么</th></tr></thead><tbody><tr><td>第一次见面（下去的路上）</td><td>内层 <code class="mv-md-code">while cur</code> 里</td><td><code class="mv-md-code">res.append(cur.val)</code> —— 访问，只干一次</td></tr><tr><td>第二次见面（上来的路上）</td><td><code class="mv-md-code">cur = stack.pop()</code> 之后</td><td><code class="mv-md-code">cur = cur.right</code> —— 去右子树，<strong>这件事还没做</strong></td></tr></tbody></table>
+<p class="mv-md-p">栈里留下的不是「还没访问的节点」，而是「<strong>还没处理完</strong>的节点」——它的右子树那笔账还欠着。</p>
+<p class="mv-md-p"><strong>卡点二：压栈必须写在 <code class="mv-md-code">cur = cur.left</code> 之前</strong></p>
+<p class="mv-md-p"><code class="mv-md-code">cur</code> 是个会被覆盖的局部变量。<code class="mv-md-code">cur = cur.left</code> 一执行，「我」就没了——<strong>栈是它唯一的备份</strong>。</p>
+<pre class="mv-md-pre">        while cur:
+            res.append(cur.val)   # ① 访问
+            stack.append(cur)     # ② 备份「我」—— 必须在 ③ 之前
+            cur = cur.left        # ③ 覆盖 cur，从此「我」只活在栈里</pre>
+<p class="mv-md-p">判断压栈该存谁的<strong>唯一判据</strong>：<code class="mv-md-code">pop()</code> 出来之后你要拿它取谁的 <code class="mv-md-code">.right</code>？要取 <code class="mv-md-code">1.right</code>，栈里就必须是 <code class="mv-md-code">1</code>。存成 <code class="mv-md-code">cur.left</code> 的话，pop 出来取的是 <code class="mv-md-code">cur.left.right</code>，原节点的右子树直接丢失。</p>
+<p class="mv-md-p"><strong>卡点三：栈有两种职责，别混用</strong></p>
+<p class="mv-md-p">同一道前序有两种写法，栈的含义完全不同：</p>
+<table class="mv-table"><thead><tr><th>写法</th><th>栈的含义</th><th>关键动作</th></tr></thead><tbody><tr><td>骨架版（见 2.2 / 2.3）</td><td><strong>回溯路径</strong>——记着怎么原路回去</td><td>压栈不输出，回来取 <code class="mv-md-code">.right</code>；栈里允许有已输出的节点</td></tr><tr><td>经典版（见下）</td><td><strong>预约队列</strong>——待访问的节点先排队</td><td>弹出即输出，之后彻底不需要它</td></tr></tbody></table>
+<pre class="mv-md-pre"># 经典版：弹出即输出（注意先压右、后压左）
+def preorder(root):
+    if not root:
+        return []
+    res, stack = [], [root]
+    while stack:
+        node = stack.pop()
+        res.append(node.val)
+        if node.right:
+            stack.append(node.right)
+        if node.left:
+            stack.append(node.left)
+    return res</pre>
+<p class="mv-md-p">「已经输出了就不用存了」这个直觉只对<strong>经典版</strong>成立。中序没有经典版——中序的输出发生在「回来」的路上，只能用骨架版。<strong>先把骨架版练成肌肉记忆</strong>，经典版知道有这条路即可。</p>
+<h3 class="mv-md-h mv-md-h3">2.5 复杂度</h3>
+<pre class="mv-md-pre">时间：O(n)，每个节点恰好压栈一次、弹栈一次
+空间：O(h)，栈的最大深度就是树高
+      平衡树 O(log n) ｜ 退化成链 O(n)</pre>
+<p class="mv-md-p">注意迭代版的 O(h) 与递归版量级相同，但迭代版<strong>不吃系统调用栈</strong>，且可以随时中断/恢复——LC 173 BST 迭代器、LC 230 第 K 小正是靠这一点做到 O(h) 空间提前退出。</p>
+<h3 class="mv-md-h mv-md-h2">三、扩展：类似题与两层追问</h3>
+<p class="mv-md-p"><strong>同类变体</strong></p>
+<ul class="mv-md-ul"><li>LC 144 前序 / LC 145 后序（改访问顺序即可）</li><li>LC 102 层序遍历（换 BFS 队列）</li><li>LC 98 验证二叉搜索树（利用中序有序性）</li><li>进阶：Morris 遍历 O(1) 空间</li></ul>
+<p class="mv-md-p"><strong>三个最容易写错的地方</strong>（自查用）</p>
+<p class="mv-md-p">1. <strong><code class="mv-md-code">while cur or stack</code> 写成 <code class="mv-md-code">while stack</code></strong> —— 初始时栈空，整棵树被跳过，返回 <code class="mv-md-code">[]</code>。 2. <strong>内层 <code class="mv-md-code">while cur:</code> 写成 <code class="mv-md-code">if cur:</code></strong> —— 只压一层就转向左边，左链没压完，输出顺序退化成「根先出」。 3. <strong><code class="mv-md-code">cur = stack.pop()</code> 之后漏掉 <code class="mv-md-code">cur = cur.right</code></strong> —— 死循环：下一轮内层会把刚弹出的节点重新压回去。</p>
+<p class="mv-md-p"><strong>两层追问</strong>（能答完这两层才算通过）</p>
+<p class="mv-md-p">1. 迭代版为什么容易写错？——要显式维护两件状态：<code class="mv-md-code">stack</code> 记「欠账的祖先」、<code class="mv-md-code">cur</code> 记「走到哪」，并守住三条：循环条件 <code class="mv-md-code">cur or stack</code> 缺一不可、压栈必须写在 <code class="mv-md-code">cur = cur.left</code> <strong>之前</strong>（覆盖前备份）、pop 之后必须接 <code class="mv-md-code">cur = cur.right</code>（弹出后改向） 2. BST 的中序遍历为什么是有序的？——<strong>左子树的全部节点</strong> &lt; 根 &lt; 右子树的全部节点（注意是<strong>子树级</strong>性质，不是孩子级），而中序 = 左子树中序 + 根 + 右子树中序，拼接天然升序。反例锚点：左孩子的右孙子比它爹大、但仍然小于根。由此推出 LC 98 验证 BST 的经典错误：只查 <code class="mv-md-code">left.val &lt; node.val &lt; right.val</code> 是错的，必须维护上下界，或检查中序序列严格递增</p>
+<h3 class="mv-md-h mv-md-h2">四、拼接：关联、迁移与复训</h3>
+<p class="mv-md-p"><strong>关联母题</strong>：母题池-36道推导 · 其他树形母题 · 下一张：BST 第 K 小 / 验证 BST（都靠中序有序性）</p>
+<p class="mv-md-p"><strong>可迁移场景</strong>：树形结构的展开顺序：组织架构、目录树、分类体系的递归渲染都用中序/前序骨架。凡是「要在遍历到某个节点时，它的左子树已经处理完毕」的题，都是这条骨架。</p>
+<p class="mv-md-p"><strong>本次断点</strong>：迭代版已补（递归 → 显式栈的映射、不变量、统一骨架、栈里存什么的三条卡点）。仍缺：Morris 遍历 O(1) 空间、后序迭代版、用显式栈解 LC 173/230。</p>
+<p class="mv-md-p"><strong>自测陷阱</strong>（2026-09-12 两轮默写实测）：</p>
+<ul class="mv-md-ul"><li><code class="mv-md-code">stack.append(cur)</code> 落在 <code class="mv-md-code">cur = cur.left</code> 之后 → 压进去的是左孩子（首轮踩，二轮已修好）</li><li><code class="mv-md-code">cur = cur.right</code> 写成 <code class="mv-md-code">cur.right()</code> → <strong>连续两轮都踩</strong>，纯手误但会直接 TypeError，交卷前必须扫一眼</li><li>别用「输出过就不必存」的经典版直觉去写骨架版</li></ul>
+<p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p>
+<p class="mv-md-p"><strong>复训记录</strong></p>
+<table class="mv-table"><thead><tr><th>日期</th><th>覆盖内容</th><th>结果</th></tr></thead><tbody><tr><td>2026-09-12</td><td>首次闭卷默写：中序递归版、中序迭代版、前序骨架版、深度/高度、AVL 最小节点递推</td><td>代码逻辑全对；<code class="mv-md-code">cur.right()</code> 手误连踩两轮；不变量与两层追问未答</td></tr><tr><td>2026-09-12</td><td>15:22 补答验收：不变量 / 易错原因 / BST 中序有序性</td><td>部分命中。BST 过（但「左节点」须说成「左子树全部节点」）；不变量抓到「输出位置取决于前序/中序」但缺「栈 = 根到 cur 的祖先链」；易错原因缺「两件状态 + 三条守则」</td></tr><tr><td>2026-09-12</td><td>16:36 收尾：一句话复述不变量（含前序/中序输出时机）</td><td><strong>通过</strong>。祖先链 + 欠账状态 + 输出时机三块齐 → <strong>母题 35 当日闭环</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>D1 动作（09-13）</strong>：闭卷默写中序迭代版 + 口述不变量一遍；写完先扫所有 <code class="mv-md-code">.left</code>/<code class="mv-md-code">.right</code> 后面有没有括号，再对照卡片。</p>
+<p class="mv-md-p"><strong>下次复训</strong>：D1 09-13 ｜ D3 09-15 ｜ D7 09-19 ｜ D14 09-26 ｜ D30 10-12（起算 2026-09-12）</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>三种隔离级别的快照粒度与失败方式</title>
+  <desc>顶部对比两种快照粒度：读已提交下每条语句开始时各取一次快照，所以同一事务内两次查询结果可能不同；可重复读下整个事务共用一个快照，顺带把幻读也挡掉了。中间是四种标准级别在 PostgreSQL 里的实际行为表，其中读未提交被静默升成读已提交，所以内部只实现三种。底部是同一个写冲突场景在两种级别下的不同表现：可重复读直接报序列化失败并要求重试整个事务，读已提交则对更新后的版本重新求值条件并继续，一个显式一个静默。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">三种隔离级别的快照粒度与失败方式</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">PG 承诺的从来不是「你不会失败」，而是「你能看到什么」——级别越高，静默的不一致越少，显式失败越多</text>
+
+  <!-- 快照粒度 -->
+  <rect x="30" y="66" width="300" height="100" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">READ COMMITTED（PG 默认）</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">快照：<tspan font-weight="600">每条语句</tspan>开始时各取一次</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">同一事务内两条 SELECT 可以读到不同结果</text>
+  <text x="46" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">→【这不是 bug，是规范行为】</text>
+  <text x="46" y="161" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">写冲突：对更新后的版本重新求值 WHERE，继续</text>
+
+  <rect x="350" y="66" width="300" height="100" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">REPEATABLE READ（快照隔离）</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">快照：<tspan font-weight="600">整个事务</tspan>共用一个</text>
+  <text x="366" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">顺带挡掉幻读 —— 比 SQL 标准更强</text>
+  <text x="366" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 所以 PG 不需要间隙锁</text>
+  <text x="366" y="161" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">写冲突：直接回滚整个事务并报错</text>
+
+  <!-- 级别表 -->
+  <path d="M30 184 L650 184" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="208" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">四种标准级别在 PG 里的实际行为（PG 内部只实现三种）</text>
+
+  <rect x="30" y="220" width="620" height="26" rx="4" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">级别</text>
+  <text x="216" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">脏读</text>
+  <text x="316" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">不可重复读</text>
+  <text x="436" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">幻读</text>
+  <text x="556" y="238" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C2C2A">序列化异常</text>
+
+  <text x="46" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Read uncommitted</text>
+  <text x="216" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">标准允许 · PG 不会</text>
+  <text x="316" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+  <text x="436" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+  <text x="556" y="266" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+
+  <text x="46" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Read committed</text>
+  <text x="216" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+  <text x="436" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+  <text x="556" y="288" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">可能</text>
+
+  <text x="46" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Repeatable read</text>
+  <text x="216" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="436" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">标准允许 · PG 不会</text>
+  <text x="556" y="310" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">可能</text>
+
+  <text x="46" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">Serializable（SSI）</text>
+  <text x="216" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="316" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="436" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会</text>
+  <text x="556" y="332" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">不会（靠中止实现）</text>
+
+  <!-- 同一个写冲突，两种表现 -->
+  <path d="M30 356 L650 356" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="380" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">同一个场景：A 要改的那一行，已被 B 改过并提交</text>
+
+  <rect x="30" y="392" width="300" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="412" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">REPEATABLE READ → 显式失败</text>
+  <text x="46" y="432" font-family="monospace,sans-serif" font-size="9" fill="#633806">ERROR: could not serialize access due to concurrent update</text>
+
+  <rect x="350" y="392" width="300" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="412" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">READ COMMITTED → 静默继续</text>
+  <text x="366" y="432" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">忽略已删的行，否则改更新后的版本；WHERE 会重新求值</text>
+</svg>

@@ -1,0 +1,36 @@
+<svg viewBox="0 0 680 208" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>四个隔离级别的取舍谱系</title>
+<desc>从读未提交到串行化，挡住的异常越来越多，并发度越来越低；InnoDB 默认取可重复读。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="110" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读未提交</text>
+<text x="110" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">挡 0 个 · 全暴露</text>
+<rect x="193" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="263" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读已提交</text>
+<text x="263" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">挡脏读</text>
+<rect x="346" y="36" width="141" height="58" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="416" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">可重复读（InnoDB 默认）</text>
+<text x="416" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">挡脏读 · 不可重复读</text>
+<rect x="499" y="36" width="141" height="58" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="569" y="56" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">串行化</text>
+<text x="569" y="76" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">全挡，但最慢</text>
+<text x="40" y="108" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">并发更高 · 异常更多</text>
+<text x="640" y="108" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="end" dominant-baseline="central">一致性更强 · 并发更低</text>
+<path d="M40 120 L646 120" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<rect x="40" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="110" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">完全无保护</text>
+<text x="110" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">会读到别人未提交的数据</text>
+<rect x="193" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="263" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">每次读都可能变</text>
+<text x="263" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">同一事务两次读不一致</text>
+<rect x="346" y="136" width="141" height="52" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="416" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" text-anchor="middle" dominant-baseline="central">间隙锁会挡住插入</text>
+<text x="416" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">锁范围可能远大于你要的行</text>
+<rect x="499" y="136" width="141" height="52" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="569" y="154" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">读也要加锁</text>
+<text x="569" y="172" font-family="system-ui,sans-serif" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">并发最差，更容易死锁</text>
+</svg>

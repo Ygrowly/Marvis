@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 P9 · 序列化失败与重试</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/PostgreSQL.html">← PostgreSQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">PostgreSQL</span>
+    <h1 class="mv-topic-title">母题 P9 · 序列化失败与重试</h1>
+    <p class="mv-topic-meta">关联 母题-P8-隔离级别与读一致性（RR 下的 40001 是同一件事）· 母题-P10-无间隙锁与锁变体（不加锁怎么防幻读）· 母题-P18-乐观并发控制（可重试的前提是幂等）· 母题-P19-唯一约束与UPSERT（幂等的最终防线）· 母题-P14-长事务与表膨胀（长事务的另一个面貌） ｜ 正本 wiki/topics/PostgreSQL/母题-P9-序列化失败与重试.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 失败<strong>是契约不是故障</strong>——SSI 靠检测依赖环而不是加锁，检测到了就必须有人失败 ② <strong>重试必须是「整个事务」</strong>，因为快照已经不可信 ③ <strong>谓词锁在内存不够或读得太多时会升级成整表锁 → 40001 率飙升</strong>——这是「误报」的机械原因，也是可以调的）· 读完约 12 分钟 · 需要先懂：[[母题-P8-隔离级别与读一致性]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">把隔离级别提到 Serializable 之后，接口开始零星报 <code class="mv-md-code">could not serialize access due to read/write dependencies</code>。这是「不能用」还是「设计如此」？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. SSI 是怎么做到可串行化的</h3>
+<p class="mv-md-p">传统可串行化靠<strong>两阶段锁</strong>（锁到事务结束），代价是并发度低、容易死锁。PG 走另一条路：</p>
+<pre class="mv-md-pre">① 先按快照隔离执行，读不加锁 —— 大部分事务根本不会冲突
+② 在后台记录事务之间的「读写依赖」（谁读了谁写的数据）
+③ 如果发现依赖形成一个环 —— 就不可能存在任何串行顺序 → 报错并干掉其中一个</pre>
+<p class="mv-md-p"><strong>关键在「② 只记录依赖，不是拦住操作」</strong>：所以<strong>没有冲突的事务完全没有额外等待</strong>。只有真的出现环时才失败。</p>
+<p class="mv-md-p">【事实】<strong>官方的三条定性，把 SSI 和「加锁」彻底分开</strong>：</p>
+<p class="mv-md-p mv-md-quote">- 这些锁<strong>不造成任何阻塞</strong>，因此<strong>也不可能参与造成死锁</strong>。它们只用来<strong>标记并发 Serializable 事务之间的依赖</strong>。</p>
+<p class="mv-md-p mv-md-quote">- 对比之下，<strong>一个想保证数据一致性的 RC / RR 事务可能需要拿整张表的锁</strong>，那会阻塞其他用户；<strong>或者用 <code class="mv-md-code">SELECT FOR UPDATE</code> / <code class="mv-md-code">FOR SHARE</code>——它们不仅能阻塞别人，还会带来磁盘访问（必须回表读最新的版本）</strong>。</p>
+<p class="mv-md-p mv-md-quote">- 这些谓词锁在 <code class="mv-md-code">pg_locks</code> 里以 <strong><code class="mv-md-code">SIReadLock</code></strong> 模式出现。</p>
+<p class="mv-md-p">【推论】<strong>这就是「SSI 的代价是失败，不是等待」的机制来源</strong>——<strong>它把并发代价从「锁等待」搬到了「事后中止」</strong>。<strong>而且 <code class="mv-md-code">SIReadLock</code> 给了你一个可观测的手柄</strong>：<strong>排查 40001 时，先看 <code class="mv-md-code">pg_locks</code> 里那个事务到底"读"了多大范围。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「Serializable 会让数据库到处加锁变慢」这个说法在 PG 里是错的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 谓词锁会「升级」——误报的机械原因【事实】</h3>
+<p class="mv-md-p">这是 P9 最值钱的一段，也是最没人讲的一段。<strong>官方明确给出了升级规则与参数默认值</strong>：</p>
+<table class="mv-table"><thead><tr><th>参数</th><th>默认值</th><th>含义</th></tr></thead><tbody><tr><td><code class="mv-md-code">max_pred_locks_per_page</code></td><td><strong>2</strong></td><td><strong>单页上被谓词锁住超过 2 行 → 升级为整页锁</strong></td></tr><tr><td><code class="mv-md-code">max_pred_locks_per_relation</code></td><td><strong>-2</strong></td><td>负数表示 <code class="mv-md-code">max_pred_locks_per_transaction ÷ 2</code></td></tr><tr><td><code class="mv-md-code">max_pred_locks_per_transaction</code></td><td><strong>64</strong></td><td>每个事务的谓词锁对象上限</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>把这些默认值串起来，得到一个很吓人的数字</strong>：</p>
+<pre class="mv-md-pre">每页超过 2 行 → 整页锁
+每表超过 (64 ÷ 2) = 32 页 → 【整表锁】
+
+也就是说：
+  一个 Serializable 事务只要在同一张表上读了【33 页】
+  → 它的谓词锁就变成【整张表】级别
+  → 此后【任何写这张表的事务】都可能与它冲突
+
+33 页 × 8 KB = 【264 KB】</pre>
+<p class="mv-md-p">【结论】<strong>读 264 KB 就把整张表标成"我读过"</strong>——<strong>对一张 16 GB 的表，这只是 1/60000。</strong> <strong>但它让 40001 的冲突面从「若干行」放大到「整张表」。</strong></p>
+<p class="mv-md-p">【推论】<strong>官方原话把后果说得更直白</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>当系统因为谓词锁表内存不足，被迫把多个页级谓词锁合并成一个【关系级】谓词锁时，序列化失败率会上升。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>一次顺序扫描【总是】需要一个关系级谓词锁——这会导致序列化失败率上升。</strong> 可以通过<strong>降低 <code class="mv-md-code">random_page_cost</code> 和/或提高 <code class="mv-md-code">cpu_tuple_cost</code></strong> 来鼓励走索引扫描。</p>
+<p class="mv-md-p">【结论】<strong>所以有一个反直觉的结论</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>在 Serializable 下建索引，不只是为了查询快——是为了降低 40001 率。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>一条没走索引的查询，会把整张表标记成"读过"，让大量本不相干的事务互相冲突。</strong></p>
+<p class="mv-md-p">【事实】<strong>调大谓词锁的参数是官方认可的动作</strong>：<code class="mv-md-code">max_pred_locks_per_transaction</code>（默认 64）/ <code class="mv-md-code">max_pred_locks_per_relation</code>（默认 -2）/ <code class="mv-md-code">max_pred_locks_per_page</code>（默认 2）——<strong>加大它们就是把"升级"推迟，用内存换更低的误报率。</strong></p>
+<p class="mv-md-p">【纠正常见误解】<strong>「SSI 的误报」不是玄学，是内存策略</strong>——<strong>细粒度锁（行级/页级）会为了不撑爆锁表而合并成粗粒度锁（页级/表级），合并就丢精度，丢精度就误报。</strong> <strong>能说出这一条，说明你真的理解 SSI 的实现，而不是背了它的名字。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 错误长什么样，怎么识别</h3>
+<figure-box num="SSI 的依赖检测、谓词锁升级与重试放大" title="" note="依赖环如何导致失败、谓词锁从行级升级到表级的三级规则、三类错误的分类处置、重试率随并发上升的正反馈"><svg viewBox="0 0 680 464" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>SSI 的依赖检测、谓词锁升级与重试放大</title>
+  <desc>顶部是 SSI 的三步：先按快照隔离不加锁地执行，后台记录事务之间的读写依赖，发现依赖成环就中止其中一个事务；它的谓词锁不阻塞也不会造成死锁。中间是谓词锁的三级升级规则与默认值：单页锁超过两行升为整页锁，单表超过三十二页升为整表锁，也就是读二百六十四千字节就把整张表标记为读过；顺序扫描一定拿整表锁。底部是重试的正反馈：成功率乘以并发数得到有效吞吐，冲突率随并发线性上升，吞吐在拐点后下降并在并发一千时归零。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">SSI 的依赖检测、谓词锁升级与重试放大</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">Serializable 的代价不在执行速度，在失败与重试——而失败率是可以从参数算出来的</text>
+
+  <!-- SSI 三步 -->
+  <rect x="30" y="66" width="620" height="66" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">SSI：先按快照执行，再检测依赖环，冲突了才中止</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">① 按快照隔离执行，读不加锁　　② 后台记录「谁读了谁写的数据」　　③ 依赖成环 → 干掉其中一个（40001）</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">谓词锁【不阻塞、也不可能造成死锁】——代价是监控开销与中止率，不是锁等待</text>
+
+  <!-- 升级规则 -->
+  <path d="M30 148 L650 148" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="172" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">误报的机械原因：谓词锁会「升级」（官方参数默认值）</text>
+
+  <rect x="30" y="184" width="196" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">一级：整页锁</text>
+  <text x="44" y="222" font-family="monospace,sans-serif" font-size="9" fill="#633806">max_pred_locks_per_page = 2</text>
+  <text x="44" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#633806">单页上锁住超过 2 行 → 升级为整页</text>
+
+  <rect x="242" y="184" width="196" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="256" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">二级：整表锁</text>
+  <text x="256" y="222" font-family="monospace,sans-serif" font-size="9" fill="#633806">max_pred_locks_per_relation = -2</text>
+  <text x="256" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#633806">单表超过 64÷2 = 32 页 → 升级为整表</text>
+
+  <rect x="454" y="184" width="196" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">后果：读 264 KB 就锁整表</text>
+  <text x="468" y="222" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">33 页 × 8 KB = 264 KB</text>
+  <text x="468" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">此后任何写这张表的事务都可能冲突</text>
+
+  <rect x="30" y="266" width="620" height="38" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="290" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">官方原文：<tspan font-weight="600">一次顺序扫描【总是】需要一个关系级谓词锁</tspan> —— 所以在 Serializable 下建索引，不只是为了快，是为了降低 40001 率。</text>
+
+  <!-- 重试正反馈 -->
+  <path d="M30 318 L650 318" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="342" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">重试是一个有崩溃点的正反馈（p = 0.001 × 并发数）</text>
+
+  <rect x="30" y="354" width="440" height="96" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="374" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">有效吞吐 ∝ 并发数 C ×（1 − p）</text>
+  <text x="46" y="394" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">C=100 → p=0.10 → 100 × 0.90 = 90</text>
+  <text x="46" y="410" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">C=400 → p=0.40 → 400 × 0.60 = 240</text>
+  <text x="46" y="426" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">C=500 → p=0.50 → 250　← 拐点</text>
+  <text x="46" y="442" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">C=1000 → p=1.00 → 【0：彻底崩】</text>
+
+  <rect x="486" y="354" width="164" height="96" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="500" y="374" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">四件必须做的事</text>
+  <text x="500" y="394" font-family="system-ui,sans-serif" font-size="9" fill="#633806">退避 + 抖动</text>
+  <text x="500" y="411" font-family="system-ui,sans-serif" font-size="9" fill="#633806">重试上限</text>
+  <text x="500" y="428" font-family="system-ui,sans-serif" font-size="9" fill="#633806">整个事务幂等</text>
+  <text x="500" y="445" font-family="system-ui,sans-serif" font-size="9" fill="#633806">全局并发限制</text>
+</svg>
+</figure-box>
+<pre class="mv-md-pre">ERROR: could not serialize access due to read/write dependencies among transactions
+DETAIL: Reason code: Canceled on identification as a pivot...
+SQLSTATE: 40001</pre>
+<p class="mv-md-p">【事实】<strong>判断这件事要用错误码（<code class="mv-md-code">40001</code>），不要用错误文本匹配</strong>——<strong>文本会随版本/语言变化，错误码是契约。</strong> 官方原话也确认了这一点：<strong>「环境必须有一套统一的序列化失败处理方式，因为序列化失败【总是】以 SQLSTATE <code class="mv-md-code">40001</code> 返回」</strong>。</p>
+<p class="mv-md-p"><strong>同一个 <code class="mv-md-code">40001</code> 也会由 RR 下的写冲突产生</strong>（[[母题-P8-隔离级别与读一致性]]），语义都是「<strong>重试就能成功</strong>」。</p>
+<p class="mv-md-p"><strong>要区分的三类错误</strong>：</p>
+<table class="mv-table"><thead><tr><th>错误</th><th>语义</th><th>处理</th></tr></thead><tbody><tr><td><code class="mv-md-code">40001</code>（序列化失败 / 快照过期）</td><td><strong>可重试</strong>：重放事务大概率成功</td><td><strong>重试整个事务</strong></td></tr><tr><td><code class="mv-md-code">40P01</code>（死锁）</td><td>也可重试，但说明<strong>加锁顺序有问题</strong></td><td>重试 + <strong>修加锁顺序</strong></td></tr><tr><td>约束冲突（<code class="mv-md-code">23505</code> 等）</td><td><strong>确定性失败</strong>，重试也没用</td><td>不要重试，走业务分支</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>这个三分法比「统一重试三次」重要得多</strong>——<strong>对确定性错误无脑重试，是在制造重复副作用。</strong></p>
+<p class="mv-md-p">【事实】<strong>一个非常反直觉的官方提醒</strong>：<strong>Serializable 并不能保证「真实串行执行下不会报的错就不报」</strong>——<strong>它可能报出真实的串行执行里根本不会发生的唯一约束冲突</strong>，<strong>即使你已经先查过那个键不存在</strong>。</p>
+<p class="mv-md-p mv-md-quote"><strong>规避方式是：所有会插入潜在冲突键的 Serializable 事务，都必须【先显式检查】。</strong> 例如：<strong>有的应用直接插入、有的应用先 <code class="mv-md-code">SELECT</code> 再插入，那么前者会让后者报出不该报的唯一冲突。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以「先查再插」这个动作，只有在【所有】参与者都这么做时才有效。</strong> <strong>协议不统一，比完全不做协议更糟——因为它给了你虚假的安全感。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 正确的重试长什么样</h3>
+<p class="mv-md-p"><strong>必须是「整个事务」，不是「那一条语句」</strong>：</p>
+<pre class="mv-md-pre">① 记录本次事务的输入（幂等键）
+② BEGIN
+③ 执行全部读与写
+④ COMMIT
+   └─ 若报 40001 → 回滚 → 重新执行 ③（用同样的输入）</pre>
+<p class="mv-md-p"><strong>因为 SSI 失败意味着「你读到的那个快照已经不可信」</strong>——<strong>重试那一条语句没有意义，必须重新读。</strong></p>
+<p class="mv-md-p">【事实】<strong>失败发生在哪一步，官方给了明确答案</strong>：SSI 的检测<strong>可以一直持续到提交时</strong>——<strong>官方那个例子就是「两个事务都做完了，然后都试着提交」时，其中一个被回滚。</strong> <strong>所以 <code class="mv-md-code">COMMIT</code> 是一个会失败的操作</strong>——<strong>这打破了「提交不会失败」的朴素假设。</strong></p>
+<p class="mv-md-p">【推导】<strong>这把重试框架的要求提高了</strong>：</p>
+<pre class="mv-md-pre">朴素写法：
+  try { ...; commit(); } catch (...) { /* 只有语句会抛错 */ }
+  → COMMIT 抛 40001 时，事务其实【没有提交成功】
+  → 但很多框架会把 commit 的异常当成"未知状态"
+
+正确写法：
+  把 COMMIT 也包进可重试的范围
+  并且确认【回滚是干净的】——失败的事务不能留下任何副作用</pre>
+<p class="mv-md-p"><strong>四条要求</strong>：</p>
+<ul class="mv-md-ul"><li><strong>带退避 + 抖动</strong>：并发高时同步重试会互相打架，越试越糟；</li><li><strong>有重试上限</strong>：超过就暴露成失败/未知，不要无限循环；</li><li><strong>整个事务幂等</strong>：重试不能产生第二次副作用——所以<strong>必须有幂等键或唯一约束兜底</strong>（[[母题-P18-乐观并发控制]] / [[母题-P19-唯一约束与UPSERT]]）；</li><li><strong>保留 trace</strong>：记录重试次数，它是「并发竞争激烈程度」的直接指标（可以直接做监控）。</li></ul>
+<p class="mv-md-p"><strong>反过来讲最重要的一句</strong>：<strong>SSI 要求业务可重试；而「可重试」的前提是副作用可幂等。</strong> 所以「能不能上 Serializable」其实是一个<strong>幂等设计问题</strong>，不是一个数据库配置问题。<strong>这句话是这道题的分水岭。</strong></p>
+<p class="mv-md-p">【事实】<strong>官方给的性能建议里，有三条和「重试」直接相关</strong>：</p>
+<p class="mv-md-p mv-md-quote">- <strong>尽可能把事务声明成 <code class="mv-md-code">READ ONLY</code></strong>（只读事务在很多情况下根本不必拿谓词锁）。</p>
+<p class="mv-md-p mv-md-quote">- <strong>控制活跃连接数，必要时用连接池</strong>——<strong>这条在跑 Serializable 的繁忙系统里尤其重要</strong>。</p>
+<p class="mv-md-p mv-md-quote">- <strong>不要让连接长时间 "idle in transaction"</strong>——可以用 <code class="mv-md-code">idle_in_transaction_session_timeout</code> 自动断开。</p>
+<p class="mv-md-p mv-md-quote">- <strong>消除那些因为 Serializable 已自动提供保护而不再需要的显式锁 / <code class="mv-md-code">FOR UPDATE</code> / <code class="mv-md-code">FOR SHARE</code>。</strong></p>
+<p class="mv-md-p"><strong>最后一条最容易被忽略</strong>：<strong>很多人一边上 Serializable、一边保留着 <code class="mv-md-code">FOR UPDATE</code>——那是把两套代价都付了。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 跟其他方案比</h3>
+<table class="mv-table"><thead><tr><th>方案</th><th>机制</th><th>适合</th><th>代价</th></tr></thead><tbody><tr><td><strong>Serializable（SSI）</strong></td><td>检测依赖环 → 报错重试</td><td><strong>冲突低但需要跨行不变量</strong>、业务可重试</td><td>可能误报；<strong>谓词锁升级会让误报率非线性上升</strong>；要求重试框架</td></tr><tr><td><strong>RR / RC + <code class="mv-md-code">FOR UPDATE</code></strong></td><td>悲观锁，冲突就排队</td><td><strong>冲突高、临界区短</strong>、业务不好重试</td><td>锁等待、死锁风险、吞吐下降、<strong>要回表读最新版本</strong></td></tr><tr><td><strong>条件更新（乐观）</strong></td><td>判断与写入合并为一条语句</td><td>冲突低、单行不变量</td><td><strong>不能直接保护跨行不变量</strong>（要靠约束）</td></tr><tr><td><strong>唯一约束</strong></td><td>数据库原子性</td><td><strong>幂等与重复的最终防线</strong></td><td>只覆盖「重复」，不覆盖「顺序」</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>判据</strong>：<strong>能不能重试 → 能就用 SSI/乐观；冲突频率高到重试成本超过加锁成本 → 才用悲观锁。</strong> 这条判据和 MySQL 那边（[[母题-M16-乐观锁与悲观锁]]）是同一句话，<strong>只是 PG 多了一层「SSI 帮你自动检测」。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>说法</th><th>实际情况</th></tr></thead><tbody><tr><td>「Serializable 会到处加锁变慢」</td><td><strong>官方明确：谓词锁不阻塞、也不可能造成死锁</strong>；代价是<strong>监控开销 + 中止率</strong></td></tr><tr><td>「SSI 的误报说不清为什么」</td><td><strong>说得清</strong>：<strong>锁表内存不足 → 细粒度锁合并成粗粒度锁 → 丢精度</strong>；<strong>调 <code class="mv-md-code">max_pred_locks_*</code> 可以推迟升级</strong></td></tr><tr><td>「全表扫和走索引对 Serializable 没差别」</td><td><strong>差别极大</strong>：<strong>顺序扫描【总是】需要一个关系级谓词锁</strong>，失败率因此上升</td></tr><tr><td>「失败发生在执行语句时」</td><td><strong>也可能发生在 <code class="mv-md-code">COMMIT</code></strong>——<strong>所以 <code class="mv-md-code">COMMIT</code> 必须在重试范围内</strong></td></tr><tr><td>「先查再插就能避免唯一冲突」</td><td><strong>只有在【所有】参与者都遵守同一协议时才成立</strong>；协议不统一反而会报出串行执行里不会发生的错</td></tr><tr><td>「重试次数越多越保险」</td><td><strong>重试本身增加并发</strong>——<strong>高冲突时是无上限的正反馈</strong>（见 Q1）</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P9-序列化失败与重试-q1" tag="PostgreSQL" q="某表 16 GB、8000 万行。一个 Serializable 事务执行 WHERE bigint_col &gt; 0 的查询（命中约一半行）。&#10;问：它拿到的谓词锁是什么粒度？冲突面有多大？如果换成能走索引的查询、只碰 100 页呢？" a="``text&#10;官方规则（默认参数）：&#10;每页超过 max_pred_locks_per_page=2 行 → 升级为【整页】锁&#10;每表超过 64÷2=32 页 → 升级为【整表】锁&#10;全表扫描：&#10;读 200 万页 → 远超 32 页 → 升级成【关系级（整表）谓词锁】&#10;→ 冲突面 = 【整张表的任何写入】&#10;走索引（只碰 100 页）：&#10;100 页 &gt; 32 页 → 仍然会升级成整表锁！&#10;→ 要真正避免，得把页数压到【32 页以内】（约 264 KB）&#10;`&#10;【结论】这里有个反直觉的地方：「走索引」本身还不够——只有把访问的页数压到 32 页以下，才拿不到整表锁。 但官方仍然建议&quot;鼓励走索引&quot;，因为：&#10;`text&#10;全表扫： 一定拿整表锁（无论表多大）&#10;索引扫： 拿多少页的锁取决于实际命中&#10;→ 命中少的查询（OLTP 的典型形状）可以完全避开升级&#10;→ 命中多的查询至少和全表扫一样&#10;`&#10;【推论】判据：&#10;在 Serializable 下，「这个查询读了多少页」不只是性能问题，也是【并发度问题】。&#10;同一条 SQL，在 RC 下是&quot;慢一点&quot;，在 Serializable 下可能是&quot;让整张表的事务互相失败&quot;。&#10;【补充】这也是官方那条建议的来历：「可以通过降低 random_page_cost 和/或提高 cpu_tuple_cost` 来鼓励走索引扫描」——在 Serializable 场景下调代价参数，目标是【减少谓词锁的升级】，而不只是让查询更快。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P9-序列化失败与重试-q2" tag="PostgreSQL" q="一个 Serializable 系统，40001 的发生率 p 与并发事务数 C 近似成正比：p = 0.001 × C。&#10;问：并发从 100 涨到 500 时，系统的「有效吞吐」怎么变？到多少并发时彻底崩溃？" a="``text&#10;有效吞吐 ∝ C × (1 − p)        ← 成功的事务才算数&#10;C = 100：p = 0.10 → 100 × 0.90 = 【90】&#10;C = 200：p = 0.20 → 200 × 0.80 = 【160】&#10;C = 400：p = 0.40 → 400 × 0.60 = 【240】&#10;C = 500：p = 0.50 → 500 × 0.50 = 【250】  ← 拐点&#10;C = 800：p = 0.80 → 800 × 0.20 = 【160】  ← 反而下降&#10;C = 1000：p = 1.00 → 1000 × 0 = 【0】     ← 彻底崩&#10;`&#10;【结论】吞吐先升后降，在 C = 500 附近到顶（250），然后在 C = 1000 归零。 而且这只算了一阶效应——重试本身也占并发，所以真实拐点会比这个更早。&#10;【推论】这是正反馈：&#10;`text&#10;并发上升 → 冲突率上升 → 失败变多 → 重试变多 → 并发进一步上升 → ...&#10;`&#10;【判据】所以重试策略必须带：&#10;退避 + 抖动（避免同步重试）+ 上限（避免无限循环）+ 全局并发限制（避免正反馈失控）。&#10;【补充】这也是官方那条「控制活跃连接数，必要时用连接池」的来历——在 Serializable 场景下，连接池不只是资源管理，它是【防止正反馈】的闸门。 把 p` 摁在低位，比把重试写得再花哨都管用。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算 + 判读</span></div><flip-card card-id="PostgreSQL/母题-P9-序列化失败与重试-q3" tag="PostgreSQL" q="谓词锁表内存不足，系统把某事务的 50 个页级锁合并成 1 个整表锁。&#10;问：这个事务的冲突面变化了多少倍？（表 200 万页）" a="``text&#10;升级前：50 个页级锁&#10;→ 冲突面 = 50 / 2,000,000 = 【0.0025%】的表&#10;升级后：1 个整表锁&#10;→ 冲突面 = 【100%】的表&#10;倍数：1 ÷ 0.0025% = 【40,000 倍】&#10;`&#10;【结论】内存不够的一次合并，让冲突面扩大了 4 万倍。 这就是官方那句「序列化失败率会上升」背后的量级。&#10;【推论】判据与动作：&#10;误报率突然上升，最先该查的是「谓词锁是不是被合并了」——看 pg_locks 里 SIReadLock 的粒度（页级还是关系级），再把 max_pred_locks_per_transaction / max_pred_locks_per_relation` 调大。&#10;【取舍】这是一笔明确的交易：调大参数 = 用内存换更低的误报率。 而如果不调，系统会在压力最大的时候（锁表最紧张时）误报最多——这是最糟的时机。所以这类参数应该在压测时就定下来，而不是等线上出问题。**"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P9-序列化失败与重试-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;上了 Serializable 之后开始零星报错，说明这个级别不适合我们。降回 RC 就好了。&quot;" a="三处问题。&#10;1. 报 40001 是 Serializable 的契约，不是故障：官方明确说「环境必须有一套统一的序列化失败处理方式，因为序列化失败总是以 40001 返回」——它从一开始就假设你会重试。&#10;2. 降回 RC 是有代价的，只是代价变得不可见：RC 下没有 40001，但那不是&quot;没问题&quot;，是&quot;问题不报错&quot;——跨行不变量会被悄悄破坏（[[母题-P8-隔离级别与读一致性]] 的 Q3 算过这笔账）。&#10;3. 「零星」恰恰说明它在正常工作：失败率低说明冲突少，这正是 SSI 最划算的场景。真要降级，判断依据应该是「业务操作不可重试」或「冲突率高到重试成本超过加锁」，而不是「它报错了」。&#10;【准确说法】&quot;40001 是「让你重来一次」的信号。 先给重试加上退避、上限与幂等保证；再看失败率是不是高得不正常——如果高，先查谓词锁有没有升级到整表级，而不是把级别降回去。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P9-序列化失败与重试-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;为了保证正确性，我们上了 Serializable，同时把所有关键更新都改成了 SELECT ... FOR UPDATE，双保险。&quot;" a="三处问题。&#10;1. 这是把两套代价都付了：官方明确建议「消除那些因为 Serializable 已自动提供保护而不再需要的显式锁 / FOR UPDATE / FOR SHARE」。&#10;2. FOR UPDATE 会带来 SSI 本来没有的问题：它会阻塞其他事务、可能造成死锁，而且官方指出它「还会带来磁盘访问」（必须去读最新版本）。等于把 PG 用 SSI 换掉的东西又请回来了。&#10;3. 它不提高正确性，只降低并发：Serializable 已经覆盖了跨行不变量的检测，再加 FOR UPDATE 是重复保护——额外的锁只会增加死锁概率与等待时间。&#10;【准确说法】&quot;要么用 SSI，要么用显式锁，不要叠。 上了 Serializable 之后，正确的动作是【删掉】那些不再需要的 FOR UPDATE——这一步能直接换回吞吐。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">为什么 Serializable 会失败？应用层怎么处理才正确？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="PostgreSQL/母题-P9-序列化失败与重试" tag="PostgreSQL" q="为什么 Serializable 会失败？应用层怎么处理才正确？" a="PG 的 Serializable 用的是 SSI（Serializable Snapshot Isolation）：它在快照隔离之上检测可能导致非可串行化结果的读写依赖环，一旦发现就主动让其中一个事务失败（SQLSTATE 40001）。所以失败是设计的一部分，不是异常——正确做法是在应用层捕获 40001、重试整个事务（带退避和上限），而不是重试单条语句。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 的并发哲学」最集中的一课</strong>。MySQL 的思路是「加锁等一等，尽量别让你失败」；<strong>PG 的思路是「用快照保证正确，冲突了就直接告诉你，你自己重试」</strong>。<strong>把「失败」理解成缺陷而不是契约，就会做出错误的技术判断</strong>——比如「把隔离级别降回去」或「加锁硬扛」，这两条都比正确重试更糟。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">PG 的 Serializable 用的是 <strong>SSI（Serializable Snapshot Isolation）</strong>：它在快照隔离之上<strong>检测可能导致非可串行化结果的读写依赖环</strong>，一旦发现就<strong>主动让其中一个事务失败</strong>（SQLSTATE <code class="mv-md-code">40001</code>）。<strong>所以失败是设计的一部分，不是异常</strong>——正确做法是<strong>在应用层捕获 40001、重试整个事务</strong>（带退避和上限），而不是重试单条语句。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>SSI</li><li>读写依赖与依赖环</li><li>40001</li><li><strong>重试整个事务</strong></li><li>幂等</li><li><strong>谓词锁会升级（每页 2 行 · 每表 32 页 → 整表锁）</strong></li><li><code class="mv-md-code">SIReadLock</code></li><li>全表扫必然拿整表锁</li><li><code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的 Serializable 靠加锁 + 间隙锁，表现为等待与超时；PG 靠 SSI 主动报错</strong>。<strong>而且 PG 的 40001 有两个来源</strong>：<strong>SSI 的依赖环</strong>、<strong>RR 下的写冲突</strong>（[[母题-P8-隔离级别与读一致性]]）——<strong>MySQL 没有对等的第二种</strong>。<strong>「同名级别、不同失败方式」说清楚，这道题就满分。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>写偏斜是什么，为什么 RC/RR 拦不住？</strong></strong></p>
+<p class="mv-md-p">两个事务<strong>各读一部分数据、各写另一部分</strong>，<strong>各自的读集与写集不重叠</strong>，所以快照隔离看不出问题，<strong>但合起来破坏了一个跨行的不变量</strong>。<strong>只有 SSI 能自动拦住它</strong>，否则要靠显式锁或约束。</p>
+<p class="mv-md-p"><strong>2. <strong>能不能不用 SSI，只用 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 保证正确？</strong></strong></p>
+<p class="mv-md-p"><strong>能，但必须保证「读的时候也加锁」</strong>——<strong>只给写加锁的「先查再写」在 RC 下有竞态</strong>。<strong>RuleArena 走的是条件更新而不是「读也加锁」这条路</strong>（项目文档 04 §15：<strong>MVP 优先业务唯一键 + 条件更新</strong>）——<strong>理由是「锁不能成为资金正确性的唯一保证」</strong>，<strong>不是「用不了锁」</strong>。<strong>而一旦读也加锁，你就回到了"锁 + 等待 + 死锁"的老世界。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>重试会不会把压力放大成雪崩？</strong></strong></p>
+<p class="mv-md-p"><strong>会，而且是正反馈</strong>（Q2 的算式：C=1000 时吞吐归零）。<strong>所以正确写法必须带退避 + 抖动 + 上限 + 全局并发限制。</strong> <strong>能说出「重试也要限流」，就超出教科书答案了。</strong></p>
+<p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code> 是什么意思？</strong></strong></p>
+<p class="mv-md-p"><strong>只读事务声明可延迟启动，它会【阻塞】到一个"保证不会因序列化失败"的快照可用为止。</strong> <strong>官方明确指出：这是唯一一种 Serializable 会阻塞、而 RR 不会的情况。</strong> <strong>报表类长只读事务想彻底免重试，这是标准做法——</strong>而且它通常能在启动时就确定这个事实，<strong>从而根本不拿谓词锁</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>怎么判断该不该上 Serializable？</strong></strong></p>
+<p class="mv-md-p">先问三件事：<strong>① 有没有跨行不变量（没有就不用上）；② 业务操作可不可重试（不可重试就别用 SSI，用锁）；③ 冲突频率有多高（很高时重试成本可能超过加锁）</strong>。<strong>三个问题问完，答案自己出来。</strong></p>
+<p class="mv-md-p"><strong>6. <strong>线上 40001 突然变多，怎么排查？</strong></strong></p>
+<p class="mv-md-p"><strong>三个方向</strong>：<strong>① 看 <code class="mv-md-code">pg_locks</code> 里 <code class="mv-md-code">SIReadLock</code> 的粒度</strong>（是不是升级成关系级了 → 调 <code class="mv-md-code">max_pred_locks_*</code>）；<strong>② 看有没有新出现的顺序扫描</strong>（→ 它一定拿整表锁，鼓励走索引）；<strong>③ 看有没有事务变长或连接数上涨</strong>（→ 正反馈的前兆）。<strong>这三个方向都是从机制推出来的，不是猜。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「MySQL 的 Serializable 和 PG 的差多少？」—— <strong>MySQL 靠加锁 + 间隙锁实现，通常表现为【等待与超时】；PG 靠 SSI【主动报错】</strong>。<strong>「MySQL 上到 Serializable 会变慢」和「PG 上到 Serializable 会开始报错」是两种不同的现象</strong>，<strong>这是能直接体现你真用过 PG 的一处差异</strong>。</li><li>「SSI 的误报能不能彻底消除？」—— <strong>不能，只能压到可接受范围</strong>。<strong>因为升级规则本身就是「用内存换精度」，而内存永远有限。</strong> <strong>能做的是：把热点查询压到 32 页以内、调大谓词锁参数、把只读事务声明成 <code class="mv-md-code">READ ONLY</code>。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena 的沙箱重放</strong>（<strong>同一批动作重放要能拿到一样的结果——这正是「事务可重试」的业务前提</strong>）。 - <strong>EnergyOps 的月度结算</strong>（跨行不变量多、但通常可以按周期重算，天然后可重试）。 - <strong>数驭穹图的权限/配置变更</strong>（<strong>跨行不变量（比如"每个租户只有一个默认配置"）正是 SSI 的主场</strong>——而且这类操作的冲突率天然很低）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">PG 怎么做到可串行化（SSI 检测依赖而不是加锁）→ <strong>谓词锁为什么会升级（误报的机械原因）</strong>→ 所以会失败 → 失败的错误码与语义 → 正确的处理方式（重试整个事务）→ 与悲观锁的取舍 → 一个前提检查清单</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>Serializable 的成本不在执行速度，在「失败与重试」。</strong> 所以选择它的前提不是「我的 SQL 快不快」，而是<strong>「这个业务操作本身可不可以重试」</strong>——可重试，SSI 就是最省心的可串行化；不可重试，就该用显式锁。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「SSI 为什么必然带来失败」并指出<strong>谓词锁不阻塞、不造成死锁</strong>；<strong>能说出谓词锁的升级规则（每页 2 行 / 每表 32 页 / 264 KB）并算出冲突面放大的倍数</strong>；<strong>能说出「顺序扫描一定拿整表锁」以及它对 40001 率的影响</strong>；<strong>能说出失败也可能发生在 <code class="mv-md-code">COMMIT</code></strong>；<strong>能给出重试整个事务的四个要素，并算出正反馈的崩溃点</strong>；<strong>能解释「能不能上 Serializable 是幂等设计问题，不是配置问题」</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

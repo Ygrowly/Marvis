@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 C3 · Prompt 版本管理与回归</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/LLM与上下文.html">← LLM与上下文 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">LLM与上下文</span>
+    <h1 class="mv-topic-title">母题 C3 · Prompt 版本管理与回归</h1>
+    <p class="mv-topic-meta">关联 母题-C1-上下文组装与窗口预算（每条指令都在抢注意力预算）· 母题-C2-结构化输出与JSON可靠性（schema 变更也是一种版本变更）· 母题-C5-模型选型与降级三角（换模型 = 最大的一次 prompt 变更） ｜ 正本 wiki/topics/LLM与上下文/母题-C3-Prompt版本管理与回归.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 为什么"感觉变好了"不算证据 ② 为什么模型升级是重估 prompt 的最好时机 ③ 为什么消融应当成为习惯而不是项目）· 读完约 12 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"我看你们 prompt 改得挺频繁的，你怎么知道一次改动是变好了还是变坏了？换模型之后你们做了什么？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Prompt 不是配置文件，是控制层</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 同一份 prompt 在不同模型上是不同的系统【推导】</h4>
+<p class="mv-md-p">Prompt 不是"描述任务的文本"，它是<strong>用来补偿模型某个具体缺陷的补丁</strong>。所以：</p>
+<pre class="mv-md-pre">prompt 的效果 = f(模型能力, 任务分布)
+模型换了  →  函数变了  →  同一份 prompt 的收益和代价都变了</pre>
+<p class="mv-md-p">【推论】这直接否定了一个常见做法："模型升级了，先不动 prompt，跑跑看。"——<strong>"先不动"本身就是一次未经评估的变更</strong>，因为你已经改变了一个自变量。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 一条指令的完整生命周期【推导】</h4>
+<pre class="mv-md-pre">① 写下指令  ← 为了补当时模型的一个失败模式
+② 沉淀下来  ← 进入系统提示 / CLAUDE.md / Skills
+③ 模型升级  ← 它补的那个弱点消失了
+④ 变成负担  ← 指令只在少数场景成立，还和别的指令打架
+⑤ 消融判定  ← 删掉一段，跑同一套 Eval，比指标</pre>
+<p class="mv-md-p">【事实】第 ④ 步不是假想。Anthropic 读自己内部的 Claude Code 使用记录时，发现<strong>同一个请求里会同时出现互相冲突的指令</strong>——系统提示说"不要加注释"，用户的 CLAUDE.md 或请求又说"文档要写清楚"，两边打架。模型能处理，但<strong>它得先花推理去解决这个冲突</strong>，这本身就是成本。</p>
+<figure-box num="一条指令的生命周期：为什么会从「拐杖」变成「冲突」" title="" note="上半部分是一条指令的五个阶段与消融判定回路；下半部分列出六类最典型的历史拐杖，以及一次实测的消融结果：清掉后成本降 14.6%、准确率升 5.3%"><svg viewBox="0 0 680 372" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>一条指令的生命周期：为什么会从「拐杖」变成「冲突」</title>
+  <desc>上半部分是一条指令的完整生命周期：先为了补某个失败模式写下来，进入系统提示或 CLAUDE.md，随着模型升级那个失败模式消失，指令从补偿变成约束甚至和其他指令冲突，最后必须靠消融实验决定删除还是保留。下半部分列出六类最典型的历史拐杖，以及一次实测的消融结果：清掉这些拐杖后成本下降 14.6%、准确率上升 5.3%。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">一条指令的生命周期：为什么会从「拐杖」变成「冲突」</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">指令是写给「当时的模型」的——模型变了，指令的收益和代价都会变，所以必须靠消融验证，不能凭感觉</text>
+
+  <!-- 生命周期链条 -->
+  <text x="30" y="76" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">① 一条指令的五个阶段</text>
+
+  <rect x="30" y="88" width="116" height="58" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="88" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">写下指令</text>
+  <text x="88" y="127" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">补某个失败模式</text>
+  <text x="88" y="140" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">（当时是有效的）</text>
+
+  <path d="M148 117 L164 117" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figprompt-lifecycle-svg-pv-ar)"/>
+
+  <rect x="166" y="88" width="116" height="58" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="224" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">沉淀下来</text>
+  <text x="224" y="127" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">进入系统提示 /</text>
+  <text x="224" y="140" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">CLAUDE.md / Skills</text>
+
+  <path d="M284 117 L300 117" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figprompt-lifecycle-svg-pv-ar)"/>
+
+  <rect x="302" y="88" width="116" height="58" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="360" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">模型升级</text>
+  <text x="360" y="127" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">它补的那个弱点</text>
+  <text x="360" y="140" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">消失了</text>
+
+  <path d="M420 117 L436 117" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figprompt-lifecycle-svg-pv-ar2)"/>
+
+  <rect x="438" y="88" width="116" height="58" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="496" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">变成负担</text>
+  <text x="496" y="127" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">只在少数场景成立，</text>
+  <text x="496" y="140" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">还和别的指令打架</text>
+
+  <path d="M556 117 L572 117" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figprompt-lifecycle-svg-pv-ar2)"/>
+
+  <rect x="574" y="88" width="76" height="58" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="612" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">消融判定</text>
+  <text x="612" y="127" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">删一段</text>
+  <text x="612" y="140" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">比同一套 Eval</text>
+
+  <path d="M612 146 L612 166 L88 166 L88 148" stroke="#BA7517" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#figprompt-lifecycle-svg-pv-ar2)"/>
+  <text x="350" y="180" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">指标没掉 → 删掉；指标变好 → 这就是一条"拐杖"；指标变差 → 保留，并记下它现在在补偿什么</text>
+
+  <!-- 六类拐杖 -->
+  <text x="30" y="212" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">② 最典型的六类历史拐杖</text>
+
+  <rect x="30" y="224" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="44" y="244" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">验证仪式</text>
+  <text x="44" y="262" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">"再检查一遍" → 被字面执行，重复查</text>
+
+  <rect x="242" y="224" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="256" y="244" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">强调型助推</text>
+  <text x="256" y="262" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">"务必极其详尽" → 变成冗长与多余检索</text>
+
+  <rect x="454" y="224" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="468" y="244" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">强制流程与草稿纸</text>
+  <text x="468" y="262" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">"一步步写在草稿里" → 与原生思考冲突</text>
+
+  <rect x="30" y="286" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="44" y="306" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">过时示例</text>
+  <text x="44" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">针对旧模型失败模式写的 few-shot</text>
+
+  <rect x="242" y="286" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="256" y="306" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">互相矛盾的规则</text>
+  <text x="256" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">"按政策退款" vs "不得擅自退款"</text>
+
+  <rect x="454" y="286" width="196" height="52" rx="7" fill="#FFFFFF" stroke="#E3E1DA"/>
+  <text x="468" y="306" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">过期的配置</text>
+  <text x="468" y="324" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">为上一代模型手写的思考预算等参数</text>
+
+  <text x="30" y="362" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">实测：清掉这些拐杖后，成本降 14.6%、准确率升 5.3% —— 拐杖不只是浪费 token，它会真的把答案带偏。</text>
+
+  <defs>
+    <marker id="figprompt-lifecycle-svg-pv-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="figprompt-lifecycle-svg-pv-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"模型升级后 prompt 先别动"是个危险的做法？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 候选方案：三种验证方式（先各自介绍，不比较）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 凭感觉 + 看几个例子【事实】</h4>
+<p class="mv-md-p">改完随手试几个 case，觉得好就发布。<strong>这是默认做法，也是最贵的做法</strong>——贵在它把成本转移到线上。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 全量回归【事实】</h4>
+<p class="mv-md-p">每次改动都跑完整评测集，比较所有指标。<strong>证据最强，代价最高</strong>（时间和 token 都按评测集规模线性增长）。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 消融实验（ablation）【事实】</h4>
+<p class="mv-md-p"><strong>删掉一段</strong>，其余不动，跑同一套 Eval，比较指标：</p>
+<pre class="mv-md-pre">指标没掉    → 删掉（这段是冗余）
+指标变好    → 删掉（这段是拐杖，它在拖后腿）
+指标变差    → 保留，并记下"它现在还在补偿什么"</pre>
+<p class="mv-md-p"><strong>注意方向</strong>：消融问的是"<strong>多了什么</strong>"，不是"少了什么"。这一条与直觉相反——大部分人改 prompt 的默认动作是<strong>加</strong>。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 逐个淘汰（统一指标：改动带来的净收益 ÷ 验证成本）</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 为什么"凭感觉"在概率系统里没有信息量【推导】</h4>
+<p class="mv-md-p">模型是<strong>采样</strong>的：同一个输入，跑两次可能不一样。这导致：</p>
+<ul class="mv-md-ul"><li><strong>单次观察无法区分"改动生效"和"随机波动"</strong>——你看到的那一次更好，可能就是运气</li><li><strong>小评测集也救不了</strong>：见第 4 节的样本量算式，200 条的评测集分辨不出 2 个百分点的差异</li></ul>
+<p class="mv-md-p">【取舍】所以"我先试试看"不是错，错在<strong>把试出来的结论当成结论</strong>。试可以，但要清楚地知道：<strong>样本量不够的观察，只能证伪、不能证实。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 为什么不能"每次都全量回归"【推导】</h4>
+<p class="mv-md-p">全量回归的问题不在正确性，在<strong>频率</strong>：</p>
+<pre class="mv-md-pre">评测集 200 条 × $0.03/条 = $6/次
+一天改 10 次           = $60/天</pre>
+<p class="mv-md-p">【取舍】成本本身不算高，但它<strong>慢</strong>——每次都等全量结果，迭代速度会被拖死。<strong>证据强度和迭代速度是有张力的</strong>，所以正确的结构是分层的（见 3.4）。</p>
+<h4 class="mv-md-h mv-md-h4">3.3 为什么"加规则"是本能的错误方向【推导】</h4>
+<p class="mv-md-p">模型出错时，人的第一反应是"再加一条规则告诉它别这样"。但这会撞上 [[母题-C1-上下文组装与窗口预算]] 的两条约束：</p>
+<p class="mv-md-p">1. <strong>每条指令都占注意力预算</strong>——加了这条，别的指令被稀释 2. <strong>规则会互相冲突</strong>——尤其是"吸收教训式"的补丁，它们往往是针对某个具体 case 写的，天然和通用规则打架</p>
+<p class="mv-md-p">【事实】<strong>反直觉的实证</strong>：Anthropic 为 Claude 5 代模型<strong>删掉了超过 80% 的 Claude Code 系统提示</strong>，编码评测<strong>没有可测量的损失</strong>。同一篇文章里，他们列的六类"拐杖"——验证仪式、强调型助推、强制流程与草稿纸、过时示例、互相矛盾的规则、过期配置——<strong>全都是"加"出来的</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">3.4 胜出方案：分层验证 + 训练/测试分离【事实】</h4>
+<pre class="mv-md-pre">改动 → 抽样快筛（便宜、快，只能筛掉明显的坏改动）
+     → 全量回归（发布前跑一次，作为门禁）
+     → 训练/测试分离（调参看训练集，验收只看未见过的测试集）</pre>
+<p class="mv-md-p">【事实】最后一条最关键，有真实的翻车案例可以对照。Anthropic 的 hillclimb 工具在客服 benchmark 上做模型/effort/prompt 的联合搜索：</p>
+<pre class="mv-md-pre">起点：Opus 4.8 默认（high effort）
+第一步：换 Opus 5 + low effort + 清掉拐杖
+        → 训练集 98.9%，成本 2.6 美分/工单
+第二步：降到 Sonnet 5 low effort
+        → 更便宜（1 美分/工单），但准确率掉到 88.9%
+第三步：读失败的训练样本，补路由规则与退款上限交叉引用
+        → Sonnet 5 回到 98.9%，成本不变</pre>
+<p class="mv-md-p">【事实】真正的结论在<strong>它没看过的 14 条 held-out 工单</strong>上：</p>
+<pre class="mv-md-pre">最终配置 90.5%  vs  原始配置 78.6%     成本约为原来的 1/5</pre>
+<p class="mv-md-p"><strong>注意这个差距</strong>：训练集上是 98.9% vs 98.9%（打平），held-out 上才拉开 11.9 个百分点。<strong>如果只看训练集，你会以为"降级到 Sonnet 5 + 补几句规则"没有损失。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么调 prompt 要有"没被搜索看过的"那部分数据？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 量化验证：三笔账</h3>
+<p class="mv-md-p"><strong>第一笔：评测集要多大，才能看出差别？</strong></p>
+<pre class="mv-md-pre">比例的标准误：SE = √(p(1−p)/n)
+
+p ≈ 0.9，n = 200：
+SE = √(0.9 × 0.1 / 200) = √0.00045 ≈ 0.0212 = 2.1%
+
+要让 SE 降到 1%（能分辨 2 个百分点的差距）：
+n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
+<p class="mv-md-p">【结论】<strong>200 条评测集的分辨率大约是 ±2%</strong>。改动前后差 4 条（2 个百分点）时，这个差异<strong>小于一个标准误</strong>——分不出来。所以：</p>
+<ul class="mv-md-ul"><li>小评测集只能抓<strong>大幅回退</strong>（比如掉 10 个点）</li><li>想论证"我改进了 2 个点"，评测集得按<strong>千条</strong>量级准备</li></ul>
+<p class="mv-md-p"><strong>第二笔：删掉 80% 系统提示，值多少钱？</strong></p>
+<pre class="mv-md-pre">假设原系统提示 8,000 token，删掉 80% → 每次请求省 6,400 token
+一次 40 轮会话，系统提示被送 40 次 → 省 6,400 × 40 = 256,000 token
+
+无缓存：256K × $5/MTok   = $1.28 / 会话
+有缓存：256K × $0.5/MTok = $0.128 / 会话   （读价 0.1×）</pre>
+<p class="mv-md-p">【推导】<strong>注意这里省的是线性的</strong>——每轮固定省 6,400，不像"历史重发"那样平方增长。所以它的省钱效果远不如压缩历史，但<strong>它的注意力收益是另一回事</strong>：同时减少了 6,400 个 token 对 attention budget 的持续占用（[[母题-C1-上下文组装与窗口预算]]）。</p>
+<p class="mv-md-p"><strong>第三笔：准确率涨 5.3% 到底是多少？</strong></p>
+<p class="mv-md-p">Anthropic 报告 <code class="mv-md-code">/claude-api prompt-audit</code> 清掉六类拐杖后，<strong>平均成本降 14.6%、准确率升 5.3%</strong>。5.3% 听起来不多，换算成<strong>错误率</strong>：</p>
+<table class="mv-table"><thead><tr><th>读法</th><th>准确率</th><th>错误率</th><th>变化</th></tr></thead><tbody><tr><td>基线</td><td>90%</td><td>10%</td><td>—</td></tr><tr><td>5.3% 是<strong>相对</strong>提升</td><td>90% → 94.8%</td><td>10% → <strong>5.2%</strong></td><td>错误率<strong>减半</strong></td></tr><tr><td>5.3% 是<strong>绝对</strong>提升</td><td>90% → 95.3%</td><td>10% → <strong>4.7%</strong></td><td>错误率<strong>减少 53%</strong></td></tr></tbody></table>
+<p class="mv-md-p">【结论】<strong>两种读法下结论一致：去掉拐杖让错误率腰斩。</strong> 这是面试里很值钱的一次换算——<strong>"准确率提升 5 个点"和"错误率减少一半"是同一件事的两种说法</strong>，而后者对业务方的说服力完全不同。</p>
+<p class="mv-md-p"><strong>再看这笔账的另一面</strong>：验证一次消融要多少钱？</p>
+<pre class="mv-md-pre">评测集 200 条 × 2 次（删前 / 删后）× $0.03 = $12</pre>
+<p class="mv-md-p">用 <strong>$12</strong> 的实验，去确认一项年化 <strong>$32,000–$320,000</strong>（按每天 1,000 场会话、250 工作日、有/无缓存两种情况估）的节省。</p>
+<p class="mv-md-p">【取舍】<strong>所以"要不要做消融"根本不是成本问题，是习惯问题。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"做消融太贵"这个理由是站不住的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"模型升级了，prompt 先别动"</td><td><strong>反了</strong>。模型升级恰恰是重估 prompt 的最佳时机——旧指令可能已经从"补偿"变成"约束"。Anthropic 为 Claude 5 代删掉了 <strong>80%+</strong> 的系统提示，编码评测无损失</td></tr><tr><td>"评测集上从 88% 提到 92%，这次改动成功了"</td><td>要看<strong>这个评测集有没有被反复看</strong>。被搜索反复优化过的集合是训练集，不是验收集。上面那个案例：训练集上 98.9% vs 98.9% 打平，<strong>held-out 上 90.5% vs 78.6%</strong></td></tr><tr><td>"改进了 2 个点"</td><td>200 条评测集的标准误约 2.1%，<strong>2 个点在噪声里</strong>。要么把集合做大，要么只宣称大幅变化</td></tr><tr><td>"出了问题就再加一条规则"</td><td>加规则会稀释注意力、并制造冲突。<strong>先问"能不能删"，再问"要不要加"</strong></td></tr><tr><td>"准确率涨 5.3%，提升有限"</td><td>换算成错误率是<strong>腰斩</strong>（10% → 5.2%）。汇报时用错误率，比用准确率更贴近业务</td></tr><tr><td>"prompt 只是配置，不用版本管理"</td><td>Prompt 是<strong>控制层的一部分</strong>，和代码一样会影响行为。它必须：进版本控制、变更走评测、结果与版本绑定（尤其当它和 schema 版本、知识版本一起决定输出时）</td></tr><tr><td>"示例给得越多越稳"</td><td>【事实】对新一代模型，<strong>示例反而会限制探索空间</strong>。优先改接口设计（枚举、参数命名、默认值），而不是堆示例</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>改 prompt 的正确姿势不是"加一条更好的规则"，是"删掉一条没用的规则，并用没被看过的那部分数据证明它没用"。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C3-Prompt版本管理与回归-q1" tag="LLM与上下文" q="你们的评测集有 200 条，基线准确率约 90%。这次改 prompt 后对了 184 条（92%），上次 180 条（90%）。&#10;问：这 2 个百分点的差距，是真差别还是噪声？如果要稳定分辨 2 个百分点的差距，评测集至少要多大？" a="``text&#10;标准误 SE = √(p(1−p)/n) = √(0.9 × 0.1 / 200) = √0.00045 ≈ 0.0212 = 2.1%&#10;2 个百分点的差距 &lt; 1 个标准误（2.1%）&#10;→ 落在噪声里，分辨不出来&#10;要让 SE = 1%（此时 2 个点才约等于 2 个标准误）：&#10;n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条&#10;``&#10;【结论】200 条评测集的分辨率约 ±2%，只够抓大幅回退。想论证&quot;改进了 2 个点&quot;，评测集要按千条量级准备。&#10;【补充】这也解释了为什么&quot;多轮调优后评测分数涨了&quot;经常是幻觉——你在同一套小集合上反复看，它已经变成训练集了（见 Q5）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C3-Prompt版本管理与回归-q2" tag="LLM与上下文" q="为 Claude 5 代模型删掉 80% 的系统提示。设原系统提示 8,000 token，一次会话 40 轮。&#10;问：每次请求省多少 token？一次会话省多少？如果每天 1,000 场会话、一年 250 个工作日，年化省多少（分有/无 prompt caching 两种情况）？" a="``text&#10;每次请求省 = 8,000 × 80% = 6,400 token&#10;一次会话省 = 6,400 × 40 = 256,000 token      ← 注意是线性的，每轮都省同样的量&#10;无缓存：256K × $5/MTok   = $1.28/会话&#10;$1.28 × 1,000 × 250 = $320,000/年&#10;有缓存：256K × $0.5/MTok = $0.128/会话&#10;$0.128 × 1,000 × 250 = $32,000/年&#10;``&#10;【补充两点】&#10;1. 这里的节省是线性的，不像&quot;历史重发&quot;那样平方增长——因为系统提示每轮都是固定那 6,400 token。所以单看钱，它的效果不如压缩历史。&#10;2. 但它的注意力收益不是线性的：同时减少了 6,400 个 token 对 attention budget 的持续占用。而这部分收益恰好是&quot;省钱账&quot;算不出来的——所以要靠评测指标来验证（这也正是消融实验存在的理由）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C3-Prompt版本管理与回归-q3" tag="LLM与上下文" q="prompt-audit 清掉六类拐杖后，官方报告&quot;成本降 14.6%、准确率升 5.3%&quot;。&#10;问：如果基线准确率是 90%，准确率升 5.3% 换算成错误率是多少？这个数字为什么比&quot;升 5.3%&quot;更适合汇报？" a="读法 · 准确率 · 错误率 · 变化&#10;基线 · 90% · 10% · —&#10;相对提升 5.3% · 90% × 1.053 = 94.8% · 5.2% · 错误率减半&#10;绝对提升 5.3% · 90% + 5.3 = 95.3% · 4.7% · 错误率减少 53%&#10;【结论】两种读法下都是&quot;错误率腰斩&quot;。 汇报时用错误率而不是准确率，是因为：&#10;业务的成本模型几乎总是线性的错误率函数（每 100 次出几次错 → 几次人工兜底 / 几次客诉 / 几次回滚）&#10;而&quot;准确率 +5.3%&quot;在 90% 的基线上，直觉上会被听成&quot;没什么变化&quot;&#10;这是一次纯粹的表述换算，不改变任何事实，但改变别人对这件事价值的判断。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C3-Prompt版本管理与回归-q4" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;我们换了新模型，prompt 先保持不动，跑一段时间看看效果再决定要不要调整。&quot;" a="&quot;先不动&quot;本身就是一次未经评估的变更。&#10;Prompt 不是&quot;任务描述&quot;，是针对旧模型的具体缺陷写的补丁。它和模型是一个耦合系统——换了模型，同一份 prompt 的收益和代价都变了。&#10;旧指令可能从&quot;补偿&quot;变成&quot;约束&quot;甚至&quot;冲突&quot;。Anthropic 的实测：为 Claude 5 代模型删掉 80%+ 的 Claude Code 系统提示，编码评测无损失；他们读自己的使用记录时，还发现同一个请求里同时带着互相矛盾的指令。&#10;而且&quot;跑一段时间看看&quot;等于用线上当评测集——成本被转移给了用户。&#10;【准确说法】&quot;换模型是一次最大的 prompt 变更。正确做法是：换模型的同时跑一次消融（逐段删除、比较同一套 Eval），把已经不产生收益的指令清掉，再用 held-out 集合验收。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C3-Prompt版本管理与回归-q5" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;我们在评测集上把准确率从 88% 调到了 92%，所以这次 prompt 改动是成功的。&quot;" a="缺少一个关键信息——这个评测集是不是被反复看过的。&#10;如果这 4 个百分点是反复在这同一套集合上试出来的，那它已经变成训练集了。你在训练集上的提升，不保证在没见过的数据上成立。&#10;有真实的对照案例：Anthropic 的 hillclimb 搜索在客服 benchmark 上，训练集上最终配置和起点打平（都是 98.9%），但在它没搜索过的 14 条 held-out 工单上是 90.5% vs 78.6%——11.9 个百分点的差距只在未见数据上才现形。&#10;另外，即使集合没被反复看，4 个百分点是否显著仍取决于样本量（见 Q1：200 条的集合分辨率约 ±2%）。&#10;【准确说法】&quot;要论证改动成功，需要三个条件：验收用的是未参与调优的 held-out 集合；样本量足以分辨这个幅度的差异；指标口径和基线固定（同样的模型版本、同样的评测脚本、同样的采样参数）。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">Prompt 是针对&quot;当时的模型&quot;写下的控制层。模型变了、任务变了，这套控制层的收益和代价都会变——那么你怎么用最小的代价，知道自己该删哪一条？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="LLM与上下文/母题-C3-Prompt版本管理与回归" tag="LLM与上下文" q="Prompt 是针对&quot;当时的模型&quot;写下的控制层。模型变了、任务变了，这套控制层的收益和代价都会变——那么你怎么用最小的代价，知道自己该删哪一条？" a="Prompt 不是配置文件，是针对当时模型写的控制层——它和模型是一个耦合系统，模型一变，同一份 prompt 的收益和代价全变。所以改动必须走消融：逐段删除、跑同一套 Eval、看指标是掉了还是变好；验收必须用没参与调优的 held-out 集合（真实案例：训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%）。反直觉的实证是：Anthropic 为 Claude 5 代删掉了 80%+ 的系统提示，编码评测无损失；清掉六类&quot;拐杖&quot;后成本降 14.6%、准确率升 5.3%（错误率腰斩）。而验证一次消融只要几美元——所以&quot;要不要做消融&quot;是习惯问题，不是成本问题。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">Prompt 不是配置文件，是<strong>针对当时模型写的控制层</strong>——它和模型是一个耦合系统，模型一变，同一份 prompt 的收益和代价全变。所以改动必须走<strong>消融</strong>：逐段删除、跑同一套 Eval、看指标是掉了还是变好；验收必须用<strong>没参与调优的 held-out 集合</strong>（真实案例：训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%）。反直觉的实证是：Anthropic 为 Claude 5 代<strong>删掉了 80%+ 的系统提示</strong>，编码评测无损失；清掉六类"拐杖"后<strong>成本降 14.6%、准确率升 5.3%（错误率腰斩）</strong>。而验证一次消融只要几美元——<strong>所以"要不要做消融"是习惯问题，不是成本问题。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>prompt 是控制层不是配置</li><li>一条指令的生命周期（补偿 → 沉淀 → 模型升级 → 变成冲突 → 消融）</li><li>六类拐杖（验证仪式·强调助推·强制流程·过时示例·矛盾规则·过期配置）</li><li>消融方向是"删"不是"加"</li><li>删 80% 系统提示无损失</li><li>标准误 √(p(1−p)/n)，200 条 ≈ ±2%</li><li>held-out 90.5% vs 78.6%</li><li>准确率 +5.3% = 错误率腰斩</li><li>消融成本 $12 vs 年化 $32K–$320K</li><li>分层验证：抽样快筛 + 全量门禁</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">代码的回归是<strong>确定性</strong>的——同一个 commit，测试要么过要么不过，重跑结果一致。Prompt 的回归是<strong>统计性</strong>的——同一份 prompt 重跑可能不同，所以需要样本量、置信度、训练/测试分离。<strong>这是"把软件工程实践搬到 LLM 上"最容易踩空的一点：照抄了流程，但没有照抄支撑流程的统计前提。</strong>（这也是本卡按 [[母题卡模板]] 的层级判定给 <strong>B 而非 A</strong> 的原因：<strong>"为什么必须消融"能推出来</strong>，但<strong>"该删哪一条"没有唯一答案</strong>，只能靠实验测出来。）</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>一次 prompt 改动，验证流程是什么？</strong></strong></p>
+<p class="mv-md-p">抽样快筛（便宜、抓大幅回退）→ 消融（逐段删，看哪段还在产生收益）→ 全量回归（发布门禁）→ <strong>held-out 验收</strong>。每一层的目的不同，不能互相替代。</p>
+<p class="mv-md-p"><strong>2. <strong>为什么不直接加规则？</strong></strong></p>
+<p class="mv-md-p">加规则有三重代价：<strong>稀释注意力预算</strong>、<strong>制造规则冲突</strong>（模型得额外推理去化解）、<strong>在模型升级后变成负担</strong>。先做消融，往往能删掉比你想加的还多。</p>
+<p class="mv-md-p"><strong>3. <strong>怎么发现一条指令该删了？</strong></strong></p>
+<p class="mv-md-p">做消融：删掉它，跑同一套 Eval。<strong>指标没掉就是冗余，指标变好就是拐杖。</strong> 另一条便宜的信号是查<strong>文档里互相矛盾的指令</strong>——Anthropic 就是读自己的使用记录时发现同一请求里带着冲突指令的。</p>
+<p class="mv-md-p"><strong>4. <strong>评测集要多大？</strong></strong></p>
+<p class="mv-md-p">取决于要分辨多小的差异。<code class="mv-md-code">SE = √(p(1−p)/n)</code>：200 条约 ±2%，想分辨 2 个点需要约 900 条。<strong>先想清楚"我要证明多大的差异"，再决定集合规模。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>Prompt 版本怎么和别的版本绑定？</strong></strong></p>
+<p class="mv-md-p">当输出同时取决于<strong>模型版本、Prompt 版本、Schema 版本、知识/索引版本</strong>时，四者必须一起绑定到结果上。否则你复现不出任何一次线上输出，也就无法归因（[[母题-C1-上下文组装与窗口预算]] 的"上下文是视图"在这里落地成工程要求）。</p>
+<p class="mv-md-p"><strong>6. <strong><code class="mv-md-code">CLAUDE.md</code> 写多长合适？</strong></strong></p>
+<p class="mv-md-p">【事实】轻。写明仓库是干什么的，把大部分 token 花在<strong>代码库里的坑</strong>上；不要写"看文件系统就知道"的显然内容；多条验证指令就做成一个 verification skill，靠渐进披露按需加载。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「模型降级怎么做才安全？」——降级是<strong>最大的一次 prompt 变更</strong>。正确顺序：先按 held-out 选模型 → 再针对新模型做消融清拐杖 → 最后补必要的规则 → 重跑门禁。<strong>真实案例里，降级后补对了几句规则，成本降到 1/5 而 held-out 准确率反而高了 12 个点。</strong></li><li>「Prompt 和代码有什么不一样？」——本质相同：都要版本化、都要评测、都要能回滚。<strong>不同的是确定性</strong>：代码的行为可复现，prompt 的行为是分布。所以 prompt 的回归需要<strong>统计口径</strong>（样本量、置信度），代码的回归只需要"通过/不通过"。</li><li>「能不能让模型自己改 prompt？」——可以（比如 hillclimb 这类自动搜索），但<strong>必须配 held-out 集合</strong>，否则搜索会直接过拟合到你看得见的那部分数据上。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：Schema 版本、Query Prompt 版本与结果绑定——<strong>这就是把"prompt 要版本化"落到工程上的具体形态</strong>。没有这个绑定，出了 Bad Case 无法归因是"模型变了"还是"prompt 改了"还是"表结构变了"。 - <strong>RuleArena</strong>：发布门禁的评测集必须与调优用的集合分离。<strong>如果调优时反复看同一套集合，那 98.9% 就只是训练集数字</strong>（真实案例：训练集打平、held-out 差 12 个点）。 - <strong>EnergyOps</strong>：六层评测与数据飞轮——每一层评测集的作用不同，<strong>"用来发现问题"和"用来验收改动"的集合应当是两套</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先立前提（prompt 是针对当时模型的补丁，和模型耦合）→ 一条指令的生命周期 → 单次观察在概率系统里没有信息量 → 样本量算式 → 消融的三个判定分支 → held-out 与训练集分离的真实案例 → 六类拐杖与删 80% 的实证 → 成本换算（错误率腰斩 / 消融成本忽略不计）→ 收束到"prompt 要像代码一样管"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>Prompt 的效果是「模型能力」的函数，不是常量。</strong> 所以它必须像代码一样被管理：<strong>进版本控制、变更走评测、结果与版本绑定</strong>。而因为它是一份<strong>有限的注意力预算</strong>，正确的动作方向永远是"<strong>先问能不能删</strong>"，而不是"再加一条规则"。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出"prompt 是控制层、和模型耦合"并推出为什么换模型要重估；能画出指令生命周期并列出至少四类拐杖；<strong>能算出</strong> 200 条评测集的标准误与所需样本量；能说清消融的三个判定分支；能讲出 held-out 90.5% vs 78.6% 这个案例；能把"准确率 +5.3%"换算成"错误率腰斩"；能说出消融成本与年化节省的量级差；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

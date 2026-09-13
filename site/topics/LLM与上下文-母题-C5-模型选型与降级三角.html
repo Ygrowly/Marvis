@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 C5 · 模型选型与降级三角</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/LLM与上下文.html">← LLM与上下文 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">LLM与上下文</span>
+    <h1 class="mv-topic-title">母题 C5 · 模型选型与降级三角</h1>
+    <p class="mv-topic-meta">关联 母题-C4-幻觉的成因与可控性（"准确率更高的模型"可能错误率更高）· 母题-C3-Prompt版本管理与回归（换模型是最大的一次 prompt 变更）· 母题-C6-成本与长上下文截断（同一个"成本"，一个管单价一个管用量） ｜ 正本 wiki/topics/LLM与上下文/母题-C5-模型选型与降级三角.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 选型有四维不是一个排行榜 ② effort 曲线是凸的，两个方向都会坏 ③ 降级不是换个模型名）· 读完约 12 分钟 · 需要先懂：[[母题-C4-幻觉的成因与可控性]]（不然会误以为"准确率高"就是"错得少"）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们线上用的哪个模型？为什么用它不用便宜的那个？如果主模型挂了或者限流了怎么办？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：选型是一个多目标问题，指标要自己定义</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 四个维度【事实】</h4>
+<table class="mv-table"><thead><tr><th>维度</th><th>是什么</th><th>常被忽略的点</th></tr></thead><tbody><tr><td><strong>能力</strong></td><td>复杂推理、长程任务、工具调用准确性</td><td>"能力强"要用<strong>你自己的任务</strong>衡量，不是通用跑分（[[母题-C4-幻觉的成因与可控性]]）</td></tr><tr><td><strong>延迟</strong></td><td>从请求到可用结果的时间</td><td>不是"快慢"一个数——<strong>首 token 延迟和总时长是两件事</strong>（流式场景看前者，批处理看后者）</td></tr><tr><td><strong>单价</strong></td><td>输入 / 输出的每百万 token 价格</td><td><strong>输入和输出的差价很大</strong>（通常 5 倍），所以"上下文长"和"话多"是两种不同的贵</td></tr><tr><td><strong>effort</strong></td><td>模型"花多大力气"的档位</td><td><strong>这个维度最容易被当成不存在的</strong>。同一模型不同 effort 的成本和表现可以差好几倍</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">1.2 现价表【事实】（2026-09 核实）</h4>
+<table class="mv-table"><thead><tr><th>模型</th><th>输入</th><th>输出</th><th>上下文窗口</th><th>最大输出</th><th>定位</th></tr></thead><tbody><tr><td>Claude Fable 5.1</td><td>$10 / MTok</td><td>$50 / MTok</td><td>1M</td><td>128K</td><td>高难度推理、长程 Agent</td></tr><tr><td>Claude Opus 5</td><td>$5 / MTok</td><td>$25 / MTok</td><td>1M</td><td>128K</td><td>复杂 Agent 与企业任务</td></tr><tr><td>Claude Sonnet 5</td><td>$2 / MTok</td><td>$10 / MTok</td><td>1M</td><td>128K</td><td>速度与智能的平衡点</td></tr><tr><td>Claude Haiku 4.5</td><td>$1 / MTok</td><td>$5 / MTok</td><td><strong>200K</strong></td><td>64K</td><td>最快、接近前沿</td></tr></tbody></table>
+<p class="mv-md-p">【事实】缓存价格：<strong>写 1.25×</strong>（5 分钟 TTL）或 <strong>2×</strong>（1 小时 TTL），<strong>读 0.1×</strong>，<strong>Fable 5.1 是 0.025×</strong>（官方对 Mythos 5.1 标注为「发布时未定」，不要说成已确认）。</p>
+<p class="mv-md-p"><strong>注意最后这一行</strong>——缓存读价的差异<strong>会让同一家的两个模型在长会话场景下的成本排序发生变化</strong>：Fable 5.1 的单价比 Fable 5 贵不了多少，但它的缓存读价是 <strong>$0.25 vs $1.00 每 MTok</strong>（1/4）。所以"哪个模型更便宜"这个问题，<strong>在长短会话下答案不同</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">1.3 输出比输入贵 5 倍，这决定了优化方向【推导】</h4>
+<pre class="mv-md-pre">Opus 5：输入 $5/MTok，输出 $25/MTok   → 输出贵 5 倍</pre>
+<p class="mv-md-p">【推论】所以：</p>
+<ul class="mv-md-ul"><li><strong>"话多"比"上下文长"更贵</strong>（同等 token 数下）——一个啰嗦的 prompt 要求（"请详细解释每一步"）可能比多塞 10K 上下文还费钱</li><li><strong>减少输出是最直接的省钱手段</strong>，但和"详细推理能提高准确率"直接冲突</li><li><strong>effort 的本质就是"用多少输出 token 换准确率"</strong>——它把上面这个冲突做成了一个可调旋钮</li></ul>
+<figure-box num="effort 曲线的形状：两个方向都会坏" title="" note="横轴 effort、纵轴得分，曲线是凸的；低端的问题是证据不足就收手，高端的问题是想过头；右侧是两条实测曲线的数字，以及&quot;强模型配低 effort 可能压过弱模型配高 effort&quot;"><svg viewBox="0 0 680 366" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>effort 曲线的形状：两个方向都会坏</title>
+  <desc>横轴是 effort，纵轴是任务得分，曲线是凸的——低档位加 effort 收益明显，高档位加 effort 边际收益迅速衰减。低端的问题是证据不足就收手，高端的问题是想过头。右侧给出两条实测曲线的数字，以及"强模型配低 effort 可能压过弱模型配高 effort"这条结论。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">effort 曲线的形状：两个方向都会坏</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">effort 不是「保险起见拉满」的旋钮，它是一条要标定的曲线</text>
+
+  <!-- 坐标轴 -->
+  <path d="M70 268 L70 96 M70 268 L360 268" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="70" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">low</text>
+  <text x="196" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">medium</text>
+  <text x="360" y="288" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="end">max</text>
+  <text x="46" y="96" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">得分</text>
+
+  <!-- 凸曲线 -->
+  <path d="M70 250 Q170 132 360 108" stroke="#BA7517" stroke-width="1.8" fill="none"/>
+
+  <!-- 低端标注 -->
+  <circle cx="88" cy="240" r="3.2" fill="#BA7517"/>
+  <text x="80" y="222" font-family="system-ui,sans-serif" font-size="10" fill="#633806">证据不足就收手：</text>
+  <text x="80" y="208" font-family="system-ui,sans-serif" font-size="10" fill="#633806">少调工具、只看第一条结果</text>
+
+  <!-- 高端标注 -->
+  <circle cx="340" cy="111" r="3.2" fill="#BA7517"/>
+  <text x="212" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#633806">想过头：斟酌超过任务所需，</text>
+  <text x="212" y="154" font-family="system-ui,sans-serif" font-size="10" fill="#633806">成本与延迟上去，质量未必</text>
+
+  <!-- 边际标注 -->
+  <path d="M300 121 L300 100" stroke="#8A877E" stroke-width="1" fill="none" stroke-dasharray="3 2"/>
+  <path d="M340 108 L340 100" stroke="#8A877E" stroke-width="1" fill="none" stroke-dasharray="3 2"/>
+  <text x="320" y="94" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">这一段很贵</text>
+
+  <!-- 右侧数据 -->
+  <rect x="392" y="86" width="258" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="408" y="108" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">实测：FrontierCode Diamond</text>
+  <text x="408" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">low：11.5% 得分 / $5.35 每任务</text>
+  <text x="408" y="145" font-family="system-ui,sans-serif" font-size="10" fill="#633806">max：30.9% 得分 / $19.00 每任务</text>
+  <text x="408" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#633806">边际每分 $0.704 &gt; 低档平均 $0.465</text>
+
+  <rect x="392" y="186" width="258" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="408" y="208" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">实测：Humanity's Last Exam</text>
+  <text x="408" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">low：约 53% / $0.30 每题</text>
+  <text x="408" y="245" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">max：约 61% / $2.23 每题</text>
+  <text x="408" y="264" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">最后一档只多 0.5 分，成本多 46%</text>
+
+  <text x="30" y="322" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">还有一条反直觉的：更强的模型配低 effort，可能压过更弱的模型配高 effort。</text>
+  <text x="30" y="342" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">在 CursorBench 上，Fable 5.1 低 effort 达到 Fable 5 高 effort 的水平，成本约三分之一 —— 因为新模型低 effort 下每任务做的工作更少，而且缓存读价更低。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"哪个模型更便宜"这个问题，在短会话和长会话下答案可能不同？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 候选方案（先各自介绍，不比较）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 固定用最强模型【事实】</h4>
+<p class="mv-md-p">全部流量走 Fable 5.1 或 Opus 5。<strong>实现最简单，没有路由逻辑，质量上限最高。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 固定用最便宜模型 + 高 effort【事实】</h4>
+<p class="mv-md-p">全部走 Haiku 4.5 或 Sonnet 5，把 effort 拉高来"补能力"。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 按任务难度路由【事实】</h4>
+<p class="mv-md-p">轻任务（分类、抽取、格式化）走小模型，重任务（多步推理、长程 Agent）走大模型。<strong>路由依据可以是规则（任务类型）、也可以是模型自己判断（先小模型试，不确定再升级）。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.4 评测驱动的联合搜索【事实】</h4>
+<p class="mv-md-p">把<strong>模型 × effort × prompt</strong> 当成一个联合空间来搜：用训练集搜索配置，用 held-out 验收。Anthropic 的 hillclimb 工具做的就是这件事——它会<strong>读失败的训练样本</strong>去定位该怎么改（补规则、换模型、调 effort）。</p>
+<h4 class="mv-md-h mv-md-h4">2.5 降级链路（"三角"里的第三条边）【事实】</h4>
+<p class="mv-md-p">主模型不可用（限流、超时、故障）或成本超预算时，切到备用模型。要点是：</p>
+<pre class="mv-md-pre">降级 ≠ 换模型名
+降级 = 换一个"已经用你自己的评测验证过"的配置</pre>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 逐个淘汰（统一指标：<strong>每个正确结果的全成本</strong>）</h3>
+<p class="mv-md-p">这是本卡最重要的一次口径选择。<strong>不能比"单次调用多少钱"，也不能比"准确率多高"</strong>——要合起来算：</p>
+<pre class="mv-md-pre">每个正确结果的全成本 = (单次成本 + 失败率 × 单次失败代价) ÷ 成功率</pre>
+<p class="mv-md-p">【推导】这个公式把三个东西绑在了一起：<strong>单价、能力、以及失败在你业务里的代价</strong>。缺任何一项都没法选型。</p>
+<h4 class="mv-md-h mv-md-h4">3.1 为什么"固定最强"不一定对【推导】</h4>
+<p class="mv-md-p">能力强不等于划算，因为<strong>存在"够用"这个门槛</strong>：</p>
+<pre class="mv-md-pre">门槛以下：能力不足 → 失败 → 付失败代价（可能远高于模型费）
+门槛以上：能力过剩 → 成功的边际收益很低，但你一直在付高价</pre>
+<p class="mv-md-p">【推论】所以问题不是"哪个最强"，而是"<strong>我的任务在哪个档位跨过门槛</strong>"。<strong>跨过门槛之后多付的能力钱，是纯浪费。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 为什么"便宜模型 + 拉高 effort"是个陷阱【推导】</h4>
+<p class="mv-md-p">看起来"用 effort 补能力"很合理，但它撞上 effort 曲线的<strong>凸性</strong>：</p>
+<p class="mv-md-p">【事实】在 FrontierCode Diamond 上：</p>
+<pre class="mv-md-pre">low  effort：11.5% 得分，$5.35 / 任务
+max  effort：30.9% 得分，$19.00 / 任务
+
+低档平均每分成本 = $5.35 / 11.5  = $0.465
+边际每分成本     = ($19.00 − $5.35) / (30.9 − 11.5)
+                 = $13.65 / 19.4 = $0.704</pre>
+<p class="mv-md-p"><strong>边际比低档的平均还贵 50%</strong>——曲线是凸的，后面的分越来越贵。</p>
+<p class="mv-md-p">【事实】另一条曲线更极端。Humanity's Last Exam（Fable 5.1，无工具）：low 约 53% @ $0.30/题，max 约 61% @ $2.23/题；而<strong>从次高档升到 max 这一步，只多约 0.5 个百分点，成本却多 46%</strong>——<strong>这 0.5 个点落在 run-to-run 的噪声里</strong>（原文：the gain inside the benchmark's run-to-run noise）。</p>
+<p class="mv-md-p">【取舍】<strong>高端的问题不只是贵，是"贵了却看不出差别"。</strong> 而低端也有自己的坑（见下）。</p>
+<h4 class="mv-md-h mv-md-h4">3.3 低 effort 的失败模式同样真实【事实】</h4>
+<p class="mv-md-p">effort 设太低时，模型<strong>证据不足就收手</strong>：</p>
+<ul class="mv-md-ul"><li>少调工具（从 3 次搜索退化成只看第一条结果）</li><li>在困难步骤上少想</li><li>跳过它本来会自己做的检查</li></ul>
+<p class="mv-md-p">【事实】<strong>结果最危险的地方在于：答案看起来是完整的。</strong> 原文说得很直接——"The answer looks finished, but it's built on partial information."</p>
+<p class="mv-md-p">【推论】所以 effort 的两个方向都会坏：<strong>低端坏在"看不出来它没查全"，高端坏在"看不出来它白花了钱"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.4 一条反直觉的推论：强模型 + 低 effort 可能压过 弱模型 + 高 effort【事实】</h4>
+<p class="mv-md-p">【事实】在 CursorBench 3.2 上，<strong>Claude Fable 5.1 在低 effort 下达到 Fable 5 在高 effort 下的水平，成本约为三分之一</strong>。</p>
+<p class="mv-md-p">两个原因：</p>
+<pre class="mv-md-pre">① 新模型在低 effort 下"每个任务做的工作更少"（不是更笨，是不啰嗦）
+② Fable 5.1 的缓存读价是 $0.25/MTok，Fable 5 是 $1.00/MTok
+   → 即使按 Fable 5 的价格算，低 effort 的 Fable 5.1 也便宜约 40%</pre>
+<p class="mv-md-p">【推论】这说明<strong>"模型代际"和"effort 档位"不是同一个旋钮</strong>。降 effort 不等于降能力；<strong>升级模型 + 降 effort 可以同时改善成本和表现</strong>。所以选型应该在"模型 × effort"的二维空间里搜，而不是先选模型再定 effort。</p>
+<h4 class="mv-md-h mv-md-h4">3.5 胜出方案：分层路由 + 联合搜索 + 已验证的降级【取舍】</h4>
+<pre class="mv-md-pre">主路径   ：按任务难度路由到（模型 × effort）组合
+调优路径 ：在训练集上搜"模型 × effort × prompt"，读失败样本决定改哪一项
+验收     ：held-out 集合（训练集饱和后就失去分辨力，见第 4 节）
+降级路径 ：预定义并验证过的备用配置；触发条件可观测；降级本身要打点</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"用 effort 补能力"这个想法，在曲线上是站不住的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 量化验证：用"每个正确结果的全成本"算两笔</h3>
+<p class="mv-md-p"><strong>第一笔：那个客服 benchmark 的完整账</strong>（数据来自 3.2 / 3.4 的同一组实验）</p>
+<pre class="mv-md-pre">起点：Opus 4.8 默认（high effort）   →  held-out 78.6%，成本约 5¢ / 工单
+终点：Sonnet 5 低 effort + 补规则    →  held-out 90.5%，成本     1¢ / 工单</pre>
+<p class="mv-md-p">设<strong>一次失败的代价 = $1</strong>（人工兜底 + 客诉，相对模型费是 20–100 倍）：</p>
+<pre class="mv-md-pre">原始配置：
+  每次尝试期望成本 = $0.05 + 0.214 × $1 = $0.264
+  每个正确结果     = $0.264 ÷ 0.786 = $0.336
+
+最终配置：
+  每次尝试期望成本 = $0.01 + 0.095 × $1 = $0.105
+  每个正确结果     = $0.105 ÷ 0.905 = $0.116</pre>
+<p class="mv-md-p">【结论】<strong>每个正确结果的成本降到 34.5%</strong>（$0.336 → $0.116），而<strong>模型单价只降到 1/5</strong>。</p>
+<p class="mv-md-p">【关键】<strong>为什么不能只看单价？</strong> 因为单价降 80% 的同时成功率降了，失败代价吃掉了大部分收益。<strong>换成"更好的模型"也一样</strong>——如果失败代价是 $10 而不是 $1：</p>
+<pre class="mv-md-pre">原始：(0.05 + 0.214 × 10) / 0.786 = $2.786
+最终：(0.01 + 0.095 × 10) / 0.905 = $1.061
+→ 比值仍是 38%，但绝对差距从 $0.22 拉到 $1.72</pre>
+<p class="mv-md-p">【取舍】<strong>失败代价越高，"选便宜的"这条路越危险，而"选对的"越值钱。</strong> 所以在算这笔账之前，你必须先回答：<strong>一次失败在我的业务里值多少钱？</strong></p>
+<p class="mv-md-p"><strong>第二笔：训练集饱和后就失去分辨力</strong></p>
+<p class="mv-md-p">同一个实验里：</p>
+<pre class="mv-md-pre">训练集上：最终配置 98.9%  vs  起点 98.9%   →  打平！
+held-out ：最终配置 90.5%  vs  起点 78.6%   →  高 11.9 个点</pre>
+<p class="mv-md-p">【推论】<strong>两个结论的方向一致（降级是对的），但幅度完全不同。</strong> 训练集上你会说"没有损失"，held-out 上才是"明显更好"。</p>
+<p class="mv-md-p">原因是<strong>天花板效应</strong>：98.9% 已经接近这个评测集能达到的上限，<strong>它没有空间再区分好坏</strong>。</p>
+<p class="mv-md-p">【工程含义】<strong>当训练集接近饱和时，它是无效信号。</strong> 这时候唯一能回答"到底有没有变好"的，是没参与搜索的那部分数据（[[母题-C3-Prompt版本管理与回归]]）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"训练集上打平"不能证明"降级无损"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"选跑分最高的"</td><td>跑分是<strong>那些评测上的</strong>表现，不是你的任务分布上的。而且从 SimpleQA 数据看，<strong>准确率高和错误率低可以是相反方向</strong>（24% vs 22% 的准确率，对应 75% vs 26% 的错误率）</td></tr><tr><td>"便宜模型 + 拉满 effort = 性价比最优"</td><td>effort 曲线是<strong>凸的</strong>：边际每分成本（$0.704）高于低档平均（$0.465）；HLE 上最后一档多 0.5 分要多花 46%，<strong>落在噪声里</strong></td></tr><tr><td>"effort 拉满最保险"</td><td>反方向也有坑：effort 太低会<strong>证据不足就收手</strong>，而且<strong>答案看起来是完整的</strong>。两个方向都会坏，只能标定</td></tr><tr><td>"选型是一次性决策"</td><td>它不是。模型迭代、缓存定价变化（Fable 5.1 读价 $1→$0.25）、effort 参数引入，都会让最优解移动。<strong>上面那个案例里，"换个更便宜的模型"最后反而更准</strong></td></tr><tr><td>"降级就是把模型名换掉"</td><td>换模型是<strong>最大的一次 prompt 变更</strong>（[[母题-C3-Prompt版本管理与回归]]）。降级路径必须是<strong>用你自己的评测验证过的配置</strong>，而不是"顺手切一个"</td></tr><tr><td>"降级了质量差一点可以接受"</td><td>降级的<strong>目标</strong>是保住可用性（不超时、不报错、不熔断），不是保住质量。所以要<strong>明确降级后的质量底线</strong>，并让它可观测——<strong>不知道自己在降级，比降级本身更危险</strong></td></tr><tr><td>"只看单价就能比出谁便宜"</td><td>必须用 <strong>每个正确结果的全成本</strong> =（单次成本 + 失败率 × 失败代价）÷ 成功率。单价只是分子的一项</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>选型不是选一个模型，是选一组"模型 × effort × prompt"配置，并且用你自己的失败代价把它们换算成同一个单位。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C5-模型选型与降级三角-q1" tag="LLM与上下文" q="某客服 Agent 的两套配置（同一组实验的实测数据）：&#10;``text&#10;配置 A（起点）：Opus 4.8 默认 high effort   → held-out 78.6%，成本 5¢/工单&#10;配置 B（终点）：Sonnet 5 低 effort + 补规则 → held-out 90.5%，成本 1¢/工单&#10;``&#10;设一次失败的代价 = $1。&#10;问：两个配置&quot;每个正确结果的全成本&quot;各是多少？如果把失败代价改成 $10，结论会变吗？" a="``text&#10;公式：每个正确结果的全成本 = (单次成本 + 失败率 × 失败代价) ÷ 成功率&#10;配置 A：&#10;失败率 = 1 − 0.786 = 0.214&#10;每次尝试期望成本 = $0.05 + 0.214 × $1 = $0.264&#10;每个正确结果     = $0.264 ÷ 0.786 = $0.336&#10;配置 B：&#10;失败率 = 1 − 0.905 = 0.095&#10;每次尝试期望成本 = $0.01 + 0.095 × $1 = $0.105&#10;每个正确结果     = $0.105 ÷ 0.905 = $0.116&#10;`&#10;比值 = $0.116 / $0.336 ≈ 34.5% → 降到约三分之一。&#10;把失败代价换成 $10：&#10;`text&#10;配置 A = (0.05 + 0.214 × 10) / 0.786 = $2.786&#10;配置 B = (0.01 + 0.095 × 10) / 0.905 = $1.061&#10;比值 ≈ 38%（结论方向不变，绝对差距从 $0.22 拉到 $1.72）&#10;`&#10;【结论】结论不变，但&quot;失败代价越高，选型越值钱&quot;。 注意即便失败代价高达 $10，配置 B 仍然更优——因为它不只是更便宜，它在 held-out 上也更准。&#10;【补充】真正会翻转结论的情形是：一个配置更便宜但更不准。这时失败代价就是那个决定性的数：&#10;`text&#10;若单次成本 1¢ 的配置成功率只有 60%，失败代价 $1：&#10;(0.01 + 0.4 × 1) / 0.6 = $0.683   → 比配置 A 还贵&#10;``&#10;所以在算这笔账之前，必须先回答：一次失败在我的业务里值多少钱。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C5-模型选型与降级三角-q2" tag="LLM与上下文" q="FrontierCode Diamond 上：low effort 11.5% 得分 / $5.35 每任务；max effort 30.9% / $19.00。&#10;问：低档的&quot;平均每分成本&quot;是多少？从 low 走到 max 的&quot;边际每分成本&quot;是多少？这个差距说明什么？" a="``text&#10;低档平均每分成本 = $5.35 ÷ 11.5 = $0.465 / 分&#10;边际每分成本     = ($19.00 − $5.35) ÷ (30.9 − 11.5)&#10;= $13.65 ÷ 19.4 = $0.704 / 分&#10;``&#10;边际比低档平均贵约 50%（$0.704 vs $0.465）。&#10;【结论】曲线是凸的——越往后每一分越贵。 这就是&quot;effort 拉满&quot;在数学上站不住的原因：它不是线性加价，是递减回报。&#10;【重要限定】这个结论依赖任务形状。文档给了一条操作性的判据：&#10;在未饱和的评测上，如果性能—成本曲线在各档位之间是平坦的，说明这个任务不受思考算力约束，提高 effort 没有收益。&#10;所以正确的做法不是记住&quot;不要拉满&quot;，而是对自己的任务跑一次 effort sweep，看曲线是陡还是平。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="LLM与上下文/母题-C5-模型选型与降级三角-q3" tag="LLM与上下文" q="Humanity's Last Exam（Fable 5.1，无工具）：low 约 53% @ $0.30/题；max 约 61% @ $2.23/题。文档还给出：从次高档升到 max 这一步，只多约 0.5 个百分点，成本多 46%。&#10;问：从 low 直接升到 max，&quot;平均每分成本&quot;是多少？最后那一档的&quot;边际每分成本&quot;是多少？这两个数的差距说明了什么？" a="``text&#10;low → max 整体：&#10;分数提升 = 61 − 53 = 8 个点&#10;成本提升 = $2.23 − $0.30 = $1.93&#10;平均每分成本 = $1.93 ÷ 8 = $0.241 / 分&#10;最后一步（次高档 → max）：&#10;次高档成本 = $2.23 ÷ 1.46 = $1.53&#10;增量成本   = $2.23 − $1.53 = $0.70&#10;增量分数   = 0.5 个点&#10;边际每分成本 = $0.70 ÷ 0.5 = $1.40 / 分&#10;``&#10;最后一步的每分成本是整体平均的约 5.8 倍（$1.40 vs $0.241）——而且那 0.5 个点落在 run-to-run 的噪声里，也就是说你付了钱，却无法证明买到了东西。&#10;【结论】判断&quot;该不该升一档&quot;，看的是边际而不是平均。 如果最后一步的增益在噪声内，那它不是&quot;贵一点&quot;，是&quot;白花&quot;。&#10;【补充】这也给了一个可操作的验收标准：上一档位的差异如果小于评测的 run-to-run 波动，就不该为它付费——除非你的评测集足够大，能把 0.5 个点做成显著（见 [[母题-C3-Prompt版本管理与回归]] 的样本量算式）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C5-模型选型与降级三角-q4" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;选型就是挑跑分最高的那个模型，选完上线就不用管了。&quot;" a="三处不准确。&#10;1. 跑分是&quot;那些评测上的&quot;表现，不是你的任务分布上的。更麻烦的是：&quot;准确率高&quot;和&quot;错误率低&quot;可以是相反方向——SimpleQA 上 o4-mini 准确率 24% &gt; 22%，但错误率 75% ≫ 26%。只看跑分你会选错方向。&#10;2. 不是一次性决策。模型迭代、effort 参数、缓存定价都会让最优解移动。上面那个案例里，最终方案换成了更便宜的模型（Sonnet 5 低 effort），held-out 反而高了 11.9 个点——前提是同时补了 prompt。&#10;3. 它不是一维的。正确口径是每个正确结果的全成本 =（单次成本 + 失败率 × 失败代价）÷ 成功率，还要在模型 × effort 的二维空间里搜，并且用没参与搜索的 held-out 集合验收。&#10;【准确说法】&quot;选型是在（模型 × effort）二维空间里，用你自己的评测和失败代价，搜一组能跨过'够用'门槛的最省配置；它是一个需要定期重跑的决策，不是一次性动作。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="LLM与上下文/母题-C5-模型选型与降级三角-q5" tag="LLM与上下文" q="下面这段话哪里不准确？&#10;&quot;effort 越高越保险，所以生产上直接拉满。&quot;" a="两个方向都有坑，而且低端的坑更隐蔽。&#10;``text&#10;高端的问题（看得见）：&#10;· 曲线凸：FrontierCode 边际每分 $0.704 &gt; 低档平均 $0.465&#10;· HLE 最后一档：多 0.5 分，成本多 46%，增益落在噪声里&#10;· 会&quot;想过头&quot;：斟酌超过任务所需，成本/延迟上升，质量未必&#10;低端的问题（看不见）：&#10;· 证据不足就收手：少调工具、只看第一条搜索结果、跳过本该做的检查&#10;· 危险在于——&quot;The answer looks finished, but it's built on partial information.&quot;&#10;``&#10;【准确说法】&quot;effort 应该标定而不是拍脑袋。判据是：在你的任务上跑一次 effort sweep，如果性能—成本曲线在各档位之间是平坦的，说明任务不受思考算力约束，提高 effort 没有收益。 另外记住：降 effort 不等于降能力——实测里更强的模型在低 effort 下达到了上一代模型高 effort 的水平，成本只要三分之一。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">模型的能力、延迟、单价是三个显性的取舍维度，但真正决定费用的是第四个——effort。那么，&quot;更贵&quot;到底买到了什么，你算得出来吗？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="LLM与上下文/母题-C5-模型选型与降级三角" tag="LLM与上下文" q="模型的能力、延迟、单价是三个显性的取舍维度，但真正决定费用的是第四个——effort。那么，&quot;更贵&quot;到底买到了什么，你算得出来吗？" a="选型不是挑最强的，是在（模型 × effort）二维空间里、用每个正确结果的全成本这一个指标来搜："></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">选型不是挑最强的，是在<strong>（模型 × effort）二维空间</strong>里、用<strong>每个正确结果的全成本</strong>这一个指标来搜：</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>四维：能力·延迟·单价·effort</li><li>输出比输入贵 5 倍</li><li>缓存读价差异会改变成本排序</li><li>每个正确结果的全成本 =（单次 + 失败率×失败代价）÷ 成功率</li><li>effort 曲线凸，边际 &gt; 平均</li><li>HLE 最后一档 +0.5 分 +46% 成本，在噪声里</li><li>低 effort 的坑是"看起来完整"</li><li>强模型+低 effort ≥ 弱模型+高 effort</li><li>训练集饱和后失去分辨力（98.9% vs 98.9%，held-out 90.5% vs 78.6%）</li><li>降级要验证过、要可观测</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">传统后端选型是<strong>容量规划</strong>问题（QPS × 单请求耗时 → 需要几台机器），模型选型是<strong>质量—成本曲线</strong>问题（同一个"机器"有多个能力档位，且档位可以逐请求切换）。<strong>前者的瓶颈是资源，后者的瓶颈是你对"失败值多少钱"的判断。</strong> 把模型选型当容量规划做，就会漏掉 effort 这一维。</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>便宜模型能不能扛？</strong></strong></p>
+<p class="mv-md-p">取决于任务形状和失败代价。<strong>先算"每个正确结果的全成本"</strong>；如果便宜模型的失败率把失败代价放大到超过节省，就不划算。上面的案例里，便宜模型<strong>配好 prompt 之后反而更准</strong>——所以"降级"要连 prompt 一起调，不是单独换模型。</p>
+<p class="mv-md-p"><strong>2. <strong>effort 怎么定？</strong></strong></p>
+<p class="mv-md-p"><strong>跑一次 sweep</strong>（对几个档位各跑一遍你的评测集），看曲线。判据：<strong>平坦就说明任务不受思考算力约束，加 effort 没收益</strong>；陡峭且你需要跨过门槛，就加。</p>
+<p class="mv-md-p"><strong>3. <strong>降级链路怎么设计？</strong></strong></p>
+<p class="mv-md-p">三个要求：<strong>① 已验证</strong>（备用配置必须在 held-out 上过过门禁，不能是"顺手切一个"）；<strong>② 有明确的质量底线</strong>（降级的目标是保住可用性，不是保住质量，所以要知道降级后能接受什么）；<strong>③ 可观测</strong>（降级本身要打点报警——<strong>不知道自己在降级，比降级更危险</strong>）。</p>
+<p class="mv-md-p"><strong>4. <strong>多模型路由的代价是什么？</strong></strong></p>
+<p class="mv-md-p">路由本身有成本和风险：<strong>要维护多套 prompt 与评测</strong>（每个模型都要单独消融调优）、<strong>路由判错会两头不讨好</strong>、<strong>排障复杂度上升</strong>（同一个 bug 在不同模型上表现不同）。所以路由要基于实测收益，不是"看起来更省"。</p>
+<p class="mv-md-p"><strong>5. <strong>模型换代了怎么处理？</strong></strong></p>
+<p class="mv-md-p">当成一次完整的选型重做：换模型 + 重新消融清拐杖（[[母题-C3-Prompt版本管理与回归]]）+ 重跑门禁 + held-out 验收。<strong>同时别忘了重算缓存定价的影响</strong>——读价变化会让长会话场景的成本排序改变。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「延迟敏感场景怎么选？」——看的是<strong>首 token 延迟</strong>而不是总时长（流式交互下用户感知的是第一个字什么时候出来）。<strong>缓存命中能显著改善首 token 延迟</strong>，所以"稳定前缀 + 缓存"往往比"换更快的模型"更有效。</li><li>「怎么向业务方解释"我们换了个更便宜的模型但效果更好"？」——用<strong>每个正确结果的全成本</strong>和<strong>错误率</strong>，不用单价和准确率。单价降了不代表总成本降了（失败代价会吃掉），准确率升了 5% 在业务侧是<strong>错误率腰斩</strong>（[[母题-C4-幻觉的成因与可控性]]）。</li><li>「成本和质量的取舍谁来定？」——<strong>这个决定必须由能回答"一次失败值多少钱"的人来定</strong>。工程师能给的是这条曲线；把曲线交给业务方去选点，比工程师替业务方拍板更安全。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：NL2SQL 的失败代价极高（错的 SQL 可能扫全表、可能返回错数据），所以<strong>要按"每个正确结果的全成本"选型</strong>——这条链上更应该往质量端倾斜，同时用缓存和上下文裁剪压成本。 - <strong>EnergyOps</strong>：告警诊断是<strong>低频但高价值</strong>的场景，适合高 effort + 自校验（Best-of-N）；而元数据查询是高频低价值，适合小模型 + 低 effort。<strong>同一个系统里不同链路应该有不同的（模型 × effort）配置</strong>——这就是"路由"的实际形态。 - <strong>RuleArena</strong>：长程审查任务的 token 消耗大，<strong>缓存命中率直接影响成本排序</strong>；同时审查错误代价高，所以是"硬件上省、模型上不省"的典型——用 compaction 和缓存压用量，不用降级换模型。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先立四维（能力/延迟/单价/effort）→ 输出比输入贵 5 倍这个结构事实 → 用"每个正确结果的全成本"统一口径 → effort 曲线的凸性与两个方向的失败模式 → 强模型+低 effort 的实测 → 训练集饱和与 held-out 的分辨力 → 降级链路的设计要求 → 收束到"选一组配置，不是一个模型"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"更贵"买到的不是"更好"，是"失败率更低的那一段"。</strong> 所以选型的分界线永远是：<strong>我的任务在哪个档位跨过"够用"这个门槛</strong>——门槛以下加钱是必要的，门槛以上加钱是纯浪费。而<strong>门槛的位置只能靠你自己的评测找，不能靠别人的排行榜</strong>。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能列出四个维度并说出 effort 为什么最容易被忽略；能写出"每个正确结果的全成本"公式并说明每一项的作用；<strong>能算出</strong>客服案例的两个全成本（$0.336 / $0.116）与比值；能算出 FrontierCode 的平均与边际每分成本并解释凸性；能说出 HLE 最后一档"多 0.5 分多 46% 成本且落在噪声里"；能讲出"强模型+低 effort 压过弱模型+高 effort"的实测与两个原因；能说出训练集饱和后失去分辨力；能说出降级链路的三个要求；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 04 · 移动零</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 04 · 移动零</h1>
+    <p class="mv-topic-meta">关联 母题-05-盛最多水的容器 · 母题-06-三数之和 ｜ 正本 wiki/topics/算法/母题-04-移动零.md</p>
+  </div>
+
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">给定一个整型数组，把所有 0 移到数组末尾，同时保持非零元素的相对顺序。要求原地操作，不得复制新数组。</p></div>
+  </div>
+
+
+
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="算法/母题-04-移动零" tag="算法" q="如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？" a="快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：快慢指针的最简形态，一切「原地改造数组」问题的母题。写起来简单，但讲清不变量才是得分点。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>快指针找目标</li><li>慢指针指写入位</li><li>交换而非覆盖</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 为什么用交换而不是直接覆盖？</strong></p>
+<p class="mv-md-p">交换顺带把零挤到尾部，省掉一趟补零</p>
+<p class="mv-md-p"><strong>2. slow 到底是「下一个写入位」还是「最前面等待替换的零」？</strong></p>
+<p class="mv-md-p">始终成立的是前者，出现零之后两者恰好重合</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 26 删除有序数组中的重复项</li><li>LC 27 移除元素</li><li>LC 283 移动零</li><li>变体：偶数在前奇数在后且各自保序（同框架，改判据）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">数据清洗时原地过滤无效记录，避免额外分配数组。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：一开始写出了不完整的循环，没有先确定不变量的定义</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">讲解</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p">给定数组 <code class="mv-md-code">nums</code>，将所有 <code class="mv-md-code">0</code> 移动到数组末尾，同时保持非零元素的相对顺序。要求原地修改数组。</p>
+<pre class="mv-md-pre">输入：[0, 1, 0, 3, 12]
+结果：[1, 3, 12, 0, 0]</pre>
+<p class="mv-md-p"><strong>✗ 第一版（错误，保留作对照——但别照抄）</strong>：三个问题——<code class="mv-md-code">zero</code> 未定义（NameError）、<code class="mv-md-code">while</code> 里没有推进（死循环）、写回的位置也不对。根因是<strong>没有先把不变量定下来就开始写</strong>。</p>
+<pre class="mv-md-pre"># ✗ 错误版本：zero 未定义 + while 无推进
+def moveZero(nums):
+    for i in range(len(nums)):
+        while nums[i]!=0:
+            nums[zero]=nums[i]</pre>
+<p class="mv-md-p">两个指针：</p>
+<p class="mv-md-p">+ <code class="mv-md-code">fast</code>：遍历数组，寻找非零元素。 + <code class="mv-md-code">slow</code>：指向下一个非零元素应该放置的位置，也可以理解为前面最早等待替换的零。</p>
+<pre class="mv-md-pre">def move_zeros(nums):
+    slow=0
+    for fast in range(len(nums)):
+        if nums[fast]!=0:
+            nums[fast],nums[slow]=nums[slow],nums[fast]
+            slow+=1
+</pre>
+<p class="mv-md-p">循环不变量：</p>
+<p class="mv-md-p">每轮处理 <code class="mv-md-code">nums[fast]</code> 之前，<code class="mv-md-code">nums[:slow]</code> 是原数组已遍历部分中的所有非零元素，并且相对顺序不变；<code class="mv-md-code">nums[slow:fast]</code> 全部是零。</p>
+<p class="mv-md-p"><code class="mv-md-code">slow</code> 表示下一个非零元素应该放入的位置，也等于当前已处理部分中非零元素的数量。</p>
+<p class="mv-md-p">初始 <code class="mv-md-code">slow = 0</code>，表示尚未处理任何非零元素，下一个非零元素应放到下标 <code class="mv-md-code">0</code>。</p>
+<p class="mv-md-p">所以两种理解的关系是：</p>
+<p class="mv-md-p">+  始终成立：<code class="mv-md-code">slow</code> 是下一个非零元素的写入位置。 +  当已遍历部分出现零后：<code class="mv-md-code">slow</code> 也恰好指向最前面等待替换的零。</p>
+<p class="mv-md-p">循环不变量可以恢复为：</p>
+<p class="mv-md-p">处理 <code class="mv-md-code">fast</code> 前，<code class="mv-md-code">nums[:slow]</code> 保存已遍历部分的全部非零元素且顺序不变，<code class="mv-md-code">nums[slow:fast]</code> 全部为零。</p>
+<p class="mv-md-p">恢复脚本：</p>
+<p class="mv-md-p">快指针寻找非零元素，慢指针表示下一个非零写入位置；遇到非零就交换并推进慢指针。</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

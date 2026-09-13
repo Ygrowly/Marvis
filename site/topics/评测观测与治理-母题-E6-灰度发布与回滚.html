@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 E6 · 灰度发布与回滚</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/评测观测与治理.html">← 评测观测与治理 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">评测观测与治理</span>
+    <h1 class="mv-topic-title">母题 E6 · 灰度发布与回滚</h1>
+    <p class="mv-topic-meta">关联 母题-E3-回归门禁与发布卡口（灰度是门禁的下一站）· 母题-E4-成本控制与限流（降级与回滚的分工）· 母题-E1-评测集设计与pass^k（A/B 的统计前提）· 母题-C3-Prompt版本管理与回归（离线评测与 holdout） ｜ 正本 wiki/topics/评测观测与治理/母题-E6-灰度发布与回滚.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 灰度 = 放小 + 能立刻收回 ② 回滚速度决定灰度的价值 ③ 随机化单位必须与体验的单位一致）· 读完约 11 分钟 · 需要先懂：[[母题-E3-回归门禁与发布卡口]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"新版本怎么上线？灰度放多少？什么情况下回滚、回滚要多久？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：灰度的本质是"放小 + 能收回"</h3>
+<figure-box num="上线七步，以及回滚速度为什么决定灰度的价值" title="" note="七步上线顺序；左侧是回滚速度与影响面积的关系；右侧是随机化单位的概率陷阱"><svg viewBox="0 0 680 344" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>上线七步，以及回滚速度为什么决定灰度的价值</title>
+  <desc>上面是七步上线顺序：离线评测、影子、内部试用、小流量灰度、AB、扩量、持续监控。下面左侧是回滚时间与影响面积的关系——灰度期间的事故影响等于事故率乘流量乘回滚耗时，所以把回滚从三十分钟练到两分钟，影响面积直接降到十五分之一。右侧是随机化单位的陷阱：如果按请求随机而不是按用户，同一个用户在一次会话里几乎必然会看到两个版本。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">上线七步，以及回滚速度为什么决定灰度的价值</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">灰度不是「放小一点」，是「放小一点 + 能立刻收回来」——没有回滚能力的灰度只是小规模事故</text>
+
+  <!-- 七步 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">上线顺序（不可跳步）</text>
+
+  <rect x="30" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="77" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">① 离线 Eval</text>
+  <text x="77" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">不碰真实用户</text>
+
+  <rect x="132" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="179" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">② Shadow</text>
+  <text x="179" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">跑真实流量不生效</text>
+
+  <rect x="234" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="281" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">③ 内部试用</text>
+  <text x="281" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">自己人先吃狗粮</text>
+
+  <rect x="336" y="88" width="94" height="40" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="383" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">④ 小流量灰度</text>
+  <text x="383" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">1% → 5% → 20%</text>
+
+  <rect x="438" y="88" width="94" height="40" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="485" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">⑤ A/B</text>
+  <text x="485" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">比较效果</text>
+
+  <rect x="540" y="88" width="110" height="40" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="595" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">⑥ 扩量 → ⑦ 持续监控</text>
+  <text x="595" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">上线不是终点</text>
+
+  <!-- 回滚速度 -->
+  <path d="M30 154 L650 154" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <rect x="30" y="166" width="300" height="112" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">回滚速度 = 灰度的价值</text>
+  <text x="46" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#633806">灰度期事故影响 ≈ 事故率 × 流量 × 回滚耗时</text>
+  <text x="46" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回滚 30 分钟 vs 回滚 2 分钟 →</text>
+  <text x="46" y="252" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">影响面积降到 1/15</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">所以回滚要练：演练过、能一键、有明确的判据</text>
+
+  <rect x="350" y="166" width="300" height="112" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="188" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">随机化单位的陷阱</text>
+  <text x="366" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">按【请求】随机：同一用户可能看到两个版本</text>
+  <text x="366" y="230" font-family="system-ui,sans-serif" font-size="10" fill="#633806">一个用户 10 次请求 → 约 99.8% 概率看到两个版本</text>
+  <text x="366" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">按【用户 / 会话】随机：体验一致，比较也干净</text>
+  <text x="366" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">随机化单位必须与「体验的单位」一致</text>
+
+  <!-- 底部 -->
+  <path d="M30 292 L650 292" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">两条不等统计显著的规则：<tspan font-weight="600">高风险错误不能等显著性</tspan>（看到就停）；<tspan font-weight="600">记录完整的 treatment</tspan>（模型 + Prompt + 知识 + 工具版本）。</text>
+  <text x="30" y="334" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">用户反馈不是一个点赞按钮——高价值反馈是「用户改了什么」「在哪放弃」「哪条引用不支持结论」。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>为什么"离线评测过了"还不等于"可以全量上"</strong>：</p>
+<pre class="mv-md-pre">离线评测集是【采样】的：
+  · 它覆盖不了真实分布的全部形态（[[母题-E1-评测集设计与pass^k]] 的 Online sample 就是干这个的）
+  · 它跑在一次性的环境里，而真实环境是持续变化的
+  · 它测不到"新版本在真实流量下的资源行为"（P95、下游压力）
+
+→ 所以上线必须有一个"真实流量、可撤回"的中间阶段</pre>
+<p class="mv-md-p">【事实】<strong>七步顺序</strong>（study/07）：</p>
+<pre class="mv-md-pre">离线 Eval → Shadow → 内部 dogfood → 小流量灰度 → A/B → 扩量 → 持续监控</pre>
+<p class="mv-md-p">【推论】<strong>每一步都在回答前一步回答不了的问题</strong>：</p>
+<pre class="mv-md-pre">离线 Eval   → 它在已知问题上对不对
+Shadow      → 它在【真实流量】上会不会报错、耗多少资源（不影响用户）
+dogfood     → 它在【真实使用】下体验如何（自己人承担风险）
+灰度        → 它在【真实用户】上会不会出问题（小比例）
+A/B         → 它是不是【真的更好】（而不是只是没变差）
+扩量 + 监控 → 它在规模下是否稳定</pre>
+<p class="mv-md-p">【取舍】<strong>顺序不能跳</strong>——<strong>跳步等于用"没测过的维度"去赌</strong>。<strong>比如跳过 Shadow 直接灰度，你会在真实用户身上发现"它会打爆下游 DB"</strong>——而这个问题在 Shadow 阶段零成本就能发现。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"离线评测全过"仍然需要灰度，而不是直接全量？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 回滚速度决定灰度的价值【推导】</h3>
+<p class="mv-md-p">【推导】<strong>灰度期间发生事故，影响面积取决于什么</strong>：</p>
+<pre class="mv-md-pre">影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时
+
+注意最后一项是【回滚耗时】——
+  因为事故从"发生"到"停止"的时间，完全由回滚速度决定</pre>
+<p class="mv-md-p">【推导】<strong>算一下</strong>：</p>
+<pre class="mv-md-pre">灰度 5%，总流量 10,000 请求/分钟
+回滚需要 30 分钟：
+  期间经过的请求 = 10,000 × 30 = 300,000
+  受影响（5% 灰度 + 假设 1% 事故率）= 300,000 × 5% × 1% = 150 个
+
+把回滚练到 2 分钟：
+  期间经过的请求 = 20,000
+  受影响 = 20,000 × 5% × 1% = 10 个
+
+影响面积降到 1/15</pre>
+<p class="mv-md-p">【结论】<strong>回滚速度直接决定灰度的价值</strong>——<strong>它不是"运维指标"，是"风险控制的乘数"。</strong></p>
+<p class="mv-md-p">【取舍】<strong>所以灰度上线前必须准备好的</strong>：</p>
+<pre class="mv-md-pre">① 回滚判据（什么现象出现就回滚 —— 事先定好，不是临时讨论）
+② 一键回滚（不需要重新构建、重新发布）
+③ 演练过（在非故障时跑过一次，知道要多久）
+④ 数据兼容（新旧版本能不能同时存在 —— 这是最常见的回滚障碍）</pre>
+<p class="mv-md-p">【推论】<strong>第 ④ 条最容易被忽略</strong>：<strong>如果新版本写了旧版本读不懂的数据，代码回滚了数据也回不去</strong>——<strong>这就是"回滚不是免费的"</strong>。<strong>而且它和 [[母题-A3-失败恢复与幂等]] 的"不确定窗口"是同一类问题</strong>：<strong>动作已经产生了不可逆的影响。</strong></p>
+<p class="mv-md-p">【事实】<strong>一条不等统计显著的规则</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"高风险错误不能等待统计显著才停止。"</strong></p>
+<p class="mv-md-p">【推论】<strong>A/B 的常规逻辑是"等显著再下结论"，但安全类问题不能这么办</strong>——<strong>看到一次跨租户泄露就停，不需要等它显著</strong>（[[母题-E5-越权与提示注入防护]] 的"红线不参与平均"在发布阶段的版本）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们灰度放 1%，很安全"这句话，必须先回答"回滚要多久"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 随机化单位：必须与"体验的单位"一致【推导】</h3>
+<p class="mv-md-p">【事实】<strong>study/07 的第一条 A/B 注意点</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"随机化单位要与用户 / 会话一致，避免污染。"</strong></p>
+<p class="mv-md-p">【推导】<strong>按"请求"随机会发生什么</strong>：</p>
+<pre class="mv-md-pre">一个用户在一次会话里发了 10 个请求
+每个请求独立地以 50% 概率进入新版本
+
+这个用户【看到的全是同一个版本】的概率：
+  = 0.5¹⁰ × 2 = 2 / 1024 ≈ 0.2%
+
+→ 也就是说【约 99.8% 的概率，他会看到两个版本混在一起】</pre>
+<p class="mv-md-p">【结论】<strong>按请求随机，等于让几乎每个用户都经历"版本混用"。</strong></p>
+<p class="mv-md-p">【推论】<strong>两个后果</strong>：</p>
+<pre class="mv-md-pre">① 体验层面：同一个用户在几分钟内看到两种行为（答案风格变了、功能时有时无）
+   → 用户困惑，而且反馈不可信
+② 度量层面：两组之间的差异被"混用"稀释
+   → 你测出来的差比真实差小，甚至测不出</pre>
+<p class="mv-md-p">【推论】<strong>判据是一句话</strong>：<strong>随机化的单位，必须和"用户感知到的那个整体"一致</strong>：</p>
+<pre class="mv-md-pre">聊天助手      → 按【会话】随机（一次对话内保持一致）
+单次工具调用  → 按【请求】随机可以
+同一个用户的一致性有意义的场景 → 按【用户】随机</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们把 5% 的请求切给新版本"在对话式产品里是个错误的方案？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. A/B 的其余四个注意点【事实】</h3>
+<p class="mv-md-p">【事实】<strong>study/07 给的清单</strong>：</p>
+<pre class="mv-md-pre">① 随机化单位要与用户 / 会话一致，避免污染
+② 先定义主指标与 guardrail
+③ 关注新奇效应、网络效应和长期行为
+④ 高风险错误不能等待统计显著才停止
+⑤ 记录模型、Prompt、知识、工具的完整 treatment</pre>
+<p class="mv-md-p">【推导】<strong>第 ② 条为什么是"先"</strong>：</p>
+<pre class="mv-md-pre">先定主指标 → 你想优化什么（比如任务成功率）
+先定 guardrail → 什么不许变坏（比如 P95、成本、安全红线）
+
+如果先看数据再定指标 → 【从数据里挑一个"看起来变好了"的指标】
+→ 这是 p-hacking 的变体，几乎必然得到假阳性</pre>
+<p class="mv-md-p">【事实】<strong>第 ③ 条的三个效应各有名字</strong>：</p>
+<pre class="mv-md-pre">新奇效应：用户因为"它是新的"而多用了 → 一周后回落
+网络效应：A 组的改动影响了 B 组的体验
+          （典型：改了推荐/内容，两组看到的内容互相影响）
+长期行为：短期指标涨、长期留存跌（"薅羊毛"型改动）</pre>
+<p class="mv-md-p">【事实】<strong>第 ⑤ 条是 AI 系统特有的</strong>：</p>
+<pre class="mv-md-pre">传统的 A/B 记录"代码版本"就够了
+AI 系统的 treatment 是【五元组】：
+  模型 + Prompt + 知识/索引 + 工具定义 + 参数（temperature / effort）
+
+少记任何一项 → 你复现不出这次实验，也无法归因</pre>
+<p class="mv-md-p">【推论】<strong>这和 [[母题-C3-Prompt版本管理与回归]] 的"四者必须绑定到结果上"是同一条</strong>——<strong>A/B 只是把它用在了发布阶段。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么 AI 系统的 A/B 比传统系统更难归因？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 反馈飞轮：用户反馈不是一个点赞按钮【推导】</h3>
+<p class="mv-md-p">【事实】study/07 的原话与清单：</p>
+<p class="mv-md-p mv-md-quote"><strong>"高价值反馈"</strong>：</p>
+<pre class="mv-md-pre">· 用户修改后的正确答案 / SQL / 规则
+· 放弃、重试、转人工
+· 哪一条引用不支持结论
+· 工具调用被拒绝或撤销
+· 任务实际业务状态
+· 用户对结果的具体分类原因</pre>
+<p class="mv-md-p">【推导】<strong>为什么"点赞/点踩"价值低</strong>：</p>
+<pre class="mv-md-pre">点赞/点踩告诉你"他不满意"，但不告诉你【哪里不满意】
+  → 无法定位到具体哪一段
+  → 也就无法变成一条可复现的评测样本
+
+而"用户把答案改成了什么"是一条【带正确答案的样本】
+  → 直接可以进评测集
+  → 而且是【真实高频】的（用户真的问了这个问题）</pre>
+<p class="mv-md-p">【推论】<strong>反馈飞轮的价值在于"把线上失败变成离线评测集"</strong>——<strong>而这个过程需要的是"带具体信息的反馈"，不是"一个分数"。</strong></p>
+<p class="mv-md-p">【事实】<strong>一条硬要求</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"每个失败经过隐私处理和人工 / 规则筛选，成为 Eval candidate；不是未经清洗直接训练。"</strong></p>
+<p class="mv-md-p">【推论】<strong>两个原因</strong>：</p>
+<pre class="mv-md-pre">① 隐私：用户改的内容里可能有敏感信息（[[母题-E5-越权与提示注入防护]]）
+② 质量：用户的修改不一定是"正确答案"——他可能只是改成了自己喜欢的风格
+   → 直接拿去训练/评测会引入错误的标准</pre>
+<p class="mv-md-p">【取舍】<strong>所以飞轮的形状是</strong>：</p>
+<pre class="mv-md-pre">线上失败 → 隐私处理 + 人工/规则筛选 → Eval candidate → 进入评测集（Dev 或 Golden）
+                                                        ↓
+                                              再驱动下一轮优化</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们收集了用户点赞"对改进系统帮助有限？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"灰度放 1% 很安全"</td><td><strong>风险不只看比例，还要看回滚速度</strong>：<strong>影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时</strong>。<strong>回滚 30 分钟 vs 2 分钟，影响面积差 15 倍</strong>。<strong>没有回滚能力的灰度只是小规模事故</strong></td></tr><tr><td>"回滚就是 git revert"</td><td><strong>代码能回滚，数据不一定</strong>——<strong>如果新版本写了旧版本读不懂的数据，回滚后系统会坏在数据上</strong>。<strong>这是最常见的回滚障碍</strong>，所以上线前要问"新旧版本能不能同时存在"（[[母题-A3-失败恢复与幂等]] 的同一类问题）</td></tr><tr><td>"我们把 5% 的请求切给新版本"</td><td><strong>对话式产品里这会污染体验</strong>：<strong>按请求随机时，一个用户 10 次请求里约 99.8% 会看到两个版本</strong>。<strong>随机化单位必须与"体验的单位"一致</strong>——聊天按会话、单次调用按请求</td></tr><tr><td>"先上灰度，看数据再说优化什么"</td><td><strong>主指标和 guardrail 必须先定</strong>。<strong>先看数据再挑指标，是 p-hacking 的变体</strong>——<strong>几乎必然得到假阳性</strong>（[[母题-E1-评测集设计与pass^k]] 的"追噪声"）</td></tr><tr><td>"看到错误率涨了就等等看是否显著"</td><td><strong>高风险错误不能等统计显著</strong>。<strong>一次跨租户泄露就该停</strong>——<strong>安全和质量不一样，它没有"再观察观察"这个选项</strong>（[[母题-E5-越权与提示注入防护]] 的红线逻辑）</td></tr><tr><td>"A/B 记录代码版本就够了"</td><td><strong>AI 系统的 treatment 是五元组</strong>：<strong>模型 + Prompt + 知识/索引 + 工具定义 + 参数</strong>。<strong>少记任何一项，你都复现不出这次实验</strong>（[[母题-C3-Prompt版本管理与回归]]）</td></tr><tr><td>"收集用户点赞就是反馈飞轮"</td><td><strong>点赞只说"不满意"，不说"哪里不满意"</strong>——<strong>无法定位、无法变成评测样本</strong>。<strong>高价值的是"用户把答案改成了什么""在哪放弃""哪条引用不支持结论"</strong>。而且<strong>必须经过隐私处理与筛选，不能直接拿去训练</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>上线的目标不是"发布出去"，是"发布出去且随时能收回来"——所以灰度这一步考验的其实是回滚能力。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="评测观测与治理/母题-E6-灰度发布与回滚-q1" tag="评测观测与治理" q="某服务总流量 10,000 请求/分钟，灰度 5%，灰度期间的事故率约 1%。&#10;问：如果回滚需要 30 分钟，受影响请求是多少？如果做到 2 分钟呢？" a="``text&#10;回滚 30 分钟：&#10;经过请求 = 10,000 × 30 = 300,000&#10;受影响 = 300,000 × 5% × 1% = 150 个&#10;回滚 2 分钟：&#10;经过请求 = 10,000 × 2 = 20,000&#10;受影响 = 20,000 × 5% × 1% = 10 个&#10;影响面积降到约 1/15&#10;`&#10;【结论】回滚速度直接决定灰度的价值——它不是&quot;运维指标&quot;，是&quot;风险控制的乘数&quot;。&#10;【推论】公式可以背：&#10;`text&#10;影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时&#10;``&#10;注意最后一项：事故从&quot;发生&quot;到&quot;停止&quot;的时间完全由回滚速度决定——所以&quot;降低灰度比例&quot;和&quot;加快回滚&quot;是同一件事的两种做法，而后者不需要牺牲验证效果。&#10;【补充】还有一个前提容易被漏：回滚不一定回得去——如果新版本写了旧版本读不懂的数据，代码回滚了系统还是会坏在数据上。 所以上线前要问&quot;新旧版本能不能同时存在&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="评测观测与治理/母题-E6-灰度发布与回滚-q2" tag="评测观测与治理" q="某对话产品按请求做 A/B：每个请求独立地以 50% 概率进入新版本。&#10;问：一个用户在一次会话里发 10 个请求，他&quot;全程只看到一个版本&quot;的概率是多少？" a="``text&#10;全程都是旧版本：0.5¹⁰ = 1/1024&#10;全程都是新版本：0.5¹⁰ = 1/1024&#10;全程只看到一个版本 = 2 / 1024 ≈ 0.2%&#10;→ 也就是说【约 99.8% 的概率，他会看到两个版本混在一起】&#10;`&#10;【结论】按请求随机，等于让几乎每个用户都经历&quot;版本混用&quot;。&#10;【两个后果】：&#10;`text&#10;① 体验层面：同一用户在几分钟内看到两种行为（风格变了、功能时有时无）&#10;→ 用户困惑，反馈也不可信&#10;② 度量层面：两组差异被&quot;混用&quot;稀释 → 测出来的差比真实差小，甚至测不出&#10;`&#10;【判据】随机化单位必须与&quot;体验的单位&quot;一致：&#10;`text&#10;聊天助手       → 按【会话】随机&#10;单次工具调用   → 按【请求】随机可以&#10;用户级一致性有意义的场景 → 按【用户】随机&#10;``"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="评测观测与治理/母题-E6-灰度发布与回滚-q3" tag="评测观测与治理" q="某团队要上线一个新 Prompt。他们的计划是：&#10;``text&#10;直接灰度 5%，观察 1 小时，没问题就扩到 100%。&#10;``&#10;问：这个计划缺了什么？" a="缺了至少三样。&#10;``text&#10;① 【回滚判据】—— 什么现象出现就回滚？事先定好，不是临时讨论&#10;现在的问题是：&quot;观察 1 小时&quot;要看什么？错误率？P95？成本？业务指标？&#10;② 【回滚能力】—— 能一键回滚吗？要多久？&#10;如果回滚要 30 分钟，那么&quot;观察 1 小时&quot;里的任何决策都晚了（Q1 的影响面积公式）&#10;③ 【跳过了前面的步骤】&#10;离线 Eval → Shadow → dogfood → 灰度&#10;直接灰度跳过了 Shadow —— 而&quot;它在真实流量下会不会打爆下游&quot;这类问题&#10;在 Shadow 阶段零成本就能发现，在灰度阶段却要影响真实用户&#10;``&#10;【补充】还有一个 AI 系统特有的：treatment 记全了吗？（模型 + Prompt + 知识/索引 + 工具定义 + 参数）——少记一项，出问题时就无法归因。&#10;【准确说法】&quot;灰度前的准备清单：① 离线与 Shadow 已过 ② 回滚判据已定 ③ 回滚演练过、知道耗时 ④ 数据新旧兼容 ⑤ 主指标与 guardrail 已定 ⑥ 完整 treatment 已记录。 这六项齐了，灰度才是&quot;受控实验&quot;而不是&quot;小规模事故&quot;。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E6-灰度发布与回滚-q4" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;我们灰度只放 1%，风险很小，可以多观察几天。&quot;" a="三处问题。&#10;1. 风险不只看比例，还要看回滚速度：影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时——回滚 30 分钟 vs 2 分钟差 15 倍（Q1）。&quot;放得小&quot;和&quot;收得快&quot;是两件事，后者更可控。&#10;2. &quot;多观察几天&quot;有代价：灰度期间是双版本并存的——两套代码、两套数据兼容、两套监控，运维复杂度翻倍；而且如果新版本写了旧版本读不懂的数据，观察越久回滚越难（[[母题-A3-失败恢复与幂等]]）。&#10;3. &quot;观察&quot;要有判据：主指标和 guardrail 必须先定（study/07 明确写了&quot;先定义主指标与 guardrail&quot;）——否则&quot;观察&quot;就变成了&quot;看到什么算什么&quot;，而人天然倾向于把模糊信号解释成&quot;还行&quot;。&#10;【准确说法】&quot;灰度是&quot;受控实验&quot;，不是&quot;小心翼翼地多放一会&quot;：判据事先定、回滚练过、扩量有节奏（1% → 5% → 20% → 50% → 100%，每一档确认后再进）。 而且高风险错误不能等统计显著——看到就停。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E6-灰度发布与回滚-q5" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;我们上线后收集用户点赞和点踩，用来改进系统。&quot;" a="三处问题。&#10;1. 点赞/点踩只说&quot;不满意&quot;，不说&quot;哪里不满意&quot;——无法定位到具体哪一段，也就无法变成可复现的评测样本。&#10;2. 高价值反馈是&quot;带信息的那种&quot;：用户修改后的正确答案 / SQL / 规则、在哪放弃、哪一条引用不支持结论、工具调用被拒绝或撤销、任务的实际业务状态——这些才是&quot;带正确答案的样本&quot;，而且是真实高频的。&#10;3. 而且不能直接拿来用：study/07 明确要求&quot;每个失败经过隐私处理和人工 / 规则筛选，成为 Eval candidate；不是未经清洗直接训练&quot;——两个原因：隐私（用户改的内容可能有敏感信息）和质量（用户的修改不一定等于正确答案）。&#10;【准确说法】&quot;反馈飞轮的价值在于&quot;把线上失败变成离线评测集&quot;——而它需要的是&quot;带具体信息的反馈&quot;，不是&quot;一个分数&quot;。 而且中间必须隔着&quot;隐私处理 + 人工/规则筛选&quot;这一步。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">离线评测过了、门禁也过了——那&quot;上线&quot;这一步还需要什么？为什么&quot;灰度 1%&quot;不等于&quot;风险只有 1%&quot;？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="评测观测与治理/母题-E6-灰度发布与回滚" tag="评测观测与治理" q="离线评测过了、门禁也过了——那&quot;上线&quot;这一步还需要什么？为什么&quot;灰度 1%&quot;不等于&quot;风险只有 1%&quot;？" a="灰度的本质是&quot;放小 + 能收回&quot;，而回滚速度决定灰度的价值——影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时：回滚 30 分钟 vs 2 分钟，影响面积差 15 倍。所以&quot;放 1%&quot;不等于&quot;风险 1%&quot;，没有回滚能力的灰度只是小规模事故。上线七步且不能跳：离线 Eval → Shadow → dogfood → 小流量灰度 → A/B → 扩量 → 持续监控——每一步回答前一步回答不了的问题（Shadow 零成本发现&quot;打爆下游&quot;，灰度却要影响真实用户）。A/B 有五个注意点：① 随机化单位必须与体验的单位一致（按请求随机时，一个用户 10 次请求约 99.8% 会看到两个版本）② 先定义主指标与 guardrail（先看数据再挑指标是 p-hacking）③ 关注新奇效应、网络效应、长期行为 ④ 高风险错误不能等统计显著 ⑤ 记录完整的 treatment（五元组：模型 + Prompt + 知识/索引 + 工具定义 + 参数）。最后，回滚不一定回得去——如果新版本写了旧版本读不懂的数据，代码回滚了系统还是会坏在数据上。而反馈飞轮要的是&quot;带具体信息的反馈&quot;（用户改成了什么、在哪放弃），不是点赞按钮，而且中间必须隔着隐私处理与筛选。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>决定了前五张卡的成果能不能安全地送到用户手里</strong>。<strong>门禁再严，也只是"离线测过"</strong>——<strong>真实分布的复杂性永远超出评测集</strong>。而"灰度"这件事<strong>最容易被误解成"放小一点就行"</strong>——<strong>真正的关键是"能不能立刻收回来"</strong>。<strong>没有回滚能力的灰度，只是小规模事故。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>灰度的本质是"放小 + 能收回"</strong>，而<strong>回滚速度决定灰度的价值</strong>——<strong>影响面积 ≈ 事故率 × 灰度流量 × 回滚耗时</strong>：回滚 <strong>30 分钟 vs 2 分钟，影响面积差 15 倍</strong>。<strong>所以"放 1%"不等于"风险 1%"</strong>，<strong>没有回滚能力的灰度只是小规模事故</strong>。<strong>上线七步且不能跳</strong>：离线 Eval → Shadow → dogfood → 小流量灰度 → A/B → 扩量 → 持续监控——<strong>每一步回答前一步回答不了的问题</strong>（Shadow 零成本发现"打爆下游"，灰度却要影响真实用户）。<strong>A/B 有五个注意点</strong>：<strong>① 随机化单位必须与体验的单位一致</strong>（按请求随机时，一个用户 10 次请求<strong>约 99.8% 会看到两个版本</strong>）② <strong>先定义主指标与 guardrail</strong>（先看数据再挑指标是 p-hacking）③ 关注新奇效应、网络效应、长期行为 ④ <strong>高风险错误不能等统计显著</strong> ⑤ <strong>记录完整的 treatment（五元组：模型 + Prompt + 知识/索引 + 工具定义 + 参数）</strong>。最后，<strong>回滚不一定回得去</strong>——<strong>如果新版本写了旧版本读不懂的数据，代码回滚了系统还是会坏在数据上</strong>。而<strong>反馈飞轮要的是"带具体信息的反馈"</strong>（用户改成了什么、在哪放弃），<strong>不是点赞按钮</strong>，<strong>而且中间必须隔着隐私处理与筛选</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>灰度 = 放小 + 能收回</strong></li><li><strong>影响面积 ≈ 事故率 × 流量 × 回滚耗时</strong>（30 分 vs 2 分 = 15 倍）</li><li>七步不可跳（离线 → Shadow → dogfood → 灰度 → A/B → 扩量 → 监控）</li><li>每一步回答前一步答不了的问题</li><li><strong>随机化单位 = 体验的单位</strong>（按请求 → 99.8% 看到两版）</li><li>主指标与 guardrail 先定</li><li>新奇效应 · 网络效应 · 长期行为</li><li><strong>高风险不等显著</strong></li><li><strong>treatment 五元组</strong></li><li><strong>回滚不一定回得去</strong>（数据兼容）</li><li>高价值反馈 = 带信息的那种</li><li>反馈要过隐私 + 筛选</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>新版本的上线顺序是什么？</strong></strong></p>
+<p class="mv-md-p"><strong>离线 Eval → Shadow → 内部 dogfood → 小流量灰度 → A/B → 扩量 → 持续监控。</strong> <strong>每一步回答前一步回答不了的问题</strong>，<strong>顺序不能跳</strong>。</p>
+<p class="mv-md-p"><strong>2. <strong>灰度放量怎么定，什么情况下立即停止？</strong></strong></p>
+<p class="mv-md-p"><strong>节奏是 1% → 5% → 20% → 50% → 100%，每档确认后再进</strong>；<strong>停止条件是事先定的</strong>：<strong>红线（越权、未确认副作用）看到就停，不等显著</strong>；<strong>guardrail（P95、成本）超阈值也停</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>A/B 有哪些坑？</strong></strong></p>
+<p class="mv-md-p">五个（见上）。<strong>最容易踩的是"随机化单位"和"先定指标 vs 先看数据"</strong>——<strong>前者污染体验与度量，后者制造假阳性。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>线上用户修改怎样回流？</strong></strong></p>
+<p class="mv-md-p"><strong>用户改后的正确答案 / SQL / 规则、在哪放弃、哪条引用不支持结论、工具调用被拒或被撤销、任务实际业务状态</strong>——<strong>这些是"带正确答案的样本"</strong>。<strong>但必须经过隐私处理 + 人工/规则筛选才成为 Eval candidate，不能直接拿去训练或评测。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>降级和回滚是什么关系？</strong></strong></p>
+<p class="mv-md-p"><strong>降级是"临时切到备用配置，先保住可用性"</strong>（[[母题-E4-成本控制与限流]]）；<strong>回滚是"把版本退回去，问题消失"</strong>。<strong>降级是应急手段、回滚是根治</strong>——<strong>先降级止血，再回滚修复，是常见的组合。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Shadow 和灰度有什么区别？」——<strong>Shadow 是"跑真实流量但不生效"</strong>（结果旁路，不影响用户）——<strong>它能发现"会不会报错、耗多少资源"，但测不出"用户体验如何"</strong>（因为用户根本没看到结果）。<strong>灰度是"真实用户真的看到新版本"</strong>——<strong>风险更大，但也只有它能测出体验。</strong></li><li>「小团队没有 A/B 平台怎么办？」——<strong>做不了严格的 A/B，但灰度仍然要做</strong>。<strong>替代方案</strong>：<strong>① 用"分阶段放量 + 前后对比"</strong>（不如 A/B 干净，但能抓住大问题）② <strong>重点盯 guardrail 而非增量收益</strong>（"没变坏"比"变好了多少"更容易判断）③ <strong>把资源投在"离线评测 + 回滚能力"上</strong>——<strong>这两样的性价比对小团队最高。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>发布门禁 → Shadow → 灰度</strong>；<strong>高风险修复发布前 interrupt</strong>（人工确认是"发布阶段"的安全阀）。 - <strong>EnergyOps</strong>：<strong>结算的三道质量门 + 灰度</strong>——<strong>结算类改动的高风险在于"数据不可逆"</strong>（回滚代码容易，回滚已结算的数据难）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先破"离线过了就能上"（离线是采样的）→ <strong>七步顺序与每一步回答什么</strong> → <strong>回滚速度的价值（给影响面积算式）</strong> → 回滚的四个准备（判据 / 一键 / 演练 / 数据兼容）→ <strong>随机化单位的概率陷阱</strong> → A/B 的五个注意点 → <strong>反馈飞轮要什么反馈</strong> → 收束到"能收回来"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>上线的目标不是"发布出去"，是"发布出去且随时能收回来"。</strong> 所以灰度这一步考验的<strong>其实是回滚能力</strong>——<strong>而回滚的能力，取决于你上线前有没有想过"如果它坏了，我能不能退回去"。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出"灰度 = 放小 + 能收回"；<strong>能算出回滚 30 分钟 vs 2 分钟的影响面积差 15 倍</strong>；能背出七步顺序并解释每一步回答什么；<strong>能算出按请求随机的 99.8% 版本混用</strong>；能说出 A/B 的五个注意点；能说清 treatment 五元组；能说出"回滚不一定回得去"（数据兼容）；能说清反馈飞轮要什么样的反馈；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

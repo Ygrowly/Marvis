@@ -1,0 +1,34 @@
+<svg viewBox="0 0 680 336" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>幂等键必须是「业务身份」，不是「调用身份」</title>
+  <desc>左边是错误做法：用 ToolCallID 当幂等键。每次重试都会生成新的调用 ID，于是数据库里那条唯一约束永远拦不住重复，同一个副作用被执行多次。右边是正确的做法：用业务身份做键——运行 ID 加动作类型加业务幂等键。重试时这个键不变，唯一约束就能真正拦住第二次。底部是重试放大的算式：三层各重试三次，最坏会产生二十七倍请求。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">幂等键必须是「业务身份」，不是「调用身份」</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">幂等不是「让操作不重复执行」，是「让重复执行不产生第二次效果」</text>
+
+  <!-- 错误 -->
+  <rect x="30" y="66" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">✗ 用 ToolCallID 当幂等键</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第一次调用：call_abc</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">超时重试：　call_def　← 键变了</text>
+  <text x="46" y="150" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 唯一约束【永远拦不住】</text>
+  <text x="46" y="168" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 同一个副作用被执行两次</text>
+
+  <!-- 正确 -->
+  <rect x="350" y="66" width="300" height="120" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">✓ 用业务身份做键</text>
+  <text x="366" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806"><tspan font-family="monospace">UNIQUE(run_id, action_type, idempotency_key)</tspan></text>
+  <text x="366" y="130" font-family="system-ui,sans-serif" font-size="10" fill="#633806">第一次调用：run_1 / refund / order_42</text>
+  <text x="366" y="148" font-family="system-ui,sans-serif" font-size="10" fill="#633806">超时重试：　run_1 / refund / order_42　← 键没变</text>
+  <text x="366" y="170" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 第二次被约束直接拒绝</text>
+
+  <!-- 重试放大 -->
+  <path d="M30 206 L650 206" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="230" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">另一个坑：重试放大</text>
+
+  <rect x="30" y="242" width="620" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="260" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">客户端重试 3 次 × 网关重试 3 次 × 服务内部重试 3 次 ＝ 最坏 <tspan font-weight="600">27 倍</tspan>请求打到下游</text>
+  <text x="46" y="278" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">所以重试必须<tspan font-weight="600">分层设计</tspan>：哪一层负责重试、重试几次、哪些错误可重试，要一起定，不能每层各写一个 for 循环</text>
+
+  <text x="30" y="308" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">关键分界：<tspan font-weight="600">应用层幂等是优化，数据库约束才是正确性</tspan>——锁会失效（超时、网络分区），唯一约束不会。</text>
+  <text x="30" y="326" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">「超时了不知道做没做成」时，正确动作是<b>先查权威状态</b>，而不是赌一次重试。</text>
+</svg>

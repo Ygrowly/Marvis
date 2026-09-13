@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M7 · 慢查询与 SQL 优化手段</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M7 · 慢查询与 SQL 优化手段</h1>
+    <p class="mv-topic-meta">关联 母题-M6-一条SQL的执行链路（慢在哪层）· 母题-M3-聚簇索引与回表（覆盖索引与回表）· 母题-M2-联合索引与最左前缀（失效清单与下推）· 母题-M15-数据增长治理（优化做不动了才上架构） ｜ 正本 wiki/topics/MySQL/母题-M7-慢查询与SQL优化手段.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 定位有章法，不是"打开 explain 看看" ② 优化手段能归到"少扫/少回/少排"三类 ③ 索引失效不一定是写法错）· 读完约 12 分钟 · 需要先懂：[[母题-M6-一条SQL的执行链路]]（慢在哪一层）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">线上有条 SQL 偶尔 20 多秒。你按什么顺序定位？深分页 <code class="mv-md-code">LIMIT 1000000, 10</code> 为什么慢，怎么改？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：所有优化都在做同一件事</h3>
+<p class="mv-md-p"><strong>让"扫过的行"尽量等于"要返回的行"。</strong></p>
+<pre class="mv-md-pre">两者差距越大越慢，差距只有两个来源：
+  ① 没命中的扫描——该过滤的没提前过滤
+  ② 白拿的回表——取回了不用的列 / 索引没覆盖</pre>
+<p class="mv-md-p">【推论】<strong>每一种优化手段都能归到这两类里</strong>——归不进去的，说明你还没搞清它在治什么。这也是后面那份清单的组织方式（少扫 / 少回 / 少排）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 定位三步【事实】</h3>
+<pre class="mv-md-pre">① 慢查询日志（long_query_time）→ 把问题 SQL 抓出来
+   先按【出现频率 × 单次耗时】排优先级——高频的中等慢比低频的极慢更值钱
+② EXPLAIN 看计划 → 判断问题类型
+③ 按类型动手 → 再 explain 验证，最后压测确认</pre>
+<p class="mv-md-p"><strong><code class="mv-md-code">EXPLAIN</code> 四个字段的读法</strong>：</p>
+<table class="mv-table"><thead><tr><th>字段</th><th>看什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">type</code></td><td>访问方式，<strong>从好到坏</strong>：<code class="mv-md-code">system &gt; const &gt; eq_ref &gt; ref &gt; range &gt; index &gt; ALL</code>。<strong><code class="mv-md-code">ALL</code> = 全表扫；<code class="mv-md-code">index</code> = 扫全索引（比 ALL 好一点，也危险）</strong></td></tr><tr><td><code class="mv-md-code">key</code></td><td>实际用的索引。<strong><code class="mv-md-code">possible_keys</code> 有值但 <code class="mv-md-code">key</code> 为 NULL → 优化器主动放弃了</strong>（见第 5 节）</td></tr><tr><td><code class="mv-md-code">rows</code></td><td><strong>估算</strong>扫描行数——与实际差很远时说明统计信息/选择性有问题</td></tr><tr><td><code class="mv-md-code">Extra</code></td><td><code class="mv-md-code">Using index</code>（覆盖，好）/ <code class="mv-md-code">Using filesort</code>（额外排序）/ <code class="mv-md-code">Using temporary</code>（临时表）/ <code class="mv-md-code">Using index condition</code>（下推生效）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么定位的第一步是"排序"，而不是"看到一条慢 SQL 就改"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 优化手段清单（按"少扫 / 少回 / 少排"归类）</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 少扫：让过滤更早发生【事实】</h4>
+<ul class="mv-md-ul"><li><strong>最左前缀设计</strong>：等值列在前、范围列在后（[[母题-M2-联合索引与最左前缀]]）</li><li><strong>能用定位键就不要用偏移量</strong>：<code class="mv-md-code">WHERE id &gt; ?</code> 而不是 <code class="mv-md-code">LIMIT 1000000, 10</code></li><li><strong>不要 <code class="mv-md-code">SELECT *</code></strong>：列少了，优化器才可能选覆盖索引</li></ul>
+<h4 class="mv-md-h mv-md-h4">3.2 少回：让索引自己回答完【事实 + 推导】</h4>
+<ul class="mv-md-ul"><li><strong>覆盖索引</strong>：把 <code class="mv-md-code">SELECT</code> 的列都放进索引（[[母题-M3-聚簇索引与回表]]）</li><li><strong>索引下推 ICP（5.6+）</strong>：<code class="mv-md-code">(age, name)</code> 索引下，<code class="mv-md-code">age=18 AND name LIKE '%三'</code> 可以<strong>在索引层先过滤 name</strong>——<strong>把"符合条件才回表"变成"索引层就过滤掉不合格的"</strong>。<code class="mv-md-code">EXPLAIN</code> 里显示 <code class="mv-md-code">Using index condition</code>。</li></ul>
+<p class="mv-md-p"><strong>ICP 的收益能算出来</strong>：</p>
+<pre class="mv-md-pre">索引 (age, name)，age=18 命中 10,000 行，其中 name LIKE '%三' 只命中 100 行
+
+无 ICP：10,000 行全部回表，再在 server 层过滤 name → 10,000 次回表
+有 ICP：索引层先过滤 name → 只回表 100 行
+
+降 100 倍</pre>
+<p class="mv-md-p">【推论】<strong>ICP 治的是"回表次数"，不是"扫描量"</strong>——扫过的索引项没变，变的是"哪些需要回表"。<strong>关键词永远是"回表次数"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.3 少排：避免额外排序与临时表【事实】</h4>
+<ul class="mv-md-ul"><li><strong>让索引顺序匹配 <code class="mv-md-code">ORDER BY</code></strong>（索引本身有序，天然省 filesort）</li><li><strong>小表驱动大表</strong>：<code class="mv-md-code">in</code> / <code class="mv-md-code">exists</code> 的选择、JOIN 的驱动表顺序（[[母题-M6-一条SQL的执行链路]] 算过 1000 倍的差别）</li><li><strong><code class="mv-md-code">GROUP BY</code> 尽量走索引列</strong>，避免临时表</li></ul>
+<p class="mv-md-p"><strong>几个"知道就行"的点</strong>：<code class="mv-md-code">count(*)</code> ≈ <code class="mv-md-code">count(1)</code> &gt; <code class="mv-md-code">count(列)</code>（要判空）；<strong><code class="mv-md-code">count(*)</code> 没有捷径，InnoDB 是真数</strong>（只有 MyISAM 有行数缓存——但业务表不该用 MyISAM）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"加了索引但还是慢"经常是因为缺的不是索引，是<strong>覆盖</strong>？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 深分页为什么慢【推导】</h3>
+<pre class="mv-md-pre">LIMIT 1000000, 10 不是"取 10 行"
+而是"取前 1,000,010 行，丢掉前 100 万行"</pre>
+<p class="mv-md-p">【推论】<strong>扫描与回表量 = 偏移量</strong>，所以<strong>越翻越慢</strong>——而且这是<strong>线性增长</strong>，第 100 万页的代价是第 1 页的 10 万倍。</p>
+<h4 class="mv-md-h mv-md-h4">4.1 两种解法【事实】</h4>
+<p class="mv-md-p"><strong>① 游标定位（首选）</strong>：记住上一页最后一条的排序键，下一页用条件跳过去</p>
+<pre class="mv-md-pre">SELECT ... WHERE id &gt; :last_id ORDER BY id LIMIT 10;   -- 恒定扫描 10 行</pre>
+<p class="mv-md-p"><strong>② 延迟关联</strong>：必须跳页时，先用覆盖索引把 <code class="mv-md-code">id</code> 捞出来，再回表取详情</p>
+<pre class="mv-md-pre">SELECT t.* FROM task t
+JOIN (SELECT id FROM task ORDER BY id LIMIT 1000000, 10) s ON t.id = s.id;</pre>
+<p class="mv-md-p"><strong>子查询走覆盖索引（只扫索引，不回表）</strong>，<strong>回表只发生在最后 10 行上</strong>——<strong>把"100 万次回表"降成"10 次回表"</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 两者的差别在哪【取舍】</h4>
+<pre class="mv-md-pre">① 游标定位：扫描量 100 万 → 10     、回表 100 万 → 10      （两个都降）
+② 延迟关联：扫描量 100 万 → 100 万  、回表 100 万 → 10      （只降回表）</pre>
+<p class="mv-md-p"><strong>所以能拿到上一页排序键时，① 优于 ②</strong>。② 的适用场景是<strong>必须跳到任意页</strong>（用户直接点第 1000 页、或者外部传入 offset）时——<strong>它是"无法用游标"时的退路，不是首选</strong>。</p>
+<figure-box num="深分页：三种写法的扫描量与回表量" title="" note="直接 LIMIT 要扫 100 万零 10 行并逐行回表；游标定位只扫 10 行；延迟关联扫描量没降但回表从 100 万降到 10"><svg viewBox="0 0 680 330" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>深分页：三种写法的扫描量与回表量</title>
+  <desc>同样是取第 100 万页之后的 10 行。直接 LIMIT 1000000, 10 要扫过 100 万零 10 行、并对前 100 万行逐行回表；游标定位用上一页的排序键直接跳过去，只扫 10 行；延迟关联先用覆盖索引把 id 捞出来再回表，扫描量没变但回表从 100 万次降到 10 次。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">深分页：三种写法的扫描量与回表量</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">目标都是「取第 100 万行之后的 10 条」——差别全在「为了这 10 条，你多碰了多少行」</text>
+
+  <!-- ① 直接深分页 -->
+  <text x="30" y="84" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① LIMIT 1000000, 10</text>
+  <rect x="30" y="94" width="546" height="26" rx="4" fill="#BA7517" fill-opacity="0.75"/>
+  <text x="303" y="112" font-family="system-ui,sans-serif" font-size="10.5" fill="#FFFFFF" text-anchor="middle">扫过 1,000,010 行（前 100 万行全部丢弃）</text>
+  <rect x="580" y="94" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="112" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">要的 10</text>
+  <text x="30" y="136" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回表：前 100 万行逐行回表 ≈ 100 万次随机 IO（每次约 3 次 IO → 约 300 万次）</text>
+
+  <!-- ② 游标定位 -->
+  <text x="30" y="176" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 游标定位：WHERE id &gt; :last_id ORDER BY id LIMIT 10</text>
+  <rect x="30" y="186" width="14" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <rect x="580" y="186" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">要的 10</text>
+  <text x="52" y="204" font-family="system-ui,sans-serif" font-size="10" fill="#633806">← 从上页末尾直接跳过来，扫 10 行，回表 10 次</text>
+
+  <!-- ③ 延迟关联 -->
+  <text x="30" y="244" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">③ 延迟关联：先在覆盖索引里取 id，再回表</text>
+  <rect x="30" y="254" width="546" height="26" rx="4" fill="#BA7517" fill-opacity="0.35"/>
+  <text x="303" y="272" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806" text-anchor="middle">仍是 100 万个索引项，但全程不回表（覆盖索引自己就够）</text>
+  <rect x="580" y="254" width="46" height="26" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="603" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">回表 10</text>
+  <text x="30" y="296" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回表从 100 万次 → 10 次；但扫描量没降，所以能拿到上一页排序键时，② 仍优于 ③</text>
+
+  <text x="30" y="320" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">共同的不变量：<tspan font-weight="600" fill="#2C2C2A">深分页的代价 = 偏移量</tspan>——所以任何解法都在做同一件事：不要按偏移量走。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"深分页的代价 = 偏移量"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 优化器主动放弃索引（最容易被漏掉的一类）【推导】</h3>
+<p class="mv-md-p"><strong>现象</strong>：索引存在、条件也该走索引，<code class="mv-md-code">EXPLAIN</code> 却显示 <code class="mv-md-code">key = NULL</code>、全表扫。</p>
+<p class="mv-md-p"><strong>原因</strong>：优化器<strong>估算过成本</strong>——当它判断"走索引 + 大量回表"比"顺序扫全表"更贵时，<strong>主动放弃索引是正确行为</strong>。典型触发：</p>
+<ul class="mv-md-ul"><li>二级索引<strong>命中比例过高</strong>（比如要取 30% 的行）</li><li><strong>统计信息过期</strong>（行数/区分度估错）</li><li>条件是<strong>表达式 / 函数 / 隐式类型转换</strong>（M2 的失效清单）</li></ul>
+<p class="mv-md-p">【取舍】<strong>排查顺序不能反</strong>：<strong>先看是不是"写法问题"（照 M2 的失效清单过一遍），再看是不是"成本判断"</strong>。后者的改法不是改 SQL，而是：</p>
+<p class="mv-md-p">1. <code class="mv-md-code">ANALYZE TABLE</code> 更新统计信息 2. 用 <code class="mv-md-code">FORCE INDEX</code> 验证"走了索引确实更快"——<strong>确认判断确实错了再强推</strong> 3. 或者<strong>接受全表扫</strong>——命中比例高时它本来就是对的</p>
+<p class="mv-md-p">【推论】<strong>这一条把"索引失效"从"背清单"升级成"理解优化器的成本模型"。</strong> 面试里能主动说出"有时候全表扫是优化器的正确决定"，比背出十条失效场景更能证明你懂原理。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"有索引却没用上"不能直接判定为 bug？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 优化优先级（收口）</h3>
+<pre class="mv-md-pre">① 先缩小业务范围（别把不相关的行扫进来）
+② 再修 JOIN 逻辑与 N+1
+③ 再建/改索引（含覆盖索引、下推）
+④ 再改写 SQL（深分页、排序、count）
+⑤ 最后才考虑缓存、预聚合、架构（M15）</pre>
+<p class="mv-md-p">【事实】<strong>EnergyOps 的实际顺序就是这条</strong>：修范围与 JOIN → 建联合索引 → 消 N+1 → 才谈缓存。<strong>反过来做（先上缓存）是典型的"在错误的链路上加速"</strong>——缓存只是把慢查询挡住，慢查询本身还在那里，而且会随着数据增长变得更慢。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"索引失效一定是写法问题"</td><td><strong>不一定</strong>。有一类恰恰是<strong>优化器算过成本后主动放弃</strong>（命中比例过高时走索引+回表反而更贵）——这时全表扫是<strong>正确决定</strong>，要动的是统计信息或接受它</td></tr><tr><td>"深分页改成延迟关联就不慢了"</td><td><strong>只降回表，不降扫描量</strong>。能拿到上一页排序键时，<strong>游标定位（<code class="mv-md-code">WHERE id &gt; ?</code>）两个都降</strong>，才是首选；延迟关联是"必须跳页"时的退路</td></tr><tr><td>"加索引能解决慢查询"</td><td>只治三类慢源里的一类。<strong>回表多要靠覆盖索引，JOIN 顺序错要靠改写法/统计信息</strong>——加索引无效</td></tr><tr><td>"<code class="mv-md-code">count(1)</code> 比 <code class="mv-md-code">count(*)</code> 快"</td><td><strong>在 InnoDB 里基本一样</strong>。真正慢的是 <code class="mv-md-code">count(列)</code>（要判 NULL）。而 <code class="mv-md-code">count(*)</code> 慢的根因是 <strong>InnoDB 没有行数缓存、必须真数</strong>——不是写法问题，是机制问题</td></tr><tr><td>"<code class="mv-md-code">ORDER BY</code> 走了索引就不慢了"</td><td>排序只占成本的一部分。<strong>排序走了索引只解决"少排"，不解决"少扫少回"</strong>——<code class="mv-md-code">SELECT *</code> 带来的大量回表照样拖慢</td></tr><tr><td>"优化就是把 explain 里的 type 调到 ref 以上"</td><td><code class="mv-md-code">type</code> 是<strong>结果</strong>不是目标。目标是"扫过的行 ≈ 要返回的行"，有时<strong>全表扫（ALL）反而是达成这个目标的方式</strong>（当条件命中 99% 时）</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>先分类再动手——用 <code class="mv-md-code">rows</code> 估算 vs 实际判断"是不是优化器的问题"，用三种慢源判断"是哪一类问题"，最后才落到具体手段。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M7-慢查询与SQL优化手段-q1" tag="MySQL" q="某表用 LIMIT 1000000, 10 翻页。&#10;问：这条 SQL 实际扫描多少行？如果走的是二级索引（需要回表），回表多少次？换成游标定位 WHERE id &gt; :last_id LIMIT 10 之后呢？" a="``text&#10;LIMIT 1000000, 10&#10;实际扫描 = 1,000,000 + 10 = 1,000,010 行（前 100 万行全部丢弃）&#10;走二级索引时：前 100 万行每行都要回表 → 1,000,000 次回表&#10;随机 IO 估算：1,000,000 × 3 ≈ 300 万次&#10;游标定位 WHERE id &gt; :last_id ORDER BY id LIMIT 10&#10;扫描 = 10 行（直接用有序索引跳到位置）&#10;回表 = 10 次&#10;``&#10;【结论】扫描量的差距是 100,001 倍（1,000,010 ÷ 10），回表差距是 100,000 倍。&#10;【关键】这个差距随偏移量线性增长——第 1000 万页时就是 1000 倍的差距。所以&quot;越翻越慢&quot;不是偶发问题，是结构性的。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M7-慢查询与SQL优化手段-q2" tag="MySQL" q="索引是 (age, name)，查询 WHERE age = 18 AND name LIKE '%三'。age = 18 命中 10,000 行，其中 name LIKE '%三' 只命中 100 行。&#10;问：没有 ICP 和有 ICP 分别要回表多少次？ICP 降的是扫描量还是回表量？" a="``text&#10;无 ICP：&#10;索引只能定位 age = 18 的段 → 这 10,000 行【全部回表】&#10;回到 server 层才过滤 name LIKE '%三' → 白回了 9,900 次&#10;回表次数 = 10,000&#10;有 ICP：&#10;在【索引层】就过滤 name LIKE '%三'&#10;只有合格的 100 行需要回表&#10;回表次数 = 100&#10;降幅 = 100 倍&#10;`&#10;【结论】ICP 降的是&quot;回表量&quot;，不是&quot;扫描量&quot;——扫过的索引项还是那 10,000 个（name LIKE '%三'` 这类前置通配也没法用索引定位），但需要回表的从 10,000 降到 100。&#10;【推论】所以 ICP 的价值完全取决于&quot;回表有多贵&quot;：如果回表都命中 Buffer Pool，收益就有限；如果回表是随机 IO，收益就是 100 倍级别的。回答时把&quot;关键词是回表次数&quot;说出来，比只说&quot;ICP 能优化&quot;强得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M7-慢查询与SQL优化手段-q3" tag="MySQL" q="一张表 1000 万行，WHERE status='DONE' 命中 99%。EXPLAIN 显示 key = NULL、type = ALL（全表扫），rows = 10000000。&#10;问：这是 bug 吗？请用数字说明为什么优化器可能是对的。如果统计信息过期、rows 被估成 1000，会发生什么？" a="（按每页 16 行估）：&#10;``text&#10;① 全表扫描（优化器的选择）：&#10;1000万 ÷ 16 = 62.5 万页，【顺序读】&#10;② 如果走 status 索引：&#10;990 万行命中 → 每行都要回表，每次约 3 次随机 IO&#10;= 990万 × 3 = 2970 万次【随机 IO】&#10;量级比 = 2970万 ÷ 62.5万 ≈ 47 倍&#10;`&#10;【结论】不是 bug——当命中比例高达 99% 时，&quot;走索引 + 990 万次回表&quot;比&quot;顺序扫 62.5 万页&quot;贵约 47 倍。优化器选全表扫是正确决定。&#10;【反过来】如果统计信息过期把结果估成 1000 行，优化器就会选 status 索引 → 实际要跑 2970 万次随机 IO。这才是真的出错，而修正手段是 ANALYZE TABLE，不是加索引、更不是 FORCE INDEX`（强推只会把它锁死在错误的选择上）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M7-慢查询与SQL优化手段-q4" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;我们的 SQL explain 显示没走索引，肯定是写法有问题，加个 force index 强制走索引就好了。&quot;" a="三处问题。&#10;1. &quot;没走索引 = 写法问题&quot;不成立。有一类恰恰是优化器算过成本后主动放弃——命中比例过高时，&quot;走索引 + 大量回表&quot;比&quot;顺序扫全表&quot;更贵（Q3 里是 47 倍）。这时全表扫是正确决定。&#10;2. FORCE INDEX 是验证工具，不是修复手段。它的正确用法是：先确认&quot;走了索引确实更快&quot;，再决定是否强推。直接强推可能把性能锁死在更差的计划上，而且优化器以后即使统计信息更新了也没法改回来。&#10;3. 排查顺序反了。正确顺序是：先照失效清单过一遍写法（表达式/函数/隐式转换/最左前缀），再对比 rows 估算与实际判断是不是统计信息问题，最后才考虑 FORCE INDEX。&#10;【准确说法】&quot;先分清是写法问题（照失效清单查）还是成本判断问题（对比估算与实际行数）。后者该做的是 ANALYZE TABLE 更新统计信息，或者接受全表扫——命中 99% 时它本来就是对的。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M7-慢查询与SQL优化手段-q5" tag="MySQL" q="下面这段话哪里不准确？&#10;&quot;count(*) 在 InnoDB 上很慢，改成 count(1) 能快很多。&quot;" a="count(*) 和 count(1) 在 InnoDB 里性能基本一样（MySQL 5.7.18 之后对 count(*) 也走最小的二级索引）。&#10;真正慢的是 count(列)——它要判断该列是否为 NULL，所以不能走&quot;最小索引&quot;那条捷径。&#10;【根因】count(*) 慢不是因为写法，是因为 InnoDB 必须真的去数：&#10;MyISAM 在表头存了一个行数计数器 → count(*) 是 O(1)（但业务表不该用 MyISAM，[[母题-M5-引擎与表设计基本盘]]）&#10;InnoDB 有 MVCC，不同事务在同一时刻看到的行数可能不同 → 没有全局行数可缓存 → 只能扫描索引来数&#10;【准确说法】&quot;count(*) 的代价是必须扫一遍最小索引，这是 MVCC 的必然代价，不是写法问题。如果它成了瓶颈，解法是业务侧维护计数表（用增量更新换 O(1) 读），或者接受近似值——而不是换 count(1)。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">慢查询怎么定位？常见的优化手段各自在治什么——为什么&quot;加个索引&quot;只是其中一类？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M7-慢查询与SQL优化手段" tag="MySQL" q="慢查询怎么定位？常见的优化手段各自在治什么——为什么&quot;加个索引&quot;只是其中一类？" a="定位按三步走——慢查询日志（按&quot;频率 × 单次耗时&quot;排优先级）→ EXPLAIN 看计划（type / key / rows / Extra）→ 按类型动手再 explain 验证。所有优化手段围绕&quot;少扫、少回、少排&quot;：少扫靠最左前缀设计与不用偏移量；少回靠覆盖索引与索引下推 ICP（ICP 把回表从 10,000 次降到 100 次）；少排靠让索引顺序匹配 ORDER BY。深分页的代价 = 偏移量（LIMIT 1000000, 10 要扫 1,000,010 行），首选游标定位（扫描与回表都降到 10），必须跳页时才用延迟关联（只降回表）。最容易漏的一类：索引失效不一定是写法错——优化器算过成本后主动放弃，命中 99% 时全表扫比走索引快约 47 倍。所以最后有一条不可颠倒的优化优先级：先缩小业务范围 → 修 JOIN 与 N+1 → 再改索引 → 再改写 SQL → 最后才上缓存。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是面试里"给一个真实案例"最容易出彩的题</strong>——因为它能同时展示：定位方法（有章法）、优化手段（有清单）、以及<strong>"索引失效不一定是写法错"这种反直觉判断</strong>。EnergyOps 的 20.4s → 2.8s 就是这条线的真实案例，<strong>必须能讲成"按顺序定位、按优先级动手"，而不是"我们加了个索引"</strong>。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">定位按三步走——<strong>慢查询日志（按"频率 × 单次耗时"排优先级）→ <code class="mv-md-code">EXPLAIN</code> 看计划（<code class="mv-md-code">type</code> / <code class="mv-md-code">key</code> / <code class="mv-md-code">rows</code> / <code class="mv-md-code">Extra</code>）→ 按类型动手再 explain 验证</strong>。所有优化手段围绕<strong>"少扫、少回、少排"</strong>：少扫靠最左前缀设计与不用偏移量；少回靠<strong>覆盖索引与索引下推 ICP</strong>（ICP 把回表从 10,000 次降到 100 次）；少排靠让索引顺序匹配 <code class="mv-md-code">ORDER BY</code>。<strong>深分页的代价 = 偏移量</strong>（<code class="mv-md-code">LIMIT 1000000, 10</code> 要扫 1,000,010 行），首选<strong>游标定位</strong>（扫描与回表都降到 10），必须跳页时才用延迟关联（只降回表）。<strong>最容易漏的一类</strong>：索引失效不一定是写法错——<strong>优化器算过成本后主动放弃</strong>，命中 99% 时全表扫比走索引快约 47 倍。所以最后有一条不可颠倒的<strong>优化优先级</strong>：先缩小业务范围 → 修 JOIN 与 N+1 → 再改索引 → 再改写 SQL → <strong>最后才上缓存</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三步定位</li><li>四字段（type·key·rows·Extra）</li><li>三种慢源（扫描多·回表多·JOIN 顺序错）</li><li>少扫少回少排</li><li>覆盖索引</li><li><strong>ICP 降的是回表量不是扫描量</strong></li><li>深分页代价 = 偏移量</li><li>游标定位 vs 延迟关联（都降回表，只有前者降扫描）</li><li><strong>优化器主动放弃索引</strong></li><li>rows 是估算、EXPLAIN ANALYZE 才是实际</li><li>count(*) 慢是 MVCC 的必然</li><li>优先级：范围 → JOIN → 索引 → SQL → 缓存</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PG 的对应工具是 <strong><code class="mv-md-code">pg_stat_statements</code>（按总耗时排序）+ <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>（真执行）</strong>，还能看 <code class="mv-md-code">Heap Fetches</code>；MySQL 靠<strong>慢查询日志 + <code class="mv-md-code">EXPLAIN</code></strong>（8.0.18+ 才有 <code class="mv-md-code">EXPLAIN ANALYZE</code>）。<strong><code class="mv-md-code">Using index</code> 在 MySQL 里表示覆盖索引，在 PG 里对应的是 <code class="mv-md-code">Index Only Scan</code>——名字完全不同，别串。</strong></p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>怎么确认统计信息错了？</strong></strong></p>
+<p class="mv-md-p">对比 <code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">rows</code>（估算）与 <code class="mv-md-code">EXPLAIN ANALYZE</code>（8.0.18+）的实际行数；<strong>差一个数量级以上就该 <code class="mv-md-code">ANALYZE TABLE</code></strong>。这条和 PG 的 [[母题-P7-统计信息与慢查询定位]] 是同一件事的两个实现。</p>
+<p class="mv-md-p"><strong>2. <strong>那条 20 多秒的 SQL 你具体怎么定位的？</strong></strong></p>
+<p class="mv-md-p">按顺序讲：<strong>估计 vs 实际行数 → 扫描方式 → JOIN 规模 → 排序/临时表 → loops（N+1）</strong>。<strong>重点不是"发现了什么"，而是"为什么按这个顺序"</strong>——每一步都对应一个明确的修复动作，做完立刻验证，不会白做。<strong>这一段要练成 60 秒口述。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>索引下推解决了什么？</strong></strong></p>
+<p class="mv-md-p"><strong>回表前先过滤</strong>。没有 ICP 时 <code class="mv-md-code">(age, name)</code> 只能用 <code class="mv-md-code">age = 18</code> 定位，<strong>所有 age=18 的行都要回表</strong>；有 ICP 后<strong>在索引层就过滤 name</strong>，回表次数大幅下降。<strong>关键词是"回表次数"。</strong></p>
+<p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">in</code> 和 <code class="mv-md-code">exists</code> 怎么选？</strong></strong></p>
+<p class="mv-md-p"><strong>小表驱动大表</strong>：子查询结果集小用 <code class="mv-md-code">in</code>，外表小用 <code class="mv-md-code">exists</code>。<code class="mv-md-code">not in</code> 遇到 <code class="mv-md-code">NULL</code> 或无法利用索引时要换 <code class="mv-md-code">not exists</code>。</p>
+<p class="mv-md-p"><strong>5. <strong><code class="mv-md-code">ORDER BY</code> 没走 filesort 但还是很慢？</strong></strong></p>
+<p class="mv-md-p"><strong>排序不是唯一成本</strong>：可能回表次数多（<code class="mv-md-code">SELECT *</code>），或者扫描范围太大。<strong>"少排"解决了不代表"少扫少回"解决了</strong>——三类要分开看。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「一条 SQL 你会按什么顺序优化？」——就是第 6 节的五步。<strong>关键是把"先范围、再 JOIN、再索引、后缓存"这个顺序说成有理由的</strong>（范围与 JOIN 决定扫描量，索引只能加速已有的扫描）。</li><li>「<code class="mv-md-code">EXPLAIN</code> 里 <code class="mv-md-code">rows</code> 很大就一定是坏计划吗？」——<strong>不一定</strong>。看的是"<code class="mv-md-code">rows</code> 与最终返回行数的比值"：如果 <code class="mv-md-code">rows</code> 是 100 万但返回 10 条（且没有更好的过滤手段），那才是问题；如果返回 90 万条，那 <code class="mv-md-code">rows</code> 大是必然的。</li><li>「分区能替代这些优化吗？」——<strong>不能替代，只能补充</strong>（[[母题-M15-数据增长治理]]、[[母题-P16-分区表]]）。分区解决的是"整块数据根本不用碰"，前提是分区键出现在条件里。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps 的 20.4s → 2.8s（本场主战场）</strong>——口径见模块卡第 5 节：<strong>必须补齐样本数 / 并发 / 硬件 / 统计窗口</strong>。<strong>讲成"按五步顺序定位、按优先级动手"，而不是"我们加了个索引"。</strong> - <strong>数驭穹图的查询成本控制</strong>——<strong>每改一处都要 explain 验证 + 固定数据集对比，不能"感觉快了"</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先把目标说清（扫过的行 ≈ 要返回的行）→ 定位三步 → explain 四字段 → 三组手段各治什么（少扫/少回/少排，各带一个数）→ 深分页专讲（扫描量 = 偏移量）→ <strong>优化器主动放弃索引</strong>（最反直觉的一类）→ 优化优先级五步 → 收束到"先分类再动手"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>所有 SQL 优化都在做同一件事：让"扫过的行"尽量等于"要返回的行"。</strong> 差距只有两个来源：<strong>没命中的扫描</strong>（该过滤的没提前过滤）和<strong>白拿的回表</strong>（取回了不用的列）。<strong>每一种手段都能归到这两类里</strong>——归不进去的，说明还没搞清它在治什么。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能对一条慢 SQL 按三步定位；<strong>能算出深分页的扫描量与回表量</strong>并说清两种解法的差别；<strong>能算出 ICP 的 100 倍回表降幅</strong>；<strong>能用 47 倍说明"优化器主动放弃索引"是正确决定</strong>；能说出优化优先级的顺序与理由；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

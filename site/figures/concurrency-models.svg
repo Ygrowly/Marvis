@@ -1,0 +1,33 @@
+<svg viewBox="0 0 680 318" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>进程 线程 协程的三种并发模型</title>
+<desc>进程地址空间独立、线程共享地址空间但由操作系统调度、协程由用户态事件循环调度且单位开销小两个数量级。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">同一个指标下比较：单位开销、谁调度、共享什么</text>
+<rect x="40" y="44" width="188" height="190" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">进程</text>
+<text x="58" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">地址空间：独立</text>
+<text x="58" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">调度者：操作系统</text>
+<text x="58" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">成本：8MB 栈（虚存）</text>
+<text x="58" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">优点：隔离最好</text>
+<text x="58" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">代价：通信与切换最贵</text>
+<rect x="246" y="44" width="188" height="190" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="264" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">线程</text>
+<text x="264" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">地址空间：共享</text>
+<text x="264" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">调度者：操作系统</text>
+<text x="264" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">成本：约 1MB 栈</text>
+<text x="264" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">优点：共享数据方便</text>
+<text x="264" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">代价：切换要走内核</text>
+<rect x="452" y="44" width="188" height="190" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="470" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">协程</text>
+<text x="470" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">地址空间：共享</text>
+<text x="470" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">调度者：用户态事件循环</text>
+<text x="470" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">成本：约 2KB</text>
+<text x="470" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">优点：切换几乎免费</text>
+<text x="470" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">代价：一处阻塞全体停摆</text>
+<rect x="40" y="250" width="600" height="48" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">10 万个并发单元：线程约需 100GB，协程约需 200MB —— 差约 500 倍。这才是 asyncio 的价值所在。</text>
+</svg>

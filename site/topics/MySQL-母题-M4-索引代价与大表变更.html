@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 M4 · 索引代价与大表变更</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL</span>
+    <h1 class="mv-topic-title">母题 M4 · 索引代价与大表变更</h1>
+    <p class="mv-topic-meta">关联 母题-M1-为什么用B+树（每棵索引都是一棵 B+ 树）· 母题-M2-联合索引与最左前缀（一个索引服务更多查询 = 少建几个）· 母题-M3-聚簇索引与回表（主键被复制进每个二级索引） ｜ 正本 wiki/topics/MySQL/母题-M4-索引代价与大表变更.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 索引的三笔代价 ② "把库搞挂"的真实机制是<strong>排队</strong>不是慢 ③ Online DDL 保证了什么、又没保证什么）· 读完约 11 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">任务表 5000 万行，线上正在跑。现在要给 <code class="mv-md-code">status</code> 加一个索引，你直接执行 <code class="mv-md-code">ALTER TABLE task ADD INDEX idx_status(status)</code>。会发生什么？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：索引是读的快照，写的负债</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 三笔代价【事实】</h4>
+<table class="mv-table"><thead><tr><th>代价</th><th>具体是什么</th><th>谁在付</th></tr></thead><tbody><tr><td><strong>写放大</strong></td><td>每次 <code class="mv-md-code">INSERT</code>/<code class="mv-md-code">UPDATE</code>/<code class="mv-md-code">DELETE</code> 都要同步维护所有相关索引</td><td><strong>每一笔写</strong></td></tr><tr><td><strong>空间</strong></td><td>二级索引的叶子存「索引列 + 主键」，主键越长、索引越多，占的空间越大</td><td><strong>磁盘与缓存</strong></td></tr><tr><td><strong>优化器负担</strong></td><td>候选索引变多 → 优化器要评估的计划变多 → <strong>选错的概率上升</strong>（统计信息不准时更明显）</td><td><strong>每一次查询</strong></td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">1.2 写放大能算出来【推导】</h4>
+<p class="mv-md-p">一张表有 <strong>1 个聚簇索引</strong>（数据本身）+ <strong>N 个二级索引</strong>，那么一次写入要改 <strong>N + 1 棵 B+ 树</strong>，每棵都要保证有序（可能触发页分裂）。</p>
+<pre class="mv-md-pre">一张表 1 个聚簇索引 + 6 个二级索引
+  一次写入 → 维护 7 棵 B+ 树
+  写入 QPS 5000 时 → 每秒 5000 × 7 = 35,000 次 B+ 树插入
+
+删掉 2 个"从没被查询用过"的索引：
+  7 棵 → 5 棵，每秒 35,000 → 25,000 次
+  写入侧直接省 29%</pre>
+<p class="mv-md-p">【取舍】所以判据是<strong>一句可执行的话</strong>：<strong>这个索引有没有高频查询真的在用它？</strong> 没有任何查询用得上的索引，是<strong>纯负债</strong>——它只在写入时收费。</p>
+<h4 class="mv-md-h mv-md-h4">1.3 空间也能算出来【推导】</h4>
+<p class="mv-md-p">二级索引的叶子存「索引列 + 主键」。以给 <code class="mv-md-code">status</code>（INT，4B）建索引为例，算上 InnoDB 的记录头开销约 6B：</p>
+<pre class="mv-md-pre">主键 BIGINT（8B）：每条 ≈ 4 + 8 + 6 = 18B
+  5000 万行 → 18B × 5000万 ≈ 900 MB
+
+主键换 UUID（36B）：每条 ≈ 4 + 36 + 6 = 46B
+  5000 万行 → 46B × 5000万 ≈ 2.3 GB</pre>
+<p class="mv-md-p"><strong>同一个索引，只因为主键变长，就膨胀 2.6 倍</strong>（46 ÷ 18）。而且这还只是<strong>一个</strong>索引——有 6 个二级索引，就是 6 份一起膨胀（[[母题-M5-引擎与表设计基本盘]] 会再讲主键选型）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"反正磁盘便宜，索引多建几个"在写多的表上是错的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 大表 DDL 的危险到底来自哪里</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 它要做两件事【事实】</h4>
+<p class="mv-md-p"><code class="mv-md-code">ALTER TABLE ... ADD INDEX</code> 分两步：</p>
+<p class="mv-md-p">1. <strong>扫描全表 + 排序，建出一棵新索引</strong>（5000 万行，几分钟到几十分钟） 2. 在<strong>开始和结束</strong>各拿一次 <strong>MDL（元数据锁）</strong></p>
+<p class="mv-md-p">直觉会怪第 1 步"太慢"。<strong>但危险在第 2 步。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 MDL 连锁：真正的机制【推导】</h4>
+<p class="mv-md-p">MDL 的规则很短：<strong>读锁与读锁兼容，读锁与写锁互斥</strong>；而 <strong>MDL 请求队列是先进先出、不能插队的</strong>。</p>
+<pre class="mv-md-pre">① 一个长事务在跑（持 MDL 读锁）——它可能只是一条跑了 5 分钟的慢 SELECT
+        ↓
+② DDL 要申请 MDL 写锁 → 与读锁互斥 → 排队等待
+        ↓
+③ 后面来的普通查询也要 MDL 读锁。它们本该和①兼容（都是读），
+   但因为队列 FIFO，它们必须排在「正在等待的 DDL」后面
+        ↓
+④ 每个排队的请求都占着一条数据库连接 → 连接池被占满
+        ↓
+⑤ 新请求连不上库 → 服务雪崩（而且不只是这张表的问题）</pre>
+<p class="mv-md-p">【推导】<strong>危险被放大的方式</strong>：</p>
+<pre class="mv-md-pre">积压的请求数 ≈ QPS × DDL 等待的秒数
+
+QPS 2000、DDL 等 30 秒 → 积压 2000 × 30 = 60,000 个请求
+连接池通常只有几百条 → 瞬间排满</pre>
+<p class="mv-md-p">【推论】<strong>DDL 的等待时间被"并发度"放大了</strong>——所以真正要控制的不是 DDL 有多快，是<strong>它等待的时间</strong>。</p>
+<figure-box num="MDL 连锁：为什么「加个索引」能把库搞挂" title="" note="长事务持有读锁 → DDL 等写锁 → 后面的查询因队列 FIFO 全部排在 DDL 后面 → 队列线性增长 → 连接池耗尽"><svg viewBox="0 0 680 372" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>MDL 连锁：为什么「加个索引」能把库搞挂</title>
+  <desc>长事务持有一把 MDL 读锁。DDL 要申请 MDL 写锁，与读锁互斥，于是进入等待。关键是接下来：后面来的普通查询虽然只申请读锁、本来和长事务兼容，但 MDL 请求队列是先进先出的、不能插队，所以它们全部排在等待中的 DDL 后面。队列随时间线性增长，连接池被占满，服务雪崩——危险的不是 DDL 慢，是它堵出了一条越来越长的队。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">MDL 连锁：为什么「加个索引」能把库搞挂</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">危险的不是 DDL 本身慢，是它在锁队列里堵出了一条越来越长的队</text>
+
+  <!-- 已持有 -->
+  <text x="30" y="82" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">① 已持有</text>
+  <rect x="118" y="68" width="330" height="26" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="283" y="85" font-family="system-ui,sans-serif" font-size="11" fill="#633806" text-anchor="middle">长事务 · 持 MDL 读锁（可能只是在跑一条慢 SELECT）</text>
+  <text x="462" y="85" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">← 它不释放，后面全卡住</text>
+
+  <!-- 队列 -->
+  <text x="30" y="150" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">② 排队中</text>
+
+  <rect x="118" y="130" width="96" height="34" rx="6" fill="#BA7517"/>
+  <text x="166" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#FFFFFF" text-anchor="middle">DDL 等写锁</text>
+
+  <rect x="222" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="258" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 A</text>
+
+  <rect x="302" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="338" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 B</text>
+
+  <rect x="382" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="418" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 C</text>
+
+  <text x="466" y="151" font-family="system-ui,sans-serif" font-size="12" fill="#6B6A65">→ → → 还在增长</text>
+
+  <text x="118" y="184" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">队列是先进先出的，<tspan font-weight="600">不能插队</tspan>：后面的查询本来和长事务兼容（都是读），却必须排在 DDL 后面</text>
+
+  <!-- 后果 -->
+  <text x="30" y="226" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">③ 后果</text>
+
+  <rect x="118" y="206" width="196" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="132" y="227" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">队列线性增长</text>
+  <text x="132" y="247" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">积压数 = QPS × DDL 等待秒数</text>
+  <text x="132" y="265" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">等待越久，队越长——</text>
+  <text x="132" y="281" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">而队越长，DDL 越难开始</text>
+
+  <rect x="326" y="206" width="324" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="340" y="227" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">连接池被占满 → 服务雪崩</text>
+  <text x="340" y="247" font-family="system-ui,sans-serif" font-size="10" fill="#633806">每个排队的请求都占着一条连接</text>
+  <text x="340" y="265" font-family="system-ui,sans-serif" font-size="10" fill="#633806">连接池通常只有几百条 → 立刻耗尽</text>
+  <text x="340" y="281" font-family="system-ui,sans-serif" font-size="10" fill="#633806">新请求连不上库，<tspan font-weight="600">不只是这张表出问题</tspan></text>
+
+  <!-- 断链 -->
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">怎么断开这条链：</text>
+  <text x="30" y="350" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">① 执行前先查长事务并处理掉（断掉①）　② 设一个很短的 lock_wait_timeout，让 DDL 快速失败而不是堵着（断掉②）　③ 低峰执行 + 备好回滚</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"危险的不是 DDL 慢，是它堵出了一条越来越长的队"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 候选方案（先各自介绍，不比较）</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 Online DDL（MySQL 5.6+）【事实】</h4>
+<pre class="mv-md-pre">ALTER TABLE task ADD INDEX idx_status(status), ALGORITHM=INPLACE, LOCK=NONE;</pre>
+<table class="mv-table"><thead><tr><th>参数</th><th>作用</th></tr></thead><tbody><tr><td><code class="mv-md-code">ALGORITHM=INPLACE</code></td><td>不重建整表（加二级索引只需扫描 + 排序）</td></tr><tr><td><code class="mv-md-code">LOCK=NONE</code></td><td>DDL <strong>执行期间</strong>允许并发读写</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">3.2 影子表方案（pt-osc / gh-ost）【事实】</h4>
+<p class="mv-md-p">四步：</p>
+<p class="mv-md-p">1. 建一张结构相同的新表（带新索引） 2. <strong>同步增量</strong>：pt-osc 用触发器、gh-ost 读 binlog，把旧表的新写入同步到新表 3. <strong>分批拷贝存量</strong>：可限速、可暂停 4. <code class="mv-md-code">RENAME TABLE</code> 瞬间切换</p>
+<table class="mv-table"><thead><tr><th></th><th>pt-osc</th><th>gh-ost</th></tr></thead><tbody><tr><td>增量来源</td><td>触发器</td><td><strong>binlog</strong></td></tr><tr><td>对主库影响</td><td>触发器有额外开销</td><td>更小</td></tr><tr><td>可暂停 / 限速</td><td>支持</td><td>支持，且更细</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">3.3 先处理掉长事务（这不是方案，是前置动作）【事实】</h4>
+<pre class="mv-md-pre">SELECT trx_id, trx_started, trx_mysql_thread_id
+FROM information_schema.innodb_trx
+WHERE TIME_TO_SEC(TIMEDIFF(NOW(), trx_started)) &gt; 60;</pre>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 逐个淘汰（统一指标：<strong>对线上流量的最坏影响</strong>）</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 为什么"直接执行 DDL"不可接受【推导】</h4>
+<p class="mv-md-p">它把<strong>不可控的等待时间</strong>暴露给了整条链路：DDL 等多久，取决于<strong>碰巧有没有长事务</strong>。而由上面积压公式，等待 30 秒就能把连接池打满。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 为什么"开了 LOCK=NONE 就安全"是错的【推导】</h4>
+<p class="mv-md-p"><code class="mv-md-code">LOCK=NONE</code> 只保证<strong>DDL 执行期间</strong>不阻塞别人。它<strong>不能保证 DDL 自己不被别人阻塞</strong>——长事务持读锁时，DDL 照样要等。<strong>而它一旦开始等，第 2.2 节的连锁照样发生。</strong></p>
+<p class="mv-md-p">【事实】另外 <code class="mv-md-code">ALGORITHM=INPLACE</code> 也不是万能的：改列类型、重建聚簇索引这类操作做不到 INPLACE。</p>
+<h4 class="mv-md-h mv-md-h4">4.3 胜出方案：按"表的规模 + 是否可回滚"选【取舍】</h4>
+<table class="mv-table"><thead><tr><th>场景</th><th>选择</th></tr></thead><tbody><tr><td>加二级索引、表不算很大</td><td><strong>Online DDL</strong>（<code class="mv-md-code">ALGORITHM=INPLACE, LOCK=NONE</code>）</td></tr><tr><td>表很大、要求可控可回滚</td><td><strong>pt-osc / gh-ost</strong></td></tr><tr><td>改列类型等无法 INPLACE 的操作</td><td><strong>影子表方案</strong></td></tr><tr><td><strong>任何情况</strong></td><td><strong>先查长事务；设短 <code class="mv-md-code">lock_wait_timeout</code>；别在高峰动手；备好回滚</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】三个方案的差别在<strong>代价放在哪</strong>：Online DDL 简单但等待不可控；影子表可控但要多一倍空间、还要运维工具。<strong>没有"最安全"的方案，只有"这次变更最适合"的方案。</strong></p>
+<p class="mv-md-p">【事实】顺带一个 MySQL / PG 的方言差异：PG 的对应手段是 <code class="mv-md-code">CREATE INDEX CONCURRENTLY</code>，<strong>它同样有个容易踩的点</strong>——建索引过程中失败会<strong>留下一个 invalid 索引</strong>，需要手动 <code class="mv-md-code">DROP</code> 再重建（[[母题-P4-索引代价与在线建索引]]）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"选哪个方案"这个问题，答案里必须包含"先查长事务"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"加了索引查询就快，反正空间便宜"</td><td>三笔代价：<strong>写放大</strong>（+1 棵聚簇 + N 棵二级）、<strong>空间</strong>（主键越长所有索引越大）、<strong>优化器负担</strong>。没被用上的索引是<strong>纯负债</strong></td></tr><tr><td>"<code class="mv-md-code">LOCK=NONE</code> 开了就不会影响线上"</td><td>它只保证 <strong>DDL 执行期间</strong>不阻塞；<strong>不保证 DDL 不被长事务阻塞</strong>。等待一旦发生，MDL 连锁照样雪崩</td></tr><tr><td>"<code class="mv-md-code">ALGORITHM=INPLACE</code> 所有 DDL 都适用"</td><td>改列类型、重建聚簇索引这类做不到 INPLACE，只能重建表或用影子表</td></tr><tr><td>"DDL 慢是因为要扫 5000 万行"</td><td>扫描几分钟确实慢，但<strong>把库搞挂的是 MDL 排队</strong>——两者是不同的机制，要分开说</td></tr><tr><td>"删索引很快，没风险"</td><td><code class="mv-md-code">DROP INDEX</code> 通常快，但<strong>同样要拿 MDL</strong>，同样会被长事务卡住</td></tr><tr><td>"在业务低峰执行就安全了"</td><td>低峰降低了 QPS，从而降低积压速度，但<strong>没有消除长事务这个触发源</strong>。低峰 + 查长事务 + 短 <code class="mv-md-code">lock_wait_timeout</code> 才是完整动作</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>索引的代价是"每一次写"，DDL 的危险是"不可控的等待"——这两件事都不是靠"表大不大"决定的，是靠"有没有人用、有没有人挡"决定的。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M4-索引代价与大表变更-q1" tag="MySQL" q="一张表有 1 个聚簇索引 + 6 个二级索引，写入 QPS 为 5000。&#10;问：一次写入要维护几棵 B+ 树？每秒总共多少次 B+ 树插入？如果删掉 2 个从没被查询用过的索引，写入侧省多少？" a="``text&#10;一次写入维护 = 1（聚簇）+ 6（二级）= 7 棵&#10;每秒插入次数 = 5000 × 7 = 35,000 次&#10;删掉 2 个没用上的索引：&#10;7 棵 → 5 棵&#10;5000 × 5 = 25,000 次/秒&#10;降幅 = 1 − 25000/35000 = 28.6% ≈ 29%&#10;``&#10;【结论】&quot;没被用上的索引是纯负债&quot;这句话可以量化：每多一个索引，写入侧的 B+ 树维护次数就多 1/7（以 7 棵为例）。删两个就是 29% 的写入开销。&#10;【补充】注意这里只算了&quot;次数&quot;，没算每次的代价不同——如果被删的索引恰好是那个最宽的（比如包含长字符串列），省下的还不止 29%。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M4-索引代价与大表变更-q2" tag="MySQL" q="某接口 QPS 2000。一条 DDL 因为撞上长事务，等了 30 秒才开始执行。&#10;问：这 30 秒里积压了多少个请求？如果连接池上限是 500 条，会发生什么？如果 DDL 等的是 5 秒而不是 30 秒，情况会好转多少？" a="``text&#10;积压 = QPS × 等待秒数 = 2000 × 30 = 60,000 个请求&#10;连接池上限 500 → 前 500 个占满连接池，剩下 59,500 个连不上库&#10;→ 表现为：整个服务超时（不只是这张表的接口）&#10;`&#10;等 5 秒时：2000 × 5 = 10,000 个请求——仍然是连接池的 20 倍，照样打满。&#10;【结论】积压量对等待时间是一次的线性关系，而连接池是个固定的小数字。 所以要压的不是&quot;积压从 6 万降到 1 万&quot;，而是把等待压到接近 0（先处理长事务 + 设短 lock_wait_timeout` 让 DDL 快速失败）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="MySQL/母题-M4-索引代价与大表变更-q3" tag="MySQL" q="给 status（INT，4B）建二级索引。InnoDB 记录头开销按 6B 估。&#10;问：主键是 BIGINT（8B）和 UUID（36B）两种情况下，这个索引各占多大空间（5000 万行）？差多少倍？" a="``text&#10;每条索引项 = 索引列 + 主键 + 记录头&#10;BIGINT：4 + 8 + 6 = 18B&#10;5000万 × 18B ≈ 900 MB&#10;UUID：  4 + 36 + 6 = 46B&#10;5000万 × 46B ≈ 2.3 GB&#10;倍率 = 46 / 18 ≈ 2.6 倍&#10;``&#10;【结论】同一个索引，只因为主键从 8B 变成 36B，就膨胀 2.6 倍。 而且主键会被复制进每一个二级索引——6 个索引就是 6 份一起膨胀（[[母题-M3-聚簇索引与回表]]、[[母题-M5-引擎与表设计基本盘]]）。&#10;【补充】这也是&quot;主键要短&quot;这条经验法则的唯一量化依据：不是因为&quot;短的主键比较快&quot;，是因为它会被复制很多份。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M4-索引代价与大表变更-q4" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;我用 ALGORITHM=INPLACE, LOCK=NONE 建的索引，所以这个 DDL 不会影响线上。&quot;" a="错在把&quot;执行期间不阻塞&quot;当成了&quot;整个过程不会被阻塞&quot;。&#10;LOCK=NONE 保证的是：DDL 真正执行的那段时间允许并发读写。&#10;它不保证：DDL 拿 MDL 写锁这一步不被长事务挡住。长事务持读锁时，DDL 照样排队。&#10;而一旦开始排队，MDL 连锁就启动了：后续所有查询（哪怕只是读）都会因为队列 FIFO 排在 DDL 后面 → 连接池打满。&#10;【准确说法】&quot;LOCK=NONE 解决的是'DDL 不阻塞别人'，没解决'别人阻塞 DDL'。所以要配套：执行前先查并处理长事务，再设一个短的 lock_wait_timeout 让 DDL 快速失败而不是长期堵着。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="MySQL/母题-M4-索引代价与大表变更-q5" tag="MySQL" q="下面这段话哪里错了？&#10;&quot;索引当然是越多越好，反正磁盘便宜，查询总能挑到合适的。&quot;" a="三处错。&#10;1. 写放大：一次写入要维护「1 棵聚簇 + N 棵二级」共 N+1 棵 B+ 树，每棵都可能触发页分裂。索引的代价是按&quot;每一次写&quot;收的，不是一次性的。&#10;2. 空间不是&quot;便宜&quot;就能忽略：索引占的不只是磁盘，还有 buffer pool。索引越胖，能缓存在内存里的页越少，读也会变慢。&#10;3. 优化器负担：候选计划变多，选错的概率上升（尤其是统计信息不准时）。&#10;【准确说法】&quot;索引数量的判据是'有没有高频查询真的用它'——用得上的索引是资产，用不上的索引是纯负债（只在写入时收费）。所以工程上不仅要会加索引，还要定期找出并删掉没人用的索引。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">索引不是免费的——它的代价具体是什么？在大表上做结构变更，危险到底来自哪里，怎么才能不阻塞线上流量？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="MySQL/母题-M4-索引代价与大表变更" tag="MySQL" q="索引不是免费的——它的代价具体是什么？在大表上做结构变更，危险到底来自哪里，怎么才能不阻塞线上流量？" a="索引的代价是三笔——写放大（一次写维护 N+1 棵 B+ 树）、空间（主键被复制进每个二级索引，BIGINT→UUID 能让单个索引膨胀 2.6 倍）、优化器负担。大表 DDL 的危险不在&quot;扫 5000 万行慢&quot;，而在 MDL：长事务持读锁 → DDL 等写锁 → 后续查询因队列 FIFO 全排在 DDL 后面 → 积压数 = QPS × 等待秒数（2000 QPS 等 30 秒 = 6 万个请求）→ 连接池打满 → 整个服务雪崩。LOCK=NONE 只解决&quot;DDL 不阻塞别人&quot;，没解决&quot;别人阻塞 DDL&quot;。 所以真正的处方式是：先查并处理长事务 + 设短 lock_wait_timeout + 按表规模选在线 DDL 或影子表 + 低峰执行 + 备回滚。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是"知识"和"工程"的分界线。知道索引能加速是课本，知道<strong>加索引可能把库搞挂</strong>才是生产经验。而且它是面试官区分"背过八股"和"动过线上库"的典型问题。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">索引的代价是<strong>三笔</strong>——写放大（一次写维护 N+1 棵 B+ 树）、空间（主键被复制进每个二级索引，BIGINT→UUID 能让单个索引膨胀 2.6 倍）、优化器负担。大表 DDL 的危险<strong>不在"扫 5000 万行慢"，而在 MDL</strong>：长事务持读锁 → DDL 等写锁 → <strong>后续查询因队列 FIFO 全排在 DDL 后面</strong> → 积压数 = QPS × 等待秒数（2000 QPS 等 30 秒 = 6 万个请求）→ 连接池打满 → 整个服务雪崩。<strong><code class="mv-md-code">LOCK=NONE</code> 只解决"DDL 不阻塞别人"，没解决"别人阻塞 DDL"。</strong> 所以真正的处方式是：<strong>先查并处理长事务 + 设短 <code class="mv-md-code">lock_wait_timeout</code> + 按表规模选在线 DDL 或影子表 + 低峰执行 + 备回滚</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三笔代价（写放大/空间/优化器负担）</li><li>一次写维护 N+1 棵 B+ 树</li><li>主键被复制进每个二级索引，BIGINT→UUID 膨胀 2.6 倍</li><li><strong>MDL 连锁</strong>（读锁持住 → DDL 等写锁 → FIFO 不能插队 → 后续查询全排队）</li><li>积压 = QPS × 等待秒数</li><li>连接池打满 → 雪崩</li><li><code class="mv-md-code">LOCK=NONE</code> 只解决一半</li><li>INPLACE 不是万能</li><li>pt-osc 触发器 vs gh-ost binlog</li><li>任何情况都先查长事务</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">LOCK=NONE</code> 都开了，为什么还是可能卡住线上？</strong></strong></p>
+<p class="mv-md-p">关键在于<strong>MDL 等待的连锁</strong>：长事务持读锁 → DDL 等写锁 → 后续查询再排在 DDL 后面。<code class="mv-md-code">LOCK=NONE</code> 只保证 DDL 执行期间不阻塞，<strong>不保证它不被别人阻塞</strong>。</p>
+<p class="mv-md-p"><strong>2. <strong>索引是不是越多越好？</strong></strong></p>
+<p class="mv-md-p">不是。写放大 + 空间（还挤占 buffer pool）+ 优化器负担；判据是"有没有高频查询真的用它"。<strong>没被用上的索引应该主动删掉。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>MySQL 和 PG 在这件事上有什么不同？</strong></strong></p>
+<p class="mv-md-p">PG 用 <code class="mv-md-code">CREATE INDEX CONCURRENTLY</code>，<strong>它不会长时间持锁等</strong>，但代价是<strong>失败会留下 invalid 索引</strong>需要手动清理，而且<strong>不能在一个事务块里执行</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么 <code class="mv-md-code">NOT NULL + DEFAULT</code> 加字段有时很快、有时很慢？</strong></strong></p>
+<p class="mv-md-p">取决于能不能走 instant 路径。MySQL 8.0 支持 instant add column（元数据操作）；更早版本或某些类型会触发重建表。<strong>判断方式是看 <code class="mv-md-code">ALGORITHM</code> 到底是 INSTANT / INPLACE / COPY，不要凭版本印象。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「<strong>删索引</strong>呢？」——<code class="mv-md-code">DROP INDEX</code> 通常快，但<strong>同样要拿 MDL</strong>，同样会被长事务卡住。流程与加索引一致。</li><li>「<strong>加字段</strong>为什么有时比加索引更危险？」——加索引是 INPLACE（不重建整表）；而加列在不能走 instant 时会<strong>触发整表重建</strong>，代价高一个量级。</li><li>「为什么说「<strong>主键要短</strong>」？」——因为它会被复制进<strong>每一个二级索引</strong>的叶子（[[母题-M3-聚簇索引与回表]]）。见 Q3 的 2.6 倍。</li><li>「<strong>分区表</strong>能替代这个方案吗？」——能缓解（<code class="mv-md-code">DROP PARTITION</code> 比 <code class="mv-md-code">DELETE</code> 干净），但<strong>分区本身也是一次 DDL</strong>，同样要走这套流程（[[母题-M15-数据增长治理]]、[[母题-P16-分区表]]）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps</strong>：四层事实表（大表聚合）——任何加索引/改列都要走"查长事务 → 选方案 → 低峰 → 备回滚"这套动作。 - <strong>数驭穹图</strong>：元数据表变更——<strong>低频但不可中断</strong>，所以更偏向影子表方案（可控、可回滚）。 - <strong>面试里的说法</strong>：「我项目里用 PostgreSQL，对应的是 <code class="mv-md-code">CREATE INDEX CONCURRENTLY</code>——它同样有个容易踩的点：<strong>建索引过程失败会留下 invalid 索引，需要手动 drop 再重建</strong>。」<strong>主动说出方言差异，比只背 MySQL 的参数更能证明真用过。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">三笔代价（写放大给算式、空间给算式）→ 大表 DDL 的两步，指出危险在第二步 → <strong>MDL 队列 FIFO 的连锁推导 + 积压公式</strong> → Online DDL 保证什么、没保证什么 → 影子表四步与 pt-osc/gh-ost 差异 → 按规模与可回滚性选 → 收束到"先查长事务 + 短 lock_wait_timeout"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>索引是读的快照，写的负债。</strong> 它的全部代价都记在<strong>写入路径</strong>上；而大表变更的全部危险都来自<strong>锁的排队语义</strong>——不是"慢"，是"堵"。<strong>两件事都不由表的大小决定，而由"有没有人用、有没有人挡"决定。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「MDL 连锁」这条链路，并<strong>算出积压量</strong>（QPS × 等待秒数）；能给出写放大与空间两组算式；能说清 <code class="mv-md-code">LOCK=NONE</code> 只解决一半问题；能给出一个具体的操作顺序（查长事务 → 选方案 → 低峰执行 → 备回滚）；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

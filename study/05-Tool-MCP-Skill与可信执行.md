@@ -281,7 +281,7 @@ Skill 教 Agent 如何完成一类任务，可能调用多个 MCP Tool；MCP 让
 
 ## 10. 项目迁移
 
-### EnergyOps：25 个 MCP 工具治理
+### EnergyOps：30 个 MCP 工具治理
 
 - 生成 Tool Catalog：职责、读写、scope、风险、幂等、SLO、Owner；
 - 按任务动态暴露，不一次注入全部工具；
@@ -308,7 +308,7 @@ Skill 教 Agent 如何完成一类任务，可能调用多个 MCP Tool；MCP 让
 
 ### M4
 
-- 对 25 个 EnergyOps 工具完成 Catalog 与自动契约测试；
+- 对 30 个 EnergyOps 工具完成 Catalog 与自动契约测试；
 - 注入重复调用、超时、越权、Prompt Injection、Server 故障；
 - 证明高风险调用无未确认执行、重复副作用为 0；
 - 有 Tool 选择/参数/E2E 指标和一次失败复盘。
@@ -332,7 +332,7 @@ Skill 教 Agent 如何完成一类任务，可能调用多个 MCP Tool；MCP 让
 
 ### 3 个迁移
 
-1. EnergyOps：为 25 个 MCP 工具建立 Catalog 和契约测试；
+1. EnergyOps：为 30 个 MCP 工具建立 Catalog 和契约测试；
 2. RuleArena：把修复发布设计为 R2 审批动作；
 3. 面试：任何工具题都主动讲 unknown outcome 和业务幂等键。
 

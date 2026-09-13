@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 R1 · Redis 的数据结构与选型</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Redis.html">← Redis 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Redis</span>
+    <h1 class="mv-topic-title">母题 R1 · Redis 的数据结构与选型</h1>
+    <p class="mv-topic-meta">关联 母题-R3-缓存一致性与三类事故 · 母题-M1-为什么用B+树 · 母题-N3-进程线程与协程 ｜ 正本 wiki/topics/Redis/母题-R1-Redis数据结构与选型.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 快的三个原因 ② 五种结构各是什么形状 ③ 跳表为什么在内存里胜出）· 读完约 11 分钟 · 需要先懂：[[母题-M1-为什么用B+树]]（IO 次数判据）、[[母题-N3-进程线程与协程]]（单线程 + 事件循环）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">Redis 了解吗？<strong>它都有哪些主要的数据结构？</strong> ZSet 底层是怎么实现的？为什么用跳表而不用 B+ 树？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Redis 为什么快</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 第一个原因：数据在内存里</h4>
+<p class="mv-md-p">【事实】把量级摆出来（[[母题-M1-为什么用B+树]] 用过同一张表）：</p>
+<table class="mv-table"><thead><tr><th>访问</th><th>典型延迟</th></tr></thead><tbody><tr><td>内存随机访问</td><td>约 100 纳秒</td></tr><tr><td>机械盘随机读</td><td>约 10 毫秒</td></tr></tbody></table>
+<p class="mv-md-p">【推导】差 <strong>5 个数量级</strong>。<strong>这一条推出一件很关键的事</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>磁盘系统里最重要的优化目标是"减少 IO 次数"（M1 的全部内容）；而 Redis 里没有磁盘 IO 可省——所以它优化的是别的东西。</strong></p>
+<p class="mv-md-p"><strong>记住这一条</strong>：第 4 节讲"为什么用跳表不用 B+ 树"时，它就是唯一答案。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 第二个原因：单线程（但要先澄清"单"的是什么）</h4>
+<p class="mv-md-p">【事实】<strong>Redis 的"单线程"指的是：命令的执行是单线程的。</strong></p>
+<p class="mv-md-p">【推导】<strong>为什么单线程反而快</strong>——三个理由：</p>
+<p class="mv-md-p">1. <strong>没有锁竞争</strong>：不用为每个键加锁解锁（对比多线程模型要处理并发修改） 2. <strong>没有上下文切换</strong>：避免线程切换的开销 3. <strong>没有原子性问题</strong>：一条命令天然原子（这也是它适合做计数器、分布式锁的基础）</p>
+<p class="mv-md-p">【事实】<strong>必须说清的边界（版本演进）</strong>：</p>
+<table class="mv-table"><thead><tr><th>版本</th><th>变化</th></tr></thead><tbody><tr><td>早期</td><td>网络 IO 与命令执行都在同一个线程</td></tr><tr><td><strong>Redis 6+</strong></td><td><strong>网络 IO 用多线程</strong>（读写 socket、解析协议），<strong>命令执行仍然是单线程</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>所以"Redis 是单线程还是多线程"的准确答案是</strong>：<strong>命令执行单线程，网络 IO 在 6.0 之后是多线程。</strong> 只说"单线程"是旧答案，会被追问。</p>
+<p class="mv-md-p">【推导】<strong>单线程的代价，直接推出下一件事</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>一条慢命令会卡住所有人。</strong> 因为是单线程，一条 <code class="mv-md-code">KEYS *</code> 或大 key 的 <code class="mv-md-code">DEL</code> 执行期间，<strong>其他所有请求都在等</strong>。</p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">【联系】这正是 [[母题-N3-进程线程与协程]] 里"协作式的代价"——<strong>一处阻塞，全体停摆</strong>。<strong>同一个道理，在进程、协程、Redis 三处重复出现。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.3 第三个原因：IO 多路复用</h4>
+<p class="mv-md-p">【事实】Redis 用 <code class="mv-md-code">epoll</code> 这类机制，<strong>一个线程一次系统调用就能问出"成千上万个连接里哪些有数据了"</strong>（N3 第 3.1 节讲过同一个机制）。</p>
+<p class="mv-md-p"><strong>三个原因合起来</strong>：内存（快）+ 单线程（无锁、无切换）+ 事件循环（一个线程管很多连接）。</p>
+<h3 class="mv-md-h mv-md-h3">2. 五种基础结构：各自是什么形状、解决什么</h3>
+<p class="mv-md-p"><strong>理解的方式不是背名字，而是问"它是一份什么形状的数据"。</strong></p>
+<table class="mv-table"><thead><tr><th>结构</th><th>形状</th><th>典型场景</th></tr></thead><tbody><tr><td><strong>String</strong></td><td>一个值（字符串/数字/二进制）</td><td>计数（<code class="mv-md-code">INCR</code>）、缓存单值、<strong>分布式锁</strong>（<code class="mv-md-code">SET NX EX</code>）、限流计数器</td></tr><tr><td><strong>List</strong></td><td><strong>有序、两端进出的线</strong></td><td>队列 / 栈（<code class="mv-md-code">LPUSH</code>+<code class="mv-md-code">RPOP</code>）、简单消息流、最近 N 条</td></tr><tr><td><strong>Hash</strong></td><td><strong>一个对象的一堆字段</strong></td><td>对象属性（购物车 <code class="mv-md-code">key=cart:1, field=sku</code>）、部分字段更新</td></tr><tr><td><strong>Set</strong></td><td><strong>不重复的集合，无序</strong></td><td><strong>去重</strong>、交集并集（共同好友、抽奖去重）、标签</td></tr><tr><td><strong>ZSet</strong></td><td><strong>不重复的集合，但每个成员带一个分数，按分数排序</strong></td><td><strong>排行榜</strong>、延迟队列（score 存时间戳 + <code class="mv-md-code">ZRANGEBYSCORE</code> 捞到期任务）、带权重的去重</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>五种结构的差别可以归纳成两个问题</strong>：</p>
+<p class="mv-md-p">1. <strong>要不要"有序"</strong>？ → 要排序用 <strong>List</strong>（按插入位置）或 <strong>ZSet</strong>（按分数） 2. <strong>要不要"唯一"</strong>？ → 要去重用 <strong>Set</strong> 或 <strong>ZSet</strong></p>
+<p class="mv-md-p"><strong>所以选型就是这两问的组合</strong>：</p>
+<pre class="mv-md-pre">要唯一 + 要按分数排序 → ZSet
+要唯一 + 不要顺序     → Set
+不要唯一 + 要顺序     → List
+要按字段取子集        → Hash
+就是个值              → String</pre>
+<h4 class="mv-md-h mv-md-h4">2.1 Set 和 ZSet 的区别（9.9 漏掉的那一条）</h4>
+<p class="mv-md-p">【事实】<strong>Set 只存成员，ZSet 存成员 + 分数</strong>。</p>
+<ul class="mv-md-ul"><li><code class="mv-md-code">Set</code> 的操围绕"有没有 / 交并差"</li><li><code class="mv-md-code">ZSet</code> 的操围绕"排名 / 按分数范围取"</li></ul>
+<p class="mv-md-p">【推导】<strong>ZSet 多出来的那个"分数"，是它一切能力的来源</strong>：能排序、能取 Top N、能按分数区间捞。<strong>所以排行榜必须用 ZSet，用 Set 做不到。</strong></p>
+<h3 class="mv-md-h mv-md-h3">3. 四种扩展结构（知道场景就够了）</h3>
+<table class="mv-table"><thead><tr><th>结构</th><th>是什么</th><th>场景</th><th>关键代价</th></tr></thead><tbody><tr><td><strong>Bitmap</strong></td><td>用位来表示"是/否"</td><td>签到、日活打点、布尔标记</td><td>稀疏数据浪费空间</td></tr><tr><td><strong>HyperLogLog</strong></td><td><strong>基数估算</strong>（不存原始数据）</td><td>大流量 UV 去重计数</td><td><strong>有误差（约 0.81%）</strong>，不能取回原始元素</td></tr><tr><td><strong>Geo</strong></td><td>存经纬度并做距离查询</td><td>附近的人 / 附近的门店</td><td>精度依赖底层 ZSet 编码</td></tr><tr><td><strong>Stream</strong></td><td><strong>带消费组的消息流</strong></td><td>中小规模事件流、任务分发</td><td>与 Kafka 的持久化/分区/生态差距明显</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>HyperLogLog 最值得记的一点</strong>：<strong>它用"接受误差"换"固定的小内存"</strong>——统计 1 亿 UV，内存也就十几 KB。这是"用精度换空间"的典型取舍。</p>
+<h3 class="mv-md-h mv-md-h3">4. ZSet 的底层：跳表 + 哈希表，以及为什么不用 B+ 树</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 为什么是"两个结构"</h4>
+<p class="mv-md-p">【事实】ZSet 内部同时用了两样东西：</p>
+<table class="mv-table"><thead><tr><th>组件</th><th>支撑什么操作</th></tr></thead><tbody><tr><td><strong>哈希表</strong>（member → score）</td><td><strong>按成员 O(1) 查分数</strong>（<code class="mv-md-code">ZSCORE</code>）</td></tr><tr><td><strong>跳表</strong>（按 score 排序）</td><td><strong>按分数范围 / 排名 O(log N)</strong>（<code class="mv-md-code">ZRANGE</code>、<code class="mv-md-code">ZRANGEBYSCORE</code>）</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>两个结构是为了支撑两类完全不同的查询</strong>。这也解释了为什么"ZSet 既能查某个人的分数，又能取 Top 100"——<strong>两件事走两条路径</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 跳表是什么</h4>
+<figure-box num="跳表 = 有序链表 + 多层稀疏索引" title="" note="从最高层开始，能往右就往右、不能就下降一层"><svg viewBox="0 0 680 270" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>跳表的结构与一次查询路径</title>
+<desc>跳表给有序链表加了多层稀疏索引，查询从最高层开始，能往右就往右、不能就下降一层。</desc>
+<defs>
+<marker id="figskiplist-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">跳表 ＝ 有序链表 ＋ 多层稀疏索引</text>
+<path d="M90 70 L486 70" stroke="#888780" stroke-width="0.5" fill="none"/>
+<rect x="90" y="56" width="36" height="28" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="270" y="56" width="36" height="28" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="450" y="56" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="502" y="70" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">索引层（每 4 个取 1）</text>
+<path d="M90 110 L486 110" stroke="#888780" stroke-width="0.5" fill="none"/>
+<rect x="90" y="96" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="180" y="96" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="270" y="96" width="36" height="28" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="360" y="96" width="36" height="28" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="450" y="96" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="502" y="110" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">索引层（每 2 个取 1）</text>
+<path d="M90 150 L486 150" stroke="#888780" stroke-width="0.5" fill="none"/>
+<rect x="90" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="135" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="180" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="225" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="270" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="315" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="360" y="136" width="36" height="28" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="405" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<rect x="450" y="136" width="36" height="28" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="502" y="150" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">数据层（全量链表）</text>
+<path d="M126 70 L264 70" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#figskiplist-svg-arrow)"/>
+<path d="M288 84 L288 94" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#figskiplist-svg-arrow)"/>
+<path d="M306 110 L354 110" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#figskiplist-svg-arrow)"/>
+<path d="M378 124 L378 134" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#figskiplist-svg-arrow)"/>
+<text x="378" y="176" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">找到目标</text>
+<rect x="40" y="186" width="600" height="64" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="208" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">查询从最高层开始：能往右就往右，不能就往下一层 —— 比较次数从 O(n) 降到期望 O(log n)。</text>
+<text x="58" y="230" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">每层是否出现是随机的（约 1/2 概率向上），所以不需要重平衡 —— 这是它比平衡树简单的根本原因。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>定义</strong>：<strong>跳表（Skip List）= 有序链表 + 多层稀疏索引</strong>。查询从最上层开始：</p>
+<pre class="mv-md-pre">能往右就往右（目标更大），不能往右就往下一层
+→ 比较次数从 O(n) 降到期望 O(log n)</pre>
+<p class="mv-md-p"><strong>关键设计</strong>：<strong>每一层是否出现是随机的</strong>（约 1/2 概率向上）。</p>
+<p class="mv-md-p">【推导】<strong>这说明它不需要重平衡</strong>——而平衡树（AVL / 红黑树）在插入删除后必须旋转来维持平衡。<strong>这是跳表"实现简单"的根本原因。</strong></p>
+<h4 class="mv-md-h mv-md-h4">4.3 为什么不用 B+ 树（本题的落点）</h4>
+<p class="mv-md-p">【推导】<strong>用 M1 的判据反推</strong>：</p>
+<p class="mv-md-p">B+ 树的全部优势来自一句话——<strong>"一次磁盘 IO 的成本几乎固定，所以让每次 IO 尽量多带数据回来"</strong>（扇出大 → 树矮 → IO 少）。</p>
+<p class="mv-md-p"><strong>但这个前提在 Redis 里不成立</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>B+ 树的主场（MySQL）</th><th>Redis</th></tr></thead><tbody><tr><td>数据在哪</td><td>磁盘</td><td><strong>内存</strong></td></tr><tr><td>瓶颈是什么</td><td><strong>磁盘 IO 次数</strong></td><td><strong>比较与内存访问</strong></td></tr><tr><td>扇出的价值</td><td>极高（一次 IO 带回一页）</td><td><strong>几乎为零</strong>（没有 IO 可省）</td></tr><tr><td>代价</td><td>节点分裂/合并（重平衡）</td><td>跳表用随机层数替代，<strong>不需要重平衡</strong></td></tr></tbody></table>
+<p class="mv-md-p mv-md-quote">【推导】<strong>内存里没有"IO 分摊"这回事，所以 B+ 树最大的优势失效了，只剩下"实现复杂"这个缺点。</strong></p>
+<p class="mv-md-p"><strong>那为什么不用红黑树 / AVL？</strong>【取舍】它们能用，但：</p>
+<ul class="mv-md-ul"><li><strong>平衡操作复杂</strong>（旋转、维护颜色）</li><li><strong>范围查询不如跳表自然</strong>（跳表底层的链表天然支持顺序遍历）</li></ul>
+<p class="mv-md-p"><strong>准确的说法</strong>：<strong>不是"跳表比 B+ 树快"，而是"B+ 树为磁盘设计，它的优势在内存里用不上；而跳表实现更简单、范围查询更自然"。</strong> 这个分寸比"跳表更快"准确得多。</p>
+<h3 class="mv-md-h mv-md-h3">5. 怎么答才拿分：每个结构配一个你的场景</h3>
+<p class="mv-md-p">【取舍】<strong>9.9 这道题丢分的关键不是"漏了哪个结构"，而是"没有给出任何一个自己用过的场景"</strong>——听起来像背书。</p>
+<p class="mv-md-p"><strong>所以每个结构都要能挂上真实场景</strong>（面试时挑 2–3 个讲，不要全报）：</p>
+<table class="mv-table"><thead><tr><th>结构</th><th>可以挂的场景</th></tr></thead><tbody><tr><td><strong>String</strong></td><td>限流计数器（<code class="mv-md-code">INCR</code> + <code class="mv-md-code">EXPIRE</code>）、接口幂等键（<code class="mv-md-code">SET NX</code>）、短期去重标记</td></tr><tr><td><strong>Hash</strong></td><td>缓存一个对象的多个字段，<strong>只更新其中一两个字段</strong>（不用整对象重写）</td></tr><tr><td><strong>Set</strong></td><td>短期去重（"这个请求处理过没有"）、标签集合</td></tr><tr><td><strong>ZSet</strong></td><td><strong>延迟队列</strong>（score = 到期时间戳，<code class="mv-md-code">ZRANGEBYSCORE</code> 捞到期任务）、按权重的优先级队列</td></tr><tr><td><strong>Stream</strong></td><td>中小规模的任务分发与消费组</td></tr></tbody></table>
+<p class="mv-md-p"><strong>（面试话术的结构）</strong>：先给"五种基础 + 四种扩展"的总览（一句话一个），<strong>再挑 1–2 个展开讲你项目里怎么用的</strong>。<strong>总览证明覆盖面，展开证明真用过。</strong></p>
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"Redis 是单线程的"</td><td>【事实】<strong>准确说法：命令执行单线程，网络 IO 在 6.0 后是多线程。</strong> 只说"单线程"是旧答案</td></tr><tr><td>"跳表比 B+ 树快"</td><td>【推导】<strong>不是快慢问题</strong>：B+ 树为磁盘 IO 设计，<strong>它的优势在内存里用不上</strong>；而跳表实现更简单、范围查询更自然</td></tr><tr><td>"单线程所以不会有并发问题"</td><td>【推导】单条命令原子，<strong>但多条命令的组合不原子</strong>（<code class="mv-md-code">GET</code> 完再 <code class="mv-md-code">SET</code> 之间可能插进别的请求）→ 需要 <code class="mv-md-code">INCR</code>/Lua/<code class="mv-md-code">SET NX</code> 这类原子操作</td></tr><tr><td>"Redis 什么都能缓存"</td><td>【取舍】<strong>它适合缓存"派生数据"，不适合当权威状态</strong>（[[母题-R3-缓存一致性与三类事故]]）</td></tr><tr><td>"Hash 就是 ZSet 少了个排序"</td><td>【事实】<strong>两者形状完全不同</strong>：Hash 是"字段→值"的映射（按字段取），ZSet 是"成员→分数"的<strong>有序集合</strong>（按分数取）</td></tr><tr><td>"HyperLogLog 能精确统计 UV"</td><td>【事实】<strong>它是估算</strong>，标准误差约 0.81%，且<strong>不能取回原始元素</strong>。换来的是固定的小内存</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q1" tag="Redis" q="内存随机访问约 100 纳秒，一次磁盘随机 IO 约 10 毫秒。&#10;问：两者相差几个数量级？这个差距对&quot;该选什么作为索引结构&quot;意味着什么？" a="10ms / 100ns = 10⁻² / 10⁻⁷ = 10⁵ → 相差 5 个数量级&#10;意义：&#10;场景 · 第一优化目标 · 优选结构&#10;磁盘（MySQL） · 减少 IO 次数 · B+ 树（扇出大 → 树矮 → IO 少）&#10;内存（Redis） · 没有 IO 可省 → 转向实现简单 + 范围查询自然 · 跳表&#10;【推论】同一个问题（&quot;该用什么索引结构&quot;）在两处答案不同，不是因为哪个结构更好，而是因为约束变了。 这是本卡最值钱的一条思路——面试里能把&quot;约束变了所以答案变了&quot;讲出来，比记住&quot;Redis 用跳表&quot;有价值得多。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q2" tag="Redis" q="下面五个需求分别该用哪个结构？&#10;① 统计接口调用次数，用于限流&#10;② 存一个订单的 20 个字段，通常只改其中一两个&#10;③ 每天签到的用户去重，还要能查&quot;今天有多少人签到&quot;&#10;④ 一个游戏关卡的前 100 名（按分数排序）&#10;⑤ 一个任务要延迟 5 分钟执行" a="需求 · 结构 · 理由&#10;① 调用计数 · String · INCR + EXPIRE，单条命令原子&#10;② 订单多字段部分更新 · Hash · 按字段读写，不必整对象重写&#10;③ 签到人数 · Set（人数少）或 Bitmap（按用户 ID 打点） · 要&quot;精确人数 + 成员&quot;用 Set；只关心&quot;某用户是否签到&quot;用 Bitmap 更省&#10;④ 前 100 名 · ZSet · 按分数排序取范围，Set 做不到&#10;⑤ 延迟 5 分钟执行 · ZSet · score 存 到期时间戳，用 ZRANGEBYSCORE 捞到期任务&#10;【补充】⑤是最容易被忽略的用法——延迟队列就是&quot;score 是时间戳的 ZSet&quot;。能说出这个，说明不只会背&quot;ZSet 做排行榜&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q3" tag="Redis" q="Redis 的哈希表要扩容。假设表里有 100 万个键，扩容需要把键重新分布到更大的表里。&#10;问：为什么不能一次性搬完？Redis 用什么办法？" a="一次性搬完是 O(n) = 100 万次搬运。因为 Redis 的命令执行是单线程，这一段时间里所有其他请求都在等（1.2 的代价）&#10;Redis 用「渐进式 rehash」：把搬运分摊到后续的每一次操作上（每次操作顺带搬一小批），把一次 O(n) 的尖峰摊成 O(1) 的平摊开销&#10;【联系】这又一次是&quot;单线程下最怕一处阻塞、全体停摆&quot;（[[母题-N3-进程线程与协程]] 的协作式代价）。&#10;同一个约束，在三个地方给出了三种解法：&#10;场景 · 解法&#10;协程里不能有阻塞调用 · 换异步库 / 丢线程池&#10;Redis 扩容会卡 · 渐进式 rehash（把 O(n) 摊掉）&#10;MySQL 加索引会卡 · Online DDL / 影子表（[[母题-M4-索引代价与大表变更]]）&#10;能把这三处串起来讲，说明你理解的是&quot;约束&quot;而不是&quot;三个孤立的知识点&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q4" tag="Redis" q="下面这段话哪里不准确？&#10;&quot;Redis 是单线程的，所以它跑不满多核 CPU，一份实例只能用一个核。&quot;" a="&quot;单线程&quot;说得太笼统了。&#10;准确的说法是分层的：&#10;部分 · 线程模型&#10;命令执行 · 单线程（这是&quot;Redis 是单线程&quot;这句话的真正含义）&#10;网络 IO（Redis 6+） · 多线程（读写 socket、解析协议）&#10;后台任务（持久化、异步删除等） · 另有后台线程 / 子进程&#10;所以&quot;只用了一个核&quot;也不准确：网络 IO 和后台任务会用别的核，但命令执行确实是单线程——这也是为什么&quot;慢命令会卡住所有人&quot;。&#10;【推论】正确的答法是&quot;命令执行单线程&quot;，并主动补一句 6.0 之后网络 IO 多线程——这一句能把&quot;背旧资料&quot;的印象变成&quot;跟得上版本&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R1-Redis数据结构与选型-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;ZSet 用跳表实现，是因为跳表比 B+ 树和红黑树都快。&quot;" a="&quot;更快&quot;这个归因是错的。准确的原因是&quot;约束变了&quot;。&#10;B+ 树的全部优势来自&quot;一次磁盘 IO 的成本固定，所以让每次 IO 多带数据回来&quot;（扇出大 → 树矮 → IO 少）。而 Redis 的数据在内存里，根本没有磁盘 IO 可省 —— B+ 树最大的优势失效了，只剩&quot;节点分裂合并、需要重平衡&quot;这个复杂度。&#10;跳表胜出的真实理由是两条：&#10;1. 不需要重平衡（层数随机，约 1/2 概率向上）&#10;2. 范围查询更自然（底层就是有序链表，顺序遍历天然支持）&#10;【取舍】红黑树也能用，但它同样有&quot;平衡操作复杂&quot;的问题，而且范围查询不如跳表顺。&#10;准确说法：不是跳表更快，而是 B+ 树是为磁盘设计的结构，它的优势在这个场景里用不上；跳表是&quot;约束更匹配&quot;的那个选择。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">五种结构各解决什么问题？ZSet 为什么是跳表 + 哈希表？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Redis/母题-R1-Redis数据结构与选型" tag="Redis" q="五种结构各解决什么问题？ZSet 为什么是跳表 + 哈希表？" a="Redis 快在三点——数据在内存、命令执行单线程（无锁、无切换）、IO 多路复用；注意 6.0 之后网络 IO 是多线程，只有命令执行仍是单线程。五种基础结构按&quot;要不要唯一 + 要不要顺序&quot;选：String / List / Hash / Set / ZSet；另有 Bitmap、HyperLogLog（估算 UV，有误差）、Geo、Stream 四种扩展。ZSet 底层是&quot;跳表 + 哈希表&quot;——哈希表支撑按成员查分数，跳表支撑按分数取范围与排名；用跳表而不用 B+ 树，是因为 B+ 树的优势（减少磁盘 IO）在内存里用不上，而跳表不需要重平衡、范围查询更自然。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">Redis 快在三点——<strong>数据在内存、命令执行单线程（无锁、无切换）、IO 多路复用</strong>；注意 6.0 之后<strong>网络 IO 是多线程</strong>，只有命令执行仍是单线程。<strong>五种基础结构按"要不要唯一 + 要不要顺序"选</strong>：String / List / Hash / Set / ZSet；另有 Bitmap、HyperLogLog（估算 UV，有误差）、Geo、Stream 四种扩展。<strong>ZSet 底层是"跳表 + 哈希表"</strong>——哈希表支撑按成员查分数，跳表支撑按分数取范围与排名；<strong>用跳表而不用 B+ 树，是因为 B+ 树的优势（减少磁盘 IO）在内存里用不上，而跳表不需要重平衡、范围查询更自然。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>内存（差 5 个数量级）</li><li>命令执行单线程 + 网络 IO 多线程</li><li>单线程的代价是慢命令卡所有人</li><li>选型两问（唯一？有序？）</li><li>ZSet = 跳表 + 哈希表</li><li>跳表的层数随机所以不需重平衡</li><li>B+ 树为磁盘设计、内存里优势失效</li><li>HyperLogLog 用误差换空间</li><li><strong>每个结构都要挂一个自己的场景</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Memcached 只有 String 一种结构</strong>（靠客户端序列化），<strong>Redis 的结构丰富是它的关键差异点</strong>；而 <strong>Redis 单线程 vs Memcached 多线程</strong>也是一个常见对比。<strong>能一句话说清"为什么结构丰富是优势"（服务端能做原子操作，不用把数据搬回客户端）</strong>，比列举结构名更有价值。</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Redis 是单线程还是多线程？</strong></strong></p>
+<p class="mv-md-p"><strong>命令执行单线程，网络 IO 在 6.0 之后是多线程。</strong> 后台任务另有线程/子进程。</p>
+<p class="mv-md-p"><strong>2. <strong>单线程为什么还快？</strong></strong></p>
+<p class="mv-md-p">无锁竞争、无上下文切换、单条命令天然原子；加上内存访问快、epoll 一次管很多连接。</p>
+<p class="mv-md-p"><strong>3. <strong>单线程有什么代价？</strong></strong></p>
+<p class="mv-md-p"><strong>一条慢命令卡住所有人</strong>（<code class="mv-md-code">KEYS *</code>、大 key 的 <code class="mv-md-code">DEL</code>）。所以有"慢命令禁用清单"和"大 key 治理"。</p>
+<p class="mv-md-p"><strong>4. <strong>ZSet 为什么用跳表不用 B+ 树？</strong></strong></p>
+<p class="mv-md-p">见 Q5：<strong>不是快慢，是约束</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>HyperLogLog 精确吗？</strong></strong></p>
+<p class="mv-md-p">不精确，标准误差约 0.81%，<strong>用它换的是固定的小内存</strong>。</p>
+<p class="mv-md-p"><strong>6. <strong>Redis 能当消息队列吗？</strong></strong></p>
+<p class="mv-md-p">能用 List / Stream 做<strong>中小规模</strong>；但<strong>持久化、分区、重放、生态</strong>与 Kafka 差距明显，<strong>不能因为"已经用了 Redis"就默认替代</strong>（[[母题-R3-缓存一致性与三类事故]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「ZSet 还能做什么？」——<strong>延迟队列</strong>（score = 到期时间戳）、带权重的优先级队列、滑动窗口限流（score 存时间戳 + <code class="mv-md-code">ZREMRANGEBYSCORE</code> 清窗口外）</li><li>「Hash 和 String 存对象哪个好？」——<strong>只改部分字段用 Hash</strong>（避免整对象序列化重写）；<strong>整个对象一起读写用 String</strong>（更省内存、少一次 field 开销）</li><li>「怎么发现大 key / 热 key？」——<code class="mv-md-code">redis-cli --bigkeys</code>、<code class="mv-md-code">SCAN</code> 采样、监控命令耗时；<strong>线上更可靠的是慢日志 + 代理层统计</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena</strong> 的短期去重与限流（<code class="mv-md-code">SET NX</code> + <code class="mv-md-code">EXPIRE</code>、<code class="mv-md-code">INCR</code>）；<strong>EnergyOps</strong> 的元数据缓存；<strong>数驭穹图</strong> 的限流与口径缓存。<strong>共性：Redis 负责"加速"和"短期标记"，不负责"裁决"。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">快的三个原因（内存 / 单线程 / 事件循环）+ 版本澄清 → 五种基础结构按"唯一 + 有序"两问选型 → 四种扩展结构及各自代价 → ZSet 为什么是两个结构 → 跳表是什么、为什么不需要重平衡 → <strong>为什么不用 B+ 树（约束变了）</strong> → 每个结构配一个自己的场景</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"该用什么结构"由"数据是一份什么形状的内存数据"决定</strong>，而不是由"哪个结构更高级"决定。同理，"该用什么索引结构"由"瓶颈是 IO 还是比较"决定——<strong>约束变了，答案就变了</strong>。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能按"唯一 + 有序"两问完成选型；能说清 ZSet 为什么是两个结构、为什么用跳表（<strong>归因到"约束变了"而不是"更快"</strong>）；<strong>每一种结构至少能说出一个自己项目里用过或用得上的场景</strong>（这是 9.9 的缺口），<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

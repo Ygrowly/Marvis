@@ -1,0 +1,322 @@
+[
+  {
+    "id": "topics",
+    "name": "母题",
+    "cards": [
+      {
+        "id": "算法/母题-01-两数之和",
+        "q": "在一个数组里，如何用一次遍历找出满足「两数之和 = target」的那一对下标？",
+        "a": "遍历时查补数、先查后存，保证不会拿当前元素和自己配对。",
+        "tag": "算法",
+        "href": "topics/算法-母题-01-两数之和.html",
+        "src": "wiki/topics/算法/母题-01-两数之和.md"
+      },
+      {
+        "id": "算法/母题-02-字母异位词分组",
+        "q": "如何把一组元素按「等价特征」归到同一组？",
+        "a": "把每个元素映射成一个可哈希的标准化键，再用键做分组。",
+        "tag": "算法",
+        "href": "topics/算法-母题-02-字母异位词分组.html",
+        "src": "wiki/topics/算法/母题-02-字母异位词分组.md"
+      },
+      {
+        "id": "算法/母题-03-最长连续序列",
+        "q": "无序数组里，如何做到 O(n) 求出最长连续数字序列？",
+        "a": "集合去重，只从没有前驱的元素开始向后延伸，每段序列只被扫一次。",
+        "tag": "算法",
+        "href": "topics/算法-母题-03-最长连续序列.html",
+        "src": "wiki/topics/算法/母题-03-最长连续序列.md"
+      },
+      {
+        "id": "算法/母题-04-移动零",
+        "q": "如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？",
+        "a": "快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。",
+        "tag": "算法",
+        "href": "topics/算法-母题-04-移动零.html",
+        "src": "wiki/topics/算法/母题-04-移动零.md"
+      },
+      {
+        "id": "算法/母题-05-盛最多水的容器",
+        "q": "两端向中间收缩时，凭什么保证不会漏掉最优解？",
+        "a": "面积由宽度×短板决定，宽度只会变小，所以只能移动短板去赌一根更高的。",
+        "tag": "算法",
+        "href": "topics/算法-母题-05-盛最多水的容器.html",
+        "src": "wiki/topics/算法/母题-05-盛最多水的容器.md"
+      },
+      {
+        "id": "算法/母题-06-三数之和",
+        "q": "如何在 O(n²) 内枚举出所有不重复的三元组？",
+        "a": "排序 → 固定第一个数 → 双指针找相反数 → 三层去重。",
+        "tag": "算法",
+        "href": "topics/算法-母题-06-三数之和.html",
+        "src": "wiki/topics/算法/母题-06-三数之和.md"
+      },
+      {
+        "id": "算法/母题-33-合并K个有序链表",
+        "q": "如何从 k 个有序序列里，持续取出当前的最小值？",
+        "a": "最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。",
+        "tag": "算法",
+        "href": "topics/算法-母题-33-合并K个有序链表.html",
+        "src": "wiki/topics/算法/母题-33-合并K个有序链表.md"
+      },
+      {
+        "id": "算法/母题-34-LRU缓存",
+        "q": "如何同时做到 O(1) 查找和 O(1) 维护淘汰顺序？",
+        "a": "哈希表负责定位、双向链表负责排序；访问或更新移到头部，超容量淘汰尾部。",
+        "tag": "算法",
+        "href": "topics/算法-母题-34-LRU缓存.html",
+        "src": "wiki/topics/算法/母题-34-LRU缓存.md"
+      },
+      {
+        "id": "算法/母题-35-二叉树中序遍历",
+        "q": "二叉树三种遍历顺序怎么写，迭代版又怎么写？",
+        "a": "左—根—右；迭代版把递归悄悄用的「调用栈 + 返回地址」拆成显式的 `stack + cur`——一路向左压到底，弹出才输出，再跳右子树。",
+        "tag": "算法",
+        "href": "topics/算法-母题-35-二叉树中序遍历.html",
+        "src": "wiki/topics/算法/母题-35-二叉树中序遍历.md"
+      }
+    ]
+  },
+  {
+    "id": "ai",
+    "name": "AI 母题",
+    "cards": [
+      {
+        "id": "ai-01",
+        "q": "如何理解 Agent / Agent Layer？",
+        "a": "Agent 是模型根据环境反馈动态选择下一动作的闭环；Agent Layer 是模型之外负责上下文、状态、工具执行、约束、验证、恢复和观测的运行系统。\n\n我把 Agent 分成四层。第一层是模型决策；第二层是 Context 和 State，负责每一步给模型正确目标、权威状态、证据和工具；第三层是 Runtime，运行 observe—decide—act—verify 循环，管理预算、终止、暂停、checkpoint 和恢复；第四层是 Assurance，包括权限、人工审批、Eval、Trace、灰度和成本治理。与 Workflow 的区别是 Workflow 的路径由代码预定义，Agent 的下一步由模型根据反馈动态决定。生产中通常外层用状态机保证业务阶段，内部只在动态节点运行 Agent。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-02",
+        "q": "怎样定义和调优 Agent Role？",
+        "a": "我不会只用 persona Prompt 定义角色，而是把 Role 设计为运行契约：长期负责什么结果、输入输出 Schema、可见上下文、可用工具、记忆范围、禁止动作、终止条件、审批边界和指标。调优从单 Agent baseline 开始，按失败类型判断是职责重叠、上下文噪声、工具误选还是交接丢失，再调整边界、Prompt、工具或记忆。每次只改一个变量，用任务成功率、角色路由准确率、重复工作、冲突率、P95 和成本做消融。没有可测收益就合回单 Agent。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-03",
+        "q": "多 Agent 如何协作和对齐？",
+        "a": "多 Agent 只在上下文隔离、权限隔离、并行或能力差异有收益时使用。我会用 Orchestrator 生成结构化子任务，每个 Worker 只拿必要 Context，通过 Handoff Schema 接收任务，并返回结论、证据、未知项和 Artifact 引用。共享的是结构化任务状态和稳定 ID，不共享无限聊天历史；业务数据库仍是权威。聚合阶段按确定性规则、证据权威和新鲜度处理冲突，高风险冲突交人工。一个 Worker 失败时局部重试或返回部分结果，父 Run 有最大 fan-out、deadline 和成本预算。最后用单 Agent baseline 比较成功率、P95、Token、重复率和冲突率。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-04",
+        "q": "Context、State、Memory 怎样分层？",
+        "a": "Context 是一次模型调用看到的视图，State 是结构化运行事实，Memory 是跨步骤或会话复用的信息，业务数据库则保存最高权威状态。我会把系统规则、当前目标、权威状态、RAG 证据、Tool Schema、近期轨迹和长期记忆按相关性与可信度动态装配，而不是塞全部历史。长会话用滑窗、摘要、Artifact 外置和按步骤检索；恢复时从 checkpoint 和业务状态重建 Context。长期记忆只保存稳定、有来源、获授权、能删除的信息，不能把模型猜测自动写成用户事实。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-05",
+        "q": "Memory 变化、冲突和过期怎么办？",
+        "a": "Memory 不应是一个不断覆盖的摘要。我会把用户明确陈述保存成带主体、谓词、作用域、有效期、来源和版本的记录。新信息到来时先做实体和作用域匹配：若是明确纠正，就把旧记录标为 superseded；若是状态变化，保留旧事件并生成新的 current state；若场景不同则并存；低置信推断不进入长期记忆。读取时优先 active、同 scope、更新且已确认的记录；冲突仍无法判断就询问用户。用户应能查看、修改和删除，所有更新进入审计与 Memory Eval。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-06",
+        "q": "Tool、Skill、Workflow、Agent 有何区别？",
+        "a": "Tool 是动作，Skill 是可复用方法，Workflow 是预定义路径，Agent 是动态决策者，MCP 是连接能力的协议。\n\nTool 封装一次查询或业务动作，要有 Schema、权限、错误、幂等和审计；Skill 保存完成一类任务的方法、步骤、验证和安全边界，可能组合多个 Tool；Workflow 用代码固定控制流，适合审批、发布和确定性业务；Agent 在路径无法完全预先枚举时，根据环境反馈动态选择 Skill/Tool。MCP 标准化 Client 与 Server 的能力发现和调用，但不替代授权和幂等。生产系统通常是 Workflow 管业务阶段，Agent 处理开放节点，Skill 复用经验，Tool 执行真实动作。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-07",
+        "q": "怎样选模型？小模型如何保证效果？",
+        "a": "我先按任务分桶：结构化抽取、意图路由、复杂规划、代码、视觉和高风险决策需要的能力不同。用代表性 Eval 比较任务成功率、Tool 正确率、P95、Token、价格和稳定性，再按难度与风险路由。小模型不靠塞更多 Prompt，而靠外层 Workflow 分解、动态工具暴露、权威状态外置、结构化输出、RAG 和确定性验证。遇到低置信、连续失败或高风险任务升级强模型；Provider 故障时按能力降级，而不是返回伪成功。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-08",
+        "q": "如何设计生产级 RAG？",
+        "a": "我把 RAG 拆成离线摄取与在线查询。离线负责解析、结构化 Chunk、元数据、ACL、版本、Embedding 和关键词索引；在线带用户身份做 Query 理解，在权限过滤下进行 BM25 + Vector 混合召回，必要时 Query Rewrite/HyDE，再用 RRF 融合、Rerank、去重并按 Token 预算组装，最后生成逐项引用答案。证据不足或冲突时拒答。评测要拆开：检索用 Recall@K、MRR、nDCG，生成用 correctness、faithfulness、引用和拒答，线上再看任务成功、P95 和成本。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-09",
+        "q": "Data Agent 怎样生成可靠 SQL？",
+        "a": "我不会让模型拿全库 DDL 直接生成 SQL。先识别用户意图、业务域和指标口径，缺时间、粒度或主体就澄清；再从 Catalog/语义层召回受权限控制的表、字段、关系、指标和示例。模型先生成带稳定 ID 的结构化计划或 IR，再编译/约束成 SQL。执行前做 AST 只读、表列权限、Join、扫描量、行数、导出和函数白名单；在只读账号和超时预算下运行。执行成功后还要验证结果范围、聚合口径和证据，并返回 SQL、Schema 版本和 Run ID。评测覆盖 Schema Linking、执行正确、语义正确、安全和成本。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-10",
+        "q": "如何搭建 Agent Eval？",
+        "a": "我从真实任务和 Bad Case 构造可重置环境，分为 dev、golden、holdout 和 adversarial。结果层测任务成功和最终业务状态，过程层测路由、检索、Tool 选择/参数、步骤和终止，工程层测 P95、成本、恢复率，安全层测越权、注入和重复副作用。能用代码和规则判断的先用确定性 grader，语义质量再用经过人工校准的模型 Judge。每次 Run 保存模型、Prompt、知识、Tool 版本和完整 Step Trace，支持固定工具结果或沙盒 Replay。变更先跑 CI Eval，再 shadow/canary，线上纠正经治理后回流数据集。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-11",
+        "q": "Tool 调用失败如何排查？",
+        "a": "我先用 trace_id 定位具体 Run/Step，不会先改 Prompt。第一层看模型是否选对 Tool、暴露的工具集合和描述；第二层看 JSON Schema、实体、版本和业务前置条件；第三层看授权、网络、超时、限流和下游错误；第四层看 Tool Result 是否正确解析、持久化并回到模型；最后查询权威业务状态确认真实结果。错误按 invalid、forbidden、retryable、conflict、unknown outcome 分类。读操作可有限重试，写超时先按业务幂等键查状态，不能盲重试。修复后把 Case 加入契约测试和 Eval。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-12",
+        "q": "答非所问、A/B 混淆如何排查？",
+        "a": "我先确定错误从哪一步首次出现：原始意图是否明确、路由是否把 A/B 分到正确域、检索候选是否混入另一实体、Context 中是否有冲突/过期信息、Memory 是否污染、模型输出是否违反 Schema、聚合和前端是否绑定错 task_id。对实体相关任务全链路使用稳定 entity_id 和 source/version，不依赖名称；Context 给不同实体加显式边界，结构化结果包含引用。修复后用最小复现做单层测试，再跑端到端回归。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-13",
+        "q": "对话卡顿如何排查？",
+        "a": "我先用端到端 Trace 把耗时拆成入口排队、Context 构建、检索、模型 TTFT/生成、Tool、数据库、事件传输和前端渲染。从一开始就慢，先看冷启动、连接复用、Provider TTFT、Nginx SSE buffering 和容量；中途变慢，重点看 Token/历史增长、Compaction、Tool Result 大小、重复重试和数据库状态。再看 event-loop lag、连接池等待、queue age、CPU/内存和下游限流。优化必须给前后 P50/P95/P99、错误率和成本，不能只凭体感。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-14",
+        "q": "长任务怎样终止、取消和恢复？",
+        "a": "长任务拆成输入输出可序列化、单独可验证的 Step。Run/Step/Artifact/Event 持久化，关键节点和副作用前后 checkpoint。Worker 用 lease/version 抢占，崩溃后新 Worker 读取 checkpoint，先查询业务权威状态和已完成副作用，再从安全节点继续。终止原因结构化为完成、待澄清、待审批、预算耗尽、依赖失败、策略阻断、取消等。取消通过 token 向模型和工具传播，已开始的外部动作标 unknown 并查询最终状态。SSE 只展示事件，数据库才是任务真相。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-15",
+        "q": "Agent 后端与数据库怎样设计？",
+        "a": "FastAPI 负责鉴权、Run API、SSE 和错误映射；长 Agent 进入持久队列，由 Worker 执行，不能依赖进程内 BackgroundTasks。PostgreSQL 保存 Thread/Run/Step/Checkpoint、业务状态和唯一幂等记录；Redis 做缓存、限流和短期状态，不作为最终真相；大文件、截图和日志放对象存储。I/O 使用 asyncio，但用 TaskGroup 管理生命周期，timeout/cancel 传播，Semaphore、Queue 和连接池提供背压。多 Worker 通过 lease/version 防重复和迟到写。监控 P95、event-loop lag、pool wait、queue age、Tool 错误和成本。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-16",
+        "q": "如何理解 AI Coding 和 Grok Bot 工程系统？",
+        "a": "Vibe Coding 适合快速探索，但生产交付不能只靠自然语言和主观感觉。我会先澄清需求、验收和不能破坏的约束，再让 AI 输出设计与实施计划；编码前先构造能暴露问题的测试，编码后运行单元、集成、类型、安全和端到端验证，并检查实际 diff。Agent 必须提交 Proof，如测试、截图、日志和前后对比。高置信且低影响的变更可自动化，权限、交易、迁移和大范围架构必须人工 Review。失败进入 Trace/Postmortem，稳定方法沉淀为 Skill/AGENTS.md，再用 Eval 防止错误规则扩散。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "ai-17",
+        "q": "LoRA、数据与推理过程怎么回答？（P2）",
+        "a": "LoRA 改变模型在训练分布附近的条件生成行为，可能提高数学任务准确率，但仅凭域内分数不能证明获得了通用推理能力。提升可能来自记住模板、强化局部 Token 关联、输出格式更好，或真正学到可迁移策略。要用严格去重和污染检查、难度/题型分桶、领域外与组合泛化集、扰动和反事实题、不同推理长度、可执行验证器以及 LoRA/全参/仅数据策略消融来判断。结论应该限定为“在哪些分布和指标上提升”，不宣称本质能力改变。",
+        "tag": "AI/Agent",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      }
+    ]
+  },
+  {
+    "id": "project",
+    "name": "项目口述",
+    "cards": [
+      {
+        "id": "proj-rulearena",
+        "q": "讲一遍 RuleArena（Agent Layer 版）",
+        "a": "核心主线：规则输入 → 权限/版本 → 证据检索 → 多角色审查 → 可执行状态验证 → 合并冲突 → 修复建议 → 人工审批/发布 → Eval/Trace。\n\n重点回答：\n\n多 Agent 价值是风险视角、权限和上下文隔离；\nState Validator 用确定性程序而非模型自我反思；\nHandoff 使用规则/字段/证据稳定 ID；\n修复发布是 R2；\nRun/Step/Checkpoint/Artifact/Replay；\n单 Agent baseline 与质量/成本消融。",
+        "tag": "项目口述",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "proj-energyops",
+        "q": "讲一遍 EnergyOps（Agent 后端版）",
+        "a": "核心主线：智能表累计读数 → 差分/质量 → 聚合 → 异常规则 → 告警通知 → 账单分摊/黄金对账 → MCP 查询与处置。\n\n重点回答：\n\nAI 负责理解和建议，计费/质量/权限由程序保证；\n30 个 Tool 动态暴露、R0/R1/R2；\ncheckpoint、自愈、乱序补数、partial 透明；\nTool 超时/通知状态查询/业务幂等；\nPostgreSQL/Redis/调度/测试/部署；\n对账是可执行 oracle。",
+        "tag": "项目口述",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      },
+      {
+        "id": "proj-数驭穹图",
+        "q": "讲一遍 数驭穹图（Data Agent 版）",
+        "a": "核心主线：问题 → 意图/领域 → Schema Linking → IR/SemQL → SQL → AST/权限/预算 → 执行 → 图表/解释/证据。\n\n重点回答：\n\n数据不汇聚也可使用只读连接/快照，明确边界；\n权限先于检索和执行；\n语义层管理指标、粒度和口径；\n稳定 Schema ID 与版本防 Agent 瞎传字段；\nSQL 执行成功不等于语义正确；\nRetrieval/Execution/Answer 分层 Eval。\n\n---",
+        "tag": "项目口述",
+        "src": "wiki/interview/面经-字节AI-Agent.md"
+      }
+    ]
+  },
+  {
+    "id": "extra",
+    "name": "补充卡",
+    "cards": [
+      {
+        "id": "lru-01",
+        "q": "LRU 为什么必须是「哈希表 + 双向链表」两个结构？单链表为什么不行？",
+        "a": "哈希表负责 O(1) 按 key 定位节点，双向链表负责 O(1) 调整使用顺序。\n删除任意节点需要同时拿到前驱和后继：node.prev.next = node.next; node.next.prev = node.prev。\n单链表拿不到前驱，删除要 O(n) 遍历，所以不行。",
+        "tag": "算法",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "lru-02",
+        "q": "为什么要在链表两端设虚拟 head / tail 哨兵节点？",
+        "a": "真实节点都夹在两个哨兵之间，任何位置的插入删除都不用判空，也不用特判头尾。\n约定：head 后面 = 最近使用；tail 前面 = 最久未使用。淘汰时直接删 tail.prev。",
+        "tag": "算法",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "num-01",
+        "q": "简历写「压缩 80%」，面试官追问「怎么知道是对的」，怎样答才不露怯？",
+        "a": "四要素一次说清：判定基准（谁算对）、是否控制变量、数据来自自建评测集还是生产 P99、样本量多少。\n没有 ground truth 的成功率只能叫「跑通率」，不能叫准确率。",
+        "tag": "数字口径",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "num-02",
+        "q": "Execution Accuracy 和 Exact Set Match 有什么区别？各在什么场合用？",
+        "a": "Execution Accuracy：执行出来的结果集是否一致，容忍 SQL 写法不同。\nExact Set Match：要求 SQL 的子句集合精确匹配，更严格。\n对外报数用 Execution Accuracy；要卡住「写法是否走对索引与权限路径」时才用 Exact Set Match。",
+        "tag": "数字口径",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "net-01",
+        "q": "SSE 是长连接吗？和 WebSocket 的本质区别是什么？",
+        "a": "是长连接。SSE 基于 HTTP，服务端保持响应不关闭，持续单向推送，自带断线重连与事件 ID。\nWebSocket 需要协议升级，双向通信。SSE 只解决服务端推客户端这一个方向。",
+        "tag": "网络",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "net-02",
+        "q": "502 和 504 有什么区别？各说明哪里出了问题？",
+        "a": "502 Bad Gateway：网关收到了上游的无效响应（上游活着，但答了不能解析的东西）。\n504 Gateway Timeout：上游在超时时间内一个字都没回。\n一句话：502 是答非所问，504 是根本没答。",
+        "tag": "网络",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "cache-01",
+        "q": "什么改动会击穿 prompt 前缀缓存？怎么设计才不被击穿？",
+        "a": "前缀里任何一个 token 变动，该位置之后的缓存全部失效——包括 tool schema 的增删改与顺序变化、system prompt 微调、模型版本切换。\n做法：稳定内容（system、工具定义）放最前，动态内容（用户输入、检索结果、当前时间）放最后。",
+        "tag": "成本",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "db-01",
+        "q": "MySQL 和 PostgreSQL 的默认事务隔离级别分别是什么？面试怎么答不串台？",
+        "a": "MySQL InnoDB 默认 REPEATABLE READ；PostgreSQL 默认 READ COMMITTED。\n我的项目全用 PostgreSQL。答题前先声明「你说的是哪个栈」，避免岗位栈和项目栈串台——SSE、502/504 那次就是串台付的代价。",
+        "tag": "数据库",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "db-02",
+        "q": "乐观锁在 MySQL 和 PostgreSQL 里怎么落？差异在哪？",
+        "a": "应用层写法一样：版本号或 CAS 条件更新（UPDATE ... WHERE id=? AND version=?），看影响行数是否为 1。\n差异在底层：两者都是 MVCC，但 MySQL InnoDB 用回滚段 undo log，PostgreSQL 把元组多版本留在堆里、需要 VACUUM 回收；加上默认隔离级别不同，会影响「同一事务内能否看到他人已提交的更新」。",
+        "tag": "数据库",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "proj-01",
+        "q": "简历上一个 bullet 好不好的判断标准是什么？",
+        "a": "能不能引出追问。写成「具体问题 → 技术取舍 → 验证结果」，不写功能清单。\n并且必须能回答「为什么不用现成方案」。",
+        "tag": "项目表达",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "proj-02",
+        "q": "「生产四问」是哪四问？为什么它能区分搭过 Demo 和跑过生产？",
+        "a": "投递失败怎么记 / 超时写操作能否重试 / 以谁的身份行动 / 版本升级如何证明不退化。\n前两问考幂等与恢复，第三问考权限边界，第四问考评测基线——这四处 Demo 通常不碰。",
+        "tag": "项目表达",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      },
+      {
+        "id": "ra-01",
+        "q": "RuleArena 60 秒介绍主讲哪个技术点？",
+        "a": "只讲一个：「动态计划下如何可靠执行与验收」。\n先说问题（计划会变，执行不能乱），再说取舍（幂等 + 可恢复 + oracle 校验），最后给验证口径（没测量就不写数字）。",
+        "tag": "项目表达",
+        "src": "site/cards/2026-09-10-冲刺卡组.md"
+      }
+    ]
+  }
+]

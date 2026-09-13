@@ -1,0 +1,46 @@
+<svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>评测的三件事：指标分层、数据集分层、判分优先级</title>
+  <desc>左边是指标必须分六层，从业务结果到安全，每一层回答不同的问题；把它们压成一个综合分，会让严重错误被平均分掩盖。中间是数据集分五层：开发集可以频繁看，回归集不能退化，留出集防过拟合，对抗集测安全和边界，线上采样监测分布漂移。右边是判分优先级：能确定性判断的绝不用模型判分，模型判分要用人工样本校准。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">评测的三件事：指标分层、数据集分层、判分优先级</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">一个综合分看起来省事，代价是严重错误被平均掉</text>
+
+  <!-- 指标分层 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 指标分六层</text>
+  <rect x="30" y="88" width="196" height="150" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">业务结果　解决率 · 转化 · 人工节省</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">任务结果　成功率 · 答案正确 · 最终状态</text>
+  <text x="46" y="148" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">过程　　　路由 · 检索 · 工具选择 · 步骤效率</text>
+  <text x="46" y="168" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">工程　　　P50/P95/P99 · 超时 · 恢复率</text>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">资源　　　token · 成本 · 缓存命中 · 重试</text>
+  <text x="46" y="210" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">安全　　　越权 · 注入 · 泄露 · 未确认副作用</text>
+  <text x="46" y="228" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">↑ 这一层单独门禁，不参与平均</text>
+
+  <!-- 数据集分层 -->
+  <text x="242" y="78" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 数据集分五层</text>
+  <rect x="242" y="88" width="196" height="150" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="258" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">Dev　迭代用，允许频繁看</text>
+  <text x="258" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">Golden regression　核心不能退化</text>
+  <text x="258" y="154" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">Holdout　防对固定测试过拟合</text>
+  <text x="258" y="176" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">Adversarial　安全与边界</text>
+  <text x="258" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">Online sample　监测分布漂移</text>
+  <text x="258" y="224" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">后四层不能拿来调优</text>
+
+  <!-- 判分优先级 -->
+  <text x="454" y="78" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">③ 判分优先级</text>
+  <rect x="454" y="88" width="196" height="150" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="470" y="112" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">Code / Rule</text>
+  <text x="470" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">快 · 稳定 · 可解释；语义覆盖有限</text>
+  <text x="470" y="152" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">Reference comparison</text>
+  <text x="470" y="168" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">有标准结果时简单；多解难处理</text>
+  <text x="470" y="192" font-family="system-ui,sans-serif" font-size="10" fill="#633806">Model Judge</text>
+  <text x="470" y="208" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">覆盖开放输出；有偏差与漂移</text>
+  <text x="470" y="228" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">最后才是 Human（慢、贵、不一致）</text>
+
+  <!-- 底部 -->
+  <path d="M30 258 L650 258" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="282" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">为什么不能压成一个综合分</text>
+  <rect x="30" y="294" width="620" height="30" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="313" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">业务 80 · 任务 85 · 过程 70 · 工程 90 · 资源 75 · <tspan font-weight="600" fill="#633806">安全 10（有越权）</tspan>　→ 平均 68 分，看起来「刚及格」</text>
+  <text x="30" y="344" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">但那 10 分不是「拉低平均」——它是<tspan font-weight="600">不可接受</tspan>。高风险安全违规必须单独门禁，不与文案质量平均。</text>
+</svg>

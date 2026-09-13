@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>五 · 长事务</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 五</span>
+    <h1 class="mv-topic-title">长事务</h1>
+    <p class="mv-topic-meta">这条线在回答：它为什么危险，为什么拖系统下水</p>
+  </div>
+  <p class="mv-line-lead">事务边界该划多大</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M13</span><span class="mv-mt-name">长事务为什么危险（不只是持锁久）</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/MySQL-母题-M13-长事务为什么危险.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">一个只做 <code class="mv-md-code">SELECT</code>、什么都没改的事务，挂了两个小时不结束。它会带来什么问题？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：长事务按住<strong>两样东西</strong>，所以危害是<strong>两条独立的链</strong>。走 MVCC 的那条：<strong>ReadView 不释放 → purge 不敢清理它还可能读的旧版本 → undo 膨胀、版本链变长 → 快照读回溯变慢（一行每秒改 100 次、挂 2 小时就是 72 万节，单次回溯 72 毫秒）、回滚成本更高</strong>。走锁的那条：<strong>写锁持到事务结束 → 其他写事务排队 → 死锁概率上升</strong>。<strong>反直觉点：只读事务触发不了锁那条，但 MVCC 那条照样走</strong>——最常见的真实形态是 <code class="mv-md-code">SET autocommit = 0</code> 之后跑了查询忘了提交，<strong>这种连接 CPU 低、几乎无查询，监控上很不起眼，却在按住全库的回收边界</strong>。监控口径：<strong>盯最老事务的 <code class="mv-md-code">trx_started</code></strong>（PG 侧对应最老事务的 <code class="mv-md-code">xmin</code>）。</p><ul class="mv-kw"><li>按住两样东西（ReadView / 锁）</li><li>purge 的清理判据是"没有 ReadView 还需要它"</li><li>版本链 100×7200 = 72 万节</li><li>回溯 72ms，正常 1μs</li><li>只读事务也危险（它只走 MVCC 那条）</li><li><code class="mv-md-code">autocommit = 0</code> 忘了提交 = 最常见的真实事故</li><li>五条纪律（事务里不做 RPC、不做计算、批量分批、注意导出）</li><li>**分批把锁持有与 undo 峰值各降到 1</li><li>1000**</li><li>盯最老 trx_started</li><li>MySQL 是 undo 膨胀、PG 是表膨胀</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>长事务最可怕的不是"执行久"，而是它会持续占着数据库资源，让整个系统越来越难受。</strong></p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>undo 膨胀了怎么办？</strong></strong></p><p class="mv-md-p"><strong>先杀掉肇事的长事务</strong>（purge 立刻恢复推进），<strong>再等 purge 追上来</strong>。<strong>但预防才是重点</strong>：超时参数 + 代码纪律（事务里不做 IO）。<strong>这条和 PG 的"先治因再回收"完全同构。</strong></p><p class="mv-md-p"><strong>2. <strong>为什么两边（MySQL/PG）都会因为长事务出事，但表现形式不一样？</strong></strong></p><p class="mv-md-p"><strong>因为版本存放位置不同</strong>：MySQL 的版本在 <strong>undo log</strong> → 症状是 <strong>undo 表空间膨胀与回溯变慢</strong>；PG 的版本在<strong>堆里</strong> → 症状是<strong>表与索引变大（表膨胀）</strong>。<strong>机制同源（长事务按住回收），症状不同</strong>——<strong>能说出这句对照，就超过了 90% 的候选人。</strong></p><p class="mv-md-p"><strong>3. <strong>怎么找到是谁把 purge 卡住的？</strong></strong></p><p class="mv-md-p"><strong>查最老的事务</strong>：<code class="mv-md-code">information_schema.innodb_trx</code> 的 <code class="mv-md-code">trx_started</code> 与正在执行的语句（MySQL 8.0 的 <code class="mv-md-code">performance_schema</code> 更完整）。<strong>判据是"最老的 ReadView"，不是"最慢的语句"。</strong></p><p class="mv-md-p"><strong>4. <strong>长查询（没开事务）会拖吗？</strong></strong></p><p class="mv-md-p"><strong><code class="mv-md-code">autocommit = 1</code> 时单条查询原子提交、结束即释放</strong>，不构成长事务；<strong>危险的是"显式 BEGIN 之后挂着"</strong>。<strong>准确条件是"它持有 ReadView"</strong>。</p><p class="mv-md-p"><strong>5. <strong>批量更新一百万行为什么要分批？</strong></strong></p><p class="mv-md-p"><strong>一次解决四个问题</strong>：① 事务过长（本卡）；② 单事务的 undo 与 redo 都大；③ <strong>大事务在主从复制里是一条 binlog，从库要整体重放</strong>（[[母题-M14-主从复制与延迟]]）；④ <strong>锁持有范围大</strong>（[[母题-M10-锁与死锁]]）。<strong>"分批"是四张卡的公共答案。</strong></p></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M13-长事务为什么危险.md</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">1 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">38</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M13</span><button class="mv-qdone" data-k="MySQL-q38" type="button">未掌握</button></div><flip-card card-id="MySQL-q38" tag="MySQL" q="长事务为什么危险（不只是持锁久）？" a="【M13】长事务按住两样东西，所以危害是两条独立的链。走 MVCC 的那条：ReadView 不释放 → purge 不敢清理它还可能读的旧版本 → undo 膨胀、版本链变长 → 快照读回溯变慢（一行每秒改 100 次、挂 2 小时就是 72 万节，单次回溯 72 毫秒）、回滚成本更高。走锁的那条：写锁持到事务结束 → 其他写事务排队 → 死锁概率上升。反直觉点：只读事务触发不了锁那条，但 MVCC 那条照样走——最常见的真实形态是 SET autocommit = 0 之后跑了查询忘了提交，这种连接 CPU 低、几乎无查询，监控上很不起眼，却在按住全库的回收边界。监控口径：盯最老事务的 trx_started（PG 侧对应最老事务的 xmin）。&#10;&#10;展开：先说是两条链 → 走 MVCC 的那条（ReadView → purge → undo 膨胀 → 回溯变慢，给算式）→ 走锁的那条 → 只读事务为什么也在其中 → 五条纪律 + 分批的量化收益 → 监控盯最老 trx_started → 收束到&quot;MySQL 是 undo 膨胀、PG 是表膨胀，机制同源症状不同&quot;&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="MySQL-04-日志与持久化.html">← 四 · 日志与持久化</a><a class="mv-line-nav next" href="MySQL-06-数据增长与高可用.html">六 · 数据增长与高可用 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

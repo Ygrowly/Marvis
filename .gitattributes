@@ -1,0 +1,28 @@
+# 行尾统一为 LF
+#
+# 起因：Windows 上 core.autocrlf=true 时，Obsidian / 编辑器保存文件会写入 CRLF，
+# 导致 git status 反复误报「已修改」，而 git diff 实际为空（纯行尾差异）。
+# 这份规则让仓库与工作区都以 LF 为准，从根上消掉这类假变更。
+
+* text=auto eol=lf
+
+# 二进制文件不参与行尾转换
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.xlsx binary
+*.docx binary
+*.zip  binary
+
+# 明确按文本处理（避免扩展名猜错）
+*.md   text eol=lf
+*.py   text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.svg  text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf

@@ -1,0 +1,29 @@
+<svg viewBox="0 0 680 302" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>聚簇索引与二级索引的叶子节点，以及回表</title>
+<desc>聚簇索引叶子存完整一行，二级索引叶子只存索引列加主键；取非索引列必须拿主键回聚簇索引再查一次，这叫回表。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="34" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">同一张表，两种索引的叶子节点里装的东西不一样</text>
+<rect x="40" y="48" width="290" height="132" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="70" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">聚簇索引（主键）</text>
+<rect x="58" y="84" width="254" height="38" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="70" y="103" font-family="ui-monospace,monospace" font-size="11" fill="#412402" dominant-baseline="central">主键 ｜ status ｜ time ｜ priority ｜ …</text>
+<text x="58" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">叶子 = 完整的一行</text>
+<text x="58" y="162" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">一次查找就拿到整行</text>
+<rect x="350" y="48" width="290" height="132" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="368" y="70" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">二级索引 (status, time)</text>
+<rect x="368" y="84" width="254" height="38" rx="8" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="380" y="103" font-family="ui-monospace,monospace" font-size="11" fill="#2C2C2A" dominant-baseline="central">status ｜ time ｜ 主键 id</text>
+<text x="368" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">叶子 = 索引列 + 主键（主键必须带上）</text>
+<text x="368" y="162" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">查到的是 id，不是整行</text>
+<rect x="40" y="200" width="600" height="88" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<rect x="58" y="220" width="246" height="36" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="181" y="238" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">① 走二级索引定位，拿到 id</text>
+<path d="M310 238 L368 238" stroke="#BA7517" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+<rect x="376" y="220" width="246" height="36" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="499" y="238" font-family="system-ui,sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">② 拿 id 回聚簇索引取整行 ＝ 回表</text>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">命中 N 行 → N 次回表，每次都是一次 B+ 树查找 → 成本随命中行数线性增长</text>
+</svg>

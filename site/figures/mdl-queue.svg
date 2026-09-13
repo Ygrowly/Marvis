@@ -1,0 +1,51 @@
+<svg viewBox="0 0 680 372" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>MDL 连锁：为什么「加个索引」能把库搞挂</title>
+  <desc>长事务持有一把 MDL 读锁。DDL 要申请 MDL 写锁，与读锁互斥，于是进入等待。关键是接下来：后面来的普通查询虽然只申请读锁、本来和长事务兼容，但 MDL 请求队列是先进先出的、不能插队，所以它们全部排在等待中的 DDL 后面。队列随时间线性增长，连接池被占满，服务雪崩——危险的不是 DDL 慢，是它堵出了一条越来越长的队。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">MDL 连锁：为什么「加个索引」能把库搞挂</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">危险的不是 DDL 本身慢，是它在锁队列里堵出了一条越来越长的队</text>
+
+  <!-- 已持有 -->
+  <text x="30" y="82" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">① 已持有</text>
+  <rect x="118" y="68" width="330" height="26" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="283" y="85" font-family="system-ui,sans-serif" font-size="11" fill="#633806" text-anchor="middle">长事务 · 持 MDL 读锁（可能只是在跑一条慢 SELECT）</text>
+  <text x="462" y="85" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">← 它不释放，后面全卡住</text>
+
+  <!-- 队列 -->
+  <text x="30" y="150" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">② 排队中</text>
+
+  <rect x="118" y="130" width="96" height="34" rx="6" fill="#BA7517"/>
+  <text x="166" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#FFFFFF" text-anchor="middle">DDL 等写锁</text>
+
+  <rect x="222" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="258" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 A</text>
+
+  <rect x="302" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="338" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 B</text>
+
+  <rect x="382" y="130" width="72" height="34" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="418" y="151" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65" text-anchor="middle">查询 C</text>
+
+  <text x="466" y="151" font-family="system-ui,sans-serif" font-size="12" fill="#6B6A65">→ → → 还在增长</text>
+
+  <text x="118" y="184" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">队列是先进先出的，<tspan font-weight="600">不能插队</tspan>：后面的查询本来和长事务兼容（都是读），却必须排在 DDL 后面</text>
+
+  <!-- 后果 -->
+  <text x="30" y="226" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">③ 后果</text>
+
+  <rect x="118" y="206" width="196" height="88" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="132" y="227" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">队列线性增长</text>
+  <text x="132" y="247" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">积压数 = QPS × DDL 等待秒数</text>
+  <text x="132" y="265" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">等待越久，队越长——</text>
+  <text x="132" y="281" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">而队越长，DDL 越难开始</text>
+
+  <rect x="326" y="206" width="324" height="88" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="340" y="227" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">连接池被占满 → 服务雪崩</text>
+  <text x="340" y="247" font-family="system-ui,sans-serif" font-size="10" fill="#633806">每个排队的请求都占着一条连接</text>
+  <text x="340" y="265" font-family="system-ui,sans-serif" font-size="10" fill="#633806">连接池通常只有几百条 → 立刻耗尽</text>
+  <text x="340" y="281" font-family="system-ui,sans-serif" font-size="10" fill="#633806">新请求连不上库，<tspan font-weight="600">不只是这张表出问题</tspan></text>
+
+  <!-- 断链 -->
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">怎么断开这条链：</text>
+  <text x="30" y="350" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">① 执行前先查长事务并处理掉（断掉①）　② 设一个很短的 lock_wait_timeout，让 DDL 快速失败而不是堵着（断掉②）　③ 低峰执行 + 备好回滚</text>
+</svg>

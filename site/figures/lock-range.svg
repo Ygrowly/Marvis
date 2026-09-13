@@ -1,0 +1,34 @@
+<svg viewBox="0 0 680 384" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>锁的范围取决于扫描到的索引范围</title>
+<desc>精确命中唯一索引只锁一条记录；范围扫描会锁住扫过的所有索引记录以及它们之间的间隙。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="40" width="600" height="120" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="58" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">① 精确命中唯一索引：WHERE id = 123 FOR UPDATE</text>
+<path d="M84 112 L616 112" stroke="#888780" stroke-width="0.5" fill="none"/>
+<path d="M100 100 L100 124" stroke="#888780" stroke-width="1.5" fill="none"/>
+<path d="M190 100 L190 124" stroke="#888780" stroke-width="1.5" fill="none"/>
+<path d="M370 100 L370 124" stroke="#888780" stroke-width="1.5" fill="none"/>
+<path d="M460 100 L460 124" stroke="#888780" stroke-width="1.5" fill="none"/>
+<path d="M550 100 L550 124" stroke="#888780" stroke-width="1.5" fill="none"/>
+<rect x="268" y="94" width="24" height="36" rx="4" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="280" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#633806" text-anchor="middle" dominant-baseline="central">只锁这 1 条</text>
+<text x="84" y="142" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">无间隙锁：唯一约束已保证不会再有相同的 id</text>
+<rect x="40" y="172" width="600" height="120" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="190" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">② 范围扫描非唯一索引：WHERE status = 'PENDING' AND next_retry_time &lt;= NOW() FOR UPDATE</text>
+<path d="M84 244 L616 244" stroke="#888780" stroke-width="0.5" fill="none"/>
+<rect x="88" y="226" width="384" height="36" rx="4" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<path d="M100 232 L100 256" stroke="#5F5E5A" stroke-width="1.5" fill="none"/>
+<path d="M190 232 L190 256" stroke="#5F5E5A" stroke-width="1.5" fill="none"/>
+<path d="M280 232 L280 256" stroke="#5F5E5A" stroke-width="1.5" fill="none"/>
+<path d="M370 232 L370 256" stroke="#5F5E5A" stroke-width="1.5" fill="none"/>
+<path d="M460 232 L460 256" stroke="#888780" stroke-width="1.5" fill="none"/>
+<path d="M550 232 L550 256" stroke="#888780" stroke-width="1.5" fill="none"/>
+<text x="88" y="274" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">锁住扫过的 4 条记录 ＋ 它们之间的 3 个间隙</text>
+<rect x="40" y="308" width="600" height="56" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="328" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">锁加在索引记录上，不是数据行上。WHERE 里没写索引列 → 只能全表扫描 → 所有记录一起被锁。</text>
+<text x="58" y="350" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">这就是「明明只查几行，插入却被卡住」的来源：被挡住的其实是扫过的那段区间。</text>
+</svg>

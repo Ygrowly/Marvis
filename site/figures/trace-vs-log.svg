@@ -1,0 +1,50 @@
+<svg viewBox="0 0 680 352" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Trace 是一棵树，日志是一条线</title>
+  <desc>左边是日志的形态：一条条独立的时间戳文本，彼此之间没有结构关系，要还原因果只能靠人对着时间戳猜。右边是 trace 的形态：一棵有父子关系的调用树，每个节点是一次操作，能直接看出谁调用了谁、哪一步慢、哪一步失败。底部是三类信号的分工，以及一个采样策略：失败的运行全采、成功的抽样，能在保留全部归因能力的前提下把存储降到约十分之一。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">Trace 是一棵树，日志是一条线</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">日志回答「发生了什么」，Trace 回答「谁导致了谁」——排查跨步故障差的是后面那个</text>
+
+  <!-- 左：日志 -->
+  <rect x="30" y="66" width="290" height="152" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">日志：一条条独立的时间戳</text>
+  <text x="46" y="112" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10:00:01 INFO  request received</text>
+  <text x="46" y="130" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10:00:02 INFO  tool called: search</text>
+  <text x="46" y="148" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10:00:05 WARN  retry #1</text>
+  <text x="46" y="166" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10:00:09 ERROR timeout</text>
+  <text x="46" y="184" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">10:00:09 INFO  fallback used</text>
+  <text x="46" y="206" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 因果关系要靠人对着时间戳猜</text>
+
+  <!-- 右：Trace -->
+  <rect x="350" y="66" width="300" height="152" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">Trace：一棵有父子关系的树</text>
+
+  <rect x="366" y="98" width="150" height="22" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="441" y="113" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">Run（一次目标执行）</text>
+
+  <rect x="384" y="128" width="120" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="444" y="142" font-family="system-ui,sans-serif" font-size="9" fill="#2C2C2A" text-anchor="middle">Model Span</text>
+  <rect x="384" y="154" width="120" height="20" rx="4" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="444" y="168" font-family="system-ui,sans-serif" font-size="9" fill="#2C2C2A" text-anchor="middle">Retrieval Span</text>
+  <rect x="384" y="180" width="120" height="20" rx="4" fill="#FBF1E2" stroke="#BA7517"/>
+  <text x="444" y="194" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">Tool Span（慢 / 失败）</text>
+
+  <path d="M441 120 L441 128 M444 148 L444 154 M444 174 L444 180" stroke="#8A877E" stroke-width="1" fill="none"/>
+
+  <text x="514" y="142" font-family="system-ui,sans-serif" font-size="9" fill="#633806">← 谁调用的谁</text>
+  <text x="514" y="168" font-family="system-ui,sans-serif" font-size="9" fill="#633806">← 哪一步慢</text>
+  <text x="514" y="194" font-family="system-ui,sans-serif" font-size="9" fill="#633806">← 哪一步失败</text>
+
+  <!-- 底部 -->
+  <path d="M30 236 L650 236" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="258" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">三类信号的分工（不要混）</text>
+  <rect x="30" y="268" width="196" height="34" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="290" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">指标：分布与趋势（P95 涨了吗）</text>
+  <rect x="242" y="268" width="196" height="34" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="258" y="290" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">日志：细节与原文</text>
+  <rect x="454" y="268" width="196" height="34" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="470" y="290" font-family="system-ui,sans-serif" font-size="10" fill="#633806">Trace：因果与归因</text>
+
+  <text x="30" y="326" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">采样策略：<tspan font-weight="600">失败的全采、成功的抽样</tspan>——保留全部归因能力，存储降到约十分之一（失败率 5% 时：5% + 95%×5% ≈ 9.75%）。</text>
+  <text x="30" y="344" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">反过来（成功全采、失败抽样）等于把最需要的那部分证据丢掉——这是最容易犯、也最贵的错。</text>
+</svg>

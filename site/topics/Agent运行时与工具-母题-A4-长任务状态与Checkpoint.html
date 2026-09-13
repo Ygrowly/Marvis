@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A4 · 长任务状态与 Checkpoint</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+  <a class="mv-back mv-back-2" href="../interactive/rulearena-run-lifecycle.html">交互版 →</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A4 · 长任务状态与 Checkpoint</h1>
+    <p class="mv-topic-meta">关联 母题-A3-失败恢复与幂等（幂等键是 checkpoint 的组成部分；Resume/Replay/Retry/Fork 的分工在那张卡）· 母题-A1-计划执行循环与停止条件（Step 是循环的产物）· 母题-A5-上下文压缩与记忆（Checkpointer vs Store 的划分在那张卡展开） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A4-长任务状态与Checkpoint.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 状态要分层，不能只存聊天记录 ② checkpoint 前后各记一次 ③ 恢复的第一步是查权威状态）· 读完约 12 分钟 · 需要先懂：[[母题-A3-失败恢复与幂等]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的长任务跑到一半挂了怎么办？checkpoint 里存什么？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：状态必须分层，不能只存聊天记录</h3>
+<p class="mv-md-p">【事实】<strong>七张表 / 七个实体</strong>（study/04 的模型）：</p>
+<table class="mv-table"><thead><tr><th>实体</th><th>作用</th><th>关键字段</th></tr></thead><tbody><tr><td><strong>Thread</strong></td><td>会话 / 长期交互容器</td><td>user、scope、memory refs</td></tr><tr><td><strong>Run</strong></td><td>一次目标执行</td><td>goal、status、versions、budget</td></tr><tr><td><strong>Step</strong></td><td>一次模型或工具动作</td><td>type、input/output refs、latency、error</td></tr><tr><td><strong>Branch</strong></td><td>平行探索或用户回退分支</td><td>parent_step、merge status</td></tr><tr><td><strong>Checkpoint</strong></td><td>可恢复状态快照</td><td>state version、resume node、side effects</td></tr><tr><td><strong>Artifact</strong></td><td>大结果或中间产物</td><td>URI、hash、ACL、schema、TTL</td></tr><tr><td><strong>Event</strong></td><td>流式 / 审计事实</td><td>sequence、kind、timestamp、trace IDs</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>"只存聊天记录"为什么不行</strong>：</p>
+<pre class="mv-md-pre">聊天记录里有：模型说了什么
+聊天记录里没有：哪些写操作已经真的发生了
+
+→ 进程重启后，系统不知道第 7 步那个"创建工单"到底成没成
+→ 重做可能重复建单，不重做可能漏掉</pre>
+<p class="mv-md-p">【事实】这正是原始素材点名的<strong>头号反例</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"只保存消息历史，进程重启后不知道哪些写操作已完成。"</strong></p>
+<p class="mv-md-p">【推论】<strong>根因是"聊天记录是给模型看的，不是给系统用的"</strong>——它记录的是<strong>对话</strong>，不是<strong>状态</strong>。<strong>系统要恢复，需要的是"我做到哪了、做过什么、还剩什么"</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们的会话记录都存了数据库"不等于"我们的任务可以恢复"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 一个 Step 应该记录什么【事实】</h3>
+<p class="mv-md-p">【事实】study/04 给的 schema（<strong>这一份可以直接背</strong>）：</p>
+<pre class="mv-md-pre">{
+  "run_id": "r1",              "step_id": "s7",           "sequence": 7,
+  "kind": "tool",              "status": "succeeded",
+  "model_version": "...",      "prompt_version": "p12",
+  "tool_name": "create_ticket", "tool_version": "v3",
+  "input_ref": "artifact://...", "output_ref": "artifact://...",
+  "idempotency_key": "ticket:incident-42",
+  "latency_ms": 824,           "token_usage": null,       "error_code": null
+}</pre>
+<p class="mv-md-p">【推导】<strong>这份 schema 里有三组字段是"多余的"，但少了任何一组都恢复不了</strong>：</p>
+<pre class="mv-md-pre">① 【版本】model_version / prompt_version / tool_version
+   → 少了它，Replay 时不知道当时用的是什么版本，轨迹复现不出来
+
+② 【引用而不是内容】input_ref / output_ref 指向 Artifact
+   → 少了它，大产物会塞满状态表
+
+③ 【幂等键】
+   → 少了它，恢复时无法判断"这一步做过没有"（[[母题-A3-失败恢复与幂等]]）</pre>
+<p class="mv-md-p">【事实】原始素材的结论一句话：</p>
+<p class="mv-md-p mv-md-quote"><strong>"不要只存最终聊天文本，否则无法 Replay 和失败归因。"</strong></p>
+<p class="mv-md-p">【推论】<strong>这一条在面试里的价值</strong>：<strong>它把"日志"从"排错用的辅助材料"提升为"运行时的必要组成"</strong>——<strong>没有 Step 级的记录，Agent 的 Replay、失败归因、成本核算、权限审计四件事同时做不了。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. Checkpoint 的核心：记两次，中间夹着"不确定窗口"【推导】</h3>
+<figure-box num="Checkpoint 的位置：夹在 intent 与 result 之间的那个不确定窗口" title="" note="副作用前记 intent、后记 result；两次之间是不确定窗口，恢复时必须查权威状态"><svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Checkpoint 的位置：夹在 intent 与 result 之间的那个不确定窗口</title>
+  <desc>一次有副作用的步骤要记两次：调用之前记下 intent（打算做什么、用哪个幂等键），调用之后记下结果（做成了没有、真实返回是什么）。这两次之间是一个不确定窗口——进程可能正好在这里崩掉，此时系统只知道「打算做」但不知道「做成没有」。恢复时正是靠这个窗口的存在，才知道必须去查权威状态而不是盲目重试。右侧是状态实体与它们的关系：Thread 装 Run，Run 装 Step，Step 关联 Artifact 与 Event，Checkpoint 是可恢复的快照。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">Checkpoint 的位置：夹在 intent 与 result 之间的那个不确定窗口</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">只记结果，崩溃在中间时不知道「本来要做什么」；只记意图，恢复时不知道「做成没有」</text>
+
+  <!-- 时间轴 -->
+  <path d="M30 96 L650 96" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="84" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">时间 →</text>
+
+  <circle cx="120" cy="96" r="5" fill="#BA7517"/>
+  <text x="120" y="76" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">① 记 intent</text>
+  <text x="120" y="116" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">打算做什么 + 幂等键</text>
+
+  <rect x="176" y="88" width="248" height="16" rx="4" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="300" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">② 调用外部工具（可能超时 / 中途被杀）</text>
+
+  <circle cx="480" cy="96" r="5" fill="#BA7517"/>
+  <text x="480" y="76" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">③ 记 result</text>
+  <text x="480" y="116" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">做成了没有 + 真实返回</text>
+
+  <path d="M180 104 L424 104" stroke="#BA7517" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+  <text x="300" y="152" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">↑ 不确定窗口：在这一段里崩溃，系统不知道副作用到底发生了没有</text>
+  <text x="300" y="168" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">恢复时必须【查权威状态】，而不是赌一次重试</text>
+
+  <!-- 状态实体 -->
+  <path d="M30 192 L650 192" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="216" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">状态实体：谁装谁</text>
+
+  <rect x="30" y="228" width="140" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="100" y="250" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">Thread</text>
+  <text x="100" y="268" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">会话 / 长期容器</text>
+
+  <rect x="188" y="228" width="140" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="258" y="250" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">Run</text>
+  <text x="258" y="268" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">一次目标执行</text>
+
+  <rect x="346" y="228" width="140" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="416" y="250" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">Step</text>
+  <text x="416" y="268" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">一次模型或工具动作</text>
+
+  <rect x="504" y="228" width="146" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="577" y="250" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">Checkpoint</text>
+  <text x="577" y="268" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">可恢复的状态快照</text>
+
+  <text x="172" y="258" font-family="system-ui,sans-serif" font-size="12" fill="#8A877E">⊃</text>
+  <text x="330" y="258" font-family="system-ui,sans-serif" font-size="12" fill="#8A877E">⊃</text>
+  <text x="488" y="258" font-family="system-ui,sans-serif" font-size="12" fill="#8A877E">↔</text>
+
+  <text x="30" y="302" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">另外三张表：<tspan font-family="monospace">Artifact</tspan>（大产物，存 URI + hash + ACL）、<tspan font-family="monospace">Event</tspan>（流式与审计事实，带递增 sequence）、<tspan font-family="monospace">Branch</tspan>（平行探索 / 用户回退）</text>
+  <text x="30" y="322" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">铁律：<tspan font-weight="600">不要只存最终聊天文本</tspan>——否则无法 Replay，也无法把失败定位到具体某个 Step。</text>
+  <text x="30" y="340" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">持久化分两层：<tspan font-family="monospace">Checkpointer</tspan> 管单 thread 的短期状态；<tspan font-family="monospace">Store</tspan> 管跨 thread 的长期记忆——两者混在一起会让快照变重、失效判断变复杂。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】study/04 给的 checkpoint 时机：</p>
+<pre class="mv-md-pre">① 进入 / 离开每个有业务意义的节点
+② 【外部副作用之前】记录 intent
+③ 【副作用完成后】记录结果与业务幂等键
+④ 人工中断前
+⑤ 大型子任务完成后
+⑥ Context 压缩或分支合并后</pre>
+<p class="mv-md-p">【推导】<strong>为什么必须"前后各记一次"</strong>：</p>
+<pre class="mv-md-pre">只记 ② （intent，无 result）：
+  进程在调用中间崩掉 → 恢复时知道"本来要做 X"，但不知道做成没有
+  → 【必须先查权威状态】（[[母题-A3-失败恢复与幂等]] 第 4 节）
+
+只记 ③ （result，无 intent）：
+  进程在调用中间崩掉 → 连"本来要做什么"都不知道
+  → 【无从恢复】：既不知道该查什么状态，也不知道该不该重试</pre>
+<p class="mv-md-p">【结论】<strong>这两次 checkpoint 之间，正好夹着那个"不确定窗口"。</strong> 而<strong>正是这个窗口的存在，决定了恢复协议的第一步必须是查权威状态</strong>。</p>
+<p class="mv-md-p">【推论】<strong>这是"checkpoint 不是简单序列化内存"的真正含义</strong>：<strong>内存序列化只会给你一个时间点的快照</strong>；<strong>而能恢复的 checkpoint 必须能回答"我停在了哪一步的哪一侧"</strong>——<strong>在 intent 之后、result 之前停的，和不在这两者之间的，处理方式完全不同。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"每隔 30 秒存一次状态"这种做法，可能仍然无法恢复？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 恢复协议【事实】</h3>
+<p class="mv-md-p">【事实】study/04 的恢复流程：</p>
+<pre class="mv-md-pre">读取 Checkpoint → 校验版本与完整性 → 【查询业务权威状态】
+  → 副作用已发生？ → 是：补记结果 / 跳过重复
+                   → 否：按策略重试或人工
+  → 重建最小 Context → 从安全节点恢复</pre>
+<p class="mv-md-p">【推导】<strong>注意"查询业务权威状态"是独立的一步</strong>——<strong>它不是"顺手查一下"，是必要环节</strong>：</p>
+<pre class="mv-md-pre">Checkpoint 里记的是【意图】（打算做 X）
+业务系统里记的是【事实】（X 到底做了没有）
+→ 两者可能不一致（就是那个不确定窗口）
+→ 所以必须去问"事实"，而不是相信"意图"</pre>
+<p class="mv-md-p">【推断】这也解释了为什么<strong>恢复时要"重建最小 Context"而不是"恢复原 Context"</strong>：</p>
+<pre class="mv-md-pre">原 Context 是当时那一刻的投影（可能已经很长、很脏）
+恢复时应该【按当前状态重新装配】——[[母题-C1-上下文组装与窗口预算]] 的"上下文是视图"在这里落地</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：恢复时为什么不能直接用 checkpoint 里存的上下文？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 存储成本：checkpoint 不是越密越好【推导】</h3>
+<pre class="mv-md-pre">每次 checkpoint 约 50 KB
+一个 50 步的 run → 50 个 checkpoint × 50 KB = 2.5 MB
+
+若每天 10,000 个 run：
+  2.5 MB × 10,000 = 25 GB / 天</pre>
+<p class="mv-md-p">【结论】<strong>"每一步都 checkpoint"的存储成本是每天 25 GB 量级。</strong></p>
+<p class="mv-md-p">【取舍】<strong>所以时机要按"业务意义"选，不是按"步"选</strong>：</p>
+<pre class="mv-md-pre">值得记的：业务节点进出、副作用前后、人工中断前、子任务完成后、Context 压缩后
+不必记的：纯只读的中间步骤（重做代价低）</pre>
+<p class="mv-md-p">【推导】<strong>更值钱的是"不做 checkpoint 的重做成本"</strong>：</p>
+<pre class="mv-md-pre">一个 50 步的任务在第 45 步崩了，每步新增 2.5K token
+
+无 checkpoint：从头重跑 45 步
+  累计输入 = 2.5K × (45 × 46 / 2) = 2.5K × 1,035 = 2,587.5K
+
+有 checkpoint（第 40 步）：只需重做 5 步
+  累计输入 = 2.5K × (5 × 6 / 2) = 2.5K × 15 = 37.5K
+
+差约 69 倍</pre>
+<p class="mv-md-p">【结论】<strong>checkpoint 的收益不在"省了多少存储"，在"少重做了多少步"</strong>——而且<strong>因为历史重发是平方累计的</strong>（[[母题-C1-上下文组装与窗口预算]]），<strong>重做 45 步比重做 5 步贵 69 倍，不是 9 倍。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"长任务"比"短任务"更需要 checkpoint，而且需要的密度不同？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 持久化分两层：Checkpointer 与 Store【事实】</h3>
+<p class="mv-md-p">【事实】LangGraph 文档给的划分（<strong>这个划分很干净，值得直接吸收</strong>）：</p>
+<table class="mv-table"><thead><tr><th></th><th><strong>Checkpointer</strong></th><th><strong>Store</strong></th></tr></thead><tbody><tr><td><strong>作用域</strong></td><td><strong>单个 thread</strong></td><td><strong>跨 thread</strong></td></tr><tr><td><strong>记忆类型</strong></td><td>短期、thread 级</td><td><strong>长期、跨 thread</strong></td></tr><tr><td><strong>访问方式</strong></td><td>在 graph config 里传 <code class="mv-md-code">thread_id</code></td><td>从节点或应用代码里读写</td></tr><tr><td><strong>典型用途</strong></td><td>对话连续性、HITL、时间旅行、容错</td><td><strong>用户偏好、事实、共享知识</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>为什么必须分开</strong>：</p>
+<pre class="mv-md-pre">如果混在一起（把长期记忆也塞进 checkpoint）：
+  ① 每次 checkpoint 都要写它 —— 它其实没变，纯浪费
+  ② 快照变重 —— 而快照是要在【每一次有意义的步骤】写的
+  ③ 失效判断变复杂 —— "这次失败是因为 thread 状态变了，还是因为长期记忆变了？"</pre>
+<p class="mv-md-p">【推论】<strong>这个划分和 [[母题-C1-上下文组装与窗口预算]] 的"Context / State / Memory 三分"是同构的</strong>：</p>
+<pre class="mv-md-pre">Checkpointer ≈ State（运行过程的结构化状态，thread 级）
+Store       ≈ Long-term Memory（跨会话复用，需要治理）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"用户偏好"不该存在 checkpoint 里？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"把消息历史存下来就能恢复"</td><td><strong>这是原始素材点名的头号反例</strong>。消息历史里有"模型说了什么"，<strong>没有"哪些写操作真的发生了"</strong>——重启后不知道第 7 步的建单成没成。<strong>必须记 Step 级的状态、版本和幂等键</strong></td></tr><tr><td>"checkpoint 就是把内存序列化下来"</td><td><strong>不是</strong>。内存序列化只给一个<strong>时间点快照</strong>；<strong>能恢复的 checkpoint 必须能回答"停在某一步的哪一侧"</strong>——所以要<strong>副作用前记 intent、后记 result</strong>（第 3 节）</td></tr><tr><td>"每一步都 checkpoint 最安全"</td><td><strong>存储成本会失控</strong>（50 步 = 2.5 MB/run；每天 1 万 run = 25 GB/天）。<strong>时机按"业务意义"选</strong>：业务节点进出、副作用前后、中断前、压缩后——<strong>纯只读步骤不必记</strong></td></tr><tr><td>"恢复时直接用 checkpoint 存的上下文就行"</td><td><strong>不行</strong>。<strong>上下文是"当时那一刻的视图"</strong>，恢复时应该<strong>按当前状态重建最小 Context</strong>——否则会把过期信息、已解决的中间产物一起带回来</td></tr><tr><td>"checkpoint 里记录的副作用说明它发生了"</td><td><strong>只能说明"打算做"</strong>。<strong>checkpoint 记意图，业务系统记事实</strong>——两者之间那个不确定窗口正是恢复协议必须先查权威状态的原因（[[母题-A3-失败恢复与幂等]]）</td></tr><tr><td>"长期记忆也存 checkpoint 里方便"</td><td><strong>会让快照变重、失效判断变复杂</strong>。LangGraph 的划分很清楚：<strong>Checkpointer 管单 thread 短期、Store 管跨 thread 长期</strong>——<strong>它们的更新频率和生命周期完全不同</strong></td></tr><tr><td>"只存最终结果，中间步骤不用记"</td><td><strong>那就没法归因</strong>。原始素材的原话是"<strong>不要只存最终聊天文本，否则无法 Replay 和失败归因</strong>"。<strong>Step 级记录是 Replay、归因、成本核算、权限审计四件事共同的前提</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>能恢复的关键不是"存得频繁"，是"存得位置对"——checkpoint 要卡在那个不确定窗口的两侧。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint-q1" tag="Agent运行时与工具" q="一个 50 步的长任务在第 45 步崩溃。每步新增约 2.5K token。模型 Opus 5（输入 $5/MTok）。&#10;问：有 checkpoint（第 40 步）和无 checkpoint 的重做成本各是多少？" a="``text&#10;无 checkpoint（从头重跑 45 步）：&#10;累计输入 = 2.5K × (45 × 46 / 2) = 2.5K × 1,035 = 2,587.5K&#10;成本 = 2.59M × $5 / 1M ≈ $12.9&#10;有 checkpoint（只需重做第 41–45 步）：&#10;累计输入 = 2.5K × (5 × 6 / 2) = 2.5K × 15 = 37.5K&#10;成本 = 0.0375M × $5 / 1M ≈ $0.19&#10;差约 69 倍&#10;`&#10;【结论】checkpoint 的收益不在&quot;省了多少存储&quot;，在&quot;少重做了多少步&quot;。&#10;【关键】差值不是 45/5 = 9 倍，是 69 倍——因为历史重发是平方累计的（[[母题-C1-上下文组装与窗口预算]]）：&#10;`text&#10;n 步的累计输入 ∝ n² / 2&#10;45 步 / 5 步 → (45/5)² = 81 倍（近似；精确是 1035/15 = 69）&#10;``&#10;这就是&quot;长任务比短任务更需要 checkpoint&quot;的数学原因。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint-q2" tag="Agent运行时与工具" q="每次 checkpoint 约 50 KB。一个 50 步的 run 每步都记。&#10;问：这个 run 的 checkpoint 总存储是多少？如果每天 10,000 个 run 呢？" a="``text&#10;单个 run：50 × 50 KB = 2,500 KB ≈ 2.5 MB&#10;每天：    2.5 MB × 10,000 = 25 GB / 天&#10;``&#10;【结论】&quot;每一步都 checkpoint&quot;是每天 25 GB 量级的存储写入。&#10;【取舍】所以时机要按&quot;业务意义&quot;选，不是按&quot;步&quot;选：&#10;值得记 · 不必记&#10;进出业务节点 · 纯只读的中间步骤（重做代价低）&#10;副作用之前 / 之后 · 连续的同质模型调用&#10;人工中断前&#10;大型子任务完成后&#10;Context 压缩 / 分支合并后&#10;【补充】最后一条容易被忽略：Context 压缩之后必须 checkpoint——因为压缩是有损的，如果压缩后崩溃又回到压缩前，等于白压了一次（[[母题-C1-上下文组装与窗口预算]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint-q3" tag="Agent运行时与工具" q="某团队的 checkpoint 里记录了这样一条：&#10;``json&#10;{ &quot;step_id&quot;: &quot;s7&quot;, &quot;kind&quot;: &quot;tool&quot;, &quot;tool_name&quot;: &quot;create_ticket&quot;,&#10;&quot;status&quot;: &quot;unknown&quot;, &quot;idempotency_key&quot;: &quot;ticket:incident-42&quot; }&#10;`&#10;问：status: &quot;unknown&quot;` 记录的是什么状态？恢复时该怎么做？" a="unknown 记录的正是那个&quot;不确定窗口&quot;：intent 已经写下（知道要建 incident-42 的工单），但 result 没有落盘（进程在调用中间被杀 / 超时）。&#10;恢复时不能猜，必须查权威状态：用 idempotency_key = ticket:incident-42 去业务系统查——工单建了没有？&#10;``text&#10;查到了  → 补记 result，跳过执行（这正是幂等键的用处）&#10;没查到  → 按策略重试（此时重试是安全的）&#10;`&#10;【结论】unknown 不是一个&quot;待重试&quot;的状态，是一个&quot;必须先查&quot;的状态。&#10;【推论】能区分 failed 和 unknown，是 checkpoint 设计是否到位的直接标志：&#10;`text&#10;failed  → 明确知道没做成 → 可以直接按策略重试&#10;unknown → 不知道做没做成 → 【必须先查权威状态】&#10;`&#10;【补充】这也是 [[母题-A3-失败恢复与幂等]] 里&quot;重试三分类&quot;的落地——把 unknown 混进 failed` 里去重试，就是&quot;超时了就重试&quot;那个反例。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们的 Agent 把每一步的状态都存进数据库了，所以恢复没问题。&quot;" a="三处问题（第一处最关键）。&#10;1. &quot;状态&quot;存的是什么？如果只存了消息历史或最终结果，恢复不了。必须有 Step 级的记录：版本（model/prompt/tool）、Artifact 引用、幂等键、错误码——原始素材的原话是&quot;不要只存最终聊天文本，否则无法 Replay 和失败归因&quot;。&#10;2. checkpoint 的位置比频率重要。副作用前要记 intent、后要记 result——只记一个都不行：&#10;``text&#10;只记 intent  → 崩溃在中间时不知道做成没有（还好，可以查）&#10;只记 result  → 崩溃在中间时不知道本来要做什么（无从恢复）&#10;``&#10;3. &quot;每一步都存&quot;的存储成本可观（Q2：每天 25 GB 量级），而且纯只读步骤不必记。&#10;【准确说法】&quot;能恢复的关键是&quot;存得位置对&quot;，不是&quot;存得频繁&quot;——checkpoint 要卡在那个不确定窗口的两侧，并且 Step 记录里要带版本 + 幂等键 + Artifact 引用。恢复时先查权威状态，再重建最小 Context。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;恢复的时候，我们把上次存的上下文直接加载回来继续跑就行了。&quot;" a="三处问题。&#10;1. 上下文是&quot;当时那一刻的视图&quot;，不是状态本身（[[母题-C1-上下文组装与窗口预算]]）。恢复时应该按当前状态重建最小 Context——否则会把已经过期的信息、已经解决掉的中间产物、以及被压缩前的冗余内容一起带回来。&#10;2. 恢复流程的第一步不是&quot;加载上下文&quot;，是&quot;查询业务权威状态&quot;：checkpoint 记的是意图，业务系统记的是事实——两者之间隔着那个不确定窗口（Q3）。跳过这一步直接续跑，就可能重复执行已经完成的副作用。&#10;3. 还有版本校验：study/04 的恢复流程第二步是&quot;校验版本与完整性&quot;——如果期间 Prompt / 工具 / 模型版本变了，直接续跑可能处在混合版本的状态里。&#10;【准确说法】&quot;恢复协议是：读 checkpoint → 校验版本 → 查权威状态 → 判断副作用是否已发生 → 重建最小 Context → 从安全节点恢复。&quot;直接加载旧上下文&quot;跳过了中间最关键的几步。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">一个跑了几十步、做过若干写操作的长任务挂了——凭什么能安全地接着跑，而不是从头再来？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A4-长任务状态与Checkpoint" tag="Agent运行时与工具" q="一个跑了几十步、做过若干写操作的长任务挂了——凭什么能安全地接着跑，而不是从头再来？" a="长任务的状态必须分层——Thread / Run / Step / Branch / Checkpoint / Artifact / Event 七类实体；只存聊天历史恢复不了，因为里面没有&quot;哪些写操作真的发生了&quot;（原始素材点名的头号反例）。Step 级记录必须带三组字段：版本（model / prompt / tool，否则 Replay 不出来）、Artifact 引用（否则大产物塞满状态表）、幂等键（否则不知道做过没有）。checkpoint 的核心是&quot;记两次&quot;：副作用前记 intent、后记 result——这两次之间夹着的&quot;不确定窗口&quot;，正是恢复时必须先查权威状态的原因。持久化分两层：Checkpointer 管单 thread 短期状态、Store 管跨 thread 长期记忆（LangGraph 的划分），混在一起会让快照变重、失效判断变复杂。成本上：50 步每步都记是 2.5 MB/run、每天 25 GB 量级，所以时机按&quot;业务意义&quot;选；而收益远大于成本——50 步任务在第 45 步崩溃时，有 checkpoint 重做 5 步 vs 无 checkpoint 重做 45 步，差约 69 倍（因为历史重发是平方累计的）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是 Agent 面试里<strong>最能看出"有没有真跑过长任务"的一题</strong>。Demo 级的答案会说"我们把状态存数据库"；<strong>做过的人会说出"checkpoint 前记 intent、后记结果"</strong>——因为<strong>只有记了两次，才知道那个"不确定窗口"里到底发生了什么</strong>。而且这一题直接对应 RuleArena 的 Thread/Run/Step 数据模型。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">长任务的状态必须<strong>分层</strong>——<strong>Thread / Run / Step / Branch / Checkpoint / Artifact / Event</strong> 七类实体；<strong>只存聊天历史恢复不了</strong>，因为里面没有"哪些写操作真的发生了"（原始素材点名的头号反例）。<strong>Step 级记录必须带三组字段</strong>：<strong>版本</strong>（model / prompt / tool，否则 Replay 不出来）、<strong>Artifact 引用</strong>（否则大产物塞满状态表）、<strong>幂等键</strong>（否则不知道做过没有）。<strong>checkpoint 的核心是"记两次"</strong>：<strong>副作用前记 intent、后记 result</strong>——<strong>这两次之间夹着的"不确定窗口"，正是恢复时必须先查权威状态的原因</strong>。<strong>持久化分两层</strong>：<strong>Checkpointer 管单 thread 短期状态、Store 管跨 thread 长期记忆</strong>（LangGraph 的划分），混在一起会让快照变重、失效判断变复杂。<strong>成本上</strong>：50 步每步都记是 <strong>2.5 MB/run、每天 25 GB 量级</strong>，所以时机按"业务意义"选；而<strong>收益远大于成本</strong>——50 步任务在第 45 步崩溃时，有 checkpoint 重做 5 步 vs 无 checkpoint 重做 45 步，<strong>差约 69 倍</strong>（因为历史重发是平方累计的）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>七类实体（Thread / Run / Step / Branch / Checkpoint / Artifact / Event）</li><li><strong>只存聊天记录 = 头号反例</strong></li><li>Step 记录三组必需字段（版本 · Artifact 引用 · 幂等键）</li><li><strong>checkpoint 记两次：前 intent 后 result</strong></li><li>不确定窗口</li><li>恢复协议六步（读 → 校验版本 → <strong>查权威状态</strong> → 判断副作用 → 重建最小 Context → 从安全节点恢复）</li><li><code class="mv-md-code">failed</code> vs <code class="mv-md-code">unknown</code></li><li><strong>Checkpointer（单 thread）vs Store（跨 thread）</strong></li><li>存储 2.5 MB</li><li>run、25 GB</li><li>天</li><li>重做成本差 69 倍（平方累计）</li><li>Context 压缩后必须 checkpoint</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Checkpoint 存什么？</strong></strong></p>
+<p class="mv-md-p"><strong>目标、运行状态、当前节点、结构化中间结果、Artifact 引用、剩余预算、版本、已完成副作用与幂等键、待审批动作</strong>。大结果存外部，敏感信息按权限治理。</p>
+<p class="mv-md-p"><strong>2. <strong>什么时间做 checkpoint？</strong></strong></p>
+<p class="mv-md-p"><strong>进出业务节点、副作用前后、人工中断前、大型子任务完成后、Context 压缩或分支合并后</strong>。<strong>纯只读的中间步骤不必记</strong>（重做代价低，而存储成本高）。</p>
+<p class="mv-md-p"><strong>3. <strong>Resume / Replay / Retry / Fork 有什么区别？</strong></strong></p>
+<p class="mv-md-p">见 [[母题-A3-失败恢复与幂等]]：<strong>Resume 要把事做完、Replay 只复现轨迹（不重做副作用）、Retry 仅对可重试错误且有幂等保障、Fork 继承只读事实但不继承未批准写权限</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么恢复时要"重建最小 Context"而不是"恢复原 Context"？</strong></strong></p>
+<p class="mv-md-p"><strong>上下文是视图不是状态</strong>。恢复时<strong>按当前状态重新装配</strong>，才能避免把过期信息和已经解决的中间产物带回来（[[母题-C1-上下文组装与窗口预算]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>框架（LangGraph 之类）能替我解决这些吗？</strong></strong></p>
+<p class="mv-md-p"><strong>部分能</strong>：它提供 checkpointer / store / interrupt 这些<strong>机制</strong>。<strong>但框架不会替你决定</strong>：<strong>业务权威状态在哪、幂等键怎么设计、什么算"有业务意义的节点"、以及 Eval 的定义</strong>（study/04 的原话："<strong>框架不会替你决定业务权威状态、权限、幂等键和 Eval 定义</strong>"）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「人机确认（HITL）怎么实现？」——<strong>本质是一次"计划内的长暂停"</strong>：进入 <code class="mv-md-code">WaitingApproval</code> 状态 → <strong>checkpoint 保存待审批动作</strong> → 释放进程 → 用户批准后<strong>从 checkpoint Resume</strong>。<strong>关键是"用户审批不占住进程"</strong>（study/04 的原话）。而且<strong>批准必须绑定具体动作摘要和版本</strong>，不能用一次"允许所有"永久放权（[[母题-A6-沙箱权限与可信执行]]）。</li><li>「事件流（SSE）和 checkpoint 是什么关系？」——<strong>SSE 是"传输视图"，数据库状态才是权威</strong>。<strong>事件带递增 sequence，客户端断线后可以从 last event 恢复</strong>——但<strong>恢复的依据是数据库，不是事件流</strong>。这个区分和"上下文是视图"是同一条原理。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>Thread/Run/Step/Checkpoint/Artifact/Event 数据模型</strong>——这就是本卡七类实体在项目里的直接落地；<strong>每个步骤记录 Prompt/Model/Tool/Rule 版本</strong>正是"版本字段不能省"。 - <strong>EnergyOps</strong>：<strong>任务自愈</strong>——<strong>把现有的任务查询 / 重试升级为 durable task evidence</strong>，关键是补上"intent / result 两侧的 checkpoint"。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">状态七类实体 → 只存聊天记录为什么不行 → <strong>Step 记录的三组必需字段</strong> → <strong>checkpoint 记两次与不确定窗口</strong> → 恢复协议六步 → 存储成本与时机选择 → <strong>重做成本的 69 倍</strong> → <strong>Checkpointer vs Store 的分层</strong> → 收束到"位置比频率重要"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>能恢复的关键不是"存得频繁"，是"存得位置对"。</strong> checkpoint 要卡在<strong>不确定窗口的两侧</strong>——<strong>而恢复的第一步永远是去问"事实"（业务权威状态），而不是相信"意图"（checkpoint）。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能背出七类实体；能说清"只存聊天记录为什么不行"；<strong>能说出 Step 记录的三组必需字段及各自少了会怎样</strong>；<strong>能解释 checkpoint 为什么要记两次（不确定窗口）</strong>；能背出恢复协议六步并说清"查权威状态"为什么是独立一步；<strong>能算出重做成本的 69 倍差</strong>；<strong>能算出存储成本的 2.5 MB/run 与 25 GB/天</strong>；能区分 <code class="mv-md-code">failed</code> 与 <code class="mv-md-code">unknown</code> 的处理；能说清 Checkpointer 与 Store 的分工；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

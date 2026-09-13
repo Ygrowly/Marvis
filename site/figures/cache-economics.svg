@@ -1,0 +1,62 @@
+<svg viewBox="0 0 680 436" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>同一个 token，四种价钱；以及让缓存归零的几条路径</title>
+  <desc>上半部分用柱子画出 Opus 5 的四类计价：输入、缓存写入、缓存读出、输出，其中缓存读只有输入的十分之一、输出的五十分之一。下半部分列出缓存命中的五个必须同时满足的条件，以及最常把命中率打回零的六条路径——它们的共同点是让前缀不再逐字节相同。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">同一个 token，四种价钱；以及让缓存归零的几条路径</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">以 Opus 5 为例：省钱的杠杆首先不是「少放内容」，而是「让放进去的内容被命中」</text>
+
+  <!-- 柱状：四类计价 -->
+  <path d="M46 200 L430 200" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <rect x="60" y="178" width="62" height="22" rx="3" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="91" y="220" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">输入</text>
+  <text x="91" y="236" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">$5</text>
+
+  <rect x="152" y="172" width="62" height="28" rx="3" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="183" y="220" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">缓存写入</text>
+  <text x="183" y="236" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">$6.25</text>
+
+  <rect x="244" y="196" width="62" height="4" rx="2" fill="#BA7517"/>
+  <text x="275" y="220" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">缓存读出</text>
+  <text x="275" y="236" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">$0.50</text>
+
+  <rect x="336" y="90" width="62" height="110" rx="3" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="367" y="220" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">输出</text>
+  <text x="367" y="236" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">$25</text>
+
+  <text x="452" y="112" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">缓存读出是输入的 1/10、</text>
+  <text x="452" y="128" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">输出的 1/50。</text>
+  <text x="452" y="152" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">所以「命中率」是第一个</text>
+  <text x="452" y="168" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">该看的数字，不是「上下文</text>
+  <text x="452" y="184" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">有多长」。</text>
+
+  <!-- 命中条件 -->
+  <text x="30" y="274" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">命中要同时满足五个条件</text>
+
+  <rect x="30" y="286" width="126" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="93" y="306" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A" text-anchor="middle">逐字节相同</text>
+  <text x="93" y="323" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">前缀一个字节都不能变</text>
+
+  <rect x="166" y="286" width="126" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="229" y="306" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A" text-anchor="middle">同一模型 · 同一 effort</text>
+  <text x="229" y="323" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">设置会被渲染进前缀</text>
+
+  <rect x="302" y="286" width="126" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="365" y="306" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A" text-anchor="middle">在 TTL 内</text>
+  <text x="365" y="323" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">默认 5 分钟，命中会续期</text>
+
+  <rect x="438" y="286" width="126" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="501" y="306" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A" text-anchor="middle">够长</text>
+  <text x="501" y="323" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">Opus 5 要 512 token 起</text>
+
+  <rect x="574" y="286" width="76" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="612" y="306" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A" text-anchor="middle">在回看窗口内</text>
+  <text x="612" y="323" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">20 个 block</text>
+
+  <!-- 失效路径 -->
+  <text x="30" y="368" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A">最常把命中率打回零的几条路径</text>
+
+  <text x="30" y="392" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">① 前缀里放了动态值（时间戳、请求 ID）　② 工具定义顺序发生变化　③ 中途切换模型或 effort</text>
+  <text x="30" y="412" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">④ 同步工具调用或子 Agent 跑过了 TTL，回来时缓存已过期　⑤ 一轮新增超过 20 个 block，断点被甩出回看窗口</text>
+  <text x="30" y="430" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">这五条的共性：它们都不改变「你放了多少内容」，只让那段内容不再被认出。</text>
+</svg>

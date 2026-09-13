@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四 · 日志与持久化</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="MySQL.html">← MySQL 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">MySQL · 主线 四</span>
+    <h1 class="mv-topic-title">日志与持久化</h1>
+    <p class="mv-topic-meta">这条线在回答：提交过的数据，服务挂了为什么不该丢</p>
+  </div>
+  <p class="mv-line-lead">写放大 vs 崩溃恢复能力；安全 vs 吞吐（刷盘参数）</p>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
+    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
+    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
+    它们才会进复训牌组。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
+    <div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M11</span><span class="mv-mt-name">redo / undo / binlog 各管什么；两阶段提交为什么必要</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/MySQL-母题-M11-三日志与两阶段提交.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">用户下单，接口返回「提交成功」。一秒后机器断电。重启后，这条订单还在吗？为什么？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：三条日志各管一件事——<strong>undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）</strong>。用 <strong>WAL</strong> 把"随机写数据页"换成"顺序写日志"，同时拿到性能和崩溃安全性。而<strong>两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致</strong>——不做的话，两个崩溃窗口分别造出"主库多从库少"和"从库多主库少"。</p><ul class="mv-kw"><li>WAL 换掉随机写</li><li>顺序 vs 随机差 2–3 个数量级</li><li>undo 前镜像</li><li>redo 后台镜像·循环写</li><li>binlog 逻辑·追加写·Server 层</li><li>redo 用完即弃所以循环，binlog 长期保留所以追加</li><li>write pos 追上 check point = 写入卡顿</li><li>先刷页再推 check point</li><li>双一</li><li>prepare → binlog → commit</li><li>崩溃窗口 = 主从不一致</li><li>binlog 是否完整 = 唯一裁决依据</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>"安全"的标志不是"数据在磁盘上"，而是"修改这件事已经落盘了"。</strong> 数据库用"顺序写日志"换掉"随机写数据页"——这一步同时给出了性能（顺序 vs 随机的量级差）和崩溃恢复能力（WAL）。而只要有两份日志，就必然需要一次裁决（2PC）。</p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>redo 循环写，为什么不怕覆盖掉还没刷盘的日志？</strong></strong></p><p class="mv-md-p"><strong>check point 只在脏页真正刷盘后才前移</strong>；write pos 追上 check point 时<strong>必须停下来先刷脏页</strong>。顺序是"先刷页 → 再推 check point → 才释放空间"，<strong>不能反过来</strong>。</p><p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 设 0/2 能换多少性能？</strong></strong></p><p class="mv-md-p"><strong>必须拿压测数据说话，不能凭感觉。</strong> SDD 时代 <code class="mv-md-code">fsync</code> 成本下降，1 与 2 的差距远小于机械盘时代，<strong>所以现在更多是直接上"双一"</strong>。这是"按业务定口径"而不是"按性能定口径"。</p><p class="mv-md-p"><strong>3. <strong>binlog 有哪几种格式？生产用哪个？</strong></strong></p><p class="mv-md-p">Statement / Row / Mixed；<strong>现在主流是 Row</strong>（数据安全优先），Statement 只在日志体积敏感且 SQL 确定时才考虑。</p><p class="mv-md-p"><strong>4. <strong>redo log 是无限增长的吗？</strong></strong></p><p class="mv-md-p">不是。固定大小循环写，边界靠 check point 推进。</p></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M11-三日志与两阶段提交.md</p></div><div class="mv-mt"><div class="mv-mt-head"><span class="mv-mt-id">M12</span><span class="mv-mt-name">崩溃重启后 MySQL 怎么恢复数据；为什么不会丢已提交、也不会重复回滚</span><span class="mv-chip warn">草稿 · 待验收</span><a class="mv-mt-link" href="../topics/MySQL-母题-M12-崩溃恢复.html">单卡 →</a></div><collapse-panel title="题目背景"><p class="mv-md-p">数据库在「事务提交到一半」时断电。重启后它怎么知道哪些事务该重做、哪些该回滚？会不会把已经提交的又回滚掉？</p></collapse-panel><collapse-panel title="对照讲解（先答完再看）"><p class="mv-md-p"><strong>一句话结论</strong>：恢复 = <strong>redo 重放 + undo 回滚</strong>。重启后从 check point 起顺序重放 redo（<strong>每页自带 LSN，已落盘的直接跳过，所以重放幂等</strong>），把<strong>已提交</strong>的事务补上；再用 undo 把<strong>未提交</strong>的撤销。<strong>提交到一半（prepare）的事务由 binlog 的完整性裁决</strong>——binlog 完整就提交，不完整就回滚。<strong>顺序不能反：必须先 redo 再 undo。</strong></p><ul class="mv-kw"><li>崩溃时只有三种状态</li><li>已提交的页也可能还在内存</li><li>动作由日志状态决定、不靠猜</li><li><strong>幂等 = 做之前能判断是否已做过</strong></li><li>页 LSN 比较</li><li>prepare 靠 binlog 裁决</li><li>先 redo 后 undo</li><li>check point 位置决定恢复时长（且与写入性能是同一组参数的两面）</li><li>双一</li></ul><p class="mv-md-p"><strong>主线</strong>：<strong>恢复的正确性不靠"猜"，靠"日志状态"。</strong> 每个事务在崩溃瞬间只有三种可能——没开始、已提交、提交到一半。<strong>前两种由日志标记无歧义地确定，第三种由两阶段提交给出的裁决规则唯一确定。</strong></p></collapse-panel><collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>恢复要重放多久？</strong></strong></p><p class="mv-md-p">取决于 <strong>check point 的位置</strong>。它越新，要重放的越少、恢复越快；但推进它需要更频繁刷脏页，<strong>代价是正常运行时更多的随机 IO</strong>。<strong>同一组参数的两面。</strong></p><p class="mv-md-p"><strong>2. <strong>恢复途中又崩了怎么办？</strong></strong></p><p class="mv-md-p"><strong>没关系</strong>。重放按页 LSN 跳过已应用的，是幂等的，重启后从最新 check point 继续。<strong>不怕反复崩，怕重放不幂等。</strong></p><p class="mv-md-p"><strong>3. <strong>为什么不会重复执行已提交的事务？</strong></strong></p><p class="mv-md-p"><strong>数据页自带 LSN，重放前先比较</strong>，已落盘的直接跳过。</p><p class="mv-md-p"><strong>4. <strong>主从不一致是怎么被崩溃窗口造出来的？</strong></strong></p><p class="mv-md-p">不做 2PC 时的两个反向窗口：redo 写完 binlog 没写就崩 → 主库有从库没有；binlog 写完 redo 没写就崩 → 从库有主库没有（M11）。</p></collapse-panel><p class="mv-note">正本：wiki/topics/MySQL/母题-M12-崩溃恢复.md</p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线的题 <span class="mv-topic-meta">7 道 · 先说后翻</span></h2>
+    <div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">31</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q31" type="button">未掌握</button></div><flip-card card-id="MySQL-q31" tag="MySQL" q="redo / undo / binlog 各管什么？" a="【M11】三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。&#10;&#10;展开：为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">32</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q32" type="button">未掌握</button></div><flip-card card-id="MySQL-q32" tag="MySQL" q="什么是 WAL？redo 为什么要循环写（write pos / checkpoint）？" a="【M11】三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。&#10;&#10;展开：为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">33</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q33" type="button">未掌握</button></div><flip-card card-id="MySQL-q33" tag="MySQL" q="两阶段提交为什么必要？不做会怎样？" a="【M11】三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。&#10;&#10;展开：为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">34</span><span class="mv-chip ghost">了解</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q34" type="button">未掌握</button></div><flip-card card-id="MySQL-q34" tag="MySQL" q="innodb_flush_log_at_trx_commit 和 sync_binlog 怎么取舍？" a="【M11】三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。&#10;&#10;展开：为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">35</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M11</span><button class="mv-qdone" data-k="MySQL-q35" type="button">未掌握</button></div><flip-card card-id="MySQL-q35" tag="MySQL" q="binlog 有哪三种格式？各自的风险是什么？" a="【M11】三条日志各管一件事——undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）。用 WAL 把&quot;随机写数据页&quot;换成&quot;顺序写日志&quot;，同时拿到性能和崩溃安全性。而两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致——不做的话，两个崩溃窗口分别造出&quot;主库多从库少&quot;和&quot;从库多主库少&quot;。&#10;&#10;展开：为什么不能直接写磁盘（顺序 vs 随机的量级差）→ WAL 是什么、换来了什么 → 三条日志各属于哪一层、记什么、什么文件形态、什么职责 → redo 为什么循环写（用完即弃）→ 双一配置与组提交 → 两份日志必须一致 → 2PC 三步 → 两个崩溃窗口反证 → 方言（PG 只有 WAL）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">36</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">M12</span><button class="mv-qdone" data-k="MySQL-q36" type="button">未掌握</button></div><flip-card card-id="MySQL-q36" tag="MySQL" q="崩溃重启后 MySQL 怎么恢复数据？为什么不会重复回滚已提交的事务？" a="【M12】恢复 = redo 重放 + undo 回滚。重启后从 check point 起顺序重放 redo（每页自带 LSN，已落盘的直接跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的撤销。提交到一半（prepare）的事务由 binlog 的完整性裁决——binlog 完整就提交，不完整就回滚。顺序不能反：必须先 redo 再 undo。&#10;&#10;展开：崩溃瞬间的三状态表 → 恢复只回答三个问题（重做谁/回滚谁/怎么不重复）→ redo 重放为什么幂等（页 LSN）→ 幂等的本质是&quot;能判断已做过&quot;而不是&quot;只做一次&quot; → 为什么必须先 redo 后 undo → prepare 靠 binlog 完整性裁决（并解释为什么这个判据对）→ 恢复时间与 check point 的两面性 → 双一 → 方言（PG 没有 binlog 裁决这套）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">37</span><span class="mv-chip ghost">理解</span><span class="mv-chip ghost">M12</span><button class="mv-qdone" data-k="MySQL-q37" type="button">未掌握</button></div><flip-card card-id="MySQL-q37" tag="MySQL" q="主从不一致是怎么被「崩溃窗口」造出来的？" a="【M12】恢复 = redo 重放 + undo 回滚。重启后从 check point 起顺序重放 redo（每页自带 LSN，已落盘的直接跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的撤销。提交到一半（prepare）的事务由 binlog 的完整性裁决——binlog 完整就提交，不完整就回滚。顺序不能反：必须先 redo 再 undo。&#10;&#10;展开：崩溃瞬间的三状态表 → 恢复只回答三个问题（重做谁/回滚谁/怎么不重复）→ redo 重放为什么幂等（页 LSN）→ 幂等的本质是&quot;能判断已做过&quot;而不是&quot;只做一次&quot; → 为什么必须先 redo 后 undo → prepare 靠 binlog 完整性裁决（并解释为什么这个判据对）→ 恢复时间与 check point 的两面性 → 双一 → 方言（PG 没有 binlog 裁决这套）&#10;&#10;（这道母题还是草稿，尚未通过验收）"></flip-card></div>
+  </div>
+
+  <div class="mv-nav"><a class="mv-line-nav" href="../index.html">训练台</a><a class="mv-line-nav" href="MySQL-03-事务与锁.html">← 三 · 事务与锁</a><a class="mv-line-nav next" href="MySQL-05-长事务.html">五 · 长事务 →</a></div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.querySelectorAll('.mv-qdone').forEach(function (b) {
+  var k = 'mv.done.' + b.getAttribute('data-k');
+  function paint() {
+    var on = false;
+    try { on = localStorage.getItem(k) === '1'; } catch (e) {}
+    b.classList.toggle('on', on);
+    b.textContent = on ? '已掌握' : '未掌握';
+  }
+  b.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1'); } catch (e) {}
+    paint();
+  });
+  paint();
+});
+</script>
+</body>
+</html>

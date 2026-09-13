@@ -1,0 +1,53 @@
+<svg viewBox="0 0 680 464" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>SSI 的依赖检测、谓词锁升级与重试放大</title>
+  <desc>顶部是 SSI 的三步：先按快照隔离不加锁地执行，后台记录事务之间的读写依赖，发现依赖成环就中止其中一个事务；它的谓词锁不阻塞也不会造成死锁。中间是谓词锁的三级升级规则与默认值：单页锁超过两行升为整页锁，单表超过三十二页升为整表锁，也就是读二百六十四千字节就把整张表标记为读过；顺序扫描一定拿整表锁。底部是重试的正反馈：成功率乘以并发数得到有效吞吐，冲突率随并发线性上升，吞吐在拐点后下降并在并发一千时归零。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">SSI 的依赖检测、谓词锁升级与重试放大</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">Serializable 的代价不在执行速度，在失败与重试——而失败率是可以从参数算出来的</text>
+
+  <!-- SSI 三步 -->
+  <rect x="30" y="66" width="620" height="66" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">SSI：先按快照执行，再检测依赖环，冲突了才中止</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">① 按快照隔离执行，读不加锁　　② 后台记录「谁读了谁写的数据」　　③ 依赖成环 → 干掉其中一个（40001）</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">谓词锁【不阻塞、也不可能造成死锁】——代价是监控开销与中止率，不是锁等待</text>
+
+  <!-- 升级规则 -->
+  <path d="M30 148 L650 148" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="172" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">误报的机械原因：谓词锁会「升级」（官方参数默认值）</text>
+
+  <rect x="30" y="184" width="196" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">一级：整页锁</text>
+  <text x="44" y="222" font-family="monospace,sans-serif" font-size="9" fill="#633806">max_pred_locks_per_page = 2</text>
+  <text x="44" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#633806">单页上锁住超过 2 行 → 升级为整页</text>
+
+  <rect x="242" y="184" width="196" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="256" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">二级：整表锁</text>
+  <text x="256" y="222" font-family="monospace,sans-serif" font-size="9" fill="#633806">max_pred_locks_per_relation = -2</text>
+  <text x="256" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#633806">单表超过 64÷2 = 32 页 → 升级为整表</text>
+
+  <rect x="454" y="184" width="196" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="204" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">后果：读 264 KB 就锁整表</text>
+  <text x="468" y="222" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">33 页 × 8 KB = 264 KB</text>
+  <text x="468" y="240" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">此后任何写这张表的事务都可能冲突</text>
+
+  <rect x="30" y="266" width="620" height="38" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="290" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">官方原文：<tspan font-weight="600">一次顺序扫描【总是】需要一个关系级谓词锁</tspan> —— 所以在 Serializable 下建索引，不只是为了快，是为了降低 40001 率。</text>
+
+  <!-- 重试正反馈 -->
+  <path d="M30 318 L650 318" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="342" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">重试是一个有崩溃点的正反馈（p = 0.001 × 并发数）</text>
+
+  <rect x="30" y="354" width="440" height="96" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="374" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">有效吞吐 ∝ 并发数 C ×（1 − p）</text>
+  <text x="46" y="394" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">C=100 → p=0.10 → 100 × 0.90 = 90</text>
+  <text x="46" y="410" font-family="monospace,sans-serif" font-size="9.5" fill="#6B6A65">C=400 → p=0.40 → 400 × 0.60 = 240</text>
+  <text x="46" y="426" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">C=500 → p=0.50 → 250　← 拐点</text>
+  <text x="46" y="442" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">C=1000 → p=1.00 → 【0：彻底崩】</text>
+
+  <rect x="486" y="354" width="164" height="96" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="500" y="374" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">四件必须做的事</text>
+  <text x="500" y="394" font-family="system-ui,sans-serif" font-size="9" fill="#633806">退避 + 抖动</text>
+  <text x="500" y="411" font-family="system-ui,sans-serif" font-size="9" fill="#633806">重试上限</text>
+  <text x="500" y="428" font-family="system-ui,sans-serif" font-size="9" fill="#633806">整个事务幂等</text>
+  <text x="500" y="445" font-family="system-ui,sans-serif" font-size="9" fill="#633806">全局并发限制</text>
+</svg>

@@ -1,0 +1,57 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>幂等键：为什么正确性必须落在数据库约束上</title>
+  <desc>顶部是应用层先查再插的竞态：两个实例都查到不存在，于是都执行副作用、都记录。中间是唯一约束满足的四个条件：插入与检查是一次原子操作、对所有路径生效、由持久状态保证、失败是确定的。底部左半是幂等键的构造与反例：用业务身份构造时同一意图永远同一个键、命中率百分之百；用技术调用标识时同一意图会散成五个不同的键、命中率零。底部右半是 UPSERT 的四个坑：冲突也消耗序列值、同一语句内两行互撞会报错、裁决索引是推断出来的、分区表上不能更新分区键。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">幂等键：为什么正确性必须落在数据库约束上</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">应用层幂等是优化，数据库约束才是正确性——任何「查—判断—写」在多进程下都有窗口</text>
+
+  <!-- 竞态 -->
+  <rect x="30" y="66" width="620" height="62" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#8A3A28">应用层「先查再插」的窗口</text>
+  <text x="46" y="104" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">实例 A: 查 → 不存在　｜　实例 B: 查 → 不存在　← 两个实例拿到同一个答案</text>
+  <text x="46" y="120" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: 处理 → 记录　｜　B: 处理 → 记录　← 副作用发生了两次</text>
+
+  <!-- 四个条件 -->
+  <path d="M30 140 L650 140" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="164" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">唯一约束为什么是最终防线：它同时满足四个条件</text>
+
+  <rect x="30" y="176" width="146" height="52" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="44" y="196" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">原子</text>
+  <text x="44" y="214" font-family="system-ui,sans-serif" font-size="8.5" fill="#2C5A20">插入与唯一性检查是一次操作</text>
+
+  <rect x="188" y="176" width="146" height="52" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="202" y="196" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">对所有路径生效</text>
+  <text x="202" y="214" font-family="system-ui,sans-serif" font-size="8.5" fill="#2C5A20">含运维手工插入</text>
+
+  <rect x="346" y="176" width="146" height="52" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="360" y="196" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">持久状态保证</text>
+  <text x="360" y="214" font-family="system-ui,sans-serif" font-size="8.5" fill="#2C5A20">不是内存锁，重启不丢</text>
+
+  <rect x="504" y="176" width="146" height="52" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="518" y="196" font-family="system-ui,sans-serif" font-size="9.5" font-weight="600" fill="#2C5A20">失败是确定的</text>
+  <text x="518" y="214" font-family="system-ui,sans-serif" font-size="8.5" fill="#2C5A20">23505 语义明确</text>
+
+  <!-- 幂等键 -->
+  <path d="M30 242 L650 242" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="266" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">幂等键：由业务事实决定，不由「这一次怎么调用的」决定</text>
+
+  <rect x="30" y="278" width="300" height="72" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="46" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">✓ 业务身份</text>
+  <text x="46" y="316" font-family="monospace,sans-serif" font-size="8.5" fill="#2C5A20">run_id + action_type + target_id +</text>
+  <text x="46" y="330" font-family="monospace,sans-serif" font-size="8.5" fill="#2C5A20">归一化参数 + rule_version + logical_step</text>
+  <text x="46" y="346" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">→ 同一业务意图永远同一个键，命中率 100%</text>
+
+  <rect x="350" y="278" width="300" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="366" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">✗ 技术调用标识（ToolCallID）</text>
+  <text x="366" y="316" font-family="system-ui,sans-serif" font-size="8.5" fill="#8A3A28">重新规划 · Worker 重启 · 会话恢复 · 超时重发 · 双策略</text>
+  <text x="366" y="330" font-family="system-ui,sans-serif" font-size="8.5" fill="#8A3A28">→ 同一业务意图散成 5 把不同的钥匙</text>
+  <text x="366" y="346" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">→ 命中率 0%：约束建着，永远不生效</text>
+
+  <rect x="30" y="360" width="620" height="30" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="380" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">而且约束列必须 `NOT NULL`——PG 里 NULL 彼此不相等：幂等键有一列 1% 概率可空，就是 1% 的静默缝隙</text>
+
+  <!-- UPSERT 四个坑 -->
+  <path d="M30 400 L650 400" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="424" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">UPSERT 的四个坑</text>
+  <text x="30" y="442" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">① 冲突也消耗序列值（30% 冲突 → 1.43 倍）　② 同一语句内两行互撞会报错　③ 裁决索引是【推断】的，推不出来报错（排除约束不能当 DO UPDATE 的裁决者）　④ 分区表上不能更新分区键</text>
+</svg>

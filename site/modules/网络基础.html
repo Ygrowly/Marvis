@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>网络基础模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">网络基础模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/网络/网络基础模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>18</b> 道题（<b>10</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>3</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="网络基础-01-一次请求怎么走完.html"><span class="mv-line-no">一</span><span class="mv-line-name">一次请求怎么走完</span><span class="mv-line-q">从输入 URL 到拿到响应，中间经过谁，在哪一层会失败</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="网络基础-02-数据怎么从服务端到客户端.html"><span class="mv-line-no">二</span><span class="mv-line-name">数据怎么从服务端到客户端</span><span class="mv-line-q">轮询 / SSE / WebSocket 各解决什么</span><span class="mv-line-st">母题 1 · 题 5</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="网络基础-03-怎么同时扛住很多连接.html"><span class="mv-line-no">三</span><span class="mv-line-name">怎么同时扛住很多连接</span><span class="mv-line-q">进程 / 线程 / 协程与事件循环</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>长任务的 SSE 进度推送</strong>（对话式操作里，一次采集/聚合要跑很久）；30 个 MCP Tool 的<strong>超时与重试</strong>；服务端与上游数据库之间的<strong>连接复用</strong></li><li>解决什么问题：用户点了操作之后<strong>必须知道进度</strong>，否则会重复点（这就是"要不要复用连接"从技术问题变成产品问题）</li><li>踩过的坑：<strong>三个坑都踩过</strong>——① <strong>网关把 SSE 缓冲住了</strong>（Nginx 默认攒着不发），前端看着像卡死，要显式关缓冲；② <strong>不发心跳会被空闲超时掐断</strong>，长任务跑到一半连接就没了，要定期发注释行保活；③ <strong>超时只设了一层</strong>，网关先放弃还是应用先放弃分不清，排查时不知道该看哪边</li><li>决策与取舍：<strong>选 SSE 不选 WebSocket 是两个理由，不是一个</strong>——① 只需要<strong>单向</strong>推送（服务端 → 客户端），WebSocket 的全双工用不上；② <strong>复用现有 HTTP 网关</strong>——SSE 跑在 HTTP 上，过网关、负载均衡、鉴权链路都不需要额外改造，WebSocket 要动这些（[[母题-N2]]）。</li><li>对应母题：【N1、N2】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>一次问数请求的完整链路</strong>（前端 → 网关 → 应用 → 权限/检索/SQL 执行 → 返回）；<strong>权限前置</strong>意味着一次请求里可能有多次串行上游调用</li><li>解决什么问题：链路上任何一环慢，用户看到的就是"卡住"——<strong>先分清卡在哪一层，再谈优化</strong>（这正好是 N1 主线一的判据）</li><li>踩过的坑：<strong>网关超时和应用超时设成了一样的值</strong>——结果是两边几乎同时放弃，日志里看不出谁先走的，<strong>排查时无法归因到哪一层慢</strong>。正确做法是<strong>外层比内层略长</strong>，让内层先超时、留下自己的错误，外层只是兜底。</li><li>决策与取舍：<strong>权限校验收在检索和执行之前，代价是多一次上游调用</strong>，换来的是<strong>未授权内容根本不进后面任何一步</strong>——不进检索、不进 SQL、不进上下文。<strong>用一次串行调用换掉一整类泄露风险</strong>，这笔账划得来（[[母题-N1]] 的「先分清卡在哪一层」在权限侧的对应）。</li><li>对应母题：【N1、N3】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>长任务的进度与状态查询</strong>（Worker 跑一条规则审查是长任务）；<strong>至少一次投递 + 幂等副作用</strong></li><li>解决什么问题：<strong>客户端要的到底是"实时推送"还是"能查到最新状态"</strong>——如果是后者，就<strong>不该上 SSE</strong>，轮询更简单</li><li>踩过的坑：<strong>断线重连后不知道漏了哪些事件</strong>——靠 <strong><code class="mv-md-code">Last-Event-ID</code> 重连续订</strong>：事件带<strong>递增 sequence</strong>，客户端重连时带上最后收到的 id，服务端从那里补齐。<strong>没有这个机制，重连就会静默丢事件</strong>。</li><li>决策与取舍：<strong>这里选轮询/状态查询而不是推送</strong>——因为客户端真正要的是「<strong>能查到最新状态</strong>」，不是「实时被通知」。<strong>轮询更简单</strong>：没有长连接要维护、没有重连逻辑、没有网关改造。<strong>「实时」只有在「延迟本身有业务意义」时才值得付这份复杂度</strong>（[[母题-N2]]）。</li><li>对应母题：【N2、N3】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

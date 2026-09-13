@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 N3 · 进程 / 线程 / 协程，以及 asyncio 为什么能扛住很多连接</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">网络</span>
+    <h1 class="mv-topic-title">母题 N3 · 进程 / 线程 / 协程，以及 asyncio 为什么能扛住很多连接</h1>
+    <p class="mv-topic-meta">关联 母题-N1-一次请求的完整路径 · 母题-N2-SSE与推送模型 · 母题-M10-锁与死锁 ｜ 正本 wiki/topics/网络/母题-N3-进程线程与协程.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 并发的收益来自"等待占比" ② 三者用同一指标比 ③ 协程的致命前提是不阻塞）· 读完约 10 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">进程、线程、协程有什么区别？<strong>asyncio 为什么能同时扛住很多连接</strong>？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先问"时间花在哪"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 一个请求的时间构成【事实】</h4>
+<pre class="mv-md-pre">一次典型的上游调用，总耗时 100ms：
+  CPU 计算（拼参数、解析、序列化）  约 2ms
+  等 IO（网络往返、DB 查询、磁盘）  约 98ms</pre>
+<p class="mv-md-p">【推导】<strong>98% 的时间在等</strong>。而"等"的时候，CPU 是空闲的。</p>
+<p class="mv-md-p"><strong>所以并发的本质不是"同时干很多事"，而是"在等的时候去干别的事"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 量化：并发的收益上限</h4>
+<p class="mv-md-p">【推导】如果一次请求只占用 2% 的 CPU 时间，那<strong>单核理论上就能"同时"处理 100/2 = 50 个这样的请求</strong>：</p>
+<pre class="mv-md-pre">理论并发上限 ≈ 总耗时 / CPU 占用时间 = 100 / 2 = 50</pre>
+<p class="mv-md-p"><strong>这个算式给出了本卡最重要的判据</strong>：</p>
+<table class="mv-table"><thead><tr><th>负载类型</th><th>CPU 占比</th><th>并发杠杆</th><th>结论</th></tr></thead><tbody><tr><td><strong>IO 密集</strong>（调上游、查 DB、等网络）</td><td>低（如 2%）</td><td><strong>大（约 50 倍）</strong></td><td><strong>异步收益巨大</strong></td></tr><tr><td><strong>CPU 密集</strong>（加密、图像处理、大计算）</td><td>高（如 80%+）</td><td>小（约 1.2 倍）</td><td><strong>异步几乎没用</strong>，要靠多核</td></tr></tbody></table>
+<p class="mv-md-p mv-md-quote">【取舍】<strong>所以"要不要用异步"不是风格问题，是"你的程序在等还是在算"的问题。</strong> 而 Agent 服务、API 网关这类程序<strong>几乎全是 IO 密集</strong>——所以异步收益极大。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么 asyncio 对"查数据库的接口"帮助很大，对"算加密哈希的接口"几乎没帮助？</p>
+<h3 class="mv-md-h mv-md-h3">2. 三种执行单元：用同一指标比</h3>
+<figure-box num="进程 线程 协程用同一个指标比较" title="" note="单位开销 / 谁调度 / 共享什么；10 万并发的内存差约 500 倍"><svg viewBox="0 0 680 318" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>进程 线程 协程的三种并发模型</title>
+<desc>进程地址空间独立、线程共享地址空间但由操作系统调度、协程由用户态事件循环调度且单位开销小两个数量级。</desc>
+<defs>
+<marker id="figconcurrency-models-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="28" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">同一个指标下比较：单位开销、谁调度、共享什么</text>
+<rect x="40" y="44" width="188" height="190" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">进程</text>
+<text x="58" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">地址空间：独立</text>
+<text x="58" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">调度者：操作系统</text>
+<text x="58" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">成本：8MB 栈（虚存）</text>
+<text x="58" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">优点：隔离最好</text>
+<text x="58" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">代价：通信与切换最贵</text>
+<rect x="246" y="44" width="188" height="190" rx="12" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="264" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">线程</text>
+<text x="264" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">地址空间：共享</text>
+<text x="264" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">调度者：操作系统</text>
+<text x="264" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">成本：约 1MB 栈</text>
+<text x="264" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">优点：共享数据方便</text>
+<text x="264" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#444441" dominant-baseline="central">代价：切换要走内核</text>
+<rect x="452" y="44" width="188" height="190" rx="12" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="470" y="66" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#412402" dominant-baseline="central">协程</text>
+<text x="470" y="92" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">地址空间：共享</text>
+<text x="470" y="116" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">调度者：用户态事件循环</text>
+<text x="470" y="140" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">成本：约 2KB</text>
+<text x="470" y="164" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">优点：切换几乎免费</text>
+<text x="470" y="188" font-family="system-ui,sans-serif" font-size="12" fill="#633806" dominant-baseline="central">代价：一处阻塞全体停摆</text>
+<rect x="40" y="250" width="600" height="48" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="12" fill="#412402" dominant-baseline="central">10 万个并发单元：线程约需 100GB，协程约需 200MB —— 差约 500 倍。这才是 asyncio 的价值所在。</text>
+</svg>
+</figure-box>
+<h4 class="mv-md-h mv-md-h4">2.1 进程【事实】</h4>
+<ul class="mv-md-ul"><li><strong>是什么</strong>：操作系统分配资源的<strong>基本单位</strong>，<strong>有自己独立的地址空间</strong></li><li><strong>调度者</strong>：操作系统</li><li><strong>单位成本</strong>：栈上限约 8MB（虚拟内存，实际按触碰的页算）</li><li><strong>优点</strong>：<strong>隔离最好</strong>——一个进程崩了不影响别的</li><li><strong>代价</strong>：<strong>通信与切换最贵</strong>（数据要跨地址空间拷贝）</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.2 线程【事实】</h4>
+<ul class="mv-md-ul"><li><strong>是什么</strong>：进程内的执行单元，<strong>共享同一地址空间</strong></li><li><strong>调度者</strong>：<strong>操作系统</strong>（抢占式：时间片到了就被换下来）</li><li><strong>单位成本</strong>：栈约 1MB</li><li><strong>优点</strong>：<strong>共享数据方便</strong>（同一个堆，直接读）</li><li><strong>代价</strong>：<strong>切换要走内核</strong>（用户态↔内核态）；<strong>共享数据要加锁</strong>（[[母题-M10-锁与死锁]] 的业务层同源问题）</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.3 协程【事实】</h4>
+<ul class="mv-md-ul"><li><strong>是什么</strong>：<strong>用户态的轻量执行单元</strong>，由程序自己调度，不由 OS 调度</li><li><strong>调度者</strong>：<strong>事件循环</strong>（asyncio 的核心）</li><li><strong>单位成本</strong>：约 <strong>2KB</strong></li><li><strong>优点</strong>：<strong>切换几乎免费</strong>（本质是函数调用，不经过内核）</li><li><strong>代价</strong>：<strong>一处阻塞，全体停摆</strong>（见第 4 节）——这是它最致命的约束</li></ul>
+<h4 class="mv-md-h mv-md-h4">2.4 三者的关键差别只有一个</h4>
+<p class="mv-md-p">【推导】<strong>从"谁调度"这一个点出发，上面所有差异都能推出来</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>谁调度</th><th>由此推出</th></tr></thead><tbody><tr><td>进程</td><td>OS</td><td>隔离最好、切换最贵</td></tr><tr><td>线程</td><td>OS</td><td>抢占式（不用你让）、切换走内核</td></tr><tr><td>协程</td><td><strong>你的程序</strong></td><td>切换便宜、<strong>但必须你自己在等待时让出去</strong></td></tr></tbody></table>
+<p class="mv-md-p mv-md-quote"><strong>"必须主动让出去"就是"协作式（cooperative）"的含义。</strong> 线程是抢占式的（OS 会强行换），协程是<strong>协作式</strong>的（你不让，它就一直占着）。</p>
+<h3 class="mv-md-h mv-md-h3">3. asyncio 为什么能扛住大量连接</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 事件循环做什么【事实】</h4>
+<p class="mv-md-p"><strong>事件循环（event loop）</strong>：一个单线程里的循环，反复做三件事：</p>
+<pre class="mv-md-pre">① 看有没有 IO 就绪（靠 epoll / kqueue 这类系统调用，一次问一批）
+② 就绪了就执行对应的回调（推进那个协程）
+③ 没有就绪的，就睡一小会儿再问</pre>
+<p class="mv-md-p">【推导】<strong>关键在 ①</strong>：<strong>一次系统调用就能拿到"成千上万个连接里哪些有数据了"</strong>。</p>
+<p class="mv-md-p">对比"一个连接一个线程"的做法：1000 个线程都在 <code class="mv-md-code">read</code> 上等 → <strong>内核要维护 1000 个等待上下文、要做 1000 次调度</strong>。而事件循环是<strong>一个线程问一次</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 量化：能扛多少</h4>
+<p class="mv-md-p">【推导】用<strong>单位内存开销</strong>来算 10 万并发单元需要多少内存：</p>
+<pre class="mv-md-pre">线程：约 1MB / 个 × 100,000 = 约 100 GB
+协程：约 2KB / 个 × 100,000 = 约 200 MB</pre>
+<p class="mv-md-p"><strong>差约 500 倍。</strong></p>
+<p class="mv-md-p">【取舍】<strong>这就是"为什么长连接服务用异步"的直接答案</strong>：不是"协程更快"，而是<strong>同样的内存能支撑的并发单元多了两个数量级</strong>。</p>
+<p class="mv-md-p"><strong>回到 N2 的场景</strong>：1000 个用户在等 SSE 推送 —— 用线程模型就是 1000 个线程常驻（约 1GB），用协程就是 1000 个挂起的协程（约 2MB）。<strong>这是量级差别，不是优化技巧。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.3 但协程不是"更快"</h4>
+<p class="mv-md-p">【推导】必须说清这一条，否则会答成"协程比线程快"：</p>
+<ul class="mv-md-ul"><li><strong>单个操作的速度</strong>：协程切换快，但<strong>你的业务逻辑本身不会变快</strong></li><li><strong>总吞吐</strong>：在 <strong>IO 密集</strong>场景下吞吐大幅提升（因为等待时间被利用起来了）；在 <strong>CPU 密集</strong>场景下<strong>几乎没提升</strong>（1.2 的判据）</li></ul>
+<h3 class="mv-md-h mv-md-h3">4. 阻塞代码：协程最致命的坑</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 会发生什么【推导】</h4>
+<p class="mv-md-p">事件循环是<strong>一个线程</strong>。如果某个协程里执行了一段<strong>阻塞调用</strong>（同步 IO、<code class="mv-md-code">time.sleep</code>、CPU 重活），<strong>整个事件循环就停在那里</strong>——<strong>其他几百上千个连接全部等它</strong>。</p>
+<pre class="mv-md-pre">async def handler():
+    r = requests.get(url)      # ← 阻塞调用：整个事件循环停在这里
+    return r.json()</pre>
+<p class="mv-md-p"><strong>它坏在哪</strong>：协程的"让出"发生在 <strong><code class="mv-md-code">await</code> 一个真正的异步操作</strong>时。<strong>同步阻塞调用里没有 await 点，事件循环没有机会切走</strong>——所以它被一个人占住了。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 量化的后果</h4>
+<pre class="mv-md-pre">事件循环被阻塞 200ms
+此时 QPS = 1000
+→ 这 200ms 内到达的 1000 × 0.2 = 200 个请求全部排队
+→ P99 延迟直接被抬升 200ms</pre>
+<p class="mv-md-p">【推导】<strong>而且这种故障很隐蔽</strong>：CPU 看起来不高、日志里没有异常、每个请求单独测都很快——<strong>只是高峰期整体变慢</strong>。<strong>这就是"异步写错了比同步还慢"的原因。</strong></p>
+<h4 class="mv-md-h mv-md-h4">4.3 三种解法【取舍】</h4>
+<table class="mv-table"><thead><tr><th>解法</th><th>做法</th><th>代价</th></tr></thead><tbody><tr><td><strong>换异步库</strong></td><td>用 <code class="mv-md-code">httpx.AsyncClient</code> / <code class="mv-md-code">asyncpg</code> 等原生异步客户端</td><td>需要确认生态支持；改动最大但最彻底</td></tr><tr><td><strong>丢进线程池</strong></td><td><code class="mv-md-code">await asyncio.to_thread(fn)</code> / <code class="mv-md-code">run_in_executor</code></td><td>简单，但线程池有上限，<strong>打满了同样会等</strong></td></tr><tr><td><strong>拆成独立进程</strong></td><td>把 CPU 重活交给进程池 / 独立服务</td><td>隔离好，但多了通信成本</td></tr></tbody></table>
+<p class="mv-md-p">【判据】<strong>如果那段代码是 IO 阻塞 → 换异步库或丢线程池；如果是 CPU 密集 → 必须丢进程池</strong>（因为 GIL，见第 5 节，丢线程池没用）。</p>
+<h3 class="mv-md-h mv-md-h3">5. GIL：为什么协程不能靠多线程绕过去</h3>
+<h4 class="mv-md-h mv-md-h4">5.1 GIL 是什么【事实】</h4>
+<p class="mv-md-p"><strong>GIL（Global Interpreter Lock）</strong>：CPython 的<strong>全局解释器锁</strong>——<strong>同一时刻只允许一个线程执行 Python 字节码</strong>。</p>
+<p class="mv-md-p">【推导】<strong>直接推论</strong>：</p>
+<table class="mv-table"><thead><tr><th>场景</th><th>多线程有用吗</th></tr></thead><tbody><tr><td><strong>IO 阻塞</strong></td><td><strong>有用</strong>——线程在等 IO 时会释放 GIL，别的线程可以跑</td></tr><tr><td><strong>CPU 密集</strong></td><td><strong>没用</strong>——大家都在抢 GIL，等于串行</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">5.2 和 asyncio 的关系【推导】</h4>
+<p class="mv-md-p"><strong>asyncio 是单线程的</strong>——它从设计上就不依赖 GIL 的多线程能力，<strong>而是靠"切换发生在等待点"</strong>。</p>
+<p class="mv-md-p">所以：</p>
+<ul class="mv-md-ul"><li><strong>想用多核</strong>：靠<strong>多进程</strong>（<code class="mv-md-code">multiprocessing</code> / 起多个 worker），不是多线程，也不是协程</li><li><strong>想扛高并发 IO</strong>：靠<strong>单线程 + 事件循环</strong>，不需要多核</li></ul>
+<p class="mv-md-p"><strong>一句话</strong>：<strong>GIL 不阻止你写高并发 IO 服务（因为瓶颈不在 CPU），但阻止你用多线程加速 CPU 计算。</strong></p>
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"协程比线程快"</td><td>【推导】<strong>单操作的业务逻辑不会变快</strong>。协程的收益在"IO 密集场景下能把等待时间利用起来"+"单位开销小两个数量级"</td></tr><tr><td>"asyncio 能利用多核"</td><td>【事实】<strong>不能</strong>。它是<strong>单线程</strong>事件循环。要多核靠<strong>多进程</strong></td></tr><tr><td>"协程是并行执行的"</td><td>【事实】<strong>是并发，不是并行</strong>。同一时刻只有一个协程在跑（单线程），只是它们互相交错</td></tr><tr><td>"在 async 函数里调用普通同步函数没问题"</td><td>【推导】<strong>有问题</strong>。同步阻塞调用没有 <code class="mv-md-code">await</code> 点，<strong>会卡死整个事件循环</strong>（第 4 节）</td></tr><tr><td>"用 asyncio 就不用管锁了"</td><td>【事实】单线程下不会有多线程那样的数据竞争，<strong>但仍有竞态</strong>——因为 <code class="mv-md-code">await</code> 会让出控制权，两个协程可能交错修改同一状态。<strong>"await 前后状态可能变"是异步里的经典陷阱</strong></td></tr><tr><td>"线程模型不行了，应该全换异步"</td><td>【取舍】<strong>按 1.2 的判据选</strong>：IO 密集且并发量大 → 异步；CPU 密集 → 多进程；并发量小 → 线程模型更简单，<strong>没必要为了异步而异步</strong></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N3-进程线程与协程-q1" tag="网络" q="一次请求总耗时 100ms，其中 CPU 计算占 2ms，等待 IO 占 98ms。&#10;问：单核理论上能&quot;同时&quot;处理多少个这样的请求？如果换成 CPU 占 80ms 的请求呢？" a="IO 密集：100 / 2 = 50 个&#10;CPU 密集：100 / 80 = 1.25 个（基本等于串行）&#10;【推论】这就是&quot;要不要用异步&quot;的判据：&#10;负载 · CPU 占比 · 理论并发杠杆&#10;查 DB 的接口 · 2% · 50 倍&#10;加解密 / 图像处理 · 80% · 约 1.25 倍&#10;所以异步不是普适优化，它只对&quot;在等&quot;的程序有效。 Agent 服务、API 网关几乎全是 IO 密集 → 收益极大；纯计算任务 → 应该走多进程。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="网络/母题-N3-进程线程与协程-q2" tag="网络" q="下面这段代码有什么问题？高峰期会看到什么现象？&#10;``python&#10;async def get_user(uid):&#10;r = requests.get(f&quot;{API}/users/{uid}&quot;)   # requests 是同步库&#10;return r.json()&#10;``" a="问题在 requests.get 是同步阻塞调用——它没有 await 点，所以事件循环没有机会切走，整个循环被卡在这里。&#10;高峰期现象：&#10;所有连接一起变慢（不只是这个接口）&#10;CPU 不高、日志无异常、单独压测这个接口又很快&#10;P99 明显抬升：循环被阻塞 200ms，QPS 1000 时就会有约 200 个请求排队&#10;修法：&#10;方案 · 说明&#10;换 httpx.AsyncClient · 最彻底（原生异步，真让出）&#10;await asyncio.to_thread(requests.get, url) · 快速止血，但线程池有上限&#10;判断依据：这是 IO 阻塞 → 换异步库或线程池都行；如果是 CPU 密集，丢线程池没用（GIL，见 Q3）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="网络/母题-N3-进程线程与协程-q3" tag="网络" q="要做一个图像压缩接口，单次压缩耗时 400ms（其中 CPU 占 380ms）。&#10;问：用 asyncio 能提高吞吐吗？用多线程呢？该怎么做？" a="方案 · 有没有用 · 原因&#10;asyncio（单线程事件循环） · 没用 · 380ms 是 CPU 时间，没有等待可被利用；而它还会阻塞事件循环，把其他请求一起拖慢&#10;多线程 · 也没用 · GIL：同一时刻只有一个线程执行字节码，CPU 密集场景下多线程等于串行&#10;多进程 / 独立计算服务 · 有用 · 每个进程有独立的 GIL，可以真正并行用多核&#10;【推论】判据是 CPU 占比：380/400 = 95% → 接近纯计算 → 杠杆约 1.05 倍，异步没有价值。&#10;正确做法：把压缩放进进程池或独立服务，主服务保持异步只负责调度。&#10;【这就是 1.2 判据的第二次应用】——同一个算式，答了三个不同的问题。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N3-进程线程与协程-q4" tag="网络" q="下面这段话哪里错了？&#10;&quot;asyncio 是并行执行的，所以它比多线程更快，还能利用多核。&quot;" a="&quot;并行&quot;和&quot;利用多核&quot;两处都错。&#10;1. asyncio 是并发，不是并行。 它是单线程事件循环——同一时刻只有一个协程在跑，只是它们互相交错（一个在等 IO 时换另一个上）。并行需要多个 CPU 核心同时执行，那是多进程的事。&#10;2. 不能利用多核。 单线程只能吃一个核。而且因为 GIL，多线程也吃不满多核。&#10;&quot;更快&quot;也要说清楚快在哪：&#10;快在哪&#10;asyncio · IO 密集场景下的吞吐（把等待时间利用起来）+ 单位开销小两个数量级&#10;不快在：单个操作的业务逻辑速度&#10;准确说法：asyncio 用单线程把 IO 等待时间利用起来，从而在小内存下支撑大量并发连接；要多核得靠多进程。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="网络/母题-N3-进程线程与协程-q5" tag="网络" q="下面这段话哪里错了？&#10;&quot;协程和线程差不多，只是切换不用走内核所以更快一点。&quot;" a="&quot;差不多&quot;是错的——差别在调度方式上，而不只是切换速度。&#10;线程 · 协程&#10;调度者 · 操作系统 · 你的程序（事件循环）&#10;调度方式 · 抢占式（时间片到了 OS 强行换） · 协作式（你不 await，它就一直占着）&#10;单位开销 · 约 1MB · 约 2KB（差约 500 倍）&#10;&quot;协作式&quot;这一条的后果比&quot;切换快&quot;重要得多：&#10;线程不会被你写错的代码卡死（OS 会强行切换）；协程会——一段同步阻塞代码就能让整个事件循环停摆。&#10;所以协程的代价不是&quot;切换稍贵&quot;，而是&quot;你必须保证不阻塞&quot;。 这个约束是它和线程最本质的区别。&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">三种执行单元该怎么选？asyncio 的优势和它的前提是什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="网络/母题-N3-进程线程与协程" tag="网络" q="三种执行单元该怎么选？asyncio 的优势和它的前提是什么？" a="并发不是&quot;同时干很多事&quot;，而是&quot;在等的时候去干别的事&quot;——所以收益由等待占比决定（CPU 占 2% 的请求，单核理论上能并发约 50 个）。三种执行单元的差别从&quot;谁调度&quot;推出来：进程由 OS 调度、地址空间独立（隔离好、通信贵）；线程由 OS 调度、共享地址空间（方便、切换走内核）；协程由用户态事件循环调度、约 2KB 一个（切换几乎免费，但一处阻塞全体停摆）。asyncio 能扛住大量连接，是因为单线程一次 epoll 就能问出成千上万连接里哪些就绪，加上单位开销小两个数量级——10 万并发线程要 100GB、协程只要 200MB。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">并发不是"同时干很多事"，而是"<strong>在等的时候去干别的事</strong>"——所以<strong>收益由等待占比决定</strong>（CPU 占 2% 的请求，单核理论上能并发约 50 个）。三种执行单元的差别从"谁调度"推出来：<strong>进程由 OS 调度、地址空间独立（隔离好、通信贵）；线程由 OS 调度、共享地址空间（方便、切换走内核）；协程由用户态事件循环调度、约 2KB 一个（切换几乎免费，但一处阻塞全体停摆）</strong>。<strong>asyncio 能扛住大量连接，是因为单线程一次 <code class="mv-md-code">epoll</code> 就能问出成千上万连接里哪些就绪，加上单位开销小两个数量级——10 万并发线程要 100GB、协程只要 200MB。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>并发 = 利用等待时间</li><li>并发杠杆 ≈ 总耗时 ÷ CPU 时间</li><li>IO 密集收益大、CPU 密集收益≈1</li><li>进程独立地址空间</li><li>线程共享但切换走内核</li><li>协程由事件循环调度、协作式</li><li>epoll 一次问一批</li><li>10 万并发线程 100GB vs 协程 200MB</li><li><strong>阻塞调用卡死整个循环</strong></li><li>GIL 让多线程对 CPU 密集无效</li><li>多核靠多进程</li><li>是并发不是并行</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Go 的 goroutine、Java 的虚拟线程、Node 的事件循环</strong>都是"用户态/轻量调度"这一族。<strong>所以这套"单位开销 + 谁调度 + 协作还是抢占"的框架可以直接迁移</strong>——面试时能说"Python 的协程和 Go 的 goroutine 是同一族思路，区别在调度器实现和是否抢占"，会显得视野更宽。</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>协程和线程最本质的区别是什么？</strong></strong></p>
+<p class="mv-md-p"><strong>谁调度</strong>：线程由 <strong>OS 抢占式</strong>调度（会强行换），协程由<strong>程序协作式</strong>调度（你不让就一直占）。<strong>"阻塞代码能卡死事件循环"这个代价就是从这一条来的。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>asyncio 能利用多核吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不能</strong>，它是单线程。要多核靠<strong>多进程</strong>；多线程因 <strong>GIL</strong> 对 CPU 密集无效。</p>
+<p class="mv-md-p"><strong>3. <strong>在协程里调用同步库会怎样？</strong></strong></p>
+<p class="mv-md-p"><strong>卡死整个事件循环</strong>，表现为"所有接口一起变慢、但 CPU 不高、日志无异常"。修法是换异步库或丢线程池。</p>
+<p class="mv-md-p"><strong>4. <strong>单线程异步还需要考虑竞态吗？</strong></strong></p>
+<p class="mv-md-p"><strong>需要</strong>。<code class="mv-md-code">await</code> 会让出控制权，两个协程可能交错修改同一状态。<strong>"await 前后状态可能变"是异步里的经典陷阱</strong>（这一点和线程加锁是不同形态的同一类问题）。</p>
+<p class="mv-md-p"><strong>5. <strong>连接池耗尽 / 协程泄漏怎么排查？</strong></strong></p>
+<p class="mv-md-p">池子耗尽先看上游时延（[[母题-N1-一次请求的完整路径]] 的 <code class="mv-md-code">L = λW</code>）；协程泄漏通常是<strong>创建了任务但没有正确取消</strong>（超时/取消链路要传下去）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「为什么 Nginx / Redis 用单线程还能这么快？」——<strong>IO 密集 + 事件循环</strong>（Nginx 是多 worker 单线程、Redis 主线程单线程），同一个道理</li><li>「asyncio 的超时和取消怎么做？」——<code class="mv-md-code">asyncio.wait_for</code> / <code class="mv-md-code">CancelledError</code>，<strong>关键是把取消沿调用链传下去</strong>（CORE-07）</li><li>「什么是背压（backpressure）？」——上游生产快于下游消费时<strong>必须让上游慢下来</strong>（限队列长度、拒绝），否则内存被队列吃光</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps 的服务端</strong>——采集/聚合是 IO 密集、且要同时管很多任务，异步是自然选择；<strong>RuleArena 的 Worker</strong>——如果里面有 CPU 密集的规则校验，<strong>要丢进程池，不能丢线程池</strong>（GIL）；<strong>数驭穹图的问数接口</strong>——一次请求里可能串行调好几次上游，<strong>每次都是 await 点</strong>，所以单机能并发很多个请求。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先算"时间花在哪"（IO 密集 vs CPU 密集的杠杆）→ 三种执行单元用同一指标比（单位开销 / 谁调度 / 共享什么）→ 从"谁调度"推出所有差异 → 事件循环 + epoll 一次问一批 → 量化 10 万并发的内存 → 协作式的代价（阻塞会卡死整个循环 + 三种解法）→ GIL（为什么多线程救不了 CPU 密集）→ 选型判据</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>并发的收益 = 等待时间占总时间的比例。</strong> 这句话同时决定了三件事：该不该用异步（IO 密集才值得）、asyncio 为什么能扛很多连接（同内存下单元数多两个数量级）、以及它最怕什么（一旦有代码不让出，等待时间就被浪费掉了）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能用"等待占比"算出并发杠杆并据此选型；能说清"谁调度"如何推出三种执行单元的全部差异；能说清阻塞代码为什么卡死整个事件循环；能说清 GIL 对不同负载的不同影响，<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 G3 · 重排与召回质量</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/RAG与检索.html">← RAG与检索 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">RAG与检索</span>
+    <h1 class="mv-topic-title">母题 G3 · 重排与召回质量</h1>
+    <p class="mv-topic-meta">关联 母题-G2-向量与关键词的混合检索（重排的输入从哪来）· 母题-G1-切分策略与索引粒度（重排也用小块那一层表示）· 母题-G5-RAG评测与幻觉率（Recall@K 与 nDCG 各自回答什么） ｜ 正本 wiki/topics/RAG与检索/母题-G3-重排与召回质量.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 召回与精排的优化目标不同 ② 双塔与交叉编码器的本质差别是"能不能预计算" ③ Recall@K 高不等于答案好）· 读完约 11 分钟 · 需要先懂：[[母题-G2-向量与关键词的混合检索]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们召回之后还做了什么？为什么要加重排？加了多少分、代价是什么？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：召回和精排的优化目标本来就不一样</h3>
+<pre class="mv-md-pre">① 召回阶段：面对的是【全量】
+   目标是「不漏」——宁可多捞，不能把正确答案漏在外面
+   所以它只能用【便宜】的方法（否则全量算不动）
+
+② 精排阶段：面对的是【已经缩小过的候选集】
+   目标是「排得准」——把最该进上下文的那几条顶上来
+   所以它可以用【贵】的方法（候选少，算得起）</pre>
+<p class="mv-md-p">【推论】<strong>两个阶段的约束不同，所以"用同一个模型做一件事"必然有一头不划算</strong>：用贵的方法做召回 → 全量算不动；用便宜的方法做精排 → 排不准。<strong>两级漏斗不是工程习惯，是被约束逼出来的。</strong></p>
+<figure-box num="为什么需要重排：双塔算得快但不够准，交叉编码器准但贵" title="" note="召回用双塔把全量缩到几百条（向量可预计算），精排用交叉编码器把几百条排成几十条（每个候选现算）"><svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>为什么需要重排：双塔算得快但不够准，交叉编码器准但贵</title>
+  <desc>上面是两阶段漏斗：召回阶段要从全量里捞出尽可能不遗漏的候选，宁多勿缺；重排阶段只对这几十上百个候选做精细判断，宁准勿多。下面是两种模型的差别：双塔把查询和文档分别编码成向量再算相似度，文档向量可以预先算好、所以快，但两者编码时从未见过对方，交互信息丢失；交叉编码器把查询和文档拼在一起送进模型，能建模词级交互、因此准得多，但每个候选都要现算一次，无法预计算。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">为什么需要重排：双塔算得快但不够准，交叉编码器准但贵</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">召回要「不漏」，精排要「排得准」——两个阶段的优化目标本来就不一样</text>
+
+  <!-- 漏斗 -->
+  <rect x="30" y="66" width="240" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="86" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">① 召回（ANN + BM25 + RRF）</text>
+  <text x="46" y="104" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">全量 → 数百条候选，宁多勿缺</text>
+
+  <path d="M272 92 L306 92" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#figrerank-funnel-svg-rk-ar)"/>
+
+  <rect x="310" y="66" width="240" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="326" y="86" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">② 重排（Cross-Encoder）</text>
+  <text x="326" y="104" font-family="system-ui,sans-serif" font-size="10" fill="#633806">数百条 → 前 5～20 条，宁准勿多</text>
+
+  <path d="M552 92 L586 92" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#figrerank-funnel-svg-rk-ar)"/>
+  <rect x="590" y="66" width="60" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="620" y="88" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">进上下文</text>
+  <text x="620" y="104" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">组装</text>
+
+  <!-- 双塔 vs 交叉 -->
+  <path d="M30 140 L650 140" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <rect x="30" y="154" width="300" height="112" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="176" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">双塔（Bi-Encoder）：用于召回</text>
+  <text x="46" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">query → 编码器 → 向量 Q</text>
+  <text x="46" y="215" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">doc　 → 编码器 → 向量 D　（可预计算）</text>
+  <text x="46" y="234" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">相似度 = cos(Q, D)</text>
+  <text x="46" y="254" font-family="system-ui,sans-serif" font-size="10" fill="#633806">代价：两者编码时没见过对方 → 无词级交互</text>
+
+  <rect x="350" y="154" width="300" height="112" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="176" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">交叉编码器（Cross-Encoder）：用于重排</text>
+  <text x="366" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#633806">[query + doc] 拼在一起 → 模型 → 一个分数</text>
+  <text x="366" y="218" font-family="system-ui,sans-serif" font-size="10" fill="#633806">能看到每个词和每个词的交互</text>
+  <text x="366" y="238" font-family="system-ui,sans-serif" font-size="10" fill="#633806">代价：每个候选都要现算一次，无法预计算</text>
+  <text x="366" y="258" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以只能对「已经缩小过的候选集」用</text>
+
+  <!-- 底部 -->
+  <path d="M30 282 L650 282" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="306" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">所以流程天然是两级的：<tspan font-weight="600">用便宜的双塔把候选从全量缩到几百条，再用贵的交叉编码器把几百条排成几十条。</tspan></text>
+  <text x="30" y="326" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">重排的延迟 ≈ 候选数 × 单个候选的耗时——所以「重排多少条」是一个必须算的成本决策，不是越大越好。</text>
+
+  <defs>
+    <marker id="figrerank-funnel-svg-rk-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+  </defs>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"直接用最准的模型排全量"这条路走不通？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 双塔 vs 交叉编码器：本质差别是"能不能预计算"【推导】</h3>
+<table class="mv-table"><thead><tr><th></th><th>双塔（Bi-Encoder）</th><th>交叉编码器（Cross-Encoder）</th></tr></thead><tbody><tr><td>怎么算</td><td>query 和 doc <strong>分别</strong>编码成向量，再算 <code class="mv-md-code">cos(Q, D)</code></td><td><code class="mv-md-code">[query + doc]</code> <strong>拼在一起</strong>送进模型，出一个分数</td></tr><tr><td>交互</td><td><strong>没有词级交互</strong>（两者编码时没见过对方）</td><td><strong>有</strong>——能看到每个词和每个词的关系</td></tr><tr><td>能不能预计算</td><td><strong>能</strong>——文档向量离线算好，查询时只算 query</td><td><strong>不能</strong>——每个 <code class="mv-md-code">(query, doc)</code> 对都要现算</td></tr><tr><td>用途</td><td><strong>召回</strong></td><td><strong>精排</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>为什么双塔"不够准"</strong>：</p>
+<pre class="mv-md-pre">query:  "7 天无理由退款适用哪些情况"
+doc_A:  "购买后 7 天内可无理由退款，拆封数码产品除外"
+doc_B:  "7 天无理由退货政策说明"
+
+双塔：两句都单独编码成向量
+      doc_A 的向量是整句的「平均语义」
+      → "除外" 这个关键的否定词，在向量里几乎被稀释掉
+      → doc_A 和 doc_B 的相似度可能很接近
+
+交叉编码器：把 query 和 doc_A 拼起来送进模型
+      → 模型能直接看到「除外」这两个字
+      → 给出显著更低的分数</pre>
+<p class="mv-md-p">【推论】<strong>双塔的信息损失来自"编码时看不到对方"</strong>——这是一个<strong>结构性的损失</strong>，不是模型不够大。<strong>所以它必须靠交叉编码器补回来，而不是靠换一个更好的双塔。</strong></p>
+<p class="mv-md-p">【取舍】<strong>交叉编码器不能用于召回，不是因为慢，是因为"不能预计算"</strong>：文档向量无法离线算好，每次查询都要对全量重算一遍——<strong>这才是它只能用在"已经缩小过的候选集"上的根本原因。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"换一个更强的 Embedding 模型"不能替代重排？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 重排的代价：延迟随候选数线性增长【推导】</h3>
+<pre class="mv-md-pre">交叉编码器对每个候选都要现算一次
+
+假设单个候选推理约 5ms：
+  重排  20 条 → 100ms
+  重排 100 条 → 500ms
+  重排 200 条 → 1000ms
+
+对比：ANN 召回本身约 10ms</pre>
+<p class="mv-md-p">【结论】<strong>重排会主导整条链路的延迟</strong>——它是"数量级更大"的那一项。</p>
+<p class="mv-md-p">【取舍】<strong>所以"重排多少条"是一个必须算的成本决策</strong>：</p>
+<pre class="mv-md-pre">候选数越大 → 召回率越高（更多正确答案被保留）
+          → 但重排延迟线性上升
+          → 而且最终进上下文的条数受 token 预算限制（[[母题-C1-上下文组装与窗口预算]]）
+
+→ 常见的折中是「召回几百条、重排前 50–100、最终进上下文 5–20 条」</pre>
+<p class="mv-md-p">【事实】<strong>分档启用也是常见做法</strong>：重排提高质量但增加延迟与成本，<strong>应通过 Eval 判断是否只在难题启用</strong>（study/03 的结论）——<strong>简单查询（精确编号、单跳事实）不需要重排，难题才需要。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 重排的收益：两个口径别混【推导】</h3>
+<p class="mv-md-p">【事实】Anthropic 在 Contextual Retrieval 里给的实测（检索失败率，top-20 口径）：</p>
+<pre class="mv-md-pre">基线                    5.7%
++ Contextual Embeddings 3.7%   （相对基线 −35%）
++ Contextual BM25       2.9%   （相对基线 −49%）
++ Rerank                1.88%  （相对基线 −67%）</pre>
+<p class="mv-md-p">【推导】<strong>"重排降了 67%"这句话是错的</strong>——67% 是<strong>相对基线</strong>的累计降幅。单看重排这一步：</p>
+<pre class="mv-md-pre">重排前 2.9% → 重排后 1.88%
+相对重排前：1 − 1.88/2.9 = 35%
+绝对降幅：2.9% − 1.88% = 1.02 个百分点</pre>
+<p class="mv-md-p">【结论】<strong>三个口径要分清：绝对降幅（1.02 个百分点）、相对前一环（35%）、相对基线（累计 67%）。</strong></p>
+<p class="mv-md-p">【推论】<strong>汇报时要说清用的是哪个口径</strong>——把"累计降幅"说成"这一步的降幅"会显著高估单点手段的价值，追问一句就露馅。</p>
+<p class="mv-md-p">【事实】<strong>另一个可用的对照</strong>：<code class="mv-md-code">study/03</code> 记的数驭穹图口径是<strong>召回 81% → 95%</strong>。</p>
+<p class="mv-md-p">【纠正常见误解】<strong>但不要把它和上面的 5.7%→1.9% 当成"同一枚硬币的两面"</strong>——它们的<strong>对象和分母都不一样</strong>：</p>
+<pre class="mv-md-pre">Anthropic 的 5.7% → 1.9%  ：top-20 【chunk】检索失败率（文档块这一层）
+数驭穹图的 81% → 95%      ：Top-K 【Schema】召回率（表/语义资产这一层）</pre>
+<p class="mv-md-p"><strong>"95% 召回 ≈ 5% 失败"这个换算是错的</strong>：前者说的是"该找的<strong>表</strong>有没有被捞进候选"，后者说的是"该找的<strong>文档块</strong>有没有被捞到"。<strong>层不同、分母不同，量级相近纯属巧合，不能互相换算，更不能说"互补"。</strong> <strong>一句话记：说数驭穹图那个数时，必须带上「Schema」两个字</strong>——只说"召回率"，会被理解成文档块召回，追问一句就露馅。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们加了重排，失败率降了 67%"这句话经不起追问？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 召回质量看哪些指标【事实】</h3>
+<table class="mv-table"><thead><tr><th>指标</th><th>回答什么问题</th><th>什么时候看</th></tr></thead><tbody><tr><td><strong>Recall@K</strong></td><td>正确证据<strong>是否出现在前 K 个候选里</strong></td><td><strong>召回阶段</strong>——它决定"上限"</td></tr><tr><td><strong>Precision@K</strong></td><td>前 K 个里有多少是相关证据</td><td>上下文预算紧张时</td></tr><tr><td><strong>MRR</strong></td><td><strong>第一个</strong>正确证据出现得有多早</td><td>只需要一条正确证据的场景</td></tr><tr><td><strong>nDCG@K</strong></td><td><strong>多级相关性 + 排序质量</strong></td><td>精排阶段——它决定"答案能不能用上"</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>为什么 Recall@K 高不等于答案好</strong>：</p>
+<pre class="mv-md-pre">Recall@5 = 100%（正确证据都在前 5 里）
+但它排在第 5，而前 4 条是相关度较低的内容
+
+→ 上下文预算有限时，真正需要的那条可能被挤掉或被淹没
+→ 这正是 [[母题-C1-上下文组装与窗口预算]] 说的「context rot」</pre>
+<p class="mv-md-p">【推论】<strong>召回率回答"有没有捞到"，nDCG 回答"排得对不对"，两者都要看。</strong> 只看召回率会漏掉"捞到了但排太后"这一类失败——<strong>而归因时必须能分开</strong>（[[母题-G5-RAG评测与幻觉率]]）。</p>
+<p class="mv-md-p">【事实】<strong>K 怎么定</strong>：Anthropic 试过交付 <strong>5 / 10 / 20</strong> 个 chunk，<strong>结论是 20 表现最好</strong>。但 K 增大会带来两个代价：<strong>重排成本线性上升、上下文预算被占</strong>。所以 <strong>K 是"召回率 vs 成本"的取舍，必须用评测定</strong>，不能照搬。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"重排就是把分数重新算一遍"</td><td><strong>不是</strong>。差别在<strong>模型结构</strong>：召回用的是<strong>双塔</strong>（query 和 doc 分别编码，<strong>无词级交互</strong>），重排用的是<strong>交叉编码器</strong>（拼在一起，<strong>有词级交互</strong>）。<strong>双塔的损失是结构性的，换更大的双塔也补不回来</strong></td></tr><tr><td>"换个更强的 Embedding 模型就不用重排了"</td><td><strong>换不掉</strong>。交叉编码器比双塔准，<strong>不是因为模型更大，是因为它能看到 query 和 doc 之间每个词的交互</strong>——这是结构优势，不是规模优势</td></tr><tr><td>"我们加了重排，失败率降了 67%"</td><td><strong>口径错了</strong>。67% 是<strong>相对基线</strong>的累计降幅（5.7% → 1.88%）；<strong>单看重排这一步是 35%</strong>（2.9% → 1.88%）。<strong>把累计说成单点会显著高估它的价值</strong></td></tr><tr><td>"召回率 95% 说明检索没问题了"</td><td><strong>召回率只管"有没有捞到"，不管"排得对不对"</strong>。正确证据排在第 20 位、被上下文预算挤掉，<strong>召回率照样是 100%</strong>。要看 <strong>nDCG@K</strong></td></tr><tr><td>"重排越多条越好"</td><td><strong>延迟随候选数线性增长</strong>（5ms × N）。重排 200 条就是 1 秒——<strong>比 ANN 召回慢两个数量级</strong>。常见折中是"召回几百、重排 50–100、进上下文 5–20"</td></tr><tr><td>"所有查询都要走重排"</td><td><strong>不必</strong>。重排是<strong>用延迟换质量</strong>，应该<strong>通过 Eval 判断是否只在难题启用</strong>——精确编号、单跳事实这类查询收益很小</td></tr><tr><td>"重排能解决多跳问题"</td><td><strong>不能</strong>。重排只是把<strong>已有候选</strong>重排；<strong>多跳需要的候选压根不在池子里</strong>。多跳要靠 <strong>Query Decomposition / Multi-hop 检索</strong>（第二轮由第一轮发现的实体驱动）</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>重排的价值来自"双塔看不到词级交互"这个结构性缺陷，所以它不能被更强的双塔替代、也不能被"多召回几条"替代——它排的是"同样的候选里谁更该进上下文"。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G3-重排与召回质量-q1" tag="RAG与检索" q="交叉编码器对每个候选的推理耗时约 5ms。ANN 召回本身约 10ms。&#10;问：重排 20 / 100 / 200 条候选，各要多少毫秒？这说明什么？" a="``text&#10;重排  20 条 = 20 × 5ms = 100ms&#10;重排 100 条 = 100 × 5ms = 500ms&#10;重排 200 条 = 200 × 5ms = 1000ms&#10;对比：ANN 召回 ≈ 10ms&#10;``&#10;【结论】重排的延迟随候选数线性增长，并且会主导整条链路——重排 200 条（1 秒）比 ANN 召回（10ms）慢两个数量级。&#10;【推论】&quot;重排多少条&quot;是一个必须算的成本决策：候选数越大召回率越高，但延迟线性上升，而且最终进上下文的条数还受 token 预算限制。常见折中：召回几百条 → 重排前 50–100 → 进上下文 5–20 条。&#10;【补充】实际工程里还会分批并行重排（比如 100 条分 5 批并行），把 500ms 压到 100ms 量级——但代价是更多算力，本质还是同一个取舍。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G3-重排与召回质量-q2" tag="RAG与检索" q="Contextual Retrieval 的实测数据是：&#10;``text&#10;基线 5.7% → +Contextual Embeddings 3.7% → +Contextual BM25 2.9% → +Rerank 1.88%&#10;``&#10;问：&quot;重排把失败率降低了多少&quot;？请给出三个不同口径的数字。" a="口径 · 算法 · 结果&#10;绝对降幅 · 2.9% − 1.88% · 1.02 个百分点&#10;相对重排前 · 1 − 1.88/2.9 · 35%&#10;相对基线（累计） · 1 − 1.88/5.7 · 67%&#10;【结论】&quot;重排降了 67%&quot;是错的——67% 是整条链路相对基线的累计降幅，其中还包含 Contextual Embeddings 和 Contextual BM25 的贡献。重排这一步单独只贡献 35%。&#10;【推论】面试里说清口径差别很大：把累计降幅说成单点降幅，会被一句&quot;那前面两步贡献了多少&quot;问倒。主动区分这三个口径，反而是加分项——它说明你读过原始数据、而不是转述二手结论。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="RAG与检索/母题-G3-重排与召回质量-q3" tag="RAG与检索" q="某系统的检索指标如下：&#10;``text&#10;Recall@5 = 60%   Recall@20 = 95%&#10;nDCG@5  = 0.42   nDCG@20 = 0.51&#10;``&#10;问：这个检索系统的问题在哪？该动召回还是动精排？" a="Recall@20 = 95% 说明&quot;候选池基本没问题&quot;——正确证据几乎都能被捞进前 20。&#10;Recall@5 = 60% 说明&quot;排得太靠后&quot;——有 35% 的情况正确答案落在第 6–20 位之间。&#10;nDCG@5 = 0.42 偏低，与 Recall@5 的问题一致：排序质量不够。&#10;【结论】问题在精排，不在召回。 该动的是重排（以及 K 与预算的配合），而不是去换 Embedding 模型或加更多召回路径。&#10;【推论】这就是&quot;召回指标&quot;和&quot;精排指标&quot;必须分开看的意义：&#10;``text&#10;Recall@20 高、Recall@5 低 → 捞到了但没排上来 → 动重排&#10;Recall@20 本身就低        → 根本没捞到       → 动召回（切分/混合检索/改写）&#10;``&#10;只看一个 Recall@5，你会误判成&quot;召回不行&quot;而去优化错误的一环。 这也正是 [[母题-G5-RAG评测与幻觉率]] 里&quot;失败归因&quot;的第一步。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G3-重排与召回质量-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们把 Embedding 模型升级到了更大的版本，所以就不再需要重排了。&quot;" a="换不掉，因为双塔的损失是结构性的。&#10;1. 双塔的局限不在模型大小，在结构：query 和 doc 分别编码，编码时看不到对方——所以&quot;除外&quot;&quot;不适用&quot;&quot;仅限&quot;这类决定语义的否定词，在文档向量里会被&quot;平均&quot;掉。&#10;2. 交叉编码器把两者拼在一起送进模型，能看到逐词的交互——它是结构优势，不是规模优势。再大的双塔也看不到这种交互。&#10;3. 而且规模换来的是&quot;排序更慢&quot;：更大的 Embedding 模型会让召回变慢，而它对精排的提升远不如直接上一个交叉编码器。&#10;【准确说法】&quot;双塔负责召回（能预计算、快），交叉编码器负责精排（有词级交互、准）——这是两级漏斗，不是可以互相替代的两个模型。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G3-重排与召回质量-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们召回率做到 95% 了，说明检索这块已经没问题，该去看生成那边了。&quot;" a="召回率只管&quot;有没有捞到&quot;，不管&quot;排得对不对&quot;。&#10;1. 正确证据排在第 20 位、被上下文预算挤掉时，Recall 照样是 100%——但对答案毫无帮助。&#10;2. 要看 nDCG@K：它衡量&quot;多级相关性 + 排序质量&quot;，回答的是&quot;排得对不对&quot;（Q3 的例子：Recall@20 = 95% 但 nDCG@5 只有 0.42）。&#10;3. &quot;召回到了&quot;和&quot;进了最终上下文&quot;是两件事：中间还隔着重排、去重、token 预算。归因链应该是：&#10;``text&#10;正确证据进 TopK 了吗？  → 没进 → 动召回（切分 / 混合检索 / 查询改写）&#10;进了，但进最终 Context 了吗？ → 没进 → 动重排 / 预算 / 去重&#10;都进了，答案还是错？ → 动生成 / Prompt / 引用（[[母题-G5-RAG评测与幻觉率]]）&#10;``&#10;【准确说法】&quot;召回率是必要条件，不是充分条件。 说'检索没问题'之前，至少要同时看 Recall@K 和 nDCG@K——前者看有没有捞到，后者看排得对不对。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">召回来的候选已经按相似度排过序了，为什么还要再排一遍——这一遍排的到底是什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="RAG与检索/母题-G3-重排与召回质量" tag="RAG与检索" q="召回来的候选已经按相似度排过序了，为什么还要再排一遍——这一遍排的到底是什么？" a="召回和精排的优化目标不同——召回面对全量，目标是&quot;不漏&quot;，所以只能用便宜的方法（双塔，文档向量可预计算）；精排面对已经缩小过的候选集，目标是&quot;排得准&quot;，所以可以用贵的方法（交叉编码器）。两者的本质差别是&quot;有没有词级交互&quot;：双塔把 query 和 doc 分别编码，编码时看不到对方，所以&quot;除外&quot;&quot;不适用&quot;这类否定词被平均掉（这是结构性损失，换更大的双塔也补不回来）；交叉编码器把两者拼在一起，能看到逐词交互。代价是延迟随候选数线性增长（5ms × N，重排 200 条就是 1 秒，比 ANN 召回慢两个数量级），所以常见折中是&quot;召回几百 → 重排 50–100 → 进上下文 5–20&quot;。收益要说清口径：Contextual Retrieval 里重排把失败率从 2.9% 降到 1.88%，相对重排前降 35%、相对基线累计降 67%——这两个数不能混。最后，Recall@K 高不等于答案好，还要看 nDCG@K。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>区分"搭过 RAG"和"调过 RAG"的题</strong>。搭过的人会说"我们加了 rerank，效果好"；调过的人会说清<strong>它为什么好（双塔没有词级交互）、好多少（相对基线的 67%）、代价是什么（延迟随候选数线性增长）</strong>。<strong>而且它的答案模板可以直接迁移到 Agent 的工具选择（[[母题-A2-工具调用与MCP边界]]）。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>召回和精排的优化目标不同</strong>——召回面对全量，目标是"<strong>不漏</strong>"，所以只能用便宜的方法（双塔，文档向量可预计算）；精排面对已经缩小过的候选集，目标是"<strong>排得准</strong>"，所以可以用贵的方法（交叉编码器）。<strong>两者的本质差别是"有没有词级交互"</strong>：双塔把 query 和 doc 分别编码，<strong>编码时看不到对方</strong>，所以"除外""不适用"这类否定词被平均掉（<strong>这是结构性损失，换更大的双塔也补不回来</strong>）；交叉编码器把两者拼在一起，能看到逐词交互。<strong>代价是延迟随候选数线性增长</strong>（5ms × N，重排 200 条就是 1 秒，比 ANN 召回慢两个数量级），所以常见折中是"召回几百 → 重排 50–100 → 进上下文 5–20"。<strong>收益要说清口径</strong>：Contextual Retrieval 里重排把失败率从 2.9% 降到 1.88%，<strong>相对重排前降 35%、相对基线累计降 67%——这两个数不能混</strong>。最后，<strong>Recall@K 高不等于答案好</strong>，还要看 nDCG@K。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>召回要"不漏"、精排要"排得准"</li><li>双塔 = 分别编码 + 可预计算 + 无词级交互</li><li>交叉编码器 = 拼在一起 + 不能预计算 + 有词级交互</li><li><strong>双塔的损失是结构性的</strong>，换大模型补不回来</li><li>重排延迟 = 5ms × N（200 条 = 1 秒）</li><li>常见折中：召回几百 → 重排 50–100 → 进上下文 5–20</li><li>重排收益口径：绝对 1.02 个点 · 相对前一环 35% · 相对基线累计 67%</li><li>Recall@K 看"有没有捞到"，nDCG@K 看"排得对不对"</li><li>Anthropic 实测 5</li><li>10</li><li>20 里 20 最好</li><li>难题才启用重排</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>重排一定值得吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不一定</strong>。它是<strong>用延迟换质量</strong>，应该<strong>通过 Eval 判断是否只在难题启用</strong>。精确编号、单跳事实这类查询，召回本身已经排得很准，重排收益很小。<strong>study/03 的结论就是"应通过 Eval 判断是否只在难题启用"。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>K 该取多少？</strong></strong></p>
+<p class="mv-md-p">Anthropic 试了 <strong>5 / 10 / 20</strong>，<strong>20 最好</strong>；但 K 大会带来<strong>重排成本线性上升 + 上下文预算被占</strong>。所以 <strong>K 要按"召回率 vs 成本"用评测定</strong>，并且要和重排的候选数、最终进上下文的条数<strong>一起考虑</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>多跳（multi-hop）问题重排能解决吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不能</strong>。重排只是把<strong>已有候选</strong>重排；<strong>多跳需要的候选压根不在池子里</strong>。要解决它得靠 <strong>Query Decomposition</strong>（多条件问题拆成子查询）或 <strong>Multi-hop 检索</strong>（第二轮由第一轮发现的实体驱动）。</p>
+<p class="mv-md-p"><strong>4. <strong>多路召回和重排是什么关系？</strong></strong></p>
+<p class="mv-md-p"><strong>前者解决"捞得全"，后者解决"排得准"</strong>。RRF 融合只是把两路的排名合成一个顺序（[[母题-G2-向量与关键词的混合检索]]），<strong>它不判断内容相关性的深浅</strong>——那正是交叉编码器要做的事。<strong>两级是串联的，不是二选一。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「为什么 rerank 模型的参数量通常比 Embedding 模型小，效果却更好？」——<strong>因为任务不同</strong>：双塔要做的是"把任意文本编码成一个通用向量"（难的通用任务），交叉编码器做的是"判断这一对 query-doc 相关到什么程度"（窄得多，且有交互信息可用）。<strong>参数量小但信息更充分。</strong></li><li>「重排和"用 LLM 打分"有什么区别？」——<strong>本质相同</strong>（都是交叉编码器式的判断），<strong>区别在成本与稳定性</strong>：通用 LLM 打分更贵、更慢，但不需要额外训练；专用重排模型（如 bge-reranker 这类）更快、更便宜。<strong>选型取决于你的 QPS 与延迟预算。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>召回 81% → 95%</strong> 这条数据要说清<strong>是 Top-K Schema 召回率口径（表这一层，不是文档块）</strong>，且要能回答"重排在里面贡献了多少"——<strong>这正是本卡"三个口径"那一节的直接应用</strong>。 - <strong>EnergyOps</strong>：故障建议的检索里，<strong>设备编号与错误码属于"召回已经排得很准"的类型</strong>，重排收益小；<strong>而自然语言描述的故障现象需要重排</strong>。<strong>按查询类型分档启用</strong>是这个项目的直接落点。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">两个阶段目标不同 → 双塔 vs 交叉编码器（本质差别是词级交互）→ 为什么双塔的损失补不回来 → 重排的延迟账 → 收益的三个口径 → K 怎么定 → Recall@K 与 nDCG@K 的分工 → 收束到"两级漏斗是约束逼出来的"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"能不能预计算"决定了"用在哪一阶段"。</strong> 双塔能预计算 → 用在召回（面对全量）；交叉编码器不能 → 用在精排（面对小候选集）。<strong>这不是模型优劣，是约束匹配。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清召回与精排的目标差异；<strong>能说出双塔与交叉编码器的本质差别是"词级交互 / 能不能预计算"</strong>；<strong>能算出重排的延迟（5ms × N）并给出常见折中</strong>；<strong>能给出重排收益的三个口径（1.02 点 / 35% / 67%）并说清不能混</strong>；<strong>能用 Recall@20 与 Recall@5 的对比判断"该动召回还是动精排"</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 G5 · RAG 评测与幻觉率</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/RAG与检索.html">← RAG与检索 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">RAG与检索</span>
+    <h1 class="mv-topic-title">母题 G5 · RAG 评测与幻觉率</h1>
+    <p class="mv-topic-meta">关联 母题-G4-引用绑定与证据可追溯（Citation completeness 是答案指标之一）· 母题-G3-重排与召回质量（Recall@K 与 nDCG 的分工）· 母题-C4-幻觉的成因与可控性（错误与弃答分开定价）· 母题-C3-Prompt版本管理与回归（样本量算式） ｜ 正本 wiki/topics/RAG与检索/母题-G5-RAG评测与幻觉率.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 检索评测和答案评测不能混成一个分 ② 两层的损失是相乘的 ③ 不做归因就动手，可能只修了三分之一）· 读完约 12 分钟 · 需要先懂：[[母题-G3-重排与召回质量]]、[[母题-C4-幻觉的成因与可控性]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们怎么证明这个 RAG 系统是好的？检索指标很好但答案还是差，你怎么排查？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：一个端到端的分数，定位不了问题</h3>
+<p class="mv-md-p">【推导】<strong>RAG 的失败发生在三个不同的地方，而端到端指标把它们全混成一个数</strong>：</p>
+<pre class="mv-md-pre">① 证据没被捞到        → 摄取 / 切分 / 查询改写 / 召回的问题
+② 捞到了但没进上下文   → 重排 / 去重 / token 预算的问题
+③ 进了上下文还是答错   → 生成 / Prompt / 引用 / 模型的问题</pre>
+<p class="mv-md-p">【推论】<strong>一个"准确率 78%"告诉不了你该动哪一段</strong>——而这三段的修复动作完全不同、成本也差一个数量级（改切分要重建索引，改 Prompt 只是改几行字）。</p>
+<p class="mv-md-p">【事实】study/03 给的归因链就是按这个顺序设计的：</p>
+<figure-box num="答案失败的归因链：三个岔路口决定该动哪一段" title="" note="① 没进 TopK → 动摄取与召回；② 进了但没用上 → 动精排与组装；③ 都进了还是错 → 动生成与验收"><svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>答案失败的归因链：三个岔路口决定该动哪一段</title>
+  <desc>一个答案错了，要顺着三个问题往下走。第一问：正确证据进 TopK 了吗？没进就是解析、切分、查询改写或召回的问题。第二问：进了 TopK 但进最终上下文了吗？没进就是重排、去重或 token 预算的问题。第三问：都进了还是错，那才是生成、Prompt、模型或引用的问题。三个岔路口对应三段完全不同的修复动作——混在一起就会去优化错的一环。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">答案失败的归因链：三个岔路口决定该动哪一段</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「检索指标好但答案差」的排查顺序——每一步都对应一段不同的修复动作</text>
+
+  <rect x="30" y="70" width="120" height="40" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="90" y="95" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A" text-anchor="middle">答案失败</text>
+
+  <path d="M152 90 L196 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+
+  <rect x="200" y="66" width="200" height="48" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="300" y="86" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A" text-anchor="middle">① 正确证据进 TopK 了吗？</text>
+  <text x="300" y="103" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">看 Recall@K</text>
+
+  <path d="M402 90 L446 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+  <path d="M300 114 L300 140" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#fr-ar2)"/>
+  <text x="308" y="132" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">否</text>
+
+  <rect x="450" y="66" width="200" height="48" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="550" y="86" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A" text-anchor="middle">② 进最终 Context 了吗？</text>
+  <text x="550" y="103" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">看重排后位置与 token 预算</text>
+
+  <path d="M650 90 L664 90" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#fr-ar)"/>
+  <path d="M550 114 L550 140" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#fr-ar2)"/>
+  <text x="558" y="132" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">否</text>
+
+  <!-- 三段结论 -->
+  <rect x="30" y="152" width="200" height="72" rx="7" fill="#BA7517"/>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#FFFFFF">① 没进 TopK</text>
+  <text x="46" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">动【摄取与召回】：</text>
+  <text x="46" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">解析 / 切分 / 查询改写 / 混合检索</text>
+
+  <rect x="240" y="152" width="200" height="72" rx="7" fill="#BA7517"/>
+  <text x="256" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#FFFFFF">② 进了但没用上</text>
+  <text x="256" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">动【精排与组装】：</text>
+  <text x="256" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF">重排 / 去重 / token 预算 / 位置</text>
+
+  <rect x="450" y="152" width="200" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="466" y="174" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">③ 都进了还是错</text>
+  <text x="466" y="194" font-family="system-ui,sans-serif" font-size="10" fill="#633806">动【生成与验收】：</text>
+  <text x="466" y="211" font-family="system-ui,sans-serif" font-size="10" fill="#633806">Prompt / 引用绑定 / 模型 / 拒答</text>
+
+  <!-- 底部 -->
+  <path d="M30 246 L650 246" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="270" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">还有一个容易被忽略的岔路口：这套归因需要 Trace 把「候选、分数、重排位置、上下文版本」都留下来</text>
+  <text x="30" y="290" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">否则你只能看到「答案错了」，看不到它在第几个岔路口走丢的——那就只能猜。</text>
+  <text x="30" y="316" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">关键：<tspan font-weight="600">检索失败率 ≠ 幻觉率</tspan>。检索失败只是「证据缺失型幻觉」的上界；反过来，检索成功了模型也照样可能不用它。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们 RAG 的准确率是 78%"这句话，面试官会接着问什么？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 分层评测：两层的损失是相乘的【推导】</h3>
+<p class="mv-md-p">【事实】<strong>检索层指标</strong>（回答"证据有没有被捞到"）：</p>
+<table class="mv-table"><thead><tr><th>指标</th><th>回答什么</th></tr></thead><tbody><tr><td><strong>Recall@K</strong></td><td>正确证据<strong>是否出现在前 K 个候选里</strong></td></tr><tr><td><strong>Precision@K</strong></td><td>前 K 个里有多少是相关证据</td></tr><tr><td><strong>MRR</strong></td><td><strong>第一个</strong>正确证据出现得有多早</td></tr><tr><td><strong>nDCG@K</strong></td><td>多级相关性 + 排序质量</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>答案层指标</strong>（回答"答案对不对、有没有依据"）：</p>
+<table class="mv-table"><thead><tr><th>维度</th><th>判定方式</th></tr></thead><tbody><tr><td><strong>Correctness</strong></td><td>与参考事实 / 业务规则一致</td></tr><tr><td><strong>Faithfulness</strong></td><td>每项主张<strong>由上下文支持</strong></td></tr><tr><td><strong>Citation completeness</strong></td><td>需要证据的结论是否都有引用</td></tr><tr><td><strong>Answerability</strong></td><td>无答案时能否<strong>正确拒答</strong></td></tr><tr><td><strong>Safety / ACL</strong></td><td>是否泄露未授权信息</td></tr><tr><td><strong>Task success</strong></td><td>用户最终任务是否完成</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">2.1 为什么不能只看一层【推导】</h4>
+<pre class="mv-md-pre">检索层：Recall@20 = 95%   → 5% 的查询，证据压根没进来
+答案层：在证据进来的 95% 里，faithfulness = 90%
+        → 其中 10% 的情况「给了证据但没用上」
+
+端到端正确率上限 = 95% × 90% = 85.5%</pre>
+<p class="mv-md-p">【结论】<strong>两层的损失是相乘的</strong>——<strong>端到端指标既低于任何一层的指标，又定位不了是哪一层拖的</strong>。</p>
+<p class="mv-md-p">【推论】<strong>所以"检索指标好但答案差"这句话本身就是一个有效的诊断信息</strong>：它说明瓶颈在①之后（排序 / 预算 / 生成），而<strong>不是</strong>在召回。<strong>这正是分层评测的价值——它把"一句话的抱怨"变成了"该看哪一段"。</strong></p>
+<p class="mv-md-p">【事实】<strong>判据</strong>：study/03 的原文是"<strong>检索 Eval 和答案 Eval 不能混为一个分数</strong>"——<strong>它们回答的是两个不同的问题，混在一起就两个都答不了。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么端到端指标一定低于同层的单项指标？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 归因决定修复的上限【推导】</h3>
+<p class="mv-md-p">【推导】<strong>不做归因就动手，是在赌</strong>。把 100 条失败样本归因一遍：</p>
+<pre class="mv-md-pre">假设归因结果是：
+  ① 证据没进 TopK        40 条  → 召回问题
+  ② 进了但没用上         25 条  → 排序 / 预算问题
+  ③ 都进了但还是错       35 条  → 生成问题
+
+如果直接去换一个更强的模型（只治 ③）：
+  最多修好 35 条 → 还有 65 条照样错</pre>
+<p class="mv-md-p">【结论】<strong>不做归因就动手，最多只能修三分之一。</strong></p>
+<p class="mv-md-p">【推论】<strong>而且这三段的修复成本差得很远</strong>：</p>
+<pre class="mv-md-pre">③ 生成问题 → 改 Prompt / 加重排后的引用绑定 → 便宜、可快速迭代
+② 排序问题 → 加/调重排、调 token 预算      → 中等
+① 召回问题 → 改切分、改 Embedding、重建索引 → 最贵（因为要重跑离线链路）</pre>
+<p class="mv-md-p">【取舍】<strong>所以顺序应该是"先归因、再动手"</strong>，而不是"先挑一个最贵的手段上"（那通常是把问题往后推）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"先换个更强的模型试试"通常不是最好的第一步？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 评测集怎么建【事实】</h3>
+<p class="mv-md-p">【事实】每条样本至少包含（study/03 的 schema）：</p>
+<pre class="mv-md-pre">{
+  "question": "...",
+  "user_scope": "tenant_a/analyst",        ← 权限维度
+  "gold_evidence_ids": ["doc_12#p3"],      ← 正确证据（检索层的答案）
+  "reference_answer": "...",               ← 参考答案（答案层的答案）
+  "must_include": ["生效日期"],
+  "must_not_include": ["未授权字段"],
+  "answerability": true,                    ← 是否可答（测拒答）
+  "tags": ["multi_hop", "permission"]       ← 分桶标签
+}</pre>
+<p class="mv-md-p">【事实】<strong>数据来源</strong>：<strong>真实高频问题、专家构造边界、线上 Bad Case、权限攻击、过期 / 冲突样本</strong>。</p>
+<p class="mv-md-p">【取舍】<strong>两个必须注意的点</strong>：</p>
+<pre class="mv-md-pre">① 保留 holdout —— 避免对测试集过拟合
+   （[[母题-C3-Prompt版本管理与回归]] 里那个真实案例：训练集打平、held-out 差 11.9 个点）
+
+② 样本量决定分辨率
+   200 条 → 标准误 ≈ √(0.9×0.1/200) ≈ 2.1%，只够抓大幅回退
+   要分辨 2 个百分点 → 需要约 900 条</pre>
+<p class="mv-md-p">【推论】<strong>"评测集有 150 条"和"评测集能分辨 2 个点"是两件事</strong>——<strong>小评测集只能告诉你"没有崩"，不能告诉你"变好了 2 个点"。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 一个必须分清的口径：检索失败率 ≠ 幻觉率【推导】</h3>
+<p class="mv-md-p">【事实】这条在 [[母题-C4-幻觉的成因与可控性]] 里讲过，这里是它的落地版：</p>
+<pre class="mv-md-pre">检索失败（证据没取回来）
+   ↓ 是「证据缺失型幻觉」的必要条件，但不充分
+   ↓ 模型仍可能靠参数化知识答对
+证据缺失型幻觉  ≤  检索失败率        ← 它是上界，不是下界
+
+总幻觉率 = 证据缺失型 ＋ 有证据不依 ＋ 无模式事实 ＋ 评测激励
+        → 与检索失败率之间没有必然的大小关系</pre>
+<p class="mv-md-p">【结论】<strong>Contextual Retrieval 报的"失败率降 49%"是检索层数字</strong>，<strong>不能说成"幻觉降低了 49%"</strong>——<strong>方向上还是高估</strong>（真实改善一定小于这个数）。</p>
+<p class="mv-md-p">【推论】<strong>反过来也成立</strong>：<strong>检索成功率提高 ≠ 幻觉率下降</strong>。C4 的 Q2 算过——有证据但模型不用（faithfulness 问题）照样是幻觉。<strong>所以两层指标必须分开看、分开报。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们把检索失败率降了 49%"不能当作"幻觉治理的成果"来汇报？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"我们看端到端准确率就够了"</td><td><strong>不够，因为它定位不了</strong>。RAG 的失败发生在三个不同地方（没捞到 / 没进上下文 / 生成错），<strong>端到端指标把它们混成一个数</strong>，而三段的修复动作和成本完全不同</td></tr><tr><td>"检索指标好就说明检索没问题"</td><td><strong>只能说"候选池没问题"</strong>。正确证据排在第 20 位被预算挤掉时，Recall 照样 100%。<strong>要看 nDCG@K</strong> 才知道排得对不对</td></tr><tr><td>"RAG 的幻觉率就是检索失败率"</td><td><strong>不是</strong>。检索失败只是<strong>证据缺失型幻觉的上界</strong>（且不充分——模型可能靠参数知识答对）；反过来，<strong>检索成功了模型也可能不用</strong>（faithfulness 问题）。<strong>两者不能互换</strong></td></tr><tr><td>"评测集 150 条够用了"</td><td><strong>取决于你要证明多大的差异</strong>。150 条的标准误约 2.4%，<strong>只能抓大幅回退</strong>；想论证"改进了 2 个点"，需要约 900 条（[[母题-C3-Prompt版本管理与回归]] 的样本量算式）</td></tr><tr><td>"有评测集就不用留 holdout 了"</td><td><strong>必须留</strong>。调优时反复看同一套集合，它就成了训练集。<strong>真实案例：训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%</strong></td></tr><tr><td>"换更强的模型是通用解"</td><td><strong>只在"都进了上下文还是错"时才有效</strong>。如果是召回问题（40%）或排序问题（25%），换模型<strong>最多修三分之一</strong>（第 3 节）</td></tr><tr><td>"拒答率高说明系统差"</td><td><strong>反了</strong>。拒答把"自信的错误"（代价 10 单位）换成"坦白的不知道"（1 单位）→ <strong>总代价降到 1/10</strong>（[[母题-G4-引用绑定与证据可追溯]]）。<strong>要看的是错误率，不是拒答率</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>评测的目的不是"给系统打分"，是"告诉你下一步该改哪里"——不能定位的评测，价值接近于零。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G5-RAG评测与幻觉率-q1" tag="RAG与检索" q="某 RAG 系统的 Recall@20 = 95%（5% 的查询证据没进来），在证据进来的那些查询里 faithfulness = 90%（10% 给了证据但没用上）。&#10;问：端到端正确率的上限是多少？这个数说明什么？" a="``text&#10;端到端正确率上限 = 95% × 90% = 85.5%&#10;``&#10;【结论】两层的损失是相乘的——端到端指标既低于任何一层的单项指标，又定位不了是哪一层拖的。&#10;【推论】所以&quot;检索指标好但答案差&quot;这句话本身就是有效诊断：它说明问题在&quot;排序 / 预算 / 生成&quot;这三段里，而不在召回。这就是分层评测的价值——它把一句抱怨变成了&quot;该看哪一段&quot;。&#10;【补充】注意 90% 这个 faithfulness 是条件概率（在证据进来的前提下）。把两层的坑分开算，才能知道&quot;提升哪一层更划算&quot;：把 95% 提到 98% 只多 2.7 个点；把 90% 提到 95% 能多 4.75 个点。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G5-RAG评测与幻觉率-q2" tag="RAG与检索" q="对 100 条失败样本做归因，结果是：&#10;``text&#10;① 证据没进 TopK      40 条&#10;② 进了但没用上       25 条&#10;③ 都进了但还是错     35 条&#10;``&#10;问：如果只换一个更强的生成模型（只治 ③），最多能修好多少条？这个结果对排查顺序意味着什么？" a="``text&#10;只治 ③：最多修好 35 条&#10;剩下的 40 + 25 = 65 条照样错&#10;修复率 = 35 / 100 = 35%&#10;``&#10;【结论】不做归因就动手，最多只能修三分之一。&#10;【推论】而且这三段的修复成本差得很远：&#10;段 · 修复动作 · 成本&#10;③ 生成 · 改 Prompt、加引用绑定、换模型 · 便宜、可快速迭代&#10;② 排序 · 调重排、调 token 预算 · 中等&#10;① 召回 · 改切分、换 Embedding、重建索引 · 最贵&#10;【取舍】所以正确顺序是&quot;先归因、再动手&quot;——先花半天做归因，再决定改哪一段；而不是先挑一个最贵的手段上（那通常是把问题往后推，下次又冒出来）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="RAG与检索/母题-G5-RAG评测与幻觉率-q3" tag="RAG与检索" q="两个 RAG 系统的评测数据如下：&#10;``text&#10;系统 A：Recall@20 = 98%，faithfulness = 70%&#10;系统 B：Recall@20 = 85%，faithfulness = 95%&#10;``&#10;问：哪个系统更好？该优先改哪个？" a="``text&#10;端到端上限：&#10;系统 A = 98% × 70% = 68.6%&#10;系统 B = 85% × 95% = 80.75%&#10;→ 系统 B 的端到端上限更高&#10;`&#10;【结论】B 更好，尽管它的召回率低了 13 个百分点——因为 A 的瓶颈在&quot;给了证据不用&quot;，那一层拖得更狠。&#10;【该改哪里】两个系统的短板不同：&#10;`text&#10;系统 A：瓶颈在 faithfulness（70%）&#10;→ 动生成与验收：加强引用绑定、生成后验证撤稿、允许弃答&#10;→ 这是&quot;便宜、可快速迭代&quot;的那一段&#10;系统 B：瓶颈在召回（85%）&#10;→ 动摄取与召回：切分、混合检索、查询改写&#10;→ 这是&quot;最贵&quot;的那一段&#10;``&#10;【推论】&quot;哪个系统更好&quot;和&quot;该优先改哪个&quot;是两个不同的问题——前者看端到端上限，后者看哪一层的提升空间更大。而这两件事只有在分层评测下才都答得出来。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G5-RAG评测与幻觉率-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们用了 Contextual Retrieval，检索失败率降了 49%，所以幻觉问题基本解决了。&quot;" a="三处问题。&#10;1. 口径错了：49% 是检索层的数字（top-20 检索失败率），不是幻觉率。幻觉率还包含&quot;证据给了没用上&quot;&quot;无模式的事实&quot;&quot;评测激励&quot;这几类（[[母题-C4-幻觉的成因与可控性]]）。&#10;2. 关系是&quot;上界&quot;不是&quot;等式&quot;：证据缺失型幻觉 ≤ 检索失败率——而且不充分，模型可能靠参数化知识答对；反过来，检索成功了模型也可能不用。&#10;3. 方向上是高估：把检索层的改善说成幻觉的改善，真实改善一定小于这个数。&#10;【准确说法】&quot;检索层和答案层要分开报：'检索失败率从 5.7% 降到 2.9%'说的是证据更容易被捞到；要证明幻觉下降，还得看 faithfulness 和端到端错误率。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G5-RAG评测与幻觉率-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们建了一个 150 条的评测集，跑出来准确率 78%，说明系统还有提升空间。&quot;" a="三处问题。&#10;1. 150 条的分辨率不够：SE = √(p(1−p)/n) = √(0.78×0.22/150) ≈ 3.4%——它只能告诉你&quot;大致在这个水平&quot;，分辨不出 2–3 个百分点的改进。想论证&quot;改进了 2 个点&quot;，需要千条量级。&#10;2. &quot;准确率&quot;这个词太粗：它定位不了问题（Q2：只优化生成最多修 35%）。至少要拆成 Recall@K / nDCG@K（检索） 和 Correctness / Faithfulness / Citation completeness / Answerability（答案）。&#10;3. 没说有没有 holdout：如果这 150 条被反复用来调优，它已经变成训练集了——真实案例里，训练集上打平、held-out 上差 11.9 个点。&#10;【准确说法】&quot;评测集要能回答三个问题：规模够不够分辨我想证明的差异、指标能不能定位到具体哪一段、以及有没有留出没参与调优的 holdout。只报一个准确率的评测集，价值接近于零。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">&quot;检索指标好但答案差&quot;这句话本身说明了什么——为什么一个端到端的分数永远定位不了问题？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="RAG与检索/母题-G5-RAG评测与幻觉率" tag="RAG与检索" q="&quot;检索指标好但答案差&quot;这句话本身说明了什么——为什么一个端到端的分数永远定位不了问题？" a="RAG 的失败发生在三个不同地方——① 证据没被捞到（召回）、② 捞到了没进上下文（重排 / 预算）、③ 进了还是答错（生成）——而端到端指标把它们混成一个数，所以定位不了问题。所以必须分层评测：检索层看 Recall@K / nDCG@K，答案层看 Correctness / Faithfulness / Citation completeness / Answerability。两层的损失是相乘的（Recall@20 95% × faithfulness 90% = 端到端上限 85.5%），端到端指标一定低于任何单层。归因决定修复上限：100 条失败里如果召回占 40、排序占 25、生成占 35，只换更强的模型最多修 35%。评测集要保留 holdout（真实案例：训练集打平、held-out 差 11.9 个点），而且要够大——150 条的标准误约 3.4%，只能抓大幅回退。最后一条最容易混：检索失败率 ≠ 幻觉率——前者只是&quot;证据缺失型幻觉&quot;的上界，反过来检索成功了模型也可能不用。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是 RAG 面试的<strong>分水岭题</strong>。答"我们用准确率评测"的人，会在被追问"那准确率低的时候你改哪里"时卡住。<strong>这道题真正考的是"你的评测能不能定位"</strong>——不能定位的评测，只是一张成绩单。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>RAG 的失败发生在三个不同地方</strong>——① 证据没被捞到（召回）、② 捞到了没进上下文（重排 / 预算）、③ 进了还是答错（生成）——<strong>而端到端指标把它们混成一个数，所以定位不了问题</strong>。所以必须<strong>分层评测</strong>：检索层看 <strong>Recall@K / nDCG@K</strong>，答案层看 <strong>Correctness / Faithfulness / Citation completeness / Answerability</strong>。<strong>两层的损失是相乘的</strong>（Recall@20 95% × faithfulness 90% = 端到端上限 85.5%），端到端指标一定低于任何单层。<strong>归因决定修复上限</strong>：100 条失败里如果召回占 40、排序占 25、生成占 35，<strong>只换更强的模型最多修 35%</strong>。评测集要<strong>保留 holdout</strong>（真实案例：训练集打平、held-out 差 11.9 个点），而且要够大——<strong>150 条的标准误约 3.4%，只能抓大幅回退</strong>。最后一条最容易混：<strong>检索失败率 ≠ 幻觉率</strong>——前者只是"证据缺失型幻觉"的上界，反过来检索成功了模型也可能不用。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三个岔路口（没捞到 / 没进上下文 / 生成本身）</li><li>检索指标 Recall@K · Precision@K · MRR · nDCG@K</li><li>答案指标 Correctness · Faithfulness · Citation completeness · Answerability</li><li><strong>两层损失相乘</strong>（95% × 90% = 85.5%）</li><li>归因决定修复上限（只治生成最多修 35%）</li><li>评测集 schema（gold_evidence_ids + user_scope + answerability + tags）</li><li>保留 holdout</li><li>150 条标准误 ≈ 3.4%，要分辨 2 点需约 900 条</li><li><strong>检索失败率 ≠ 幻觉率</strong>（是上界、不充分、方向高估）</li><li>拒答率不是越低越好</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>检索指标很好但答案仍差，怎么排查？</strong></strong></p>
+<p class="mv-md-p"><strong>按三个岔路口走</strong>：① 正确证据进 TopK 了吗（没进 → 召回）；② 进最终 Context 了吗（没进 → 重排 / 预算 / 去重）；③ 都进了还是错（→ 生成 / Prompt / 引用）。<strong>前提是 Trace 把候选、分数、重排位置、上下文版本都留下来了</strong>——否则只能猜。</p>
+<p class="mv-md-p"><strong>2. <strong>为什么检索 Eval 和答案 Eval 要分开？</strong></strong></p>
+<p class="mv-md-p"><strong>它们回答两个不同的问题</strong>（"证据有没有捞到" vs "答案对不对、有没有依据"），<strong>混在一起就两个都答不了</strong>。而且分开之后才能算"提升哪一层更划算"。</p>
+<p class="mv-md-p"><strong>3. <strong>评测集要多大？</strong></strong></p>
+<p class="mv-md-p"><strong>取决于你要证明多大的差异</strong>。<code class="mv-md-code">SE = √(p(1−p)/n)</code>：150 条约 ±3.4%，200 条约 ±2.1%；<strong>想分辨 2 个百分点需要约 900 条</strong>。<strong>先想清楚"我要证明多大的差异"，再决定集合规模。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>怎么造评测集的数据？</strong></strong></p>
+<p class="mv-md-p"><strong>五个来源</strong>：真实高频问题、专家构造的边界、<strong>线上 Bad Case</strong>、<strong>权限攻击样本</strong>、<strong>过期 / 冲突样本</strong>。<strong>后面三类是 RAG 特有的</strong>——它们测的是"该拒答时有没有拒答"。</p>
+<p class="mv-md-p"><strong>5. <strong>怎么防止评测集被过拟合？</strong></strong></p>
+<p class="mv-md-p"><strong>保留 holdout</strong>，且<strong>只有验收时才看</strong>。真实案例：Anthropic 的 hillclimb 在训练集上最终配置与起点打平（都 98.9%），<strong>held-out 上才拉开 11.9 个点</strong>（[[母题-C3-Prompt版本管理与回归]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「拒答率算不算一个评测指标？」——<strong>算，但它不是"越低越好"</strong>。拒答测的是 <strong>Answerability</strong>：<strong>无答案时能否正确拒答</strong>。拒答率高可能说明系统诚实，也可能说明召回太差——<strong>要和无证据样本的占比一起看</strong>。</li><li>「LLM-as-Judge 靠谱吗？」——<strong>它是分层评测里最便宜的一层</strong>，但要明确边界：<strong>规则 / 代码优先判精确约束</strong>（格式、数值、权限字段），<strong>模型 Judge 判语义质量</strong>（faithfulness、正确性），<strong>高风险和校准样本由人工复核</strong>。这是 study/03 给的三层 grader 组合。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>150 条评测集 + 召回 81→95%</strong> —— 这两个数要<strong>说清各自的口径</strong>：81→95 是<strong>召回率</strong>（检索层），150 条是<strong>集合规模</strong>（它决定分辨率）。<strong>能主动补一句"这 150 条的分辨率约 ±3%，所以只能抓大幅回退"，比只报数字更像做过评测。</strong> - <strong>RuleArena</strong>：<strong>双评测集 + 发布门禁</strong>——<strong>门禁用的是没参与调优的那套</strong>（holdout 的工程落地），而且<strong>门禁拒绝是设计目标</strong>（如实降级）。 - <strong>EnergyOps</strong>：<strong>六层评测与数据飞轮</strong>——<strong>每一层评测集的作用不同</strong>："用来发现问题"和"用来验收改动"的集合应该是两套。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先立"端到端定位不了" → 分层指标（检索层四个 + 答案层六个）→ 两层相乘的算式 → 归因决定修复上限（100 条的分段与 35% 的结论）→ 三段修复的成本差异 → 评测集 schema 与 holdout / 样本量 → <strong>检索失败率 ≠ 幻觉率</strong> → 收束到"评测要能定位"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>评测的目的不是"给系统打分"，是"告诉你下一步该改哪里"。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能背出三个岔路口并对应到三类修复动作；<strong>能算出两层相乘的 85.5%</strong>；<strong>能用 100 条失败的分段算出"只治生成最多修 35%"</strong>；<strong>能比较两个系统并分别指出该改哪一层</strong>；能说出评测集 schema 的关键字段与 holdout 的必要性；<strong>能说清"检索失败率 ≠ 幻觉率"是上界、不充分、方向高估</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A7 · 多 Agent 拆分与协作</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A7 · 多 Agent 拆分与协作</h1>
+    <p class="mv-topic-meta">关联 母题-A5-上下文压缩与记忆（子 agent 只回传 1–2K 就是压缩）· 母题-C1-上下文组装与窗口预算（隔离 = 四种手段之一）· 母题-A1-计划执行循环与停止条件（effort 分档 = 预算思维）· 母题-G5-RAG评测与幻觉率（多 Agent 的评测更麻烦：不能只测单个 agent） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A7-多Agent拆分与协作.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 它有效的原因不是"更聪明" ② effort 必须分档 ③ 有些任务天生不适合拆）· 读完约 12 分钟 · 需要先懂：[[母题-A5-上下文压缩与记忆]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"什么时候该用多 Agent？你们为什么用它 / 为什么不用它？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：它有效的原因，不是"多个模型更聪明"</h3>
+<p class="mv-md-p">【事实】Anthropic 的实测结论（<strong>这句是这道题的题眼</strong>）：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Multi-agent systems work mainly because they help spend enough tokens to solve the problem."</strong></p>
+<p class="mv-md-p">而且他们做了归因分析（BrowseComp 评测）：</p>
+<pre class="mv-md-pre">三个因素解释了 95% 的性能方差：
+  · token 用量【单独】就解释了 80%
+  · 工具调用次数
+  · 模型选择</pre>
+<p class="mv-md-p">【推论】<strong>这说明"多 Agent"买的其实是两样东西</strong>：</p>
+<pre class="mv-md-pre">① 更多的 token 预算    （每个子 agent 有自己的上下文窗口）
+② 并行度              （它们同时干活）</pre>
+<p class="mv-md-p">【推论】<strong>而不是"多个模型投票更准"</strong>——<strong>理解这一点很重要，因为它直接决定了"什么时候不值得"</strong>：<strong>如果你的任务无法通过"多花 token"来变好，那多 Agent 就没用。</strong></p>
+<p class="mv-md-p">【事实】<strong>效果有多好</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"…a multi-agent system with Claude Opus 4 as the lead agent and Claude Sonnet 4 subagents outperformed single-agent Claude Opus 4 by 90.2% on our internal research eval."</strong></p>
+<p class="mv-md-p">【事实】<strong>原文举的那个例子</strong>：让它找出"标普 500 信息技术板块所有公司的董事会成员"——<strong>多 Agent 通过把任务分解给子 agent 找到了正确答案，而单 Agent 用"缓慢的串行搜索"失败了</strong>。</p>
+<figure-box num="多 Agent：什么时候值得，以及 effort 该怎么分档" title="" note="orchestrator-worker 结构；effort 三档；底部是 1× / 4× / 15× 的 token 代价"><svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>多 Agent：什么时候值得，以及 effort 该怎么分档</title>
+  <desc>上面是 orchestrator-worker 结构：主 agent 规划后并行派出若干子 agent，每个子 agent 在自己的干净上下文里探索，只把浓缩后的结论回传，主 agent 合成后再决定是否继续。中间是 effort 分档：简单事实查找只要一个 agent 三到十次工具调用，直接对比要二到四个子 agent，复杂研究才需要十个以上。底部是代价：多 agent 的 token 消耗是普通对话的十五倍，所以只有在任务价值足够高时才划算。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">多 Agent：什么时候值得，以及 effort 该怎么分档</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">它有效的原因不是「多个模型更聪明」，是「多了几倍 token 与并行度」</text>
+
+  <!-- 结构 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">orchestrator-worker</text>
+
+  <rect x="30" y="88" width="120" height="44" rx="7" fill="#BA7517"/>
+  <text x="90" y="108" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">Lead Agent</text>
+  <text x="90" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#FFFFFF" text-anchor="middle">规划 + 分解 + 合成</text>
+
+  <path d="M152 100 L186 92" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figmulti-agent-when-svg-ma-ar)"/>
+  <path d="M152 110 L186 110" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figmulti-agent-when-svg-ma-ar)"/>
+  <path d="M152 120 L186 128" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figmulti-agent-when-svg-ma-ar)"/>
+
+  <rect x="190" y="76" width="150" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="265" y="95" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">子 agent A（干净上下文）</text>
+  <rect x="190" y="112" width="150" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="265" y="131" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">子 agent B</text>
+  <rect x="190" y="148" width="150" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="265" y="167" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">子 agent C</text>
+
+  <path d="M342 91 L376 104" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figmulti-agent-when-svg-ma-ar2)"/>
+  <path d="M342 127 L376 114" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figmulti-agent-when-svg-ma-ar2)"/>
+  <text x="359" y="146" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">只回传</text>
+  <text x="359" y="160" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">1–2K 结论</text>
+
+  <rect x="380" y="88" width="130" height="44" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="445" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">合成 / 判断</text>
+  <text x="445" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">是否还需要下一轮</text>
+
+  <rect x="524" y="88" width="126" height="44" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="587" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">探索过程的噪声</text>
+  <text x="587" y="124" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">留在子 agent 里</text>
+
+  <!-- effort 分档 -->
+  <path d="M30 196 L650 196" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="220" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">effort 必须分档（不分档的失败模式：简单查询也派 50 个）</text>
+
+  <rect x="30" y="232" width="196" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="252" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">简单事实查找</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">1 个 agent · 3–10 次工具调用</text>
+
+  <rect x="242" y="232" width="196" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="258" y="252" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">直接对比</text>
+  <text x="258" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">2–4 个子 agent · 各 10–15 次</text>
+
+  <rect x="454" y="232" width="196" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="470" y="252" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">复杂研究</text>
+  <text x="470" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#633806">&gt;10 个子 agent，职责分开</text>
+
+  <!-- 底部 -->
+  <path d="M30 300 L650 300" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="322" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">代价：普通对话 = 1×，<tspan font-weight="600">单 agent ≈ 4×，多 agent ≈ 15×</tspan>。而 token 用量单独就解释了 80% 的性能差异——</text>
+  <text x="30" y="340" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">所以它本质上是<tspan font-weight="600">「用钱买性能」</tspan>：只有任务价值足够高、且任务本身能并行拆开时，这笔账才算得过来。</text>
+
+  <defs>
+    <marker id="figmulti-agent-when-svg-ma-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/></marker>
+    <marker id="figmulti-agent-when-svg-ma-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/></marker>
+  </defs>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"多 Agent 更强大"是一个不准确的说法？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 代价：15 倍 token【推导】</h3>
+<p class="mv-md-p">【事实】原文给的实测对比：</p>
+<pre class="mv-md-pre">普通对话             = 1×
+单 agent             ≈ 4×
+多 agent 系统        ≈ 15×</pre>
+<p class="mv-md-p">【推导】<strong>把它换算成钱</strong>（Opus 5，输入 $5/MTok）：</p>
+<pre class="mv-md-pre">假设一次对话的上下文规模是 10K token：
+  普通对话   ≈ 10K       → $0.05
+  单 agent   ≈ 40K       → $0.20
+  多 agent   ≈ 150K      → $0.75
+
+相对普通对话：15 倍</pre>
+<p class="mv-md-p">【事实】<strong>原文对经济性的判断很直接</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"For economic viability, multi-agent systems require tasks where the value of the task is high enough to pay for the increased performance."</strong></p>
+<p class="mv-md-p">【推论】<strong>所以多 Agent 的判据不是技术先进性，是"任务价值 / 成本"的比值</strong>——<strong>一次研究型任务值 100 块，花 15 倍 token 换 90% 的质量提升，划算；一次简单的格式转换，同样 15 倍就是纯浪费。</strong></p>
+<p class="mv-md-p">【取舍】<strong>这也是"effort 分档"必须存在的原因</strong>（下一节）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们上了多 Agent"这句话，必须先说清楚"任务价值有多高"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. effort 必须分档【事实】</h3>
+<p class="mv-md-p">【事实】原文给的失败模式与对应的分档规则：</p>
+<pre class="mv-md-pre">早期错误：为简单查询派出 50 个子 agent、无止境地找不存在的来源、
+        互相用过多更新互相干扰
+
+分档规则（写进 prompt）：
+  简单事实查找  → 1 个 agent，3–10 次工具调用
+  直接对比      → 2–4 个子 agent，各 10–15 次调用
+  复杂研究      → &gt;10 个子 agent，职责明确分开</pre>
+<p class="mv-md-p">【推导】<strong>不分档有多浪费</strong>：</p>
+<pre class="mv-md-pre">一个"简单事实查找"实际需要：1 个 agent × 约 5 次调用
+若统一按"复杂研究"配置跑：10 个子 agent × 各 12 次调用 = 120 次调用
+
+浪费 = 120 / 5 = 24 倍</pre>
+<p class="mv-md-p">【结论】<strong>分档能避免约 24 倍的浪费</strong>——<strong>而且这还只是调用次数，token 的差距更大</strong>（每个子 agent 有自己的上下文）。</p>
+<p class="mv-md-p">【事实】<strong>原文点出的根因</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Agents struggle to judge appropriate effort for different tasks, so we embedded scaling rules in the prompts."</strong></p>
+<p class="mv-md-p">【推论】<strong>注意这句话的措辞</strong>：<strong>"模型不擅长判断该用多大力，所以把规则写进 prompt"</strong>——<strong>这是一个很典型的 Harness 思路：模型判断不了的地方，用显式规则兜住</strong>（[[母题-A1-计划执行循环与停止条件]] 的"复杂度放可测试的边界组件"）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"该派几个子 agent"这件事不能让模型自由决定？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 并行：两级并行降 90% 时间【推导】</h3>
+<p class="mv-md-p">【事实】原文的做法与实测：</p>
+<pre class="mv-md-pre">两级并行：
+  ① lead agent 并行派出 3–5 个子 agent（而不是一个一个来）
+  ② 子 agent 内部并行使用 3+ 个工具
+
+实测："These changes cut research time by up to 90% for complex queries"</pre>
+<p class="mv-md-p">【推导】<strong>账很好算</strong>：</p>
+<pre class="mv-md-pre">串行：5 个搜索 × 每个 60 秒 = 300 秒
+并行：5 个搜索同时跑      = 60 秒
+
+降到 20%（省 80%）
+
+若子 agent 内部再并行 3 个工具：
+  单个子 agent 的 3 个串行检索（3 × 20 秒）→ 20 秒
+  → 叠加后总降幅接近原文的 90%</pre>
+<p class="mv-md-p">【结论】<strong>两级并行的收益是乘出来的</strong>（lead 级的并行 × subagent 级的并行）。</p>
+<p class="mv-md-p">【事实】<strong>子 agent 的另一个结构性收益</strong>（原文的表述很准）：</p>
+<p class="mv-md-p mv-md-quote"><strong>"The essence of search is compression… Subagents facilitate compression by operating in parallel with their own context windows… before condensing the most important tokens for the lead research agent."</strong></p>
+<p class="mv-md-p">【推论】<strong>这句话把"隔离"讲透了</strong>：<strong>子 agent 在自己的干净窗口里可能烧掉几万 token 去探索，但只回传 1,000–2,000 token 的浓缩结论</strong>——<strong>搜索过程的噪声全部留在子 agent 里</strong>（[[母题-C1-上下文组装与窗口预算]] 的 Isolation，[[母题-A5-上下文压缩与记忆]] 的压缩）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：子 agent 省的不是"总 token"，是什么？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 有些任务天生不适合拆【推导】</h3>
+<p class="mv-md-p">【事实】原文明确列了不适用的场景：</p>
+<pre class="mv-md-pre">"…some domains that require all agents to share the same context or involve
+ many dependencies between agents are not a good fit for multi-agent systems today.
+
+ For instance, most coding tasks involve fewer truly parallelizable tasks than
+ research, and LLM agents are not yet great at coordinating and delegating to
+ other agents in real time."</pre>
+<p class="mv-md-p">【推导】<strong>判据可以收成两条</strong>：</p>
+<pre class="mv-md-pre">适合多 Agent：
+  ① 重并行（子任务之间独立）
+  ② 信息量超出单个上下文窗口
+  ③ 要对接很多复杂工具
+
+不适合：
+  ① 所有 agent 必须共享同一份上下文
+  ② 子任务之间依赖很密（A 的结论决定 B 怎么做）
+  ③ 需要实时协调与委派</pre>
+<p class="mv-md-p">【推论】<strong>"重并行"是关键</strong>：<strong>研究任务天然可拆（查 A 公司、查 B 公司、查 C 公司互不影响）；而大多数编码任务不行</strong>（改一个函数会影响调它的所有地方）——<strong>原文明确说"most coding tasks involve fewer truly parallelizable tasks than research"</strong>。</p>
+<p class="mv-md-p">【取舍】<strong>还有一个原文承认的工程限制</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Currently, our lead agents execute subagents synchronously… this simplifies coordination, but creates bottlenecks… the lead agent can't steer subagents, subagents can't coordinate, and the entire system can be blocked while waiting for a single subagent to finish searching."</strong></p>
+<p class="mv-md-p">【推论】<strong>同步执行是个真实的瓶颈</strong>——<strong>整个系统会被最慢的那个子 agent 卡住</strong>。<strong>异步能提升并行度，但会带来结果协调、状态一致性和错误传播的新问题</strong>——<strong>这是一次典型的"用复杂度换性能"的取舍。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"两个 Agent 一起改同一份代码"通常不如一个 Agent 干？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 多 Agent 的评测更难【推导】</h3>
+<p class="mv-md-p">【事实】原文的一句话点出了本质困难：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Multi-agent systems have emergent behaviors, which arise without specific programming… small changes to the lead agent can unpredictably change how subagents behave. Success requires understanding interaction patterns, not just individual agent behavior."</strong></p>
+<p class="mv-md-p">【推导】<strong>这意味着评测的对象变了</strong>：</p>
+<pre class="mv-md-pre">单 Agent：评"这个 agent 在任务上表现如何"
+多 Agent：还要评"它们之间的交互模式"
+  → 改 lead 的 prompt 可能不可预测地改变子 agent 的行为
+  → 所以"每个 agent 单独都好"不等于"系统整体好"</pre>
+<p class="mv-md-p">【推论】<strong>因此原文的结论是</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"…the best prompts for these agents are not just strict instructions, but frameworks for collaboration that define the division of labor, problem-solving approaches, and effort budgets."</strong></p>
+<p class="mv-md-p">【推论】<strong>prompt 从"指令"变成"协作框架"</strong>——<strong>要定义分工、解题方法和预算</strong>。<strong>这是多 Agent 和单 Agent 在工程上最大的差别。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"每个子 agent 单独测都很好，合起来却不行"是一件可能发生的事？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"多 Agent 更强大，能用就用"</td><td><strong>它有效的原因是"多花了 token + 并行"</strong>（token 用量单独解释 <strong>80%</strong> 的性能方差），<strong>不是"多个模型更聪明"</strong>。而且<strong>代价是 15× token</strong>（普通对话 1×、单 agent 4×）——<strong>只有任务价值足够高才划算</strong></td></tr><tr><td>"加一个 Agent 就行"</td><td><strong>要看任务能不能并行拆开</strong>。<strong>研究类天然可拆</strong>（查 A 公司、B 公司互不影响）；<strong>大多数编码任务不行</strong>（改一个函数影响所有调用方）——原文明确说了这一点</td></tr><tr><td>"让模型自己决定派几个 agent"</td><td><strong>模型不擅长判断该用多大力</strong>（原文原话），所以要<strong>把分档规则写进 prompt</strong>：简单查找 1 个 / 直接对比 2–4 个 / 复杂研究 &gt;10 个。<strong>不分档会浪费约 24 倍</strong>（简单查询按复杂配置跑）</td></tr><tr><td>"多 Agent 就是并行跑几个实例"</td><td><strong>并行只是它的一半</strong>。另一半是<strong>上下文隔离</strong>：子 agent 可能烧几万 token 探索，<strong>但只回传 1,000–2,000 token 的结论</strong>——<strong>噪声留在子 agent 里</strong>。这才是"压缩"的本质</td></tr><tr><td>"子 agent 越多覆盖越全"</td><td><strong>早期错误就是"为简单查询派 50 个子 agent"</strong>，还有"无止境找不存在的来源""互相用过多更新干扰"。<strong>数量要按复杂度分档，不是越多越好</strong></td></tr><tr><td>"多 Agent 一定比单 Agent 快"</td><td><strong>要看任务</strong>。<strong>重并行的任务快得多</strong>（实测降 90% 时间）；<strong>依赖密集的任务反而更慢</strong>——因为<strong>同步执行下，整个系统会被最慢的子 agent 卡住</strong>，而且 lead 不能中途调整子 agent</td></tr><tr><td>"每个子 agent 都测好就行了"</td><td><strong>不够</strong>。多 Agent 有<strong>涌现行为</strong>：<strong>改 lead 的 prompt 可能不可预测地改变子 agent 的行为</strong>。<strong>所以要评"交互模式"，不只是单个 agent 的表现</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>多 Agent 是一个"用钱买性能"的架构决策——先问"任务价值够不够高"，再问"能不能并行拆开"，两个都 yes 才值得。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作-q1" tag="Agent运行时与工具" q="某系统一次普通对话的上下文规模约 10K token。实测数据是：单 agent ≈ 4×、多 agent ≈ 15×。模型 Opus 5（输入 $5/MTok）。&#10;问：三种形态的单次成本各是多少？这对&quot;该不该上多 Agent&quot;意味着什么？" a="``text&#10;普通对话：10K  × $5/MTok = $0.05&#10;单 agent：40K  × $5/MTok = $0.20   （4×）&#10;多 agent：150K × $5/MTok = $0.75   （15×）&#10;`&#10;【结论】多 Agent 是普通对话的 15 倍成本。&#10;【推论】它是一个&quot;用钱买性能&quot;的决策：原文的实测是质量高 90.2%，而token 用量单独就解释了 80% 的性能方差——两者是同一件事的两面。&#10;【判据】所以要先问任务价值：&#10;`text&#10;值 100 块的任务：花 15 倍换 90% 质量提升 → 划算&#10;值 1 块的任务：　同样 15 倍 → 纯浪费&#10;``&#10;关键词是原文那句：&quot;multi-agent systems require tasks where the value of the task is high enough to pay for the increased performance&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作-q2" tag="Agent运行时与工具" q="一个&quot;简单事实查找&quot;实际需要 1 个 agent × 约 5 次工具调用。&#10;问：如果统一按&quot;复杂研究&quot;的配置跑（10 个子 agent，各 12 次调用），浪费多少倍？这解释了原文的哪个失败模式？" a="``text&#10;简单查询按正确配置：1 × 5 = 5 次调用&#10;按复杂配置跑：      10 × 12 = 120 次调用&#10;浪费 = 120 / 5 = 24 倍&#10;``&#10;【结论】不分档会浪费约 24 倍的调用次数——而 token 的差距更大（每个子 agent 有自己的完整上下文窗口）。&#10;【原文的失败模式】正是&quot;early agents made errors like spawning 50 subagents for simple queries&quot;。&#10;【推论】分档规则要写进 prompt，因为（原文原话）&quot;Agents struggle to judge appropriate effort for different tasks&quot;——模型判断不了的地方，用显式规则兜住（[[母题-A1-计划执行循环与停止条件]] 的同一思路）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作-q3" tag="Agent运行时与工具" q="下面两个任务，哪个适合用多 Agent？为什么？&#10;``text&#10;任务 A：调研&quot;2026 年国内做 AI Agent 的十家公司&quot;，分别整理它们的产品、融资、团队&#10;任务 B：给一个 5 万行的代码库统一加上日志埋点&#10;``" a="任务 A 适合，任务 B 不适合。&#10;``text&#10;任务 A：&#10;✓ 重并行（十家公司互不影响，可以分给多个子 agent）&#10;✓ 信息量超出单个上下文窗口（十家 × 各自的资料）&#10;✓ 天然可分——查 A 公司的结论不影响查 B 公司&#10;任务 B：&#10;✗ 子任务之间依赖很密——加日志点会改动函数签名/调用处，&#10;改一处影响多处，&quot;哪一行该加&quot;需要全局视野&#10;✗ 所有 agent 必须共享同一份上下文（否则各自改出不一致的代码）&#10;``&#10;【结论】判据是&quot;能不能并行拆开&quot;，而原文对编码任务有明确判断：&quot;most coding tasks involve fewer truly parallelizable tasks than research&quot;。&#10;【补充】而且同步执行会放大这个问题：原文承认&quot;the entire system can be blocked while waiting for a single subagent to finish&quot;——依赖密集的任务里，一个子 agent 卡住，整个系统都停。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;多 Agent 比单 Agent 强很多，所以我们的系统能拆就拆成多 Agent。&quot;" a="三处问题。&#10;1. &quot;强很多&quot;有前提：实测的 90.2% 提升是在内部研究评测上——而研究类任务恰好是&quot;天然可并行&quot;的代表。原文明确说了&quot;大多数编码任务的真正可并行部分比研究少&quot;，所以不能推广。&#10;2. &quot;强很多&quot;的机制被说错了：它有效的原因是&quot;多花了 token + 并行&quot;（token 用量单独解释 80% 的性能方差），不是&quot;多个模型更聪明&quot;。理解这一点才知道什么时候不该用。&#10;3. 漏了代价：多 Agent 是 15× token（普通对话 1×、单 agent 4×）。&quot;能拆就拆&quot;会让成本失控——原文的判据是&quot;任务价值高到足以支付这个性能提升&quot;。&#10;【准确说法】&quot;先用两条判据筛：① 任务价值够不够高（付得起 15× token）② 能不能并行拆开（子任务独立性）。两条都满足才用多 Agent；依赖密集的任务（比如大多数编码任务）应该用单 Agent + 好的上下文管理。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们把任务拆给三个 Agent 并行跑，比一个 Agent 串行快了三倍。&quot;" a="三处问题。&#10;1. &quot;快了三倍&quot;要看哪一部分。原文的实测是复杂查询的研究时间降低最多 90%——但那是&quot;两级并行&quot;的结果：lead 并行派 3–5 个子 agent + 子 agent 内部并行用 3+ 个工具。只做一级并行拿不到这个降幅。&#10;2. 同步执行下，整个系统会被最慢的子 agent 卡住（原文承认的瓶颈）。所以&quot;三个并行&quot;的实际耗时是 max(三个) 而不是 sum/3——如果三个子任务耗时严重不均，收益会远小于 3 倍。&#10;3. &quot;拆给三个 Agent&quot;没说清它们的上下文关系：如果三者需要共享同一份上下文，那它们会各自维护一份，反而更容易不一致——原文说这类任务&quot;not a good fit for multi-agent systems today&quot;。&#10;【准确说法】&quot;快多少取决于两件事：① 并行的层级（lead 级 + 子 agent 级，两级才有 90% 量级的降幅）② 子任务耗时的均衡度（同步执行下由最慢的那个决定）。 而收益的另一半不在速度，在上下文隔离——子 agent 只回传 1–2K 的结论，噪声留在它自己的窗口里。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">一个 Agent 不够用的时候，加一个 Agent 就能解决吗——&quot;多 Agent&quot;到底买到了什么，又付出了什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作" tag="Agent运行时与工具" q="一个 Agent 不够用的时候，加一个 Agent 就能解决吗——&quot;多 Agent&quot;到底买到了什么，又付出了什么？" a="多 Agent 有效的原因不是&quot;多个模型更聪明&quot;，是&quot;多花了 token + 并行&quot;——Anthropic 的归因分析显示，token 用量单独就解释了 80% 的性能方差（三个因素合计 95%）。效果实测是比单 Agent 高 90.2%（Opus 4 做 lead + Sonnet 4 做子 agent，对比单 Opus 4）。代价是 15× token（普通对话 1×、单 agent ≈ 4×、多 agent ≈ 15×），所以它的判据是&quot;任务价值高到足以支付这个性能提升&quot;。适用的任务有三类特征：重并行、信息量超出单窗口、要对接很多复杂工具；不适合的是&quot;所有 agent 必须共享同一份上下文&quot;或&quot;子任务依赖很密&quot;——原文明确说大多数编码任务的真正可并行部分比研究少。effort 必须分档（简单查找 1 个 agent/3–10 次调用、直接对比 2–4 个子 agent、复杂研究 &gt;10 个），因为模型判断不了该用多大力，不分档会浪费约 24 倍。并行的收益来自两级（lead 派 3–5 个子 agent + 子 agent 内部并行 3+ 工具），实测降 90% 时间；而另一半收益是上下文隔离——子 agent 烧几万 token 探索，只回传 1,000–2,000 token 的结论。最后，多 Agent 的评测更难：它有涌现行为，改 lead 的 prompt 会不可预测地改变子 agent 的行为，所以要评交互模式，不只是单个 agent。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>最容易答成口号</strong>（"多 Agent 更强大"）或者<strong>过度否定</strong>（"多 Agent 就是噱头"）。<strong>正确答案在中间且可量化</strong>：Anthropic 的实测是<strong>多 Agent 比单 Agent 高 90.2%</strong>，但<strong>token 消耗是普通对话的 15 倍</strong>——<strong>所以它是一个"用钱买性能"的架构决策</strong>，而判据是<strong>"任务价值够不够高 + 能不能并行拆开"</strong>。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>多 Agent 有效的原因不是"多个模型更聪明"，是"多花了 token + 并行"</strong>——Anthropic 的归因分析显示，<strong>token 用量单独就解释了 80% 的性能方差</strong>（三个因素合计 95%）。效果实测是<strong>比单 Agent 高 90.2%</strong>（Opus 4 做 lead + Sonnet 4 做子 agent，对比单 Opus 4）。<strong>代价是 15× token</strong>（普通对话 1×、单 agent ≈ 4×、多 agent ≈ 15×），所以它的判据是"<strong>任务价值高到足以支付这个性能提升</strong>"。<strong>适用的任务有三类特征</strong>：<strong>重并行、信息量超出单窗口、要对接很多复杂工具</strong>；<strong>不适合的是"所有 agent 必须共享同一份上下文"或"子任务依赖很密"</strong>——<strong>原文明确说大多数编码任务的真正可并行部分比研究少</strong>。<strong>effort 必须分档</strong>（简单查找 1 个 agent/3–10 次调用、直接对比 2–4 个子 agent、复杂研究 &gt;10 个），因为模型判断不了该用多大力，不分档会浪费约 <strong>24 倍</strong>。<strong>并行的收益来自两级</strong>（lead 派 3–5 个子 agent + 子 agent 内部并行 3+ 工具），实测<strong>降 90% 时间</strong>；而另一半收益是<strong>上下文隔离</strong>——子 agent 烧几万 token 探索，<strong>只回传 1,000–2,000 token 的结论</strong>。最后，<strong>多 Agent 的评测更难</strong>：它有<strong>涌现行为</strong>，改 lead 的 prompt 会不可预测地改变子 agent 的行为，<strong>所以要评交互模式，不只是单个 agent</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>有效原因是"多花 token + 并行"</strong>（token 解释 <strong>80%</strong> 方差）</li><li>实测高 <strong>90.2%</strong></li><li>代价 <strong>15×</strong>（对话 1×、单 agent 4×）</li><li>判据 = <strong>任务价值 + 能否并行拆开</strong></li><li>适用：重并行 · 超单窗口 · 多复杂工具</li><li>不适：共享上下文 · 依赖密集（<strong>大多数编码任务</strong>）</li><li><strong>effort 分档</strong>（1 个 / 2–4 个 / &gt;10 个），不分档浪费 <strong>24 倍</strong></li><li><strong>两级并行降 90% 时间</strong></li><li>子 agent 只回传 <strong>1–2K</strong>（噪声留在它自己窗口）</li><li><strong>同步执行是瓶颈</strong>（被最慢的卡住）</li><li>涌现行为 → 评交互模式</li><li>prompt 从"指令"变成"协作框架"</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>什么时候该拆多 Agent，什么时候不该？</strong></strong></p>
+<p class="mv-md-p"><strong>该</strong>：<strong>重并行 + 信息超出单窗口 + 工具复杂</strong>（研究、多源调研）。<strong>不该</strong>：<strong>需要共享同一份上下文</strong>（如大多数编码任务）、<strong>子任务依赖很密</strong>、<strong>需要实时协调</strong>。</p>
+<p class="mv-md-p"><strong>2. <strong>多 Agent 的上下文怎么隔离与传递？</strong></strong></p>
+<p class="mv-md-p"><strong>子 agent 用独立上下文窗口，只回传结构化的浓缩结论（1–2K token）</strong>；<strong>大产物写外部系统，只传轻量引用</strong>——原文叫"<strong>避免传话游戏（game of telephone）</strong>"。<strong>这本质上是 [[母题-A5-上下文压缩与记忆]] 的压缩，而且是"天然干净"的那种。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>多 Agent 的成本怎么算？</strong></strong></p>
+<p class="mv-md-p"><strong>按 token 算</strong>：普通对话 1×、单 agent 4×、多 agent 15×。<strong>再乘上任务量</strong>。<strong>而且要注意"effort 分档"</strong>——不分档会让简单查询也按复杂配置跑（浪费 24 倍）。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么不让模型自己决定派几个子 agent？</strong></strong></p>
+<p class="mv-md-p"><strong>原文原话是"Agents struggle to judge appropriate effort for different tasks"</strong>。<strong>所以把分档规则写进 prompt</strong>——<strong>这是 Harness 的通用思路：模型判断不了的地方，用显式规则兜住</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>多 Agent 的评测和单 Agent 有什么不同？</strong></strong></p>
+<p class="mv-md-p"><strong>它要评"交互模式"而不只是单个 agent</strong>。因为有<strong>涌现行为</strong>：<strong>改 lead 的 prompt 可能不可预测地改变子 agent 的行为</strong>（[[母题-G5-RAG评测与幻觉率]] 的分层归因在这里同样成立，只是层次更多）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Workflow 和 Multi-Agent 有什么区别？」——<strong>Workflow 是固定编排</strong>（谁在什么时候调用谁，是写死的）；<strong>Multi-Agent 是模型动态决定派谁</strong>。<strong>前者更可控更便宜，后者更灵活更贵</strong>——<strong>能用 Workflow 解决就别上 Multi-Agent</strong>。</li><li>「子 agent 失败了怎么办？」——<strong>这是多 Agent 特有的失败模式</strong>：<strong>要么整个 lead 挂掉（同步执行的连锁），要么结果被静默丢弃</strong>。所以要有<strong>子 agent 级的超时、重试与降级</strong>（[[母题-A3-失败恢复与幂等]]），<strong>并且 lead 必须能分辨"子 agent 返回空"和"子 agent 失败了"</strong>。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>显式 FSM 编排（而不是 LangGraph 的自由编排）</strong>——<strong>这正是"能用 Workflow 就别上 Multi-Agent"的判断</strong>；<strong>多角色审查是并行度较高的部分</strong>（各角色独立审），<strong>而合并与确定性验证必须串行</strong>。 - <strong>数驭穹图</strong>：<strong>意图路由</strong>——<strong>先判断意图（RAG / NL2SQL / 直接回答）再走对应链路</strong>，比"把所有工具都给一个 agent"更可靠（[[母题-A2-工具调用与MCP边界]]）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先破"更聪明"（给 80% 方差的归因）→ 效果 90.2% 与代价 15× → <strong>两条判据（价值 + 可并行性）</strong> → 适用/不适用的场景 → <strong>effort 分档</strong>（给 24 倍浪费的算式）→ <strong>两级并行降 90%</strong> + 上下文隔离 → 同步执行的瓶颈 → 涌现行为与评测 → 收束到"用钱买性能"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>多 Agent 买的是"token 预算 + 并行度 + 上下文隔离"，不是"集体智慧"。</strong> 所以判据从来不是"这个任务难不难"，而是"<strong>这个任务值不值得多花 15 倍的钱</strong>"和"<strong>它能不能被并行拆开</strong>"。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出"多 Agent 有效的原因是 token + 并行"并给出 <strong>80% 方差</strong>这个依据；<strong>能算出 1× / 4× / 15× 与三档成本</strong>；<strong>能算出不分档的 24 倍浪费</strong>；能说出适用/不适用各三条并解释为什么编码任务通常不适合；能说清 <strong>effort 三档</strong>的具体数字；能说出两级并行与上下文隔离的关系；能说清"同步执行被最慢的子 agent 卡住"；能说出多 Agent 的评测为什么要看交互模式；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

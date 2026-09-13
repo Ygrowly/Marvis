@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 33 · 合并 K 个有序链表</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">算法</span>
+    <h1 class="mv-topic-title">母题 33 · 合并 K 个有序链表</h1>
+    <p class="mv-topic-meta">关联 母题-34-LRU缓存 · 冲刺包 A2（TopK） ｜ 正本 wiki/topics/算法/母题-33-合并K个有序链表.md</p>
+  </div>
+
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">给定 k 条已经升序排列的链表，把它们合并成一条升序链表并返回。</p></div>
+  </div>
+
+
+
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">如何从 k 个有序序列里，持续取出当前的最小值？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="算法/母题-33-合并K个有序链表" tag="算法" q="如何从 k 个有序序列里，持续取出当前的最小值？" a="最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：多路归并的母题，外部排序、多路日志合并、TopK 归并都用它。还考堆的工程细节（Python 元组比较陷阱）。</p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>k 路归并</li><li>最小堆维护候选</li><li>弹一个补一个</li><li>counter 防元组比较</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. 堆和分治怎么选？</strong></p>
+<p class="mv-md-p">复杂度相同，堆代码短、适合流式；分治不需要额外堆、适合静态数据</p>
+<p class="mv-md-p"><strong>2. Python 里 (val, node) 直接入堆为什么会报 TypeError？</strong></p>
+<p class="mv-md-p">val 相同时会比较 ListNode 对象，需加唯一 counter</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>LC 21 合并两个有序链表（k=2 的退化，用双指针更简单）</li><li>LC 88 合并两个有序数组</li><li>LC 23 合并 K 个升序链表（本题）</li><li>对照解：两两分治，同样是 O(N log k)</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">多路有序数据源的合并：多台机器的有序日志、多个分片的归并结果。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：不知道 Python 元组比较会在 val 相等时继续比较对象，需要靠 counter 兜住</p><p class="mv-md-p"><strong>通过证据</strong>：闭卷写出本题代码 + 说出不变量 + 答完两层追问</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">讲解</h2>
+    <collapse-panel title="展开推导 / 代码 / 原始素材">
+<p class="mv-md-p"><strong>输入示例</strong>：</p>
+<pre class="mv-md-pre">lists = [
+    1 → 4 → 5,
+    1 → 3 → 4,
+    2 → 6
+]</pre>
+<p class="mv-md-p">结果：</p>
+<pre class="mv-md-pre">1 → 1 → 2 → 3 → 4 → 4 → 5 → 6</pre>
+<p class="mv-md-p">设：</p>
+<p class="mv-md-p">+ <code class="mv-md-code">k</code> 是链表数量。 + <code class="mv-md-code">N</code> 是所有链表的节点总数。</p>
+<p class="mv-md-p">一种做法是使用最小堆。最小堆可以快速取出当前最小的头节点。</p>
+<p class="mv-md-p">主线：</p>
+<pre class="mv-md-pre">每条非空链表的头节点入堆
+→ 弹出当前最小节点，接入结果
+→ 将该节点的 next 放入堆
+→ 重复直到堆为空</pre>
+<hr class="mv-md-hr">
+<p class="mv-md-p"><strong>完整代码</strong>：</p>
+<pre class="mv-md-pre">import heapq
+
+def merge_k_lists(lists):
+    dummy = ListNode(0)
+    tail = dummy
+    heap = []
+    counter = 0                      # 唯一编号：val 相同时用它兜底，避免比较 ListNode
+
+    for node in lists:               # 每条非空链表的头节点入堆
+        if node:
+            heapq.heappush(heap, (node.val, counter, node))
+            counter += 1
+
+    while heap:
+        _, _, node = heapq.heappop(heap)
+        tail.next = node             # 弹出最小节点，接到结果尾部
+        tail = node
+
+        if node.next:                # 弹一个补一个
+            heapq.heappush(heap, (node.next.val, counter, node.next))
+            counter += 1
+
+    return dummy.next</pre>
+<p class="mv-md-p"><strong>不变量</strong>：每轮循环开始时，堆里恰好保存着「每条尚未耗尽的链表当前的第一个节点」，所以堆顶就是全局剩下的最小值。</p>
+<hr class="mv-md-hr">
+<p class="mv-md-p">1. 最小堆大小最多为 <code class="mv-md-code">k</code>，维持堆有序时，只需沿堆的高度调整：</p>
+<pre class="mv-md-pre">堆高度 = log k</pre>
+<p class="mv-md-p">所以一次入堆或出堆都是：</p>
+<pre class="mv-md-pre">O(log k)</pre>
+<p class="mv-md-p">2. 所有 <code class="mv-md-code">N</code> 个节点各入堆、出堆一次：</p>
+<pre class="mv-md-pre">时间复杂度：O(N log k)
+额外空间：O(k)</pre>
+<p class="mv-md-p">3.  两两分治合并的复杂度同样是：</p>
+<pre class="mv-md-pre">O(N log k)</pre>
+<p class="mv-md-p">因为共有 <code class="mv-md-code">log k</code> 轮，每一轮所有节点总共被处理一次，即 <code class="mv-md-code">O(N)</code>。</p>
+<pre class="mv-md-pre">最小堆：不断选出 k 个候选头中的最小值
+两两分治：每轮把链表数量减半</pre>
+<p class="mv-md-p">最小堆恢复脚本：</p>
+<p class="mv-md-p">每条链表先放一个头节点；弹出最小节点接到结果后，再把它的后继入堆。堆中始终保存每条未处理链表的最小候选。</p>
+<p class="mv-md-p">更准确地说，Python 比较元组时会逐项比较：</p>
+<pre class="mv-md-pre">(node.val, node)</pre>
+<p class="mv-md-p">如果两个节点的 <code class="mv-md-code">val</code> 相同，就会继续比较两个 <code class="mv-md-code">ListNode</code> 对象，而 <code class="mv-md-code">ListNode</code> 默认不能比较大小，会抛出：</p>
+<pre class="mv-md-pre">TypeError: '&lt;' not supported between instances of 'ListNode'</pre>
+<p class="mv-md-p">加入唯一的 <code class="mv-md-code">counter</code>：</p>
+<pre class="mv-md-pre">(node.val, counter, node)</pre>
+<p class="mv-md-p">值相同时会比较整数编号，不会比较节点对象。</p>
+    </collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<svg viewBox="0 0 680 344" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>上线七步，以及回滚速度为什么决定灰度的价值</title>
+  <desc>上面是七步上线顺序：离线评测、影子、内部试用、小流量灰度、AB、扩量、持续监控。下面左侧是回滚时间与影响面积的关系——灰度期间的事故影响等于事故率乘流量乘回滚耗时，所以把回滚从三十分钟练到两分钟，影响面积直接降到十五分之一。右侧是随机化单位的陷阱：如果按请求随机而不是按用户，同一个用户在一次会话里几乎必然会看到两个版本。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">上线七步，以及回滚速度为什么决定灰度的价值</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">灰度不是「放小一点」，是「放小一点 + 能立刻收回来」——没有回滚能力的灰度只是小规模事故</text>
+
+  <!-- 七步 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6B6A65">上线顺序（不可跳步）</text>
+
+  <rect x="30" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="77" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">① 离线 Eval</text>
+  <text x="77" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">不碰真实用户</text>
+
+  <rect x="132" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="179" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">② Shadow</text>
+  <text x="179" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">跑真实流量不生效</text>
+
+  <rect x="234" y="88" width="94" height="40" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="281" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">③ 内部试用</text>
+  <text x="281" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">自己人先吃狗粮</text>
+
+  <rect x="336" y="88" width="94" height="40" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="383" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">④ 小流量灰度</text>
+  <text x="383" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">1% → 5% → 20%</text>
+
+  <rect x="438" y="88" width="94" height="40" rx="6" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="485" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">⑤ A/B</text>
+  <text x="485" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#633806" text-anchor="middle">比较效果</text>
+
+  <rect x="540" y="88" width="110" height="40" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="595" y="106" font-family="system-ui,sans-serif" font-size="9.5" fill="#2C2C2A" text-anchor="middle">⑥ 扩量 → ⑦ 持续监控</text>
+  <text x="595" y="120" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65" text-anchor="middle">上线不是终点</text>
+
+  <!-- 回滚速度 -->
+  <path d="M30 154 L650 154" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+
+  <rect x="30" y="166" width="300" height="112" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">回滚速度 = 灰度的价值</text>
+  <text x="46" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#633806">灰度期事故影响 ≈ 事故率 × 流量 × 回滚耗时</text>
+  <text x="46" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#633806">回滚 30 分钟 vs 回滚 2 分钟 →</text>
+  <text x="46" y="252" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">影响面积降到 1/15</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">所以回滚要练：演练过、能一键、有明确的判据</text>
+
+  <rect x="350" y="166" width="300" height="112" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="188" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">随机化单位的陷阱</text>
+  <text x="366" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">按【请求】随机：同一用户可能看到两个版本</text>
+  <text x="366" y="230" font-family="system-ui,sans-serif" font-size="10" fill="#633806">一个用户 10 次请求 → 约 99.8% 概率看到两个版本</text>
+  <text x="366" y="252" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A">按【用户 / 会话】随机：体验一致，比较也干净</text>
+  <text x="366" y="272" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">随机化单位必须与「体验的单位」一致</text>
+
+  <!-- 底部 -->
+  <path d="M30 292 L650 292" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">两条不等统计显著的规则：<tspan font-weight="600">高风险错误不能等显著性</tspan>（看到就停）；<tspan font-weight="600">记录完整的 treatment</tspan>（模型 + Prompt + 知识 + 工具版本）。</text>
+  <text x="30" y="334" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">用户反馈不是一个点赞按钮——高价值反馈是「用户改了什么」「在哪放弃」「哪条引用不支持结论」。</text>
+</svg>

@@ -1,0 +1,72 @@
+<svg viewBox="0 0 680 372" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>主从复制：延迟从哪来，读到旧数据怎么办</title>
+  <desc>上半部分画复制三步：主库提交时写 binlog，从库 IO 线程拉取写入 relay log，从库 SQL 线程重放。中间标出延迟的三个来源——回放并行度永远不超过主库、大事务必须整体重放、从库自身慢。下半部分是按优先级排的三层解法，以及为什么不能用 sleep。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">主从复制：延迟从哪来，读到旧数据怎么办</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">复制的是「变更」（binlog），不是数据页——所以「追不上」是结构性的，不是故障</text>
+
+  <!-- 复制三步 -->
+  <rect x="30" y="70" width="150" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="105" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">主库</text>
+  <text x="105" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">提交时写 binlog</text>
+
+  <path d="M182 92 L216 92" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#rp-ar)"/>
+
+  <rect x="220" y="70" width="160" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="300" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">从库 IO 线程</text>
+  <text x="300" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">拉 binlog → 写 relay log</text>
+
+  <path d="M382 92 L416 92" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#rp-ar)"/>
+
+  <rect x="420" y="70" width="160" height="44" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="500" y="89" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">从库 SQL 线程</text>
+  <text x="500" y="105" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">重放变更</text>
+
+  <text x="596" y="89" font-family="system-ui,sans-serif" font-size="10" fill="#633806">← 追不上</text>
+  <text x="596" y="105" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　就是在这里</text>
+
+  <!-- 延迟三源 -->
+  <text x="30" y="146" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">延迟的三个来源</text>
+
+  <rect x="30" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">① 回放并行度不足</text>
+  <text x="44" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">主库能多线程并发写，从库回放</text>
+  <text x="44" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">受「事务之间有没有冲突」限制——</text>
+  <text x="44" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">并行度永远 ≤ 主库</text>
+
+  <rect x="240" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="254" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">② 大事务</text>
+  <text x="254" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">一个事务在 binlog 里是一条记录，</text>
+  <text x="254" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">必须整体重放。主库跑 10 分钟，</text>
+  <text x="254" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">从库也要 10 分钟（期间不可见）</text>
+
+  <rect x="450" y="158" width="200" height="74" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="464" y="178" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">③ 从库自身慢</text>
+  <text x="464" y="196" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">机器更差；Row 格式下</text>
+  <text x="464" y="211" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">表没有主键 → 更新退化成全表扫</text>
+  <text x="464" y="226" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">（所以「每表都要有主键」是复制问题）</text>
+
+  <!-- 三层解法 -->
+  <path d="M30 254 L650 254" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="278" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">读到旧数据：三层解法（按优先级）</text>
+
+  <rect x="30" y="288" width="200" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="44" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">① 读己之写（回主库）</text>
+  <text x="44" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">刚提交就要展示的那次读</text>
+
+  <rect x="240" y="288" width="200" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="254" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">② 会话内粘主库</text>
+  <text x="254" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">写后 N 秒内的读都走主库</text>
+
+  <rect x="450" y="288" width="200" height="52" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="464" y="308" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">③ 延迟超阈值降级</text>
+  <text x="464" y="326" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">兜底，不是常规路径</text>
+
+  <text x="30" y="362" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">为什么不能 sleep：延迟是波动的，sleep 时长没有依据，而且把「正确性」建立在「猜测延迟足够小」上。</text>
+
+  <defs>
+    <marker id="rp-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+  </defs>
+</svg>

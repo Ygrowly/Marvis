@@ -1,0 +1,61 @@
+<svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>限流要分四层放，降级要按「保什么」设计</title>
+  <desc>上面是限流的四个位置：入口处限总量、按租户限公平、按工具限外部依赖、按模型限最贵的资源。只在入口限流，一个租户的突发就能打满下游；只在最贵的资源限流，错误暴露得太晚。下面是降级链路：主模型不可用时切到备用配置，把「不可用」换成「质量下降」，而这个交换是否可接受取决于业务。底部是成本归因的顺序——先动大头。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">限流要分四层放，降级要按「保什么」设计</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">限流保护的不是「系统」，是「某一条具体的资源」——位置放错，保护的就是错的东西</text>
+
+  <!-- 四层限流 -->
+  <text x="30" y="78" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 限流的四个位置</text>
+
+  <rect x="30" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="103" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">入口 · 总量</text>
+  <text x="103" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">防整体过载</text>
+  <text x="103" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">最早、最粗</text>
+
+  <rect x="188" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="261" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">租户 · 公平</text>
+  <text x="261" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">防单租户打满</text>
+  <text x="261" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">否则入口限流形同虚设</text>
+
+  <rect x="346" y="88" width="146" height="60" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="419" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A" text-anchor="middle">工具 · 外部</text>
+  <text x="419" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">保护第三方配额</text>
+  <text x="419" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">（超了会被对方限）</text>
+
+  <rect x="504" y="88" width="146" height="60" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="577" y="110" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806" text-anchor="middle">模型 · 成本</text>
+  <text x="577" y="128" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">RPM / TPM 与预算</text>
+  <text x="577" y="142" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">最贵、也最容易失控</text>
+
+  <!-- 降级 -->
+  <path d="M30 172 L650 172" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="196" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 降级链路：把「不可用」换成「质量下降」</text>
+
+  <rect x="30" y="208" width="180" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="120" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">主配置（贵、准）</text>
+  <text x="120" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">限流 / 超时 / 故障</text>
+
+  <path d="M212 231 L252 231" stroke="#BA7517" stroke-width="1.4" fill="none" marker-end="url(#el-ar)"/>
+
+  <rect x="256" y="208" width="180" height="46" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="346" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">备用配置（已验证）</text>
+  <text x="346" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">不是「顺手切一个」</text>
+
+  <path d="M438 231 L478 231" stroke="#8A877E" stroke-width="1.4" fill="none" marker-end="url(#el-ar2)"/>
+
+  <rect x="482" y="208" width="168" height="46" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="566" y="228" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">仍不可用</text>
+  <text x="566" y="245" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">排队 / 降级答复 / 拒绝</text>
+
+  <!-- 底部 -->
+  <path d="M30 274 L650 274" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="296" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">成本要先归因再动手：模型输入 60% · 模型输出 20% · 工具 15% · 存储 5%</text>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">砍工具最多省 15%；而把输入那 60% 里的缓存命中率做到 80%，能省 60% × 80% × 90% ≈ <tspan font-weight="600">43%</tspan>。</text>
+  <text x="30" y="338" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以顺序是：<tspan font-weight="600">先动大头，先做无损的</tspan>——提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 调档位（换质量）。</text>
+
+  <defs>
+    <marker id="el-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/></marker>
+    <marker id="el-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/></marker>
+  </defs>
+</svg>

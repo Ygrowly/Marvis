@@ -1,0 +1,44 @@
+<svg viewBox="0 0 680 396" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>幻觉的四个来源与各自的对策</title>
+  <desc>幻觉不是一个 bug，是四件不同的事叠加出来的：训练数据的统计结构让任意低频事实无法从模式里学出来；评测的准确率口径奖励猜测而不是弃答；上下文里根本没给到相关信息；以及给了信息却被稀释、冲突或忽略。前两类只能管理不能消除，后两类是工程能压到接近零的。底部给出分界线。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">幻觉的四个来源与各自的对策</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">同一个词底下藏着四件不同的事——找错来源，就会用错对策</text>
+
+  <!-- 来源一 -->
+  <rect x="30" y="66" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源一 · 训练数据的统计结构</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">预训练只有"流畅语言"的正例，没有真假标签。</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">拼写、括号有规律 → 随规模消失；生日这类</text>
+  <text x="46" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">任意低频事实没有规律 → 必然出错。</text>
+  <text x="46" y="166" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：给证据（检索 / 引用）或允许弃答</text>
+
+  <!-- 来源二 -->
+  <rect x="350" y="66" width="300" height="120" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">来源二 · 评测口径的激励</text>
+  <text x="366" y="108" font-family="system-ui,sans-serif" font-size="10" fill="#633806">只按准确率排名时，"蒙一个"的期望收益 > 0，</text>
+  <text x="366" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#633806">"我不知道"稳定得 0 分。于是模型被训成</text>
+  <text x="366" y="140" font-family="system-ui,sans-serif" font-size="10" fill="#633806">"应试高手"：在不确定处照样作答。</text>
+  <text x="366" y="166" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：罚自信错误 &gt; 罚弃答，给弃答部分分</text>
+
+  <!-- 来源三 -->
+  <rect x="30" y="198" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="220" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源三 · 上下文里没有这条信息</text>
+  <text x="46" y="240" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">模型看不见你的数据库、权限表和最新政策。</text>
+  <text x="46" y="256" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">它要么说不知道，要么用训练分布里的"相近</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">知识"补上——后者看起来完全合理。</text>
+  <text x="46" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：检索 + 按步骤装配（C1）</text>
+
+  <!-- 来源四 -->
+  <rect x="350" y="198" width="300" height="120" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="366" y="220" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">来源四 · 信息给了，但没用上</text>
+  <text x="366" y="240" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">证据在上下文里，却被长历史稀释（context</text>
+  <text x="366" y="256" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">rot）；或者两份材料互相冲突，模型自己挑</text>
+  <text x="366" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">了一个；或者引用对不上原文。</text>
+  <text x="366" y="298" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">对策：压缩 / 隔离 / 先摘录再回答 / 引用绑定</text>
+
+  <!-- 分界线 -->
+  <path d="M30 334 L650 334" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="356" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">分界线：来源一、二的"置信度"部分属于模型属性，只能管理；来源三、四是工程问题，能压到接近零。</text>
+  <text x="30" y="378" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">所以"我们接了 RAG，幻觉就解决了"这句话的问题在于：RAG 只治第三类，第四类它甚至可能加重。</text>
+</svg>

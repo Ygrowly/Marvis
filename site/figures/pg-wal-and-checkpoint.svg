@@ -1,0 +1,54 @@
+<svg viewBox="0 0 680 440" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>WAL 的三层职责、checkpoint 与整页写放大的代价</title>
+  <desc>顶部是写入路径：修改先写内存数据页并把变更顺序追加到预写日志，提交时同步的是日志而不是数据页，数据页稍后由后台批量刷盘。中间把三件事分开：预写日志负责已提交能否重放，检查点负责重放从哪里开始，同步提交负责提交这个动作等不等落盘。底部是检查点的两个触发条件与整页写的代价：五分钟后超时与一吉字节容量谁先到算谁，写入密集时先到的是容量；检查点之后每个页的第一次修改要写整页镜像，八千一百九十二字节对一百字节，放大八十二倍，占一轮日志的九成八。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">WAL 的三层职责、checkpoint 与整页写放大的代价</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">WAL 管正确性、checkpoint 管恢复时间、synchronous_commit 管提交等不等落盘——三件事要分开谈</text>
+
+  <!-- 写入路径 -->
+  <rect x="30" y="66" width="620" height="70" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">写入路径：提交时 fsync 的是 WAL，不是数据页</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">① 改 shared_buffers 里的数据页　　② 「改了什么」顺序追加到 WAL　　③ 提交时 fsync WAL 并返回成功</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">数据页留在内存、稍后批量刷盘 —— 所以「提交很快但数据页还没落盘」依然安全</text>
+
+  <!-- 三层职责 -->
+  <path d="M30 152 L650 152" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <rect x="30" y="164" width="196" height="80" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="44" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">① WAL：正确性</text>
+  <text x="44" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#633806">已提交的能不能重放出来</text>
+  <text x="44" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#633806">靠提交时 fsync WAL 保证</text>
+  <text x="44" y="236" font-family="system-ui,sans-serif" font-size="9" fill="#633806">↓ 调不调 checkpoint 都不影响它</text>
+
+  <rect x="242" y="164" width="196" height="80" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="256" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C2C2A">② checkpoint：恢复时间</text>
+  <text x="256" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">把恢复起点向前推</text>
+  <text x="256" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">最坏重放量 ≈ max_wal_size</text>
+  <text x="256" y="236" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">恢复时间 = 重放量 ÷ 重放速度</text>
+
+  <rect x="454" y="164" width="196" height="80" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="184" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">③ synchronous_commit：等不等</text>
+  <text x="468" y="202" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">on（默认）：等 fsync 才返回成功</text>
+  <text x="468" y="220" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">off：最多丢 3 × wal_writer_delay</text>
+  <text x="468" y="236" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="#8A3A28">= 3 × 200 ms = 600 毫秒</text>
+
+  <!-- checkpoint 触发 -->
+  <path d="M30 262 L650 262" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="286" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">checkpoint 的触发：两个条件「谁先到算谁」</text>
+
+  <rect x="30" y="298" width="300" height="56" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">按时间：checkpoint_timeout = 5 分钟</text>
+  <text x="46" y="336" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">按容量：max_wal_size = 1 GB（软上限）</text>
+  <text x="46" y="350" font-family="system-ui,sans-serif" font-size="9" fill="#6B6A65">min_wal_size 80 MB · completion_target 0.9</text>
+
+  <rect x="350" y="298" width="300" height="56" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="318" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">WAL 10 MB/s 时：5 分钟产出 3 GB &gt; 1 GB</text>
+  <text x="366" y="336" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">→ 实际间隔 = 1 GB ÷ 10 MB/s = 100 秒</text>
+  <text x="366" y="350" font-family="system-ui,sans-serif" font-size="9" fill="#633806">→ 先到的几乎总是 max_wal_size，不是 5 分钟</text>
+
+  <!-- 整页写 -->
+  <path d="M30 376 L650 376" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="400" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">整页写（full_page_writes）：检查点越勤，WAL 反而越大</text>
+
+  <rect x="30" y="412" width="620" height="24" rx="6" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="429" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">行级记录 100 B ｜ 整页镜像 8192 B → 放大 82 倍 ｜ 20 万个页：1.6 GB vs 20 MB → 整页写占 98.8%</text>
+</svg>
