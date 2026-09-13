@@ -135,7 +135,11 @@ doc_B:  "7 天无理由退货政策说明"
 绝对降幅：2.9% − 1.88% = 1.02 个百分点</pre>
 <p class="mv-md-p">【结论】<strong>三个口径要分清：绝对降幅（1.02 个百分点）、相对前一环（35%）、相对基线（累计 67%）。</strong></p>
 <p class="mv-md-p">【推论】<strong>汇报时要说清用的是哪个口径</strong>——把"累计降幅"说成"这一步的降幅"会显著高估单点手段的价值，追问一句就露馅。</p>
-<p class="mv-md-p">【事实】<strong>另一个可用的对照</strong>：<code class="mv-md-code">study/03</code> 记的数驭穹图口径是<strong>召回 81% → 95%</strong>——这是<strong>召回率</strong>（Recall）的口径，与上面的<strong>失败率</strong>口径是互补的两面（95% 召回 ≈ 5% 失败，量级一致）。</p>
+<p class="mv-md-p">【事实】<strong>另一个可用的对照</strong>：<code class="mv-md-code">study/03</code> 记的数驭穹图口径是<strong>召回 81% → 95%</strong>。</p>
+<p class="mv-md-p">【纠正常见误解】<strong>但不要把它和上面的 5.7%→1.9% 当成"同一枚硬币的两面"</strong>——它们的<strong>对象和分母都不一样</strong>：</p>
+<pre class="mv-md-pre">Anthropic 的 5.7% → 1.9%  ：top-20 【chunk】检索失败率（文档块这一层）
+数驭穹图的 81% → 95%      ：Top-K 【Schema】召回率（表/语义资产这一层）</pre>
+<p class="mv-md-p"><strong>"95% 召回 ≈ 5% 失败"这个换算是错的</strong>：前者说的是"该找的<strong>表</strong>有没有被捞进候选"，后者说的是"该找的<strong>文档块</strong>有没有被捞到"。<strong>层不同、分母不同，量级相近纯属巧合，不能互相换算，更不能说"互补"。</strong> <strong>一句话记：说数驭穹图那个数时，必须带上「Schema」两个字</strong>——只说"召回率"，会被理解成文档块召回，追问一句就露馅。</p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们加了重排，失败率降了 67%"这句话经不起追问？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">5. 召回质量看哪些指标【事实】</h3>
@@ -185,7 +189,7 @@ doc_B:  "7 天无理由退货政策说明"
 <p class="mv-md-p"><strong>前者解决"捞得全"，后者解决"排得准"</strong>。RRF 融合只是把两路的排名合成一个顺序（[[母题-G2-向量与关键词的混合检索]]），<strong>它不判断内容相关性的深浅</strong>——那正是交叉编码器要做的事。<strong>两级是串联的，不是二选一。</strong></p>
 </collapse-panel>
     <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「为什么 rerank 模型的参数量通常比 Embedding 模型小，效果却更好？」——<strong>因为任务不同</strong>：双塔要做的是"把任意文本编码成一个通用向量"（难的通用任务），交叉编码器做的是"判断这一对 query-doc 相关到什么程度"（窄得多，且有交互信息可用）。<strong>参数量小但信息更充分。</strong></li><li>「重排和"用 LLM 打分"有什么区别？」——<strong>本质相同</strong>（都是交叉编码器式的判断），<strong>区别在成本与稳定性</strong>：通用 LLM 打分更贵、更慢，但不需要额外训练；专用重排模型（如 bge-reranker 这类）更快、更便宜。<strong>选型取决于你的 QPS 与延迟预算。</strong></li></ul></collapse-panel>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>召回 81% → 95%</strong> 这条数据要说清<strong>是召回率口径</strong>，且要能回答"重排在里面贡献了多少"——<strong>这正是本卡"三个口径"那一节的直接应用</strong>。 - <strong>EnergyOps</strong>：故障建议的检索里，<strong>设备编号与错误码属于"召回已经排得很准"的类型</strong>，重排收益小；<strong>而自然语言描述的故障现象需要重排</strong>。<strong>按查询类型分档启用</strong>是这个项目的直接落点。</p></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>召回 81% → 95%</strong> 这条数据要说清<strong>是 Top-K Schema 召回率口径（表这一层，不是文档块）</strong>，且要能回答"重排在里面贡献了多少"——<strong>这正是本卡"三个口径"那一节的直接应用</strong>。 - <strong>EnergyOps</strong>：故障建议的检索里，<strong>设备编号与错误码属于"召回已经排得很准"的类型</strong>，重排收益小；<strong>而自然语言描述的故障现象需要重排</strong>。<strong>按查询类型分档启用</strong>是这个项目的直接落点。</p></collapse-panel>
     <collapse-panel title="完整回答骨架"><p class="mv-md-p">两个阶段目标不同 → 双塔 vs 交叉编码器（本质差别是词级交互）→ 为什么双塔的损失补不回来 → 重排的延迟账 → 收益的三个口径 → K 怎么定 → Recall@K 与 nDCG@K 的分工 → 收束到"两级漏斗是约束逼出来的"</p></collapse-panel>
     <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"能不能预计算"决定了"用在哪一阶段"。</strong> 双塔能预计算 → 用在召回（面对全量）；交叉编码器不能 → 用在精排（面对小候选集）。<strong>这不是模型优劣，是约束匹配。</strong></p></collapse-panel>
     <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清召回与精排的目标差异；<strong>能说出双塔与交叉编码器的本质差别是"词级交互 / 能不能预计算"</strong>；<strong>能算出重排的延迟（5ms × N）并给出常见折中</strong>；<strong>能给出重排收益的三个口径（1.02 点 / 35% / 67%）并说清不能混</strong>；<strong>能用 Recall@20 与 Recall@5 的对比判断"该动召回还是动精排"</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
