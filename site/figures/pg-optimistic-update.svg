@@ -1,0 +1,47 @@
+<svg viewBox="0 0 680 452" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>条件更新：把判断与写入压进一条原子语句</title>
+  <desc>顶部是先查再写的竞态窗口：两个工作进程各自读到合法状态，于是都认为自己有资格改，最后都改成功。中间是条件更新的完整形态与影响行数的语义：影响一行表示抢到了并直接返回新状态，影响零行表示别人先改了或状态已变，需要再读一次权威状态来分辨是业务错误、正常跳过还是并发冲突。底部对比两种做法：排他锁把临界区串行化，吞吐上限等于一除以持锁时长，持锁二十毫秒就是每秒五十个事务；条件更新不排队，每次尝试两毫秒，冲突率两成时期望二点五毫秒，八成时也才十毫秒。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">条件更新：把判断与写入压进一条原子语句</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">并发正确性的单位是「一次原子操作」，不是「一段代码」——跨越语句边界的读—判断—写一定有窗口</text>
+
+  <!-- 竞态 -->
+  <rect x="30" y="66" width="620" height="86" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#8A3A28">「先查再写」为什么必然有竞态</text>
+  <text x="46" y="108" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: SELECT ... WHERE status='QUEUED' → 查到　｜　B: SELECT 同样 → 也查到</text>
+  <text x="46" y="126" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: UPDATE ... WHERE id=1 → 1 行　｜　B: UPDATE ... WHERE id=1 → 【也 1 行】</text>
+  <text x="46" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">→ 两个都认为自己有资格改，重复认领。而且 RC 下 UPDATE 撞上时官方行为是【对更新后的版本重新求值 WHERE 并继续】，不是报错</text>
+
+  <!-- 条件更新 -->
+  <path d="M30 168 L650 168" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="192" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">条件更新：判断条件搬进 WHERE，一次原子操作完成判断与写入</text>
+
+  <rect x="30" y="204" width="620" height="34" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="44" y="226" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">UPDATE tasks SET status='RUNNING', version=version+1 WHERE id=:id AND status='QUEUED' AND version=:v RETURNING ...</text>
+
+  <rect x="30" y="248" width="300" height="70" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="46" y="268" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">影响 1 行 → 抢到了</text>
+  <text x="46" y="286" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">RETURNING 直接拿到更新后的行</text>
+  <text x="46" y="304" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">→ 一次往返，不再多查一次</text>
+
+  <rect x="350" y="248" width="300" height="70" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="268" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#633806">影响 0 行 → 不是错误，是信号</text>
+  <text x="366" y="286" font-family="system-ui,sans-serif" font-size="9" fill="#633806">三种原因：id 不存在 / 状态不匹配 / 版本不匹配</text>
+  <text x="366" y="304" font-family="system-ui,sans-serif" font-size="9" fill="#633806">→ 再读一次【权威状态】来分辨，不要猜</text>
+
+  <!-- 对比 -->
+  <path d="M30 334 L650 334" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="358" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">为什么不用 FOR UPDATE：它的吞吐有硬天花板</text>
+
+  <rect x="30" y="370" width="300" height="74" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="390" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">FOR UPDATE：把临界区串行化</text>
+  <text x="46" y="408" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">吞吐上限 = 1 ÷ 持锁时长</text>
+  <text x="46" y="426" font-family="monospace,sans-serif" font-size="9" fill="#8A3A28">持锁 20 ms → 1 ÷ 0.02 = 50 TPS</text>
+  <text x="46" y="440" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">加并发不能突破，只会让队列变长（PG 默认无限等锁）</text>
+
+  <rect x="350" y="370" width="300" height="74" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="366" y="390" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">条件更新：不排队</text>
+  <text x="366" y="408" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">期望尝试 = 1 ÷ (1 − p)</text>
+  <text x="366" y="426" font-family="monospace,sans-serif" font-size="9" fill="#2C5A20">每次 2 ms：p=20% → 2.5 ms ｜ p=80% → 10 ms</text>
+  <text x="366" y="440" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">天然幂等：重复执行第二次影响 0 行</text>
+</svg>

@@ -14,81 +14,213 @@
   <div class="mv-topic-head">
     <span class="mv-topic-module">PostgreSQL</span>
     <h1 class="mv-topic-title">母题 P17 · 连接模型与连接池</h1>
-    <p class="mv-topic-meta">关联 母题-P16-分区表 · 母题-P13-MVCC与可见性 · 母题-P18-乐观并发控制 ｜ 正本 wiki/topics/PostgreSQL/母题-P17-连接模型与连接池.md</p>
+    <p class="mv-topic-meta">关联 母题-P10-无间隙锁与锁变体（`idle in transaction` 与无限等锁）· 母题-P14-长事务与表膨胀（空闲连接一样按住回收边界）· 母题-P16-分区表（连接数也是"管理粒度"）· 母题-P7-统计信息与慢查询定位（连接池与预处理语句的交互） ｜ 正本 wiki/topics/PostgreSQL/母题-P17-连接模型与连接池.md</p>
   </div>
-
+<p class="mv-guide">必懂 3 件事（① <strong>PG 是「一个连接一个进程」</strong>——官方原话是 <code class="mv-md-code">fork</code> 一个新进程，所以连接是<strong>重资源</strong>，不是句柄 ② <strong><code class="mv-md-code">work_mem</code> 是「每个操作」的上限，不是「每个连接」</strong>——这让内存放大比直觉更狠 ③ <strong>事务级池化会把「预处理语句 / 会话状态」的作用域搞乱</strong>——这是连接池最经典的坑）· 读完约 11 分钟 · 需要先懂：[[母题-P10-无间隙锁与锁变体]]</p>
 
   <div class="mv-section">
     <h2 class="mv-section-title">题目</h2>
-    <div class="mv-problem"><p class="mv-md-p">同样是 8 核机器，MySQL 能开几千个连接，PG 开几百就开始卡。为什么？</p></div>
+    <div class="mv-problem"><p class="mv-md-p">为什么 MySQL 里「连接池开个几百」很正常，PG 上却要配个连接池中间件？</p></div>
   </div>
 
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 连接为什么贵：进程模型</h3>
+<figure-box num="一个连接一个进程：连接成本、work_mem 放大与池化模式" title="" note="每连接 fork 进程、work_mem 是每个操作的上限、三种池化模式的作用域、事务池化与预处理语句的冲突"><svg viewBox="0 0 680 444" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>一个连接一个进程：连接成本、work_mem 放大与池化模式</title>
+  <desc>顶部是进程模型：每来一个连接就派生一个新进程，客户端与这个进程直接通信，所以连接是进程级资源而不是句柄。中间是内存的乘数陷阱：工作内存是每个排序或哈希节点的上限，一个查询可能有多个这样的节点，一百个连接、每查询三个节点、每个四兆字节就是一点二吉字节，而不是直觉的四百兆。底部对比三种池化模式的归还点：会话级在客户端断开时归还、语义最安全；事务级在每个事务结束时归还、省得最多但会破坏预处理语句与会话状态；语句级在每条语句结束时归还、连多语句事务都保不住。</desc>
 
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">一个连接一个进程：连接成本、work_mem 放大与池化模式</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">连接在 PG 里是「进程」级资源，不是「句柄」——所以让客户端连接数与服务端连接数解耦是架构必需</text>
 
+  <!-- 进程模型 -->
+  <rect x="30" y="66" width="620" height="70" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">官方原话：为每个连接 fork 一个新进程</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">监督进程一直在运行、等待连接；客户端与它对应的服务端进程【来了又走】</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 每个连接一份真实进程内存　｜　建连接要 fork　｜　max_connections 默认 100 且【启动时固定】</text>
+
+  <!-- work_mem 乘数 -->
+  <path d="M30 148 L650 148" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="172" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">内存的乘数陷阱：work_mem 是【每个操作】的上限，不是每个连接</text>
+
+  <rect x="30" y="184" width="300" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">错误心算</text>
+  <text x="46" y="224" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">100 连接 × 4 MB = 400 MB</text>
+  <text x="46" y="242" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 漏了「每个查询有几个排序/哈希节点」</text>
+
+  <rect x="350" y="184" width="300" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">正确算法（三个因子相乘）</text>
+  <text x="366" y="224" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">100 × 3 节点 × 4 MB = 1.2 GB</text>
+  <text x="366" y="242" font-family="system-ui,sans-serif" font-size="9" fill="#633806">调到 64 MB → 100 × 3 × 64 MB = 19.2 GB</text>
+
+  <!-- 池化模式 -->
+  <path d="M30 270 L650 270" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="294" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">三种池化模式，区别在「连接什么时候归还」</text>
+
+  <rect x="30" y="306" width="196" height="82" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="44" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">会话级</text>
+  <text x="44" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">归还点：客户端断开时</text>
+  <text x="44" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">语义与直连完全一样</text>
+  <text x="44" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">安全，但节省最少</text>
+
+  <rect x="242" y="306" width="196" height="82" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="256" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">事务级</text>
+  <text x="256" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">归还点：每个事务结束时</text>
+  <text x="256" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">破坏 PREPARE · 临时表 · 会话级 SET</text>
+  <text x="256" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">游标 · 会话级 advisory lock · LISTEN</text>
+
+  <rect x="454" y="306" width="196" height="82" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">语句级</text>
+  <text x="468" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">归还点：每条语句结束时</text>
+  <text x="468" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">连多语句事务本身都保不住</text>
+  <text x="468" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">省得最多，能用的场景最少</text>
+
+  <rect x="30" y="400" width="620" height="38" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="424" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">经典现场：事务池化下连接在事务之间被换给别人 →【prepared statement does not exist】　｜　8 副本 × 50 = 400 &gt; 100 → 间歇性连不上</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】<strong>官方对架构的描述就是答案</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>为了处理多个并发连接，PG 会为【每个连接启动（<code class="mv-md-code">fork</code>）一个新进程】。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>从那一刻起，客户端和这个新的服务端进程直接通信，不再经过原来那个 <code class="mv-md-code">postgres</code> 进程。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>因此：监督进程一直在运行、等待连接；而客户端与它对应的服务端进程则来了又走。</strong></p>
+<p class="mv-md-p">【推论】<strong>「进程」这个词带来三个直接后果</strong>：</p>
+<pre class="mv-md-pre">① 每个连接有一份【真实的进程内存】（不是共享的栈）
+   → 连接数直接等于内存开销的一乘数
+
+② 建立连接 = fork
+   → 有 CPU 成本，短连接场景下不可忽略
+
+③ 连接数上限（max_connections）在服务端【启动时】就固定
+   → 而且官方说：PG 会根据 max_connections【直接推算若干资源】，
+     提高它会导致这些资源（【包括共享内存】）的分配增加</pre>
+<p class="mv-md-p">【事实】<strong><code class="mv-md-code">max_connections</code> 的官方口径</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>默认通常是 100 个连接</strong>，但如果你的内核设置不支持（<code class="mv-md-code">initdb</code> 时会判断），可能更少。<strong>这个参数只能在服务器启动时设置。</strong></p>
+<p class="mv-md-p">【推论】<strong>这就是题目里那个对比的根源</strong>：</p>
+<pre class="mv-md-pre">MySQL：连接是「线程 + 会话状态」，成本低得多
+  → 应用池开几百是常规操作
+
+PG：连接是「进程」
+  → 服务端 max_connections 默认 100
+  → 而应用侧是【副本数 × 每副本池大小】
+     8 个副本 × 每副本 50 连接 = 400 连接
+     → 【直接超过上限】</pre>
+<p class="mv-md-p">【结论】<strong>PG 上「连接数」是一个需要架构层解决的问题，不是一个配置项。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 那个放大陷阱：<code class="mv-md-code">work_mem</code> 是「每个操作」的上限</h3>
+<p class="mv-md-p">【推导】<strong>这是 PG 内存规划里最容易算错的一处</strong>：</p>
+<pre class="mv-md-pre">常见的错误心算：
+  「100 个连接 × work_mem 4MB = 400MB，没问题」
+
+实际：
+  work_mem 是【每个排序 / 哈希 / 物化操作】的上限
+  一个复杂查询可能同时有多个这样的节点
+    （排序 + 哈希连接 + 哈希聚合 + …）
+
+  假设平均每个查询有 3 个这样的节点：
+    100 连接 × 3 节点 × 4MB = 【1.2 GB】
+  峰值时更多</pre>
+<p class="mv-md-p">【结论】<strong>实际内存占用 = 连接数 × 每个查询的此类节点数 × <code class="mv-md-code">work_mem</code>——三个因子相乘。</strong></p>
+<p class="mv-md-p">【推论】<strong>所以「把 <code class="mv-md-code">work_mem</code> 调大」这个动作的风险面和直觉不同</strong>：<strong>它不是"每个连接多花 4MB"，而是"每个连接可能多花好几份 4MB"。</strong> <strong>这就是为什么 <code class="mv-md-code">work_mem</code> 应该【按需要调】而不是全局调大</strong>（[[母题-P6-执行计划怎么看]] 里那个 <code class="mv-md-code">external merge</code>，先确认是哪个查询在落盘，再决定是给它调还是改 SQL）。</p>
+<p class="mv-md-p">【补充】<strong>这也是连接池的一个隐藏价值</strong>：<strong>它把「可能的并发查询数」压下来</strong>——<strong>服务端只有 50 个连接，就最多只有 50 个查询在同时消耗 <code class="mv-md-code">work_mem</code></strong>，<strong>而不是 400 个。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 三种池化模式与它们的「作用域」</h3>
+<table class="mv-table"><thead><tr><th>模式</th><th>连接归还给池的时机</th><th><strong>不能跨越的东西</strong></th></tr></thead><tbody><tr><td><strong>会话级</strong>（session pooling）</td><td><strong>客户端断开时</strong></td><td>无——语义和直连完全一样</td></tr><tr><td><strong>事务级</strong>（transaction pooling）</td><td><strong>每个事务结束时</strong></td><td><strong>预处理语句、临时表、<code class="mv-md-code">SET</code>、游标、advisory lock（会话级）、<code class="mv-md-code">LISTEN</code></strong></td></tr><tr><td><strong>语句级</strong>（statement pooling）</td><td><strong>每条语句结束时</strong></td><td><strong>多语句事务本身</strong></td></tr></tbody></table>
+<p class="mv-md-p">【判据】<strong>这张表的读法是</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>池化把连接"借出去又收回来"，所以任何【跨越归还点还活着的会话状态】都会出问题。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>归还点越靠前（事务结束 &lt; 会话结束），能跨越的东西越少。</strong></p>
+<p class="mv-md-p">【结论】<strong>会话级池化语义最安全、节省最少；事务级池化节省最多、但破坏了会话状态。</strong> <strong>这就是那道选择题的全部。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 最经典的坑：事务池化 × 预处理语句</h3>
+<p class="mv-md-p">【推导】<strong>把冲突讲清楚</strong>：</p>
+<pre class="mv-md-pre">预处理语句（PREPARE）的生命周期是【连接级】的：
+  在连接 A 上 PREPARE 的语句，只有连接 A 认得
+
+事务级池化下，"连接"在事务之间会被换给别人：
+  客户端 ① 在连接 A 上 PREPARE stmt
+  → 事务结束，连接 A 归还给池
+  → 客户端 ② 拿到了连接 A
+  → 客户端 ① 下次执行 stmt 时拿到了连接 B
+  → 【连接 B 上没有 stmt】→ 报错</pre>
+<p class="mv-md-p">【事实】<strong>PG 的驱动程序（JDBC / asyncpg 等）普遍默认使用预处理语句</strong>——<strong>所以"上了 pgbouncer 之后应用开始报 <code class="mv-md-code">prepared statement does not exist</code>"是一个非常典型的现场。</strong></p>
+<p class="mv-md-p">【推论】<strong>四条出路</strong>：</p>
+<pre class="mv-md-pre">① 池化模式改成【会话级】（最安全，但节省最少）
+② 关掉驱动的预处理语句（改用简单查询协议）
+     → 代价：失去服务端预处理带来的规划复用
+③ 用支持"预处理语句跟踪"的池（pgbouncer 的对应选项 / 或应用层池）
+④ 在应用层用【连接池】（比如 HikariCP 连每一个 PG 后端）
+     → 连接数是"应用实例数 × 每实例池大小"，仍然要对服务端负责</pre>
+<p class="mv-md-p">【取舍】<strong>判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>「要不要事务级池化」不是看它能省多少连接，是看【你的应用能不能放弃会话状态】。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>用不到预处理语句、临时表、会话级 <code class="mv-md-code">SET</code> 的应用，事务池化是免费的午餐；用得到的，改造成本可能远超省下的连接数。</strong></p>
+<p class="mv-md-p">【补充】<strong>这也是一个很好的「你知道自己在用什么」的检验</strong>：<strong>能说出「事务池化会破坏预处理语句」，说明你配置过 pgbouncer 并踩过这个坑，而不是抄了一份配置。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 池的大小怎么定</h3>
+<p class="mv-md-p">【推导】<strong>一个常见的误区与它的修正</strong>：</p>
+<pre class="mv-md-pre">误区：「连接数越多吞吐越高」
+实际：连接数超过某个点后，吞吐【下降】
+  原因：更多连接 = 更多并发查询 = 更多争抢（CPU、IO、锁）
+  而 PG 的锁等待是【无限期】的（P10）
+  → 连接越多，队列越长
+
+所以正确的方向是【小池 + 排队】：
+  池小一点，让请求在【应用侧】排队（可控、可观测）
+  而不是在【数据库侧】排队（无限等、占满连接）</pre>
+<p class="mv-md-p">【取舍】<strong>定池大小的三个输入</strong>：</p>
+<pre class="mv-md-pre">① 数据库的 CPU 核数（并发查询数超核数越多，上下文切换越多）
+② 每个查询的平均耗时与 IO 比例（IO 密集的可以多一点）
+③ 有多少个应用实例共用这个库（这是最容易漏的一个乘数）</pre>
+<p class="mv-md-p">【补充】<strong>池的上限必须留出运维余量</strong>：<strong><code class="mv-md-code">max_connections</code> 是给【所有】客户端用的——包括你自己的运维终端、监控采集、备份工具、以及 <code class="mv-md-code">superuser_reserved_connections</code> 预留的那几个槽位。</strong> <strong>把应用池之和顶到 <code class="mv-md-code">max_connections</code>，等于把自己的运维通道也堵死了。</strong></p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 连接池不解决的两件事</h3>
+<p class="mv-md-p">【事实】<strong>池化让连接更少，但不会消除下面两类事务</strong>：</p>
+<table class="mv-table"><thead><tr><th>问题</th><th>为什么池化管不了</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">idle in transaction</code></strong></td><td><strong>它是「事务开着不提交」</strong>，不是「连接太多了」——<strong>池化只让这种连接的数量少一点，不改变性质</strong>。<strong>而且它按住回收边界</strong>（[[母题-P14-长事务与表膨胀]]）</td></tr><tr><td><strong>长事务</strong></td><td><strong>同上</strong>——<strong>事务的时长与池的大小无关</strong>（[[母题-P13-MVCC与可见性]]）</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>所以正确的做法是「池化 + 超时」两条一起上</strong>：</p>
+<pre class="mv-md-pre">池化     ：控制【连接数】这个维度
+超时     ：控制【事务时长】这个维度
+  idle_in_transaction_session_timeout  ← 治 idle in transaction
+  statement_timeout                    ← 治跑飞的查询
+  lock_timeout                         ← 治 PG 的无限等锁（P10）</pre>
+<p class="mv-md-p">【结论】<strong>池化解决的是「连接多」，超时解决的是「事务长」——</strong>它们是两个正交的问题<strong>，</strong>只做其中一个，故障的形态会换一个样子出现。**</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>说法</th><th>实际情况</th></tr></thead><tbody><tr><td>「PG 和 MySQL 一样，连接池是优化项」</td><td><strong>PG 里连接池是【架构必需项】</strong>——连接是进程级资源，<code class="mv-md-code">max_connections</code> 默认 100 且启动时固定</td></tr><tr><td>「<code class="mv-md-code">work_mem</code> × 连接数就是内存占用」</td><td><strong>漏了乘数</strong>——它是<strong>每个操作</strong>的上限，<strong>一个查询可能有多个这样的节点</strong></td></tr><tr><td>「上了连接池就万事大吉」</td><td><strong>事务池化会破坏预处理语句与会话状态</strong>；<strong>而且池化不治 <code class="mv-md-code">idle in transaction</code> 与长事务</strong></td></tr><tr><td>「连接数越多吞吐越高」</td><td><strong>超过某个点后吞吐会下降</strong>——更多并发争抢，而 PG 的锁等待是无限的</td></tr><tr><td>「池只要不超过 <code class="mv-md-code">max_connections</code> 就行」</td><td><strong>还要给运维、监控、备份、以及 <code class="mv-md-code">superuser_reserved_connections</code> 留槽位</strong></td></tr><tr><td>「池化到事务级能省最多，所以直接选它」</td><td><strong>要先确认应用不用预处理语句 / 临时表 / 会话级 <code class="mv-md-code">SET</code></strong>——否则改造成本可能远超收益</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P17-连接模型与连接池-q1" tag="PostgreSQL" q="服务端 work_mem = 4MB，应用有 100 个连接，平均每个查询有 3 个会用到 work_mem 的节点（排序 / 哈希）。&#10;问：这 100 个连接最坏情况下可能占用多少内存？「100 × 4MB = 400MB」错在哪？" a="``text&#10;错误心算：&#10;100 连接 × 4MB = 【400MB】&#10;正确算法：&#10;work_mem 是【每个排序 / 哈希 / 物化节点】的上限&#10;平均每个查询有 3 个这样的节点&#10;→ 100 × 3 × 4MB = 【1.2 GB】&#10;→ 峰值时更多&#10;`&#10;【结论】实际可能是直觉的 3 倍——而且这个倍数随查询复杂度变化，不是固定的。&#10;【推论】为什么这条重要：&#10;`text&#10;「把 work_mem 调大」看起来是每个连接多花 4MB&#10;实际是每个连接可能多花【好几份】&#10;4MB → 32MB 时：&#10;直觉：100 × 32MB = 3.2 GB&#10;实际：100 × 3 × 32MB = 【9.6 GB】&#10;`&#10;【判据】所以 work_mem 应该按需调，不全局调：&#10;先在 EXPLAIN (ANALYZE, BUFFERS) 里定位到那个 Sort Method: external merge（[[母题-P6-执行计划怎么看]]），&#10;再决定是给那一条查询单独调（SET LOCAL work_mem）、还是改写 SQL 让它少排点行。&#10;全局调大是把 9.6 GB 的风险摊给所有人。&#10;【补充】这也是连接池的一个隐藏价值：服务端只有 50 个连接，就最多只有 50 个查询在同时吃 work_mem`——而不是 400 个。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="PostgreSQL/母题-P17-连接模型与连接池-q2" tag="PostgreSQL" q="短连接场景：每秒建立 500 个新连接，每次 fork + 初始化约 5 ms。&#10;问：这部分开销占多少 CPU？连接池能省掉多少？" a="``text&#10;每秒 fork 消耗的 CPU 时间 = 500 × 5ms = 2500 ms = 【2.5 秒 / 秒】&#10;也就是说：光建连接这一件事，就吃掉了【2.5 个核】的满载时间&#10;→ 而这段时间里数据库【什么业务都没做】&#10;`&#10;【结论】在短连接场景下，「建连接」本身可以成为主要负载之一。&#10;【推论】连接池省掉的是什么：&#10;`text&#10;无池：每次请求 = fork + 初始化 + 业务查询&#10;有池：每次请求 = 复用一个已有连接 + 业务查询&#10;→ fork 那 2.5 核/秒的 CPU 全省下来&#10;→ 而且省掉了每次连接的系统调用、内存分配、认证&#10;``&#10;【取舍】但要算清楚它是【换】不是【消】：连接池中间件本身是一个额外组件——它要多一跳网络、要多一份运维对象（它的高可用怎么办？）、还会引入事务池化那些坑（第 4 节）。 所以它是&quot;值得&quot;的前提是：连接建立频率真的高。&#10;【补充】反过来说：如果应用本来就是长连接（比如服务端只起一次连接池连数据库），那么再加一层 pgbouncer 的收益主要是「连接数收敛」，而不是「省 fork」。 两者的理由不同，配置也不同。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读 + 计算</span></div><flip-card card-id="PostgreSQL/母题-P17-连接模型与连接池-q3" tag="PostgreSQL" q="某应用 8 个副本，每个副本的连接池大小配成 50。数据库 max_connections = 100。&#10;问：会发生什么？为什么表现是「间歇性连不上」而不是「启动就报错」？" a="``text&#10;应用侧尝试建立的总连接数 = 8 × 50 = 【400】&#10;服务端上限 = 【100】&#10;→ 缺口 300 个连接&#10;表现为什么是&quot;间歇性&quot;：&#10;① 每个副本只在【需要时】才去建连接（不是启动时就建满 50 个）&#10;② 哪个副本、在哪一刻拿到连接，取决于当时的负载分布&#10;③ 拿不到的副本 → 报错 → 熔断 → 重试 → 又碰到别人占着的连接&#10;→ 所以现象是【随机的、和流量相关的失败】，而不是&#10;&quot;第 101 个连接必然失败&quot;这种确定性错误&#10;`&#10;【结论】这是一个【乘数没算】的经典事故——应用侧写的是一个副本的配置，服务端面对的是所有副本的和。&#10;【判据与动作】：&#10;max_connections 是给【所有】客户端用的——包括你的运维终端、监控采集、备份工具，以及 superuser_reserved_connections 预留的槽位。&#10;正确的算式：应用池之和 + 运维/监控/备份 + 预留 ≤ max_connections`。&#10;而且这个数字要写进文档——下次有人加副本时会用到。&#10;【补充】这条也说明为什么连接池中间件是 PG 的标准架构：它让「8 个副本 × 50」在服务端看起来只是「50 个连接」——乘数被消掉了。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P17-连接模型与连接池-q4" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;我们上了 pgbouncer，用的是事务级池化，连接数问题解决了，也不会有空闲事务了。&quot;" a="三处问题。&#10;1. 事务级池化会破坏会话状态：预处理语句的生命周期是【连接级】的，而事务池化下连接在事务之间会被换给别人——应用会报「预处理语句不存在」这类错。PREPARE、临时表、会话级 SET、游标、会话级 advisory lock、LISTEN 都有同样的问题。&#10;2. 它不消除 idle in transaction：那是一个【开着事务不提交】的状态，和连接数多少无关——池化只让它更少，不改变性质；而且它仍然按住回收边界。&#10;3. 它也不消除长事务：事务时长与池大小是正交的两个维度。&#10;【准确说法】&quot;池化解决的是「连接数」，超时解决的是「事务时长」——两件事要一起做。 而事务池化要先确认应用不用预处理语句 / 临时表 / 会话级 SET；用得到的，就选会话级池化，或者用支持预处理语句跟踪的配置。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="PostgreSQL/母题-P17-连接模型与连接池-q5" tag="PostgreSQL" q="下面这段话哪里不准确？&#10;&quot;数据库有点慢，我们把 work_mem 从 4MB 调到 64MB，应该能缓解排序落盘的问题。&quot;" a="三处问题。&#10;1. work_mem 是每个操作的上限，不是每个连接：一个查询可能有多个用到它的节点（Q1）——调大 16 倍，内存风险也是 16 倍，而且是乘过节点数的 16 倍。&#10;2. 它是全局参数：调大它等于给【所有】查询都加预算——包括那些本来不需要的、以及那些你还没发现的慢查询。&#10;3. 没定位到根因：排序落盘（external merge）只是现象——可能是排序的数据量本来就该在上游砍掉（[[母题-P6-执行计划怎么看]]），调 work_mem 只是给一个错误的计划买单。&#10;【准确说法】&quot;先用 EXPLAIN (ANALYZE, BUFFERS) 定位到具体哪条查询在落盘、落了多少，再决定：给那一条单独 SET LOCAL work_mem，或者改 SQL 让它少排点行。 全局调大 work_mem 是 PG 里最容易造成 OOM 的动作之一。&quot;&#10;---"></flip-card></div></div>
   <div class="mv-section">
     <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
     <div class="mv-ask">
-      <p class="mv-ask-q">为什么 PG 的连接很贵？连接池模式怎么选？</p>
+      <p class="mv-ask-q">PG 的连接为什么贵？连接池怎么配、有什么坑？</p>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
-    <flip-card gradable card-id="PostgreSQL/母题-P17-连接模型与连接池" tag="PostgreSQL" q="为什么 PG 的连接很贵？连接池模式怎么选？" a="PG 是「一个连接一个后端进程」（fork 出独立进程），每个连接有独立内存、进程调度与上下文切换开销大，所以并发连接数上去后性能断崖；MySQL 是线程模型，连接便宜得多。因此 PG 的连接池是刚需，并且有两种模式：session 模式（一个客户端长期占一个连接，简单，但连接数仍随客户端数增长）与 transaction 模式（事务结束就归还，连接数 ≈ 同时活跃事务数，效率高，但会话级状态不可用）。"></flip-card>
+    <flip-card gradable card-id="PostgreSQL/母题-P17-连接模型与连接池" tag="PostgreSQL" q="PG 的连接为什么贵？连接池怎么配、有什么坑？" a="PG 是「一个连接一个进程」——官方原话是为每个连接 fork 一个新进程，所以每个连接都有一份真实的进程内存，连接数是重资源。再加上 work_mem 是【每个操作】的上限而不是每个连接，一个连接可能同时占用好几份 work_mem，内存放大比直觉大得多。所以生产上的标准做法是在应用和数据库之间放一个连接池（pgbouncer 之类），把「几百个客户端连接」映射成「几十个服务端连接」。但连接池有两个必须知道的坑：事务级池化会让预处理语句与会话状态的作用域错乱；而池化本身不解决 idle in transaction——它只让这类连接更少。"></flip-card>
     <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
-    <p class="mv-note" style="margin-top:10px">为什么重要：这是 <strong>「PG 与 MySQL 的七处差异」里的最后一条</strong>，也是<strong>最容易被"不疼不痒地知道"、却在真实容量规划上踩坑的一条</strong>——因为它决定了你的<strong>服务能起多少并发</strong>。它和主线七（并发控制）是一条链：<strong>连接贵 → 并发受限 → 更需要「短事务 + 无锁并发」</strong>（P18）而不是「长事务 + 加锁等待」。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「数据增长」这条线里最容易被忽略、也最容易在上线当天炸掉的一环</strong>——<strong>应用侧的连接数是一个会随「副本数 × 每副本连接数」相乘的东西</strong>，<strong>而 PG 的 <code class="mv-md-code">max_connections</code> 是一个【服务端启动时固定】的上限</strong>，<strong>两者一旦撞上，表现是"间歇性连不上"而不是"明确的报错"。</strong></p>
   </div>
   <div class="mv-section">
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
-    <div class="mv-conclusion"><strong>PG 是「一个连接一个后端进程」</strong>（fork 出独立进程），每个连接有独立内存、进程调度与上下文切换开销大，所以并发连接数上去后性能断崖；<strong>MySQL 是线程模型，连接便宜得多</strong>。因此 <strong>PG 的连接池是刚需</strong>，并且有两种模式：<strong>session 模式</strong>（一个客户端长期占一个连接，简单，但连接数仍随客户端数增长）与 <strong>transaction 模式</strong>（<strong>事务结束就归还</strong>，连接数 ≈ 同时活跃事务数，效率高，<strong>但会话级状态不可用</strong>）。</div>
+    <div class="mv-conclusion"><strong>PG 是「一个连接一个进程」</strong>——官方原话是为每个连接 <code class="mv-md-code">fork</code> 一个新进程，所以<strong>每个连接都有一份真实的进程内存</strong>，连接数是<strong>重资源</strong>。再加上 <strong><code class="mv-md-code">work_mem</code> 是【每个操作】的上限而不是每个连接</strong>，<strong>一个连接可能同时占用好几份 <code class="mv-md-code">work_mem</code></strong>，<strong>内存放大比直觉大得多</strong>。所以生产上的标准做法是<strong>在应用和数据库之间放一个连接池</strong>（pgbouncer 之类），<strong>把「几百个客户端连接」映射成「几十个服务端连接」</strong>。<strong>但连接池有两个必须知道的坑</strong>：<strong>事务级池化会让预处理语句与会话状态的作用域错乱</strong>；<strong>而池化本身不解决 <code class="mv-md-code">idle in transaction</code></strong>——它只让这类连接更少。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>进程模型 vs 线程模型</li><li>连接成本（内存 + 调度）</li><li>pgbouncer</li><li>session vs transaction 模式</li><li><strong>会话级状态不可用</strong>（prepared statement</li><li>session 变量</li><li>临时表</li><li>advisory lock）</li><li>连接数上限由「同时活跃事务数」决定</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>一个连接一个进程（fork）</li><li>连接是重资源</li><li><code class="mv-md-code">max_connections</code> 默认 100（启动时固定）</li><li><strong><code class="mv-md-code">work_mem</code> 是每个操作不是每个连接</strong></li><li>会话级 vs 事务级 vs 语句级池化</li><li><strong>事务池化 × 预处理语句</strong></li><li><code class="mv-md-code">idle in transaction</code> 不因池化而消失</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
-    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>「为什么不能简单把 <code class="mv-md-code">max_connections</code> 调很大？」</strong></strong></p>
-<p class="mv-md-p">因为<strong>连接本身要占内存</strong>（每连接私有内存 + 共享缓冲区映射）、<strong>调度开销随进程数上升</strong>、<strong>并发访存争用加剧</strong>；<strong>结果往往是"连接数增加了，总吞吐反而下降，尾延迟显著变差"</strong>。<strong>所以正确方向是"减少连接占用时间"（短事务 + 池化），不是"扩大连接池上限"。</strong></p>
-<p class="mv-md-p"><strong>2. <strong>「这跟你项目里的 Worker 有什么关系？」</strong></strong></p>
-<p class="mv-md-p">关系很直接：<strong>Worker/队列消费者天然是"长驻连接"</strong>（它们持续取任务），所以<strong>必须给它们单独的池与上限</strong>，否则<strong>后台任务会把前台请求的连接挤掉</strong>。<strong>RuleArena 的「条件更新认领任务」在这里又赢一次</strong>（P18）：<strong>认领是一个短事务（一条 UPDATE），不是"开事务再慢慢处理"</strong>——<strong>它占用连接的时间极短，既省连接也更少锁等待。</strong> <strong>这条把连接模型、池化模式、并发控制三件事收成了一个设计结论：短事务 + 池化 + 无锁并发控制是同一套选择。</strong></p>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>连接池该用哪种模式？</strong></strong></p>
+<p class="mv-md-p"><strong>先问应用需不需要会话状态</strong>：<strong>用不到 <code class="mv-md-code">PREPARE</code> / 临时表 / 会话级 <code class="mv-md-code">SET</code> / 游标 / <code class="mv-md-code">LISTEN</code> 的应用，事务级池化是免费的午餐</strong>；<strong>用得到的，要么改成会话级，要么用支持预处理语句跟踪的配置。</strong> <strong>这个判断不能拍脑袋，要看驱动的默认行为。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>池开多大？</strong></strong></p>
+<p class="mv-md-p"><strong>三个输入</strong>：<strong>数据库的核数、每个查询的耗时与 IO 比例、以及【有多少个应用实例共用这个库】。</strong> <strong>而方向是「小池 + 应用侧排队」</strong>——<strong>让请求在应用侧排队（可控、可观测），而不是在数据库侧排队</strong>（<strong>而 PG 的锁等待是无限的</strong>，[[母题-P10-无间隙锁与锁变体]]）。</p>
+<p class="mv-md-p"><strong>3. <strong>为什么说 PG 的 <code class="mv-md-code">max_connections</code> 不能随便调大？</strong></strong></p>
+<p class="mv-md-p"><strong>官方说得很清楚：PG 会根据 <code class="mv-md-code">max_connections</code> 直接推算若干资源，提高它会导致这些资源（包括共享内存）的分配增加。</strong> <strong>而且它对连接建立的开销没有任何改善</strong>——<strong>只是把"墙"挪远了一点。</strong> <strong>正解是加池，不是加 <code class="mv-md-code">max_connections</code>。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>连接池能不能解决表膨胀？</strong></strong></p>
+<p class="mv-md-p"><strong>不能</strong>。<strong>它减少连接数，但不改变「事务开多长」。</strong> <strong><code class="mv-md-code">idle in transaction</code> 仍然是 <code class="mv-md-code">idle in transaction</code>——它照样按住回收边界</strong>（[[母题-P14-长事务与表膨胀]]）。<strong>要治它，只能靠 <code class="mv-md-code">idle_in_transaction_session_timeout</code> 和代码改造。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>备库上的 <code class="mv-md-code">max_connections</code> 要注意什么？</strong></strong></p>
+<p class="mv-md-p"><strong>官方明确说：运行备库时，这个参数必须设成【等于或大于】主库的值</strong>，否则<strong>备库上不允许查询</strong>（[[母题-P12-流复制与逻辑复制]]）。<strong>这是一条很容易漏、而且一漏就整个只读副本不可用的配置。</strong></p>
 </collapse-panel>
-    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「连接池调多大合适？」——<strong>先算同时活跃事务数，再用压测验证</strong>；<strong>过大反而降低吞吐</strong>（更多争用、更多上下文切换）。「经验值」不如「自己压出来的曲线」。</li><li>「没有连接池会怎样？」——见上面的雪崩路径。<strong>核心不是"慢"，是"没有排队点"</strong>。</li><li>「PG 有没有内置的连接池？」——<strong>没有服务端内置池</strong>（连接就是进程），社区方案是外部代理（<code class="mv-md-code">pgbouncer</code> 之类）或语言侧池。<strong>MySQL 的 <code class="mv-md-code">thread_cache</code> 那套类比不成立。</strong></li></ul></collapse-panel>
-    <collapse-panel title="可迁移场景"><p class="mv-md-p">RuleArena 的 <strong>Worker 池与任务认领</strong>（长驻连接 + 短事务认领）；EnergyOps 的<strong>报表查询</strong>（长查询要单独限制并发，否则会拖垮其他请求）；数驭穹图的<strong>只读查询执行</strong>（文档里明确要求「超时、扫描量、并发、行数、取消能力」——<strong>这正是"连接与并发必须显式设限"的工程化表达</strong>）。<strong>方言差异（面试安全底线）</strong>：MySQL 是<strong>线程模型 + 连接便宜 + 服务端有 <code class="mv-md-code">max_connections</code> / 线程池</strong>；PG 是<strong>进程模型 + 连接贵 + 必须外部池化</strong>。<strong>「PG 也能开几千连接」在理论上可能，在生产上是反模式</strong>——说的时候要加一句「开得起来，但吞吐会下降」。</p></collapse-panel>
-    <collapse-panel title="完整回答骨架"><p class="mv-md-p">进程模型 vs 线程模型 → 为什么连接贵（三笔开销）→ 所以必须池化 → 两种池化模式与选择 → transaction 模式的约束（会话状态）→ 容量规划的正确口径</p></collapse-panel>
-    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>连接数的上限不是「数据库能不能开」，而是「开了之后每个请求还快不快」。</strong> 所以要管的是<strong>「同时活跃的事务数」</strong>，不是「连接数」——<strong>这也是为什么 PG 的池化推荐 transaction 模式：它让连接数与客户端数解耦。</strong></p></collapse-panel>
-    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清「进程模型 → 连接贵 → 必须池化 → transaction 模式 → 会话状态不可用」这条链，并能用「同时活跃事务数」做容量口径。</p></collapse-panel>
-  </div>
-
-  <div class="mv-section">
-    <h2 class="mv-section-title">讲解</h2>
-    <collapse-panel title="展开推导 / 代码 / 原始素材">
-<h3 class="mv-md-h mv-md-h2">原理分解</h3>
-<h3 class="mv-md-h mv-md-h3">一、为什么 PG 的连接贵</h3>
-<table class="mv-table"><thead><tr><th>开销量</th><th>具体表现</th></tr></thead><tbody><tr><td><strong>内存</strong></td><td>每个后端进程有独立的私有内存 + 共享缓冲区映射；<strong>连接数 × 单连接开销 = 常驻内存</strong></td></tr><tr><td><strong>进程调度</strong></td><td>每个连接是一个 OS 进程，<strong>上下文切换、调度、信号开销都远高于线程</strong>；连接一多，<strong>CPU 时间大量花在"管理连接"而不是"执行查询"上</strong></td></tr><tr><td><strong>缓冲区争用</strong></td><td>更多并发会话 → 更多并发访问共享缓冲区 → 锁与争用上升（<strong>吞吐反而下降</strong>，不是平滑增长）</td></tr></tbody></table>
-<p class="mv-md-p"><strong>对比 MySQL</strong>：线程模型，单连接开销小得多，所以「几千连接」是常规配置。<strong>PG 的实践数字通常是"几十到几百个活跃连接"</strong>——超过这个量级，<strong>继续加连接会让单位吞吐下降</strong>（这也是为什么有连接池这件事在 PG 侧几乎不可省）。</p>
-<h3 class="mv-md-h mv-md-h3">二、所以连接池是刚需（不是优化项）</h3>
-<p class="mv-md-p"><strong>没有池化时的经典事故</strong>：</p>
-<pre class="mv-md-pre">应用每个请求开一个连接 → 并发请求数 = 连接数
-  ↓
-峰值流量 → 连接数暴涨 → 数据库 CPU 都在 fork/调度
-  ↓
-每个请求更慢 → 请求堆积 → 开更多连接 → 雪崩</pre>
-<p class="mv-md-p"><strong>池化的本质作用</strong>：<strong>把「客户端数量」和「数据库连接数」解耦</strong>，并在数据库前面提供一个<strong>可控的排队点</strong>。</p>
-<p class="mv-md-p"><strong>关键认知</strong>：<strong>连接池不只是"复用连接省开销"，它更重要的功能是"限制并发、保护数据库"</strong>——<strong>池子满了就让请求排队（或快速失败），而不是让数据库被压垮。</strong> 这一点在面试里值得强调，因为它把连接池从"性能优化"提升到"稳定性设计"。</p>
-<h3 class="mv-md-h mv-md-h3">三、两种模式：session vs transaction</h3>
-<table class="mv-table"><thead><tr><th></th><th><strong>session 模式</strong></th><th><strong>transaction 模式</strong></th></tr></thead><tbody><tr><td>连接何时归还</td><td><strong>客户端断开时</strong></td><td><strong>事务结束时</strong></td></tr><tr><td>连接数</td><td>随客户端数增长</td><td><strong>≈ 同时活跃的事务数</strong>（大幅降低）</td></tr><tr><td>会话级状态</td><td><strong>可用</strong></td><td><strong>不可用 / 不可靠</strong></td></tr><tr><td>适用</td><td>简单、连接数可控、或有会话状态依赖</td><td><strong>高并发 Web / API 的标准选择</strong></td></tr></tbody></table>
-<p class="mv-md-p"><strong>transaction 模式效率高得多</strong>——因为它利用了「<strong>大多数请求的时间花在应用逻辑与网络，而不是在数据库事务里</strong>」这一点：<strong>同一个数据库连接可以在不同请求间轮流服务，因为它只在事务期间被占用。</strong></p>
-<h3 class="mv-md-h mv-md-h3">四、transaction 模式的约束（必须讲清，否则会踩坑）</h3>
-<p class="mv-md-p">在 transaction 模式下，<strong>「会话」被切碎了</strong>，所以这些<strong>依赖会话状态</strong>的东西都不能依赖：</p>
-<table class="mv-table"><thead><tr><th>依赖项</th><th>问题</th></tr></thead><tbody><tr><td><strong>预编译语句（prepared statement）</strong></td><td>语句缓存在<strong>会话</strong>里，而会话可能换了物理连接 → 报「语句不存在」或隐式重新规划。<strong>实践上常把驱动/代理的语句缓存关掉或设为 0。</strong></td></tr><tr><td><strong>会话变量</strong>（<code class="mv-md-code">SET ...</code>）</td><td>下一次请求可能落到另一个连接，<strong>设置丢失</strong>。<strong>必须改成事务级设置或每次显式设置。</strong></td></tr><tr><td><strong>会话级临时表</strong></td><td>同上，会不可见。</td></tr><tr><td><strong>advisory lock（会话级）</strong></td><td>会话一换就失去语义 → <strong>锁可能被错误地"留在"另一个请求身上或提前释放</strong>。</td></tr><tr><td>游标（跨提交保持的）</td><td>多数场景要求事务内使用。</td></tr></tbody></table>
-<p class="mv-md-p"><strong>判断方法一句话</strong>：<strong>「这个状态是不是"跟着连接走"的？」跟着走 → transaction 模式不能用；跟着事务走 → 可以用。</strong></p>
-<p class="mv-md-p"><strong>所以决定池化模式的时间点应该很早</strong>：<strong>在写第一行代码之前就定</strong>——因为「能不能用 transaction 模式」会影响<strong>数据访问层的写法</strong>（比如还敢不敢用会话级临时表、敢不敢依赖驱动的语句缓存）。</p>
-<h3 class="mv-md-h mv-md-h3">五、容量规划的正确口径</h3>
-<p class="mv-md-p"><strong>要算的是「同时活跃事务数」，不是「连接数」</strong>：</p>
-<pre class="mv-md-pre">需要的连接数 ≈ 峰值 QPS × 单个事务平均持有连接的时间</pre>
-<p class="mv-md-p"><strong>推论有三条，都很实用</strong>：</p>
-<p class="mv-md-p">1. <strong>缩短事务 = 提高容量</strong>——<strong>同样的连接数能支撑更高 QPS</strong>。这条把 P14（长事务）和容量规划连起来了：<strong>长事务既按住了回收边界，又占着连接不放。</strong> 2. <strong>应用侧也要限并发</strong>：池子 + 应用超时 + 队列上限，<strong>否则池子只是把雪崩推迟几秒</strong>。 3. <strong>读写分离能摊开读压力</strong>，但<strong>写压力只落在主库</strong>——<strong>所以"加只读副本"解决不了写路径的连接瓶颈</strong>。</p>
-<hr class="mv-md-hr">
-    </collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「PG 和 MySQL 在连接模型上差多少？」—— <strong>MySQL 是「一个连接一个线程」（线程 + 会话状态），PG 是「一个连接一个进程」。</strong> <strong>后果有三</strong>：<strong>① PG 的单连接内存开销更大；② PG 的 <code class="mv-md-code">max_connections</code> 更保守（默认 100）；③ PG 更需要连接池中间件。</strong> <strong>所以「我们 MySQL 池开 500」搬到 PG 上会直接撞墙。</strong></li><li>「应用层连接池（HikariCP 等）够不够，一定要 pgbouncer 吗？」—— <strong>取决于副本数</strong>：<strong>应用层池解决的是「单个实例内的连接复用」，但不解决「多副本相乘」</strong>。<strong>8 个副本各开 50，服务端看到的就是 400。</strong> <strong>要消掉这个乘数，就需要一个【共享的】池化点——这就是 pgbouncer 的位置。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps 的读写分离</strong>（<strong>读写两个池要分开算，而且备库的 <code class="mv-md-code">max_connections</code> 必须 ≥ 主库</strong>）。 - <strong>RuleArena 的调度器</strong>（<strong>多个 Worker 副本 × 各自的池 → 这是「乘数没算」最典型的现场</strong>）。 - <strong>数驭穹图的接入层</strong>（<strong>长跑批处理任务 → 连接会长时间被占，池大小要考虑批任务这一路</strong>）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">连接为什么贵（进程模型）→ <strong><code class="mv-md-code">work_mem</code> 的放大陷阱</strong> → 连接池的三种模式 → <strong>事务池化与预处理语句的冲突</strong> → 池的大小怎么定 → 与长事务/空闲事务的关系 → 生产配置</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>连接在 PG 里是「进程」级的资源，不是「句柄」。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出<strong>「一个连接一个进程」</strong>并推出三个后果；<strong>能算出 <code class="mv-md-code">work_mem</code> 的乘数陷阱（100 × 3 × 4MB = 1.2 GB）并解释为什么它该按需调</strong>；<strong>能说清三种池化模式的区别在「归还点」</strong>；<strong>能解释「事务池化 × 预处理语句」的冲突并给出四条出路</strong>；<strong>能算出「8 副本 × 50 = 400 &gt; 100」并解释为什么表现是间歇性失败</strong>；<strong>能说清「池化与超时是两条正交的线」</strong>；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
   </div>
 
   <div class="mv-section">

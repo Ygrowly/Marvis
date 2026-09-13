@@ -1,0 +1,52 @@
+<svg viewBox="0 0 680 444" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>一个连接一个进程：连接成本、work_mem 放大与池化模式</title>
+  <desc>顶部是进程模型：每来一个连接就派生一个新进程，客户端与这个进程直接通信，所以连接是进程级资源而不是句柄。中间是内存的乘数陷阱：工作内存是每个排序或哈希节点的上限，一个查询可能有多个这样的节点，一百个连接、每查询三个节点、每个四兆字节就是一点二吉字节，而不是直觉的四百兆。底部对比三种池化模式的归还点：会话级在客户端断开时归还、语义最安全；事务级在每个事务结束时归还、省得最多但会破坏预处理语句与会话状态；语句级在每条语句结束时归还、连多语句事务都保不住。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">一个连接一个进程：连接成本、work_mem 放大与池化模式</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">连接在 PG 里是「进程」级资源，不是「句柄」——所以让客户端连接数与服务端连接数解耦是架构必需</text>
+
+  <!-- 进程模型 -->
+  <rect x="30" y="66" width="620" height="70" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">官方原话：为每个连接 fork 一个新进程</text>
+  <text x="46" y="108" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">监督进程一直在运行、等待连接；客户端与它对应的服务端进程【来了又走】</text>
+  <text x="46" y="126" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">→ 每个连接一份真实进程内存　｜　建连接要 fork　｜　max_connections 默认 100 且【启动时固定】</text>
+
+  <!-- work_mem 乘数 -->
+  <path d="M30 148 L650 148" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="172" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">内存的乘数陷阱：work_mem 是【每个操作】的上限，不是每个连接</text>
+
+  <rect x="30" y="184" width="300" height="72" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="46" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65">错误心算</text>
+  <text x="46" y="224" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">100 连接 × 4 MB = 400 MB</text>
+  <text x="46" y="242" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">→ 漏了「每个查询有几个排序/哈希节点」</text>
+
+  <rect x="350" y="184" width="300" height="72" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="204" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">正确算法（三个因子相乘）</text>
+  <text x="366" y="224" font-family="monospace,sans-serif" font-size="9.5" fill="#633806">100 × 3 节点 × 4 MB = 1.2 GB</text>
+  <text x="366" y="242" font-family="system-ui,sans-serif" font-size="9" fill="#633806">调到 64 MB → 100 × 3 × 64 MB = 19.2 GB</text>
+
+  <!-- 池化模式 -->
+  <path d="M30 270 L650 270" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="294" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">三种池化模式，区别在「连接什么时候归还」</text>
+
+  <rect x="30" y="306" width="196" height="82" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
+  <text x="44" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">会话级</text>
+  <text x="44" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">归还点：客户端断开时</text>
+  <text x="44" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">语义与直连完全一样</text>
+  <text x="44" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#2C5A20">安全，但节省最少</text>
+
+  <rect x="242" y="306" width="196" height="82" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="256" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">事务级</text>
+  <text x="256" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">归还点：每个事务结束时</text>
+  <text x="256" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">破坏 PREPARE · 临时表 · 会话级 SET</text>
+  <text x="256" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">游标 · 会话级 advisory lock · LISTEN</text>
+
+  <rect x="454" y="306" width="196" height="82" rx="7" fill="#FBEEEA" stroke="#E6C4BA"/>
+  <text x="468" y="326" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#8A3A28">语句级</text>
+  <text x="468" y="344" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">归还点：每条语句结束时</text>
+  <text x="468" y="362" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">连多语句事务本身都保不住</text>
+  <text x="468" y="380" font-family="system-ui,sans-serif" font-size="9" fill="#8A3A28">省得最多，能用的场景最少</text>
+
+  <rect x="30" y="400" width="620" height="38" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="424" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806">经典现场：事务池化下连接在事务之间被换给别人 →【prepared statement does not exist】　｜　8 副本 × 50 = 400 &gt; 100 → 间歇性连不上</text>
+</svg>
