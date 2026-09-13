@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 G1 · 切分策略与索引粒度</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/RAG与检索.html">← RAG与检索 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">RAG与检索</span>
+    <h1 class="mv-topic-title">母题 G1 · 切分策略与索引粒度</h1>
+    <p class="mv-topic-meta">关联 母题-G2-向量与关键词的混合检索（切出来的块怎么被检索到）· 母题-G6-知识更新与增量索引（改了之后怎么重新切）· 母题-C1-上下文组装与窗口预算（返回多少块受 token 预算约束） ｜ 正本 wiki/topics/RAG与检索/母题-G1-切分策略与索引粒度.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 粒度是一个两头都会坏的问题 ② 解耦：小块召回 + 大块返回 ③ Contextual Retrieval 是"不改粒度改信息"）· 读完约 12 分钟 · 需要先懂：无</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的 RAG 是怎么切块的？切多大？为什么是这么大？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：检索单元必须同时满足两个互相矛盾的需求</h3>
+<p class="mv-md-p">【推导】把"一块文档"当成检索单元，它要同时做到：</p>
+<pre class="mv-md-pre">① 能被准确匹配到  → 要求块里**mostly 是相关内容**
+                     → 块越小越好（相关内容占比高，相似度信号强）
+
+② 能被模型直接使用 → 要求块**语义自足**
+                     → 块越大越好（前因后果、例外条件都在里面）</pre>
+<p class="mv-md-p">【推论】<strong>这两个需求方向相反，所以"切多大"这个问题的正确答案不是某个数字，而是"承认它们矛盾、然后想办法解耦"。</strong></p>
+<figure-box num="切块粒度的两端都会坏，解耦才是解" title="" note="太小则语义不完整、太大则相似度稀释；解耦用小块召回保召回率、父块返回保上下文完整；右侧是 Contextual Retrieval 的实测降幅"><svg viewBox="0 0 680 366" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>切块粒度的两端都会坏，解耦才是解</title>
+  <desc>左端是把块切得太小：召回率高，但单块语义不完整——条款的例外被切到相邻块里，单个块的意思甚至可能是反的。右端是把块切得太大：语义完整，但相关内容被无关内容稀释，相似度信号变弱，排不进 Top-K。真正的解法是解耦：用小块去召回（保召回率），用父块返回给模型（保上下文完整）。底部是 Contextual Retrieval 的实测降幅。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">切块粒度的两端都会坏，解耦才是解</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「块多大」不是一个数字问题，是两个互相矛盾的需求要同时满足</text>
+
+  <!-- 左：太小 -->
+  <rect x="30" y="66" width="196" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">① 切得太小</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">召回率高（粒度细，匹配准）</text>
+  <text x="46" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">但单块语义不完整：</text>
+  <text x="46" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">条款的「例外」被切到相邻块里，</text>
+  <text x="46" y="162" font-family="system-ui,sans-serif" font-size="10" fill="#633806">单看这一块，意思可能是反的</text>
+  <text x="46" y="182" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">块数暴涨 → 索引与召回成本上升</text>
+
+  <!-- 右：太大 -->
+  <rect x="240" y="66" width="196" height="128" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="256" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">② 切得太大</text>
+  <text x="256" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">语义完整，但相似度被稀释：</text>
+  <text x="256" y="128" font-family="system-ui,sans-serif" font-size="10" fill="#633806">2000 字里只有 200 字相关时，</text>
+  <text x="256" y="144" font-family="system-ui,sans-serif" font-size="10" fill="#633806">相关内容占比只剩 10%</text>
+  <text x="256" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">→ 关键内容被噪声淹没，</text>
+  <text x="256" y="180" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">排不进 Top-K</text>
+
+  <!-- 右：解耦 -->
+  <rect x="450" y="66" width="200" height="128" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="466" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">③ 解耦：两个需求分开满足</text>
+  <text x="466" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用【小块】去召回</text>
+  <text x="466" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 保召回率</text>
+  <text x="466" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">用【父块 / 整节】返回给模型</text>
+  <text x="466" y="162" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 保上下文完整</text>
+  <text x="466" y="182" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">Child-Parent / 小块召回父块扩展</text>
+
+  <!-- 底部：Contextual Retrieval -->
+  <path d="M30 216 L650 216" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="240" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">第三种思路：不改粒度，改「块自己知不知道自己在说什么」</text>
+
+  <rect x="30" y="252" width="620" height="42" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="270" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">Contextual Retrieval：切块后，先让模型给每块补一句「它在全文里是什么位置、指代谁」（约 50–100 token），</text>
+  <text x="46" y="286" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">再把「补过上下文的块」拿去做向量和 BM25 索引。索引体积只涨约 12%，但失败率降幅很大：</text>
+
+  <rect x="30" y="304" width="150" height="50" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="105" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">基线失败率</text>
+  <text x="105" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#2C2C2A" text-anchor="middle">5.7%</text>
+
+  <rect x="190" y="304" width="150" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="265" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Contextual Embeddings</text>
+  <text x="265" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">3.7%（−35%）</text>
+
+  <rect x="350" y="304" width="150" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="425" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Contextual BM25</text>
+  <text x="425" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">2.9%（−49%）</text>
+
+  <rect x="510" y="304" width="140" height="50" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="580" y="324" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">+ Rerank</text>
+  <text x="580" y="344" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">1.88%（−67%）</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们切 500 字"这种回答一定会被追问"为什么是 500"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 两端各坏在哪</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 太小：语义不完整【推导】</h4>
+<pre class="mv-md-pre">一份退款规则切成「条件」「例外」「生效时间」三块
+
+用户问：「7 天无理由退款适用哪些情况？」
+召回命中「条件」那一块：「购买后 7 天内可无理由退款」
+→ 模型照此回答
+
+但「例外」块里写着：「拆封的数码产品除外」
+→ 这一块没被召回，答案就是错的</pre>
+<p class="mv-md-p">【推论】<strong>单个块的意思甚至可能是反的。</strong> 小块的"高召回率"只说明<strong>它容易被匹配到</strong>，不说明<strong>它能独立支撑一个答案</strong>。</p>
+<p class="mv-md-p">【事实】另外两个代价：<strong>块数暴涨</strong>（索引与检索成本上升）、<strong>重叠切分时重复召回</strong>（挤占上下文预算）。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 太大：相似度被稀释【推导】</h4>
+<pre class="mv-md-pre">一段 2000 字的文档，其中只有 200 字与问题相关
+  相关内容占比 = 200 / 2000 = 10%
+
+如果整篇作为一个块：
+  它的向量是整篇内容的「平均表示」
+  → 与 query 的相似度被另外 90% 的无关内容拉低
+  → 在 Top-K 排序里排不过那些「占比高」的小块</pre>
+<p class="mv-md-p">【推论】<strong>块越大，单块的相似度信号越弱</strong>——关键内容不是"没被切到"，是<strong>被淹没在噪声里排不进 Top-K</strong>。</p>
+<p class="mv-md-p">【取舍】<strong>这是"块大小"这个数字真正的含义</strong>：它调节的是<strong>"相关内容在块里的占比"</strong>。500 字对制度文档可能合适，对表格或代码就是灾难——<strong>因为它不取决于文档长度，取决于"相关内容通常有多长"</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"块大小"不能用文档平均长度来定？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 候选方案一：解耦——小块召回、大块返回【事实】</h3>
+<pre class="mv-md-pre">索引时：把文档切成【小块】（child），每块记住自己的【父块】（parent / 整节 / 整篇）
+检索时：用【小块】去匹配          → 粒度细，召回率高
+返回时：把【父块】塞给模型        → 上下文完整，模型能理解全貌</pre>
+<p class="mv-md-p">【事实】得物那篇文章把它叫 <strong>Child-Parent</strong>，总结成一句很准的话：</p>
+<p class="mv-md-p mv-md-quote"><strong>"检索时用 Child 去搜——小块粒度细，召回率高；返回时把 Parent 塞给 LLM——大块上下文完整，LLM 能理解全貌。兼顾了召回率和上下文完整性。"</strong></p>
+<p class="mv-md-p">【推论】<strong>这个方案的通用价值在于：它把"检索用的表示"和"喂给模型的表示"拆成了两份。</strong> 只要这两者可以不同，矛盾就消失了——<strong>这也是后面所有 RAG 优化的同一个套路</strong>（重排用小块、生成用大块；索引用补过上下文的块、展示用原文）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 候选方案二：不改粒度，改"块自己知不知道自己在说什么"</h3>
+<p class="mv-md-p">【事实】<strong>Contextual Retrieval</strong> 的做法：切块之后，<strong>先让模型给每块补一句"它在全文里是什么位置、指代谁"</strong>（约 <strong>50–100 token</strong>），再把<strong>补过上下文的块</strong>拿去做向量和 BM25 索引。</p>
+<p class="mv-md-p">原文给的例子：</p>
+<pre class="mv-md-pre">原始块：  "The company's revenue grew by 3% over the previous quarter."
+          （哪家公司？哪个季度？单看这块无从判断 → 检不到）
+
+补上下文："This chunk is from an SEC filing on ACME corp's performance in Q2 2023;
+          the previous quarter's revenue was $314 million.
+          The company's revenue grew by 3% over the previous quarter."</pre>
+<h4 class="mv-md-h mv-md-h4">4.1 收益与成本都能算【推导】</h4>
+<p class="mv-md-p"><strong>收益</strong>（实测的平均检索失败率，top-20 口径）：</p>
+<pre class="mv-md-pre">基线                              5.7%
++ Contextual Embeddings           3.7%   （−35%）
++ Contextual BM25                 2.9%   （−49%）
++ 再叠加 Rerank                   1.88%  （−67%）</pre>
+<p class="mv-md-p">换算成"每 1000 次查询失败几次"更直观：<strong>57 次 → 37 次 → 29 次 → 19 次</strong>。</p>
+<p class="mv-md-p"><strong>成本</strong>：</p>
+<pre class="mv-md-pre">每个块多 50–100 token 的上下文
+若块本身 800 token，加上 100 token 上下文：
+  索引体积增加 100 / 800 = 12.5%</pre>
+<p class="mv-md-p">【结论】<strong>用约 12.5% 的索引体积，换 49% 的检索失败率下降。</strong> 这笔账很划算，而且它<strong>不需要改切分策略</strong>——是在现有切法上加一层。</p>
+<p class="mv-md-p">【事实】<strong>一次性成本</strong>：Anthropic 给过一个测算——<strong>用 prompt caching 做上下文增强，一次性成本约 $1.02 每百万文档 token</strong>（前提是缓存复用参考文档，否则要为每个块都重传全文）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：Contextual Retrieval 和 Child-Parent 是两种什么思路？（一个改"返回什么"，一个改"索引什么"）</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 三种切分策略的适用【事实】</h3>
+<table class="mv-table"><thead><tr><th>数据</th><th>首选策略</th><th>为什么</th></tr></thead><tbody><tr><td><strong>Markdown / 制度文档</strong></td><td>标题层级 + 段落，<strong>保存父子关系</strong></td><td>标题本身就是语义边界</td></tr><tr><td><strong>FAQ</strong></td><td><strong>一个问答为基本单元</strong></td><td>天然自足，不需要再切</td></tr><tr><td><strong>代码</strong></td><td>函数 / 类 / 模块边界 + 符号信息</td><td>半个函数无法被理解</td></tr><tr><td><strong>表格</strong></td><td><strong>表头与行 / 分组绑定</strong>，不拆掉口径</td><td>拆开表头的行是"无意义的数字"</td></tr><tr><td><strong>长报告</strong></td><td><strong>小块召回 + parent 扩展</strong></td><td>典型的 Child-Parent 场景</td></tr><tr><td><strong>规则条款</strong></td><td><strong>条款 / 条件 / 例外 / 生效时间结构化</strong></td><td>例外与条件必须同行，否则意思会反</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>得物文章里的一句总结可以当通用判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Chunk 参数必须通过目标问题集评测，而不是照搬经验数值。"</strong></p>
+<p class="mv-md-p">【推论】<strong>这句话的落点是：切分策略的唯一验收标准是"在你的目标问题上召回率是多少"</strong>，而不是"是否符合某个最佳实践"。<strong>所以切分是一个需要 Eval 才能定的事</strong>（[[母题-G5-RAG评测与幻觉率]]）。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"固定切 500 字是行业标准"</td><td><strong>没有这个标准</strong>。块大小调节的是"<strong>相关内容在块里的占比</strong>"，所以它取决于<strong>你的文档里相关内容通常多长</strong>，而不是一个全局数字。对表格和代码，固定字数切块是灾难</td></tr><tr><td>"块越小召回率越高，所以越小越好"</td><td><strong>召回率高 ≠ 答案对</strong>。块太小会让语义不自足（例外的条款被切走，单个块的意思可能是反的），而且块数暴涨、重复召回挤占预算。<strong>正解是解耦，不是把块切小</strong></td></tr><tr><td>"Child-Parent 就是把块切小一点"</td><td><strong>不是</strong>。它是<strong>把"检索用的表示"和"喂给模型的表示"拆成两份</strong>——这个概念可以推广到重排（重排用小块、生成用大块）和索引（索引用补过上下文的块）</td></tr><tr><td>"Contextual Retrieval 要重做切分"</td><td><strong>不用</strong>。它是在现有切法上<strong>加一层预处理</strong>：切完再给每块补 50–100 token 的定位说明。<strong>收益 49%，索引只涨约 12.5%</strong></td></tr><tr><td>"切分是一次性的离线工作"</td><td>它<strong>和更新绑在一起</strong>：文档改了要重切、重嵌入。所以切分粒度的选择会直接影响增量更新的成本（[[母题-G6-知识更新与增量索引]]）</td></tr><tr><td>"切分没什么可优化的，重点是模型"</td><td><strong>反了</strong>。切分决定的是<strong>召回的质量上限</strong>——<strong>块没被召回，后面多强的模型都看不到它</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>"切多大"没有正确答案，只有"辨认出两个矛盾的需求，然后把它们在系统里拆开"——这才是这道题真正在考的东西。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G1-切分策略与索引粒度-q1" tag="RAG与检索" q="一段 2000 字的文档，其中只有 200 字与用户问题相关。&#10;问：如果整篇作为一个块，相关内容的占比是多少？这个占比会怎样影响它被召回的概率？如果切成 20 个 100 字的块、那 200 字正好落在 2 块里，这 2 块的占比是多少？" a="``text&#10;整篇一个块：&#10;相关内容占比 = 200 / 2000 = 10%&#10;块向量是整篇内容的「平均表示」&#10;→ 与 query 的相似度被另外 90% 的无关内容拉低&#10;→ 在 Top-K 里排不过占比高的小块&#10;切成 20 个 100 字的块：&#10;那 200 字落在 2 块里，每块 100 字且全部相关&#10;占比 = 100%  → 相似度信号最强&#10;``&#10;【结论】这就是&quot;块太大&quot;的真实机制：关键内容不是&quot;没被切到&quot;，是被稀释到排不进 Top-K。&#10;【补充】这个例子也解释了为什么&quot;块大小&quot;不能脱离内容来定：块大小调节的是&quot;相关内容在块里的占比&quot;，而&quot;相关内容通常多长&quot;取决于文档类型——制度文档的一段可能 300 字，表格的一行可能 20 字。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G1-切分策略与索引粒度-q2" tag="RAG与检索" q="某 RAG 系统的检索失败率基线是 5.7%（top-20 口径）。依次加上三种手段。&#10;问：每 1000 次查询的失败次数分别是多少？每次相对基线的降幅是多少？" a="配置 · 失败率 · 每 1000 次失败 · 相对基线降幅&#10;基线 · 5.7% · 57 次 · —&#10;+ Contextual Embeddings · 3.7% · 37 次 · −35%&#10;+ Contextual BM25 · 2.9% · 29 次 · −49%&#10;+ Rerank · 1.88% · 19 次 · −67%&#10;【结论】三种手段是叠加的，而且每一层治的东西不同：&#10;Contextual Embeddings：让&quot;语义检索&quot;能认出指代（治的是块不知道自己在说什么）&#10;Contextual BM25：让&quot;关键词检索&quot;也能用上补的上下文（治的是精确匹配也缺上下文）&#10;Rerank：把已经召回的候选重新排序（治的是排序不够准，[[母题-G3-重排与召回质量]]）&#10;【补充】把它换算成&quot;每 1000 次失败几次&quot;而不是百分比，在汇报时更有说服力——因为它直接对应&quot;会有多少次需要人工兜底&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="RAG与检索/母题-G1-切分策略与索引粒度-q3" tag="RAG与检索" q="Contextual Retrieval 给每个块补约 100 token 的上下文。假设块本身是 800 token。&#10;问：索引体积增加多少？这笔投入换来的收益是多少？如果块本身只有 200 token 呢？" a="``text&#10;块 800 token + 上下文 100 token：&#10;索引体积增加 = 100 / 800 = 12.5%&#10;换来失败率下降 49%（Q2）&#10;块 200 token + 上下文 100 token：&#10;索引体积增加 = 100 / 200 = 50%&#10;同样换来失败率下降 49%&#10;``&#10;【结论】块越小，Contextual Retrieval 的相对成本越高。 800 token 的块只涨 12.5%，200 token 的块要涨 50%——收益一样，成本差 4 倍。&#10;【推论】这是&quot;切分策略&quot;和&quot;上下文增强&quot;之间的一个真实耦合：如果你把块切得很小（为了召回率），再上 Contextual Retrieval 就不太划算了。两个决策要一起考虑，不能分开选。&#10;【事实】一次性成本：Anthropic 给的测算是约 $1.02 每百万文档 token——前提是用 prompt caching 复用参考文档，否则要为每个块都重传全文，成本会高一个数量级。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G1-切分策略与索引粒度-q4" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;我们把文档统一切成 500 字一块，这是业界标准做法。&quot;" a="三处问题。&#10;1. 不存在&quot;500 字&quot;这个业界标准。块大小调节的是&quot;相关内容在块里的占比&quot;，所以它取决于你的文档里相关内容通常多长——制度文档的一段可能 300 字，表格的一行可能 20 字。&#10;2. 对结构化内容，固定字数切块会破坏语义：表格拆开表头就变成&quot;无意义的数字&quot;；条款把&quot;例外&quot;切到相邻块，单块的意思可能是反的。&#10;3. &quot;切多大&quot;没有普适答案，只有评测答案：得物文章的结论就是&quot;Chunk 参数必须通过目标问题集评测，而不是照搬经验数值&quot;。&#10;【准确说法】&quot;先看数据结构和问题粒度（标题 / 条款 / 表格 / 代码优先），再用代表性问题集比较 Recall、答案正确性、Token 和 P95 延迟。必要时用小块召回 + 父块扩展——把'检索的单位'和'喂给模型的单位'拆开。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="RAG与检索/母题-G1-切分策略与索引粒度-q5" tag="RAG与检索" q="下面这段话哪里不准确？&#10;&quot;既然小块召回率高，那我们就把块切得尽量小，这样召回肯定最好。&quot;" a="&quot;召回率高&quot;和&quot;答案对&quot;是两件事。&#10;1. 语义不自足：块太小会把&quot;条件 / 例外 / 生效时间&quot;拆散。单个块可能被召回、但它的意思是残缺甚至相反的（Q1 的退款规则例子）——召回率指标看不出来这个问题（它只关心&quot;相关文档有没有进 Top-K&quot;，不关心&quot;进了之后够不够用&quot;）。&#10;2. 块数暴涨：索引体积、检索开销、存储都上升。&#10;3. 重复召回挤占预算：重叠切分时同一个内容会被多块召回，在有限的上下文预算里挤掉真正需要的内容（[[母题-C1-上下文组装与窗口预算]]）。&#10;【准确说法】&quot;正解是解耦，不是把块切小：用小块去匹配（拿召回率），用父块 / 整节返回给模型（拿上下文完整）。如果非要选一个粒度，那也要用评测来定，而不是取极值。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">把文档切成检索单元时，粒度该多大——为什么这个问题无论怎么答都会被追问？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="RAG与检索/母题-G1-切分策略与索引粒度" tag="RAG与检索" q="把文档切成检索单元时，粒度该多大——为什么这个问题无论怎么答都会被追问？" a="切块粒度是一个两头都会坏的问题——太小语义不自足（条款的例外被切走，单块意思可能是反的）；太大相关内容占比下降、相似度被稀释，关键内容排不进 Top-K（2000 字里只有 200 字相关时占比只剩 10%）。所以答案不是某个数字，而是把两个矛盾的需拆开：小块召回（保召回率）+ 父块返回（保上下文完整）——这就是 Child-Parent。另一种思路是不改粒度、改信息：Contextual Retrieval 先给每块补 50–100 token 的定位说明再做索引，索引只涨约 12.5%，实测把检索失败率从 5.7% 降到 2.9%（−49%），再叠加重排是 1.88%（−67%）。切分策略必须按数据结构选（标题 / FAQ / 代码 / 表格 / 条款各有首选），并用目标问题集评测来定参数，不能照搬经验值。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题几乎每场 RAG 面试都会问，而且它是<strong>最容易暴露"照搬经验数值"的一题</strong>——答"我们切 500 字"和答"我们用小块召回 + 父块返回，因为这两个需求互相矛盾"是两个档次。<strong>它也是唯一一个"在离线阶段就能决定线上质量上限"的环节</strong>：切坏了，后面的重排和生成再强也救不回来。</p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">切块粒度是一个<strong>两头都会坏</strong>的问题——<strong>太小</strong>语义不自足（条款的例外被切走，单块意思可能是反的）；<strong>太大</strong>相关内容占比下降、相似度被稀释，<strong>关键内容排不进 Top-K</strong>（2000 字里只有 200 字相关时占比只剩 10%）。所以答案不是某个数字，而是<strong>把两个矛盾的需拆开</strong>：<strong>小块召回（保召回率）+ 父块返回（保上下文完整）</strong>——这就是 Child-Parent。另一种思路是<strong>不改粒度、改信息</strong>：<strong>Contextual Retrieval</strong> 先给每块补 50–100 token 的定位说明再做索引，索引只涨约 <strong>12.5%</strong>，实测把检索失败率从 <strong>5.7% 降到 2.9%（−49%）</strong>，再叠加重排是 <strong>1.88%（−67%）</strong>。<strong>切分策略必须按数据结构选</strong>（标题 / FAQ / 代码 / 表格 / 条款各有首选），<strong>并用目标问题集评测来定参数，不能照搬经验值。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>两个矛盾需求（匹配准 vs 语义自足）</li><li>太大的机制是<strong>稀释</strong>（占比 10%）</li><li>太小的机制是<strong>语义不自足</strong>（例外被切走）</li><li><strong>Child-Parent = 小块召回 + 父块返回</strong></li><li>解耦可以推广（重排用小块、索引用补上下文的块）</li><li>Contextual Retrieval：+50–100 token 定位说明，索引 +12.5%</li><li>失败率 5.7% → 3.7% → 2.9% → 1.88%</li><li>块越小，上下文增强的相对成本越高（200 token 时涨 50%）</li><li>切分按数据结构选，参数靠评测定</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Child-Parent 和 Contextual Retrieval 有什么区别？</strong></strong></p>
+<p class="mv-md-p"><strong>一个改"返回什么"，一个改"索引什么"</strong>。Child-Parent 索引小块、返回父块；Contextual Retrieval 索引的是"补了定位说明的块"。<strong>两者可以叠加</strong>，而且叠加后正好覆盖了"匹配准"和"信息全"两个需求。</p>
+<p class="mv-md-p"><strong>2. <strong>表格怎么切？</strong></strong></p>
+<p class="mv-md-p"><strong>表头与行 / 分组绑定，不能拆掉口径</strong>。拆开表头的行是"无意义的数字"——这在企业知识库里是最常见的坏切法之一（指标表、口径表尤其明显）。</p>
+<p class="mv-md-p"><strong>3. <strong>多长的块最合适？</strong></strong></p>
+<p class="mv-md-p"><strong>没有通用答案</strong>。要先用代表性问题集测 Recall 与答案正确性。<strong>能给的经验只有方向</strong>：制度文档按标题层级（几百字量级）、FAQ 按问答、代码按函数边界、条款按"条件+例外+生效时间"。</p>
+<p class="mv-md-p"><strong>4. <strong>RAG、微调、长上下文怎么选？</strong></strong></p>
+<p class="mv-md-p"><strong>最新 / 私有 / 可引用的知识 → RAG</strong>；<strong>稳定的行为、格式、领域表达 → 可能微调</strong>；<strong>小而稳定的知识 → 长上下文可能更简单</strong>。通常<strong>先用 Prompt / RAG 建 Eval，再判断是否微调</strong>。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「小块召回父块返回，和"检索后扩展上下文窗口"有什么区别？」——<strong>前者扩的是"同一文档内的父级"（结构关系），后者扩的是"相邻块"（位置关系）</strong>。前者更准（父块是语义边界），后者更便宜（不需要维护父子关系）。</li><li>「代码库怎么做 RAG？」——<strong>按函数 / 类 / 模块边界切 + 带上符号信息</strong>（函数签名、所在文件路径、被谁调用）。<strong>半个函数无法被理解</strong>，而符号信息相当于代码版的"Contextual Retrieval"。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>数驭穹图</strong>：<strong>把 Schema / 指标口径 / 样例查询视作不同知识类型</strong>——它们的"相关内容长度"完全不同（表名很短、口径说明较长），所以<strong>不能用同一个块大小</strong>。这正是"按数据结构选策略"的项目实例。 - <strong>RuleArena</strong>：<strong>条款按"条件 / 例外 / 生效时间"结构化切分</strong>——<strong>例外与条件必须同行</strong>，否则单块意思会反。这是 Q1 那个例子的真实版本。 - <strong>EnergyOps</strong>：<strong>运维文档、设备数据和实时状态不混成一个索引</strong>——不同来源的文档结构不同，切法也要分开。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先说两个矛盾需求 → 两端各坏在哪（各给一个机制）→ <strong>解耦方案（Child-Parent）</strong> → 另一种思路（Contextual Retrieval，给收益与成本的数）→ 按数据结构选策略 → 参数必须靠评测定 → 收束到"拆开两种表示"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"检索用的表示"和"喂给模型的表示"，不必是同一个东西。</strong> 一旦这条被认出来，切分粒度的矛盾就消失了——<strong>后面所有 RAG 优化用的都是同一个套路</strong>（重排用小块、生成用大块；索引用补过上下文的块、展示用原文）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"两个矛盾需求"并给出解耦方案；<strong>能算出块大小对相关内容占比的影响（10% vs 100%）</strong>；<strong>能复述 Contextual Retrieval 的 5.7%→3.7%→2.9%→1.88% 四级数据与约 12.5% 的索引成本</strong>；能说清"块越小、上下文增强越不划算"这个耦合；能按数据结构给出切分策略；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

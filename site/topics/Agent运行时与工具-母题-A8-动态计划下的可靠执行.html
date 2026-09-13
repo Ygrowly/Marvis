@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A8 · 动态计划下的可靠执行</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A8 · 动态计划下的可靠执行</h1>
+    <p class="mv-topic-meta">关联 母题-A4-长任务状态与Checkpoint（计划是 checkpoint 的一部分）· 母题-A5-上下文压缩与记忆（压缩会丢掉只存在于上下文里的东西）· 母题-A1-计划执行循环与停止条件（验证优先级）· 母题-G5-RAG评测与幻觉率（归因） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A8-动态计划下的可靠执行.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 动态计划的问题是"变了没人知道" ② 计划必须外化成产物 ③ 验证要按"确定性从高到低"排序）· 读完约 12 分钟 · 需要先懂：[[母题-A4-长任务状态与Checkpoint]]、[[母题-A1-计划执行循环与停止条件]]</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"Agent 的计划是模型自己定的，它还会中途改，你怎么保证它不跑偏？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：动态计划的问题不是"会变"</h3>
+<p class="mv-md-p">【推导】<strong>先纠正一个常见的误解</strong>：</p>
+<pre class="mv-md-pre">错的问法：怎么让模型不改计划？
+   → 动态计划的价值就在于【能根据观察到的情况调整】
+   → 要求它不变，等于放弃 Agent 相对 Workflow 的全部优势
+
+对的问法：计划变了之后，怎么保证【变化是可见的、可回溯的、可验证的】</pre>
+<p class="mv-md-p">【推导】<strong>"跑偏"最难的地方</strong>：</p>
+<pre class="mv-md-pre">模型偏离原计划时，它通常【看起来很正常】：
+  它还在调工具、还在产生输出、还在"推进"
+  → 没有任何一个信号告诉你"它在做的不是原来那件事"
+  → 直到最后交付了一个偏掉的结果，你才知道</pre>
+<p class="mv-md-p">【推论】<strong>这才是动态计划的真正风险</strong>：<strong>不是"它会变"，是"变了没人知道，而且回不去"。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"Agent 跑偏"这件事，往往到最后一步才被发现？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 计划必须离开模型的上下文【推导】</h3>
+<figure-box num="计划会变，所以计划必须离开模型的上下文" title="" note="左：计划只在上下文里，压缩后就丢了，而且偏离不可见；右：计划外化成版本化产物，偏离变成可 diff 的"><svg viewBox="0 0 680 348" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>计划会变，所以计划必须离开模型的上下文</title>
+  <desc>左边是计划只活在上下文里的情况：上下文一压缩或重置，计划就丢了，模型开始凭残余记忆干活，越走越偏，而且没人能看出它偏离了。右边是把计划外化成版本化产物：每次修订产生新版本、进版本控制、可被检查，上下文再压缩也不影响，而且偏离是可见的。底部是验证的优先级：能写成确定性检查的就不要交给模型判断。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">计划会变，所以计划必须离开模型的上下文</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">动态计划的问题不是「会变」，而是「变了之后没人知道、也回不去」</text>
+
+  <!-- 左：计划在上下文里 -->
+  <rect x="30" y="66" width="300" height="158" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">✗ 计划只活在上下文里</text>
+  <text x="46" y="112" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第 1 步：模型想出一个计划</text>
+  <text x="46" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">第 40 步：上下文被压缩 / 重置</text>
+  <text x="46" y="152" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 计划丢了，只剩残余记忆</text>
+  <text x="46" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 开始凭印象干活，越走越偏</text>
+  <text x="46" y="196" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 而且【没人看得出它偏离了】</text>
+  <text x="46" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">因为它「一直在干活」，看起来很正常</text>
+
+  <!-- 右：计划外化 -->
+  <rect x="350" y="66" width="300" height="158" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">✓ 计划外化成版本化产物</text>
+  <text x="366" y="112" font-family="system-ui,sans-serif" font-size="10" fill="#633806">计划是仓库里的一个 artifact</text>
+  <text x="366" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#633806">改计划 = 产生一个新版本（可 diff）</text>
+  <text x="366" y="152" font-family="system-ui,sans-serif" font-size="10" fill="#633806">进度与决策日志一起进版本控制</text>
+  <text x="366" y="174" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 上下文压缩不影响它</text>
+  <text x="366" y="196" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 偏离变成【可见的 diff】</text>
+  <text x="366" y="216" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">人不必读全过程，只需要看计划变了没有</text>
+
+  <!-- 底部：验证优先级 -->
+  <path d="M30 246 L650 246" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="270" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">执行的可靠性：能写成确定性检查的，就不要交给模型判断</text>
+
+  <rect x="30" y="282" width="150" height="46" rx="7" fill="#BA7517"/>
+  <text x="105" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#FFFFFF" text-anchor="middle">① 确定性</text>
+  <text x="105" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#FFFFFF" text-anchor="middle">测试 · Schema · 规则 · AST</text>
+
+  <rect x="190" y="282" width="150" height="46" rx="7" fill="#E8D3AF"/>
+  <text x="265" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#633806" text-anchor="middle">② 权威状态</text>
+  <text x="265" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#633806" text-anchor="middle">工具返回 · 只读查询</text>
+
+  <rect x="350" y="282" width="150" height="46" rx="7" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="425" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#2C2C2A" text-anchor="middle">③ 多源交叉</text>
+  <text x="425" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">不同来源互相印证</text>
+
+  <rect x="510" y="282" width="140" height="46" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="580" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">④ 模型 Judge / 人工</text>
+  <text x="580" y="318" font-family="system-ui,sans-serif" font-size="9.5" fill="#6B6A65" text-anchor="middle">同一模型会重复同一盲点</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>计划只活在上下文里会发生什么</strong>：</p>
+<pre class="mv-md-pre">第 1 步：模型想出一个计划（写在它的上下文里）
+第 40 步：上下文被压缩 / 重置（[[母题-A5-上下文压缩与记忆]]）
+        → 【计划丢了】，只剩摘要里的残余
+        → 模型开始凭印象干活
+        → 越走越偏，而且没人看得出</pre>
+<p class="mv-md-p">【事实】<strong>OpenAI 的做法是把计划变成一等产物</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Plans are treated as first-class artifacts. Ephemeral lightweight plans are used for small changes, while complex work is captured in execution plans with progress and decision logs that are checked into the repository. Active plans, completed plans, and known technical debt are all versioned and co-located…"</strong></p>
+<p class="mv-md-p">【推论】<strong>"checked into the repository" 这几个词是关键</strong>——<strong>它把计划从"模型的短期记忆"变成了"版本的、可 diff 的、可被检查的产物"</strong>。于是：</p>
+<pre class="mv-md-pre">① 上下文压缩不影响它        → 从磁盘读回来就行
+② 偏离变成【可见的 diff】     → 人不必读全过程，只需要看计划变了没有
+③ 计划本身可回溯            → 能回答"当时为什么这么打算"</pre>
+<h4 class="mv-md-h mv-md-h4">2.1 外化的成本【推导】</h4>
+<pre class="mv-md-pre">一个 100 步的任务，平均修订计划 8 次
+每次修订产生一个新版本，约 2 KB
+总存储 = 8 × 2 KB = 16 KB
+
+而上下文里丢一次计划的代价 = 整个任务重跑或结果作废</pre>
+<p class="mv-md-p">【结论】<strong>16 KB 的版本化成本，换来"计划不会丢 + 偏离可见"——这笔账不需要算。</strong></p>
+<p class="mv-md-p">【推论】<strong>这也解释了为什么"记忆/计划要写文件"是 Agent 的一个核心模式</strong>：<strong>写文件的成本是 O(KB)，而上下文里的信息会在压缩时被有损地丢掉的</strong>（[[母题-A5-上下文压缩与记忆]] 的"摘要只留指针"）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"让模型把计划记在心里"这种设计，在长任务上一定会出问题？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 可读性：agent 访问不到的东西，等于不存在【推导】</h3>
+<p class="mv-md-p">【事实】OpenAI 那篇的原话：</p>
+<p class="mv-md-p mv-md-quote"><strong>"From the agent's point of view, anything it can't access in-context while running effectively doesn't exist. Knowledge that lives in Google Docs, chat threads, or people's heads are not accessible to the system. Repository-local, versioned artifacts (e.g., code, markdown, schemas, executable plans) are all it can see."</strong></p>
+<p class="mv-md-p">【事实】<strong>他们为此做了两件事</strong>（<strong>都是"把信息推到 agent 能看到的地方"</strong>）：</p>
+<pre class="mv-md-pre">① 可观测性：把 logs / metrics / traces 通过一个【每个 worktree 一份的临时可观测栈】
+   暴露给 agent，它可以查 LogQL、PromQL
+   → 于是 prompt 从"确保启动快一点"变成可验证的
+     "ensure service startup completes in under 800ms"、
+     "no span in these four critical user journeys exceeds two seconds"
+
+② 错误信息注入修复指令：custom linter 的报错里【写清楚怎么修】
+   → 因为 linter 是自研的，所以能把修复指令直接塞进 agent 的上下文</pre>
+<p class="mv-md-p">【推导】<strong>第 ① 条的收益能算</strong>：</p>
+<pre class="mv-md-pre">目标："确保服务启动在 800ms 内"
+
+agent 能看到启动耗时：
+  → 它可以自己迭代到达标，全程不需要人
+  → 每次验证约 30 秒
+
+agent 看不到启动耗时：
+  → 它只能改代码然后声称"应该快了"
+  → 需要人来验证
+  → 每次人工验证约 5 分钟
+
+差 10 倍</pre>
+<p class="mv-md-p">【结论】<strong>把"可验证的信号"暴露给 agent，收益是 10 倍量级的人工节省。</strong></p>
+<p class="mv-md-p">【推论】<strong>而且它改变了不确定性</strong>：<strong>没有可验证信号时，agent 的输出是"我改完了"，而这是一个无法检验的声明</strong>（[[母题-C4-幻觉的成因与可控性]] 的"自信但不是事实"）。<strong>有了信号，"改完了"就变成了"启动耗时 780ms"——一个可检验的事实。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"给 agent 配上可观测性工具"这件事，价值不只是"方便排查"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 验证：能确定化的，就不要交给模型判断【推导】</h3>
+<p class="mv-md-p">【事实】验证的优先级（[[母题-A1-计划执行循环与停止条件]] 引过）：</p>
+<pre class="mv-md-pre">① 确定性测试、Schema、规则、编译器、SQL AST
+② 工具返回和权威状态查询
+③ 多源交叉证据
+④ 模型 Judge
+⑤ 人工复核</pre>
+<p class="mv-md-p">【事实】原始素材一句很硬的话：</p>
+<p class="mv-md-p mv-md-quote"><strong>"模型'自我反思'不能替代外部 oracle。"</strong></p>
+<p class="mv-md-p">【推导】<strong>为什么"优先确定性"这件事的收益是指数级的</strong>——假设一个任务需要过 10 项检查：</p>
+<pre class="mv-md-pre">模型 Judge 的准确率假设 85%（乐观估计）
+确定性检查对它覆盖的部分准确率 = 100%
+
+【全部用模型 Judge】10 项全对的概率：
+  0.85¹⁰ ≈ 19.7%
+
+【60% 确定化（6 项）+ 40% 模型（4 项）】：
+  1⁶ × 0.85⁴ ≈ 52.2%</pre>
+<p class="mv-md-p">【结论】<strong>把能确定化的检查确定化，端到端可靠性能从约 20% 提到约 52%——差 2.6 倍。</strong></p>
+<p class="mv-md-p">【推论】<strong>而且这个差距随检查项数放大</strong>：<strong>20 项检查时，全模型 Judge 是 0.85²⁰ ≈ 3.9%，而 60% 确定化是 0.85⁸ ≈ 27%——差 7 倍。</strong></p>
+<p class="mv-md-p">【取舍】<strong>所以工程动作很明确</strong>：<strong>每遇到一类"模型老是判错"的检查，就把它写成一条确定性规则</strong>。<strong>这正是 OpenAI 那篇里"custom linters and structural tests"在做的事</strong>——<strong>把组织的品味和约束固化成可执行的检查</strong>。</p>
+<p class="mv-md-p">【事实】<strong>他们还顺带解决了"规则怎么传达给 agent"这个问题</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Because the lints are custom, we write the error messages to inject remediation instructions into agent context."</strong></p>
+<p class="mv-md-p">【推论】<strong>这条设计很精妙</strong>：<strong>规则不写在提示里（那会占用上下文且容易被忽略），而是写在"违反时的错误信息"里</strong>——<strong>只在真正违反时才出现，而且出现得正是时候</strong>。<strong>这是"渐进披露"在约束传达上的应用。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"多写几条规则进系统提示"不如"写一条 linter"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. Reflection 的局限【事实】</h3>
+<p class="mv-md-p">【事实】study/04 的结论：</p>
+<p class="mv-md-p mv-md-quote"><strong>"同一模型可能重复同一盲点，而且多一次调用增加成本。优先给外部测试/工具反馈；Reflection 适合生成候选修复或检查清单，并通过 Eval 验证增益。"</strong></p>
+<p class="mv-md-p">【推导】<strong>为什么"同一模型重复同一盲点"</strong>：</p>
+<pre class="mv-md-pre">模型反思时用的是【同一个权重】
+  → 它看不出自己上次为什么错，因为它"觉得那样是对的"才那么做的
+  → 换个问法问它，它可能给出同样的错误答案，只是措辞不同
+
+而外部 oracle（测试、编译器、数据库查询）不依赖模型的判断
+  → 它给的是【事实】</pre>
+<p class="mv-md-p">【推论】<strong>所以 Reflection 的正确位置是"生成候选"，不是"验收"</strong>：</p>
+<pre class="mv-md-pre">✓ 让它反思 → 生成几个可能的修复方案 → 用测试验证
+✗ 让它反思 → 它说"我检查过了，没问题" → 相信它</pre>
+<p class="mv-md-p">【事实】<strong>OpenAI 那篇里有一个对应的做法</strong>：他们让 Codex <strong>审查自己的改动</strong>、<strong>请求额外的 agent 审查</strong>（本地和云端）、<strong>回应反馈并迭代</strong>，直到所有 agent reviewer 满意。<strong>但注意——那个循环的判据是"reviewer 满意"，而 reviewer 的输出最终仍然要过仓库里的确定性检查（linter、测试）。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"让模型自己复核一遍"不能作为最后的验收手段？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"让模型别改计划就行了"</td><td><strong>反了</strong>。<strong>动态计划的价值就在于能根据观察到的情况调整</strong>——要求它不变，等于放弃 Agent 相对 Workflow 的优势。<strong>要解决的是"变了没人知道"，不是"会变"</strong></td></tr><tr><td>"让模型把计划记在心里"</td><td><strong>长任务上一定会出问题</strong>：<strong>上下文一压缩，只存在于上下文里的计划就丢了</strong>，模型开始凭残余记忆干活。<strong>计划要做成版本化的产物</strong>（OpenAI 的做法是 checked into the repository），<strong>偏离才会变成可见的 diff</strong></td></tr><tr><td>"跑偏了让它自己反思一下就行"</td><td><strong>Reflection 不能替代外部 oracle</strong>：<strong>同一模型会重复同一盲点</strong>，而且多一次调用增加成本。<strong>它的正确位置是"生成候选修复"，不是"验收"</strong></td></tr><tr><td>"规则写在系统提示里就够了"</td><td><strong>占用上下文，而且容易被忽略</strong>。参考做法是<strong>把约束写成 linter / structural test，违规时把修复指令写进错误信息</strong>——<strong>只在真正违反时出现，而且出现得正是时候</strong></td></tr><tr><td>"agent 看不到指标没关系，人来盯就行"</td><td><strong>"agent 访问不到的东西，等于不存在"</strong>（OpenAI 原话）。<strong>把可观测性暴露给 agent</strong> 之后，目标从"确保启动快一点"变成可验证的"<strong>启动在 800ms 内</strong>"——<strong>收益是 10 倍量级的人工节省</strong></td></tr><tr><td>"验证都交给模型 Judge 最省事"</td><td><strong>可靠性会指数衰减</strong>：10 项检查全用模型（假设 85% 准）是 <strong>19.7%</strong>；60% 确定化后是 <strong>52.2%</strong>——<strong>差 2.6 倍，20 项检查时差 7 倍</strong></td></tr><tr><td>"确定性检查写起来太麻烦，不如让模型判断"</td><td><strong>麻烦一次，之后每次都省</strong>。而且<strong>确定性检查是可复用的</strong>——<strong>它把"组织的品味和约束"固化成了可执行的东西</strong>，不依赖某次模型状态</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>动态计划本身不是问题，"不可见的变化"才是问题——把计划外化、把目标变成可验证的信号、把能确定化的检查确定化，三件事一起做。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行-q1" tag="Agent运行时与工具" q="某任务需要过 10 项检查。模型 Judge 的准确率假设 85%。&#10;问：全部用模型 Judge 和&quot;60% 确定化 + 40% 模型 Judge&quot;两种方案，10 项全对的概率各是多少？" a="``text&#10;全部用模型 Judge：&#10;0.85¹⁰ ≈ 0.197 = 19.7%&#10;60% 确定化（6 项确定性 = 100%）+ 40% 模型（4 项）：&#10;1⁶ × 0.85⁴ ≈ 0.522 = 52.2%&#10;``&#10;【结论】端到端可靠性从约 20% 提到约 52%——差 2.6 倍。&#10;【推论】这个差距随检查项数放大：&#10;检查项数 · 全模型 Judge（85%） · 60% 确定化&#10;10 项 · 19.7% · 52.2%&#10;20 项 · 3.9% · 27.0%&#10;20 项时差 7 倍。&#10;【取舍】所以工程动作很明确：每遇到一类&quot;模型老是判错&quot;的检查，就把它写成一条确定性规则——这正是 OpenAI 那篇里&quot;custom linters and structural tests&quot;在做的事：把组织的品味和约束固化成可执行的检查。&#10;【补充】而且这个动作有复利：确定性检查可复用、不依赖模型状态——模型换了，linter 还在。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行-q2" tag="Agent运行时与工具" q="某目标&quot;确保服务启动在 800ms 内&quot;。&#10;``text&#10;agent 能查到启动耗时：自己迭代到达标，每次验证约 30 秒&#10;agent 查不到：只能改完声称&quot;应该快了&quot;，需要人验证，每次约 5 分钟&#10;``&#10;问：两种情况下，验证一次的成本差多少倍？" a="``text&#10;能自查：30 秒&#10;要人验：5 分钟 = 300 秒&#10;差 10 倍&#10;`&#10;【结论】把可验证的信号暴露给 agent，收益是 10 倍量级的人工节省。&#10;【推论】而且它改变了&quot;输出是什么&quot;：&#10;`text&#10;没有可验证信号 → agent 的产出是【&quot;我改完了&quot;】—— 一个无法检验的声明&#10;有可验证信号   → agent 的产出是【&quot;启动耗时 780ms&quot;】—— 一个可检验的事实&#10;``&#10;这正是 OpenAI 那句&quot;agent 访问不到的东西等于不存在&quot;的实际含义：不只是&quot;它不知道&quot;，而是&quot;它给不出可验证的结论&quot;。&#10;【补充】这也是为什么 OpenAI 要给每个 worktree 配一份临时的可观测栈——用完即拆，不污染、不共享，agent 在这一份里怎么查都行。**"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行-q3" tag="Agent运行时与工具" q="某 Agent 跑到第 40 步时，你发现它做的事和第 1 步定的计划不一致。&#10;问：如果计划只存在于模型的上下文里，你能发现这件事吗？为什么？应该怎么改？" a="很难发现，因为&quot;跑偏的 agent 看起来很正常&quot;。&#10;``text&#10;它还在调工具、还在产生输出、还在&quot;推进&quot;&#10;→ 没有任何一个信号告诉你&quot;它在做的不是原来那件事&quot;&#10;→ 直到最后交付了偏掉的结果，你才知道&#10;`&#10;【更糟的是】如果第 40 步正好发生过上下文压缩，计划本身已经丢了——模型不是在&quot;故意偏离&quot;，是&quot;它已经不记得原计划了&quot;。&#10;【改法：把计划外化】&#10;`text&#10;① 计划作为版本化产物存在（OpenAI 的做法：checked into the repository）&#10;② 每次修订产生新版本 → 偏离变成【可见的 diff】&#10;③ 进度与决策日志一起进版本控制&#10;④ 计划本身可回溯 → 能回答&quot;当时为什么这么打算&quot;&#10;``&#10;【结论】偏离从&quot;不可见&quot;变成&quot;一次 diff 就能看出来&quot;——人不必读全过程，只需要看计划变了没有。&#10;【补充】成本几乎可忽略：100 步任务平均修订 8 次、每次 2 KB = 总共 16 KB（Q1 的存储账）。而丢一次计划的代价是整个任务重跑或结果作废。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;Agent 跑偏了没关系，让它自己反思一下、检查一遍就能发现问题。&quot;" a="三处问题。&#10;1. Reflection 不能替代外部 oracle。同一模型反思时用的是同一个权重——它看不出自己上次为什么错，因为它&quot;觉得那样是对的&quot;才那么做的。换个问法它可能给出同样的错误答案，只是措辞不同。&#10;2. 成本也更高：多一次调用就是多一次完整的模型交互。&#10;3. Reflection 的正确位置是&quot;生成候选&quot;，不是&quot;验收&quot;：&#10;``text&#10;✓ 让它反思 → 生成几个可能的修复方案 → 用测试验证&#10;✗ 让它反思 → 它说&quot;我检查过了，没问题&quot; → 相信它&#10;``&#10;【准确说法】&quot;优先给外部反馈：测试、编译器、SQL AST、只读查询。Reflection 适合生成候选修复或检查清单，而且它的增益要通过 Eval 验证——不能默认它有效。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们把所有约束都写进了系统提示，Agent 应该不会违反。&quot;" a="三处问题。&#10;1. 约束写在系统提示里有两个问题：占用上下文（[[母题-C2-结构化输出与JSON可靠性]] 的&quot;每条指令都在抢注意力预算&quot;）、而且容易被忽略（尤其当规则很多时，模型会开始&quot;平均&quot;对待它们）。&#10;2. 更好的做法是把它变成可执行的检查：linter / structural test——违规时必然被拦住，而不是&quot;希望模型记得&quot;。&#10;3. 而且错误信息本身是一次更好的提示机会。OpenAI 的做法是：因为是自研 linter，所以把修复指令直接写进错误信息——只在真正违反时出现，而且出现得正是时候。&#10;【准确说法】&quot;约束要固化成可执行的检查，不是写在提示里。提示负责表达意图，检查负责保证底线——而且检查是可复用、不依赖模型状态的（模型换了，linter 还在）。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">计划由模型动态生成、而且会变——那&quot;可靠执行&quot;靠什么保证？为什么&quot;让模型自己反思一下&quot;不够？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A8-动态计划下的可靠执行" tag="Agent运行时与工具" q="计划由模型动态生成、而且会变——那&quot;可靠执行&quot;靠什么保证？为什么&quot;让模型自己反思一下&quot;不够？" a="动态计划的问题不是&quot;会变&quot;，是&quot;变了没人知道、也回不去&quot;。 而且跑偏最难的地方在于&quot;它看起来很正常&quot;——还在调工具、还在推进，没有任何信号告诉你它在做的不是原来那件事。所以解法是三件事一起做：① 计划外化——把计划做成版本化的产物（OpenAI 的做法是 checked into the repository，修订产生新版本，偏离变成可见的 diff）；② 把目标变成可验证的信号——&quot;agent 访问不到的东西等于不存在&quot;，把 logs/metrics/traces 暴露给 agent 后，目标从&quot;确保启动快一点&quot;变成&quot;启动在 800ms 内&quot;，验证成本差 10 倍；③ 能确定化的检查就确定化——10 项检查全用模型 Judge（85% 准）只有 19.7% 全对，60% 确定化后是 52.2%（20 项时差 7 倍）。Reflection 不能替代外部 oracle（同一模型重复同一盲点），它的正确位置是生成候选修复，不是验收。最后一条设计很值：约束不写在提示里，而是写成 linter，把修复指令塞进错误信息——只在违反时出现，而且出现得正是时候。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这是 Agent 面试里<strong>最难、也最能区分层次</strong>的一题。<strong>因为"跑偏"这件事最难的地方不是"它偏了"，是"你看不出来它偏了"</strong>——<strong>它一直在正常地干活</strong>。而解法不是"让计划不变"（动态计划本来就要变），是<strong>让变化可见、让验证可执行</strong>。这题也是 RuleArena 显式 FSM 设计的直接对应。</p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>动态计划的问题不是"会变"，是"变了没人知道、也回不去"。</strong> 而且<strong>跑偏最难的地方在于"它看起来很正常"</strong>——还在调工具、还在推进，<strong>没有任何信号告诉你它在做的不是原来那件事</strong>。所以解法是三件事一起做：<strong>① 计划外化</strong>——<strong>把计划做成版本化的产物</strong>（OpenAI 的做法是 checked into the repository，修订产生新版本，<strong>偏离变成可见的 diff</strong>）；<strong>② 把目标变成可验证的信号</strong>——<strong>"agent 访问不到的东西等于不存在"</strong>，把 logs/metrics/traces 暴露给 agent 后，目标从"确保启动快一点"变成"<strong>启动在 800ms 内</strong>"，<strong>验证成本差 10 倍</strong>；<strong>③ 能确定化的检查就确定化</strong>——10 项检查全用模型 Judge（85% 准）只有 <strong>19.7%</strong> 全对，<strong>60% 确定化后是 52.2%</strong>（20 项时差 7 倍）。<strong>Reflection 不能替代外部 oracle</strong>（同一模型重复同一盲点），它的正确位置是<strong>生成候选修复</strong>，不是验收。最后一条设计很值：<strong>约束不写在提示里，而是写成 linter，把修复指令塞进错误信息</strong>——<strong>只在违反时出现，而且出现得正是时候</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>动态计划的问题是<strong>不可见</strong>不是"会变"</li><li><strong>跑偏的 agent 看起来很正常</strong></li><li>计划外化成<strong>版本化产物</strong>（checked into repository，偏离 = 可见 diff）</li><li>成本 16 KB vs 整个任务作废</li><li><strong>"agent 访问不到就等于不存在"</strong></li><li>可观测性暴露给 agent → 目标可验证（10 倍人工差）</li><li><strong>能确定化的就确定化</strong>：10 项 19.7% → 52.2%，20 项差 7 倍</li><li><strong>custom linter + 错误信息注入修复指令</strong></li><li>Reflection 只生成候选不验收</li><li>验证优先级：确定性 &gt; 权威状态 &gt; 交叉证据 &gt; 模型 Judge &gt; 人工</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>计划变更是怎么处理的？</strong></strong></p>
+<p class="mv-md-p"><strong>计划是版本化产物</strong>：修订产生新版本（可 diff）、进度与决策日志一起进版本控制、<strong>偏离变成可见的</strong>。<strong>人不必读全过程，只需要看计划变了没有。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>Reflection 有什么局限？</strong></strong></p>
+<p class="mv-md-p"><strong>同一模型可能重复同一盲点</strong>，而且多一次调用增加成本。<strong>优先给外部测试 / 工具反馈</strong>；Reflection 适合<strong>生成候选修复或检查清单</strong>，并<strong>通过 Eval 验证增益</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>怎么保证 Agent 遵守了一堆约束？</strong></strong></p>
+<p class="mv-md-p"><strong>别写在提示里，写成 linter / structural test</strong>：<strong>违规必然被拦住</strong>，而且<strong>把修复指令写进错误信息</strong>（只在违反时出现，出现得正是时候）。<strong>而且检查可复用、不依赖模型状态。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>Agent 的评测和 RAG 的评测有什么不同？</strong></strong></p>
+<p class="mv-md-p">RAG 的归因是<strong>三段</strong>（没捞到 / 没进上下文 / 生成错）；<strong>Agent 的归因层次更多</strong>：<strong>目标理解 → 计划 → 每一步的工具选择与参数 → 副作用 → 终止判定</strong>，而且<strong>要评交互模式</strong>（[[母题-A7-多Agent拆分与协作]] 的涌现行为）。<strong>共同点：都必须能定位到具体哪一段坏了</strong>（[[母题-G5-RAG评测与幻觉率]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>为什么 RuleArena 用显式 FSM 而不是自由编排？</strong></strong></p>
+<p class="mv-md-p"><strong>因为高风险动作需要可控性与可回溯</strong>：<strong>显式 FSM 让"当前该做哪一步"是可检查的</strong>，而不是"模型觉得该做哪一步"。<strong>自由编排更灵活，但它的状态在模型脑子里——而本卡的结论正是"脑子里的东西不可检查"。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Agent 的幻觉和 RAG 的幻觉有什么不同？」——<strong>RAG 的幻觉是"内容不实"</strong>；<strong>Agent 的幻觉是"动作不实"</strong>（声称做了但没做、或做了但说没做）。<strong>代价也不同：前者是信息层面的，后者是动作层面的</strong>（[[母题-A6-沙箱权限与可信执行]]）。<strong>而且 Agent 的"声称"必须用权威状态核对</strong>——<strong>这正是 [[母题-A4-长任务状态与Checkpoint]] 的"查权威状态"那一步。</strong></li><li>「怎么知道 Agent 真的在进步，而不是在做无用功？」——<strong>看"状态有没有变"</strong>（[[母题-A1-计划执行循环与停止条件]] 的无进展检测）<strong>+ 看"计划的完成度"</strong>（外化之后，这就是一个可计算的比例）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>显式审查状态（准备 → 取证 → 各角色审查 → 合并 → 确定性验证 → 人工确认 → 完成）</strong>——<strong>这是"把计划变成可检查的状态机"的落地</strong>；<strong>连续无进展、预算耗尽、证据冲突各有独立终止原因</strong>（[[母题-A1-计划执行循环与停止条件]]）。 - <strong>EnergyOps</strong>：<strong>Hook 链</strong>——<strong>它本质上就是"把约束写成可执行的检查"</strong>（而不是写在提示里）；<strong>R2 的强制拦截</strong>则保证了"违规必然被拦住"。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先破"让它别改"（动态计划的价值就在能改）→ <strong>跑偏的隐蔽性</strong>（看起来很正常）→ <strong>计划外化</strong>（给成本对比）→ <strong>可读性</strong>（agent 访问不到 = 不存在，给 10 倍收益）→ <strong>验证优先级与确定化的收益</strong>（给 19.7% vs 52.2%）→ <strong>linter 的错误信息注入修复指令</strong> → Reflection 的局限 → 收束到"把脑子里的东西搬到系统里"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>动态计划本身不是风险，"不可见的变化"才是。</strong> 所以三件事都指向同一个方向：<strong>把只存在于模型脑子里的东西，搬到系统能看、能查、能验证的地方</strong>——<strong>计划变成产物、目标变成指标、约束变成检查。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"跑偏难在不可见"；<strong>能算出计划外化的 16 KB 成本对比</strong>；<strong>能算出确定化检查的 19.7% → 52.2%（以及 20 项时的 7 倍差）</strong>；<strong>能算出可验证目标的 10 倍人工差</strong>；能说出"agent 访问不到就等于不存在"的工程含义；能说出 Reflection 的正确位置；能说清 linter + 错误信息注入的设计意图；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

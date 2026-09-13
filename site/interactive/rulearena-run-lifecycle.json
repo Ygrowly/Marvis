@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "RuleArena：Run 的生命周期与业务结果是两条轨",
+    "subtitle": "生命周期只回答「任务走到哪里」；业务结果由 Outcome 单独表达——status = COMPLETED 不等于成功或安全",
+    "output": "site/interactive/rulearena-run-lifecycle.html",
+    "viewBox": [
+      980,
+      660
+    ],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "main-rail",
+        "label": "主轨：五个相位",
+        "focus": [
+          "draft",
+          "ready",
+          "searching",
+          "replaying",
+          "completed"
+        ],
+        "note": "从自然语言规则到不可变版本，再到 Run 结束。"
+      },
+      {
+        "id": "human-gate",
+        "label": "人工确认门",
+        "focus": [
+          "draft",
+          "needs_confirmation",
+          "ready"
+        ],
+        "note": "未确认的规则不能进入攻击运行——这是平台的硬闸门。"
+      },
+      {
+        "id": "retry",
+        "label": "唯一可重试的故障",
+        "focus": [
+          "replaying",
+          "infra_failed"
+        ],
+        "note": "基础设施故障是唯一能回到主轨的失败，其余都是终态。"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Run 生命周期（任务走到哪里）"
+    },
+    {
+      "id": "waiting",
+      "label": "等待人工"
+    },
+    {
+      "id": "exceptions",
+      "label": "可恢复故障"
+    }
+  ],
+  "states": [
+    {
+      "id": "draft",
+      "type": "start",
+      "label": "DRAFT",
+      "sublabel": "自然语言规则 + 内置模板",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "entry"
+    },
+    {
+      "id": "needs_confirmation",
+      "type": "waiting",
+      "label": "NEEDS_CONFIRMATION",
+      "sublabel": "等人工确认",
+      "lane": "waiting",
+      "col": 0,
+      "step": "02",
+      "tag": "human gate"
+    },
+    {
+      "id": "ready",
+      "type": "active",
+      "label": "READY",
+      "sublabel": "不可变 RuleVersion",
+      "lane": "main",
+      "col": 1,
+      "step": "03",
+      "tag": "rule frozen"
+    },
+    {
+      "id": "searching",
+      "type": "active",
+      "label": "SEARCHING",
+      "sublabel": "Simulator 在预算内搜候选",
+      "lane": "main",
+      "col": 2,
+      "step": "04",
+      "tag": "propose"
+    },
+    {
+      "id": "replaying",
+      "type": "active",
+      "label": "REPLAYING",
+      "sublabel": "Sandbox 真实 HTTP 重放",
+      "lane": "main",
+      "col": 3,
+      "step": "05",
+      "tag": "prove"
+    },
+    {
+      "id": "completed",
+      "type": "success",
+      "label": "COMPLETED",
+      "sublabel": "Run 结束（不代表成功）",
+      "lane": "main",
+      "col": 4,
+      "step": "06",
+      "tag": "not success"
+    },
+    {
+      "id": "infra_failed",
+      "type": "failure",
+      "label": "INFRA_FAILED",
+      "sublabel": "基础设施故障，可重试",
+      "lane": "exceptions",
+      "col": 2,
+      "tag": "retryable"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "draft-to-confirm",
+      "from": "draft",
+      "to": "needs_confirmation",
+      "variant": "security"
+    },
+    {
+      "id": "confirm-to-ready",
+      "from": "needs_confirmation",
+      "to": "ready",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ready-to-search",
+      "from": "ready",
+      "to": "searching",
+      "variant": "default",
+      "route": "straight"
+    },
+    {
+      "id": "search-to-replay",
+      "from": "searching",
+      "to": "replaying",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "replay-to-completed",
+      "from": "replaying",
+      "to": "completed",
+      "variant": "default",
+      "route": "straight"
+    },
+    {
+      "id": "replay-to-infra",
+      "from": "replaying",
+      "to": "infra_failed",
+      "variant": "security"
+    },
+    {
+      "id": "infra-retry",
+      "from": "infra_failed",
+      "to": "replaying",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "主轨：六个状态",
+      "items": [
+        "DRAFT → NEEDS_CONFIRMATION → READY → SEARCHING → REPLAYING → COMPLETED",
+        "状态只回答「任务走到哪里」，不回答「结果是什么」",
+        "状态更新走条件更新：WHERE id = :run_id AND status = :expected"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "人工确认门（等待态）",
+      "items": [
+        "NEEDS_CONFIRMATION 是一个等待态：Run 在此挂起，但不终止",
+        "只有人工确认后才产出不可变 RuleVersion",
+        "未确认的规则不能进入攻击运行——这是平台的硬闸门"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "七种 Outcome（同一个 COMPLETED 的七种含义）",
+      "items": [
+        "CONFIRMED_VIOLATION｜Oracle 确认的资金 / 权益违规",
+        "UNCONFIRMED_CANDIDATE｜候选无法在 Sandbox 复现",
+        "NO_VIOLATION_WITHIN_BUDGET｜预算内未发现（不等于安全，是 inconclusive）",
+        "AMBIGUOUS_POLICY / UNSUPPORTED_RULE｜规则本身的问题",
+        "INFRA_FAILED｜基础设施故障（唯一可重试）· CANCELLED｜人工取消"
+      ]
+    }
+  ]
+}

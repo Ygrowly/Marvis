@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A1 · 计划执行循环与停止条件</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A1 · 计划执行循环与停止条件</h1>
+    <p class="mv-topic-meta">关联 母题-A2-工具调用与MCP边界（循环里的"行动"这一环）· 母题-A4-长任务状态与Checkpoint（状态模型是循环的载体）· 母题-C1-上下文组装与窗口预算（每转一圈都在生成新上下文，平方计费） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A1-计划执行循环与停止条件.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 循环体很短，工程在出口 ② 预算有七种，因为失控有七种形状 ③ "模型说 done"不算终止原因）· 读完约 11 分钟 · 需要先懂：无</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"请解释一下 Agent Loop。你们的 Agent 怎么保证不会一直转下去？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Agent 的必要条件</h3>
+<p class="mv-md-p">【事实】Agent 的五个必要条件：</p>
+<pre class="mv-md-pre">① 有目标
+② 能观察环境
+③ 模型能选择下一动作
+④ 动作改变信息或环境
+⑤ 根据结果继续或停止</pre>
+<p class="mv-md-p">【推论】<strong>"问模型一次、返回一段文本"不是 Agent</strong>——它缺 ④ 和 ⑤（动作不改变环境、也没有"根据结果继续"）。<strong>固定 DAG 即便用了 LLM，也更准确地称为 Workflow</strong>（[[母题-C1-上下文组装与窗口预算]] 里那句"workflow vs agent 的分界判据"）。</p>
+<p class="mv-md-p">【取舍】<strong>这个区分不是术语洁癖</strong>：Agent 的自主性带来两个必须付的代价——<strong>成本不可预测</strong>（步数不定）、<strong>行为不可穷举</strong>（路径不定）。所以选 Agent 之前要先确认：<strong>任务真的需要模型现场决定下一步吗？</strong> 如果步骤是固定的，Workflow 更便宜也更可控。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们的系统会调用 LLM 来选工具"还不足以称为 Agent？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 循环体：四步，很短</h3>
+<figure-box num="Agent 循环：一个入口，三个出口" title="" note="循环体只有四步；真正的工程在三个出口（正常 / 预算耗尽 / 无进展）与结构化的终止原因"><svg viewBox="0 0 680 356" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Agent 循环：一个入口，三个出口</title>
+  <desc>循环体只有四步：组装上下文、模型决策、校验并执行工具、记录这一步的结果。关键不在循环本身，而在出口：正常出口是结果通过验证，异常出口有两个——预算耗尽（步数、token、时间、工具次数）和无进展。只保存消息历史、靠模型自己说 done 的循环，两个异常出口都没有，失控时只能跑满平台上限。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">Agent 循环：一个入口，三个出口</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">循环体很短，真正的工程在「什么情况下必须停下来」</text>
+
+  <!-- 循环体 -->
+  <rect x="30" y="76" width="330" height="196" rx="10" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="48" y="100" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">循环体（四步）</text>
+
+  <rect x="48" y="112" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="132" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">① 组装上下文（State → Context 投影）</text>
+
+  <path d="M195 146 L195 156" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#figagent-loop-svg-al-ar)"/>
+
+  <rect x="48" y="158" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="178" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">② 模型决策：给答案，还是调工具</text>
+
+  <path d="M195 192 L195 202" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#figagent-loop-svg-al-ar)"/>
+
+  <rect x="48" y="204" width="294" height="32" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="224" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">③ 校验工具调用 → 执行 → 拿结果</text>
+
+  <path d="M195 238 L195 248" stroke="#8A877E" stroke-width="1.2" fill="none" marker-end="url(#figagent-loop-svg-al-ar)"/>
+
+  <rect x="48" y="250" width="294" height="30" rx="6" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="62" y="269" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">④ 记录 Step（含版本、幂等键、耗时）</text>
+
+  <path d="M48 265 L32 265 L32 128 L48 128" stroke="#8A877E" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#figagent-loop-svg-al-ar)"/>
+
+  <!-- 三个出口 -->
+  <path d="M362 120 L404 120" stroke="#8A877E" stroke-width="1.3" fill="none" marker-end="url(#figagent-loop-svg-al-ar)"/>
+  <path d="M362 176 L404 176" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figagent-loop-svg-al-ar2)"/>
+  <path d="M362 232 L404 232" stroke="#BA7517" stroke-width="1.3" fill="none" marker-end="url(#figagent-loop-svg-al-ar2)"/>
+
+  <rect x="408" y="96" width="242" height="48" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="422" y="116" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#2C2C2A">出口一 · 正常</text>
+  <text x="422" y="134" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">结果【通过验证】才算完成——不是模型说 done</text>
+
+  <rect x="408" y="152" width="242" height="48" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="422" y="172" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">出口二 · 预算耗尽</text>
+  <text x="422" y="190" font-family="system-ui,sans-serif" font-size="10" fill="#633806">步数 / token / 时间 / 工具次数 / 重试次数</text>
+
+  <rect x="408" y="208" width="242" height="48" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="422" y="228" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="#633806">出口三 · 无进展</text>
+  <text x="422" y="246" font-family="system-ui,sans-serif" font-size="10" fill="#633806">连续 N 步状态没变 / 重复调同一个工具</text>
+
+  <!-- 底部 -->
+  <path d="M30 290 L650 290" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="314" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">终止原因必须<tspan font-weight="600">结构化</tspan>：completed_verified / budget_exhausted / needs_clarification / waiting_approval /</text>
+  <text x="30" y="330" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">tool_unavailable / policy_blocked / cancelled_by_user / unrecoverable_error</text>
+  <text x="30" y="350" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">「模型停了」不是工程可用的终止原因——它把四类完全不同的失败压成了一句话。</text>
+
+  <defs>
+    <marker id="figagent-loop-svg-al-ar" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8A877E"/>
+    </marker>
+    <marker id="figagent-loop-svg-al-ar2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#BA7517"/>
+    </marker>
+  </defs>
+</svg>
+</figure-box>
+<pre class="mv-md-pre">while not state.is_terminal:
+    ① 组装上下文（State → Context 投影）
+    ② 模型决策：给最终答案，还是调工具
+    ③ 校验工具调用 → 执行 → 拿结果
+    ④ 记录 Step（版本、幂等键、耗时、错误码）</pre>
+<p class="mv-md-p">【事实】原始素材给的关键原则很准：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Loop 很短，复杂度应集中在可测试的边界组件，而不是一个巨大的 Prompt。"</strong></p>
+<p class="mv-md-p">【推论】<strong>这句话有一个直接的工程含义</strong>：如果你发现自己在往系统提示里堆"遇到 X 要 Y"的规则，<strong>那多半是缺一个边界组件</strong>（校验器、预算检查、重试分类），而不是提示写得不细。<strong>提示里堆的规则无法被测试，边界组件可以。</strong></p>
+<p class="mv-md-p">【事实】<strong>最小 Loop 之外还需要什么</strong>（study/04 列全了）：<strong>超时、取消、重试分类、HITL、流式事件、并发控制、checkpoint、版本和 trace</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"把规则写进 Prompt"解决不了 Agent 的失控问题？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 预算不是一个数，是七种</h3>
+<p class="mv-md-p">【事实】<strong>因为"失控"有不同的形状</strong>，每种形状要一个对应的预算：</p>
+<table class="mv-table"><thead><tr><th>预算</th><th>防的是什么</th></tr></thead><tbody><tr><td><code class="mv-md-code">max_steps</code></td><td>防无限循环</td></tr><tr><td><code class="mv-md-code">max_tokens</code> / <code class="mv-md-code">cost</code></td><td>控模型成本</td></tr><tr><td><code class="mv-md-code">deadline</code></td><td>控端到端时间</td></tr><tr><td><code class="mv-md-code">max_tool_calls</code></td><td>控外部系统负载</td></tr><tr><td><code class="mv-md-code">per-tool quota</code></td><td>限制昂贵 / 危险工具</td></tr><tr><td><code class="mv-md-code">max_retries</code></td><td><strong>防重试放大</strong>（[[母题-A3-失败恢复与幂等]]）</td></tr><tr><td><code class="mv-md-code">artifact size</code></td><td>防日志和结果爆炸</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>为什么一个 <code class="mv-md-code">max_steps</code> 不够</strong>：</p>
+<pre class="mv-md-pre">只设 max_steps = 50，但每步特别慢（模型 2 秒 + 工具 1 秒 = 3 秒）
+  最坏耗时 = 50 × 3 = 150 秒
+  → 用户等不了，而且这 150 秒里连接、内存、锁都被占着
+
+如果同时设 deadline = 60 秒：
+  60 / 3 = 20 步
+  → deadline 会在第 20 步先生效</pre>
+<p class="mv-md-p">【推论】<strong>多个预算之间是"先到先停"</strong>——所以设预算时<strong>要算清楚哪个会先生效</strong>，否则你以为在防 A，实际被 B 拦住了，而 B 的终止原因又会误导排查方向。</p>
+<p class="mv-md-p">【取舍】<strong>第 ⑥ 条最容易漏</strong>：<code class="mv-md-code">max_retries</code> 防的是<strong>重试放大</strong>——一次故障触发重试，重试又失败触发更多重试，把一次故障放大成任务风暴（raw 里的真实事故形态）。</p>
+<h4 class="mv-md-h mv-md-h4">3.1 失控要花多少钱【推导】</h4>
+<pre class="mv-md-pre">max_steps = 50，每步新增约 2.5K token（模型决策 + 工具结果）
+累计输入 = 2.5K × (1 + 2 + … + 50)      ← 历史每轮都要重发（[[母题-C1-上下文组装与窗口预算]]）
+        = 2.5K × 50 × 51 / 2
+        = 2.5K × 1,275
+        = 3,187.5K ≈ 3.19M token
+
+成本（Opus 5，输入 $5/MTok）= 3.19M × $5 / 1M ≈ $15.9</pre>
+<p class="mv-md-p">【结论】<strong>一个失控的 50 步 Agent，单次就要约 16 美元</strong>——而这还只是<strong>一个</strong> run。并发一来，账单是乘出来的。</p>
+<p class="mv-md-p">【推论】<strong>这是"必须有多层预算"最直接的理由</strong>：<strong>不是"防死循环"这种概念问题，是每一分钟都在烧钱。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们设了 max_steps"这句话还不够？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 第三个出口：无进展检测【推导】</h3>
+<p class="mv-md-p">【事实】<strong>连续无进展</strong>是比"步数耗尽"更早、更准的停止信号。两个可判定的信号：</p>
+<pre class="mv-md-pre">① 状态没变（这一步没有产生新的信息或新的副作用）
+② 重复调用同一个工具 + 同样的参数</pre>
+<p class="mv-md-p">【推导】<strong>它能把浪费压下来</strong>：</p>
+<pre class="mv-md-pre">场景：第 10 步进入循环，max_steps = 50
+
+不做无进展检测：
+  跑满 50 步 → 累计输入 = 2.5K × 1,275 = 3.19M → 约 $15.9
+
+做检测（连续 3 步无进展就停）：
+  第 13 步停下 → 累计输入 = 2.5K × (13 × 14 / 2) = 2.5K × 91 = 227.5K
+  → 约 $1.14
+
+降到约 1/14</pre>
+<p class="mv-md-p">【结论】<strong>无进展检测把"跑到预算耗尽"变成"确认卡住就停"</strong>——<strong>它比调小 <code class="mv-md-code">max_steps</code> 更准</strong>，因为正常的复杂任务确实需要很多步，<strong>卡住和"在认真干活"长得很像，只有"状态有没有变"能区分。</strong></p>
+<p class="mv-md-p">【取舍】<strong>检测到无进展之后做什么</strong>，比检测本身更重要：</p>
+<pre class="mv-md-pre">① 触发澄清（缺输入 → needs_clarification）
+② 降级（换更简单的手段）
+③ 转人工（unrecoverable_error）</pre>
+<p class="mv-md-p">【推论】<strong>直接报错退出是最差的选择</strong>——<strong>它丢掉了"卡在哪"这个最有价值的信息。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"步数少"不等于"没失控"，而"步数多"也不等于"失控"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 终止原因必须结构化【推导】</h3>
+<p class="mv-md-p">【事实】<strong>八种终止原因</strong>（study/04 的清单）：</p>
+<pre class="mv-md-pre">completed_verified     结果通过验证
+needs_clarification    缺少必要输入
+waiting_approval       高风险步骤待确认
+budget_exhausted       步骤 / Token / 时间耗尽
+tool_unavailable       关键依赖失败
+policy_blocked         权限或安全策略拒绝
+cancelled_by_user      用户取消
+unrecoverable_error    不可恢复错误</pre>
+<p class="mv-md-p">【推导】<strong>为什么粒度重要——它直接决定可观测性的粒度</strong>：</p>
+<pre class="mv-md-pre">只有 success / fail 两种：
+  「失败率从 3% 涨到 12%」—— 看不出发生了什么，也不知道该动哪
+
+有八种：
+  「budget_exhausted 占比从 2% 涨到 15%」→ 该看预算与循环检测
+  「tool_unavailable 涨了」              → 该看外部依赖
+  「policy_blocked 涨了」                → 该看权限策略是否过严</pre>
+<p class="mv-md-p">【推论】<strong>"模型停了"不是工程可用的终止原因</strong>——<strong>它把四类完全不同的失败压成了一句话，等于放弃了排查的入口。</strong></p>
+<p class="mv-md-p">【推论】<strong>终止原因还要进 Eval</strong>（[[母题-G5-RAG评测与幻觉率]] 的归因思路在这里同样成立）：<strong>不同终止原因的占比变化，是 Agent 系统最重要的健康指标之一。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"终止原因"这种看起来是日志细节的东西，值得在面试里专门讲？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 验证：Agent 必须能检查自己的工作【事实】</h3>
+<p class="mv-md-p">【事实】<strong>验证的优先级</strong>（study/04 的排序，从强到弱）：</p>
+<pre class="mv-md-pre">① 确定性测试、Schema、规则、编译器、SQL AST
+② 工具返回和权威状态查询
+③ 多源交叉证据
+④ 模型 Judge
+⑤ 人工复核</pre>
+<p class="mv-md-p">【事实】原始素材给了一句很硬的话：</p>
+<p class="mv-md-p mv-md-quote"><strong>"模型'自我反思'不能替代外部 oracle。最强的 Harness 通常给 Agent 可执行测试、浏览器、终端、数据库只读查询等真实反馈。"</strong></p>
+<p class="mv-md-p">【推论】<strong>这解释了为什么"Reflection"类技巧效果有限</strong>：<strong>同一模型重复同一盲点</strong>——它反思时用的是同一个"坏掉的尺子"（[[母题-A8-动态计划下的可靠执行]] 会展开）。<strong>真正有效的是给它一个外部的、可执行的判据。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"让模型自己检查一遍"不能替代"让它跑一遍测试"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"Agent 就是一个 while 循环调模型"</td><td><strong>循环体确实很短</strong>（四步），但<strong>工程全在出口</strong>：正常终止要靠<strong>验证</strong>、异常终止要靠<strong>多种预算 + 无进展检测</strong>，而终止原因必须<strong>结构化</strong>。<strong>只写循环体不写出口，就是 raw 里那个反例："无限 while 等模型说 done"</strong></td></tr><tr><td>"模型说 done 就说明做完了"</td><td><strong>不算</strong>。<strong>只有"结果通过验证"才算完成</strong>（<code class="mv-md-code">completed_verified</code>）。模型说 done 是它的<strong>判断</strong>，不是<strong>事实</strong>——而且它可能只是"觉得自己做完了"</td></tr><tr><td>"设一个 max_steps 就够了"</td><td><strong>不够</strong>。失控有不同形状：步数多、<strong>每步慢</strong>（要 <code class="mv-md-code">deadline</code>）、<strong>工具调得多</strong>（要 <code class="mv-md-code">max_tool_calls</code>）、<strong>重试放大</strong>（要 <code class="mv-md-code">max_retries</code>）。而且多个预算<strong>先到先停</strong>——要算清楚哪个会先生效</td></tr><tr><td>"只保存消息历史就能恢复"</td><td><strong>这是 raw 里点名的反例</strong>。消息历史里<strong>没有"哪些写操作已经完成"</strong>——重启后不知道要不要重做，要么重复扣款，要么漏做。<strong>必须记录 Step 级别的副作用与幂等键</strong></td></tr><tr><td>"Agent 步数多就是失控"</td><td><strong>不一定</strong>。复杂任务确实需要很多步。<strong>判据是"状态有没有变"</strong>——认真干活和无意义循环的区别在<strong>进展</strong>，不在步数</td></tr><tr><td>"把规则写进系统提示就能防失控"</td><td><strong>防不住，而且不可测试</strong>。原始的判断是"<strong>复杂度应集中在可测试的边界组件，而不是一个巨大的 Prompt</strong>"——预算检查、校验器、重试分类都是可测试的组件，提示里的规则不是</td></tr><tr><td>"让模型自己反思一遍就能纠错"</td><td><strong>不能替代外部 oracle</strong>。同一模型会<strong>重复同一盲点</strong>。优先给<strong>可执行的反馈</strong>（测试、编译器、只读查询），Reflection 只适合生成候选修复，且要通过 Eval 验证增益</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>循环体谁都会写，工程的分量全在"什么情况下必须停下来"——以及停下来之后，你知不知道是为什么停的。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件-q1" tag="Agent运行时与工具" q="某 Agent 的 max_steps = 50，每一步新增约 2.5K token（模型决策 + 工具结果）。模型是 Opus 5（输入 $5/MTok）。&#10;问：如果它一路跑满 50 步，累计输入 token 是多少？成本大约多少？" a="``text&#10;历史每轮都要重发（[[母题-C1-上下文组装与窗口预算]]）&#10;累计输入 = 2.5K × (1 + 2 + … + 50)&#10;= 2.5K × 50 × 51 / 2&#10;= 2.5K × 1,275&#10;= 3,187.5K ≈ 3.19M token&#10;成本 = 3.19M × $5 / 1M ≈ $15.9&#10;``&#10;【结论】一个失控的 50 步 Agent，单次约 16 美元。&#10;【补充】注意这里用的是平方累计而不是 50 × 2.5K = 125K——因为每一步都要把之前的历史重发一遍。&quot;步数多&quot;的代价不是线性的，这也是&quot;为什么必须设预算&quot;的量化答案。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件-q2" tag="Agent运行时与工具" q="同上场景，第 10 步开始进入无意义循环。加了&quot;连续 3 步无进展就停&quot;的检测。&#10;问：它在第几步停下？省了多少成本？" a="``text&#10;检测生效：第 10、11、12 步都无进展 → 第 13 步停下&#10;累计输入 = 2.5K × (13 × 14 / 2) = 2.5K × 91 = 227.5K token&#10;成本 = 227.5K × $5 / 1M ≈ $1.14&#10;对比不做检测的 $15.9：降到约 1/14&#10;`&#10;【结论】无进展检测把&quot;跑到预算耗尽&quot;变成&quot;确认卡住就停&quot;，单次省约 14.8 美元。&#10;【推论】它比&quot;调小 max_steps&quot;更准：调小 max_steps` 会误杀正常的复杂任务；而无进展检测判的是进展，不是步数。卡住和&quot;在认真干活&quot;长得很像，只有&quot;状态有没有变&quot;能区分。&#10;【补充】检测到之后做什么更重要：触发澄清 / 降级 / 转人工——直接报错退出是最差的选择，因为它丢掉了&quot;卡在哪&quot;这个最有价值的信息。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件-q3" tag="Agent运行时与工具" q="某 Agent 单步平均耗时 3 秒（模型 2 秒 + 工具 1 秒）。它设了两个预算：max_steps = 50 和 deadline = 60 秒。&#10;问：哪个先生效？实际能跑多少步？这对设预算意味着什么？" a="``text&#10;deadline 允许的步数 = 60 / 3 = 20 步&#10;max_steps 允许的步数 = 50 步&#10;→ 【deadline 先生效】，实际只能跑约 20 步&#10;`&#10;【结论】多个预算之间是&quot;先到先停&quot;——所以设预算时要算清楚哪个会先生效。&#10;【推论】不算清楚的后果是排查被误导：&#10;`text&#10;你以为在防&quot;无限循环&quot;（所以设了 max_steps = 50）&#10;实际拦住的是 deadline&#10;终止原因会报 budget_exhausted，但到底是哪个预算？&#10;→ 所以终止原因要能细分到【具体是哪个预算耗尽】&#10;否则你会去调 max_steps（一个根本没生效的预算），而真正该调的是 deadline 或单步耗时&#10;``&#10;【取舍】单步 3 秒这个数本身也值得看：如果模型 2 秒、工具 1 秒，那 60 秒只能跑 20 步——说明这个任务的&quot;步数预算&quot;实际是被时间卡住的。要跑更多步，得先降单步耗时（比如并行工具调用），而不是调大 max_steps。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们的 Agent 循环是 while 循环，模型返回 done 就结束。&quot;" a="三处问题。&#10;1. &quot;模型返回 done&quot;不是终止原因。模型说 done 是它的判断，不是事实——只有&quot;结果通过验证&quot;才算完成（completed_verified）。而且模型可能只是&quot;觉得自己做完了&quot;。&#10;2. 缺了异常出口。循环必须有预算耗尽和无进展两个出口——raw 里的反例就是&quot;无限 while 等模型说 done，没有预算、进展检测或终止原因&quot;。&#10;3. 终止原因没有结构化。「done / 没 done」这个二分把四类完全不同的失败压成了一句话，监控上看不出该动哪。&#10;【准确说法】&quot;循环的四步只是骨架；工程全在出口——正常出口是验证通过，异常出口是多种预算 + 无进展检测，而终止原因要分八类并进 Eval。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们 Agent 设了 max_steps = 50，所以不会失控。&quot;" a="三处问题。&#10;1. max_steps 只防&quot;步数多&quot;这一种形状。还有：每步很慢（要 deadline）、工具调用过多打爆下游（要 max_tool_calls）、重试放大（要 max_retries）、结果爆炸（要 artifact size）。&#10;2. 多个预算&quot;先到先停&quot;（Q3）——实际生效的往往不是 max_steps。所以设预算要算清楚，而且终止原因要细分到具体是哪个预算。&#10;3. &quot;不会失控&quot;这个目标定错了。预算只能保证停下来，保证不了停得对——要停得早、停得准，靠的是无进展检测（Q2 里省 14 倍）。&#10;【准确说法】&quot;预算是&quot;止损&quot;，无进展检测是&quot;早停&quot;，验证是&quot;确认完成&quot;——三件事都要有。 而且终止原因必须结构化，否则你只知道它停了，不知道为什么停。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">一个 Agent 循环长什么样——以及凭什么判定它&quot;做完了&quot;、又怎么防它转不停？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件" tag="Agent运行时与工具" q="一个 Agent 循环长什么样——以及凭什么判定它&quot;做完了&quot;、又怎么防它转不停？" a="Agent 的五条件是有目标、能观察、模型能选动作、动作改变环境、根据结果继续或停止——所以&quot;问一次模型返回文本&quot;不是 Agent，固定 DAG 是 Workflow。循环体只有四步（组装上下文 → 模型决策 → 校验并执行工具 → 记录 Step），工程的分量全在出口：正常出口是结果通过验证（而不是模型说 done），异常出口是多种预算 + 无进展检测。预算是七种不是一个——max_steps（防循环）、max_tokens/cost、deadline（防慢）、max_tool_calls、per-tool quota、max_retries（防重试放大）、artifact size；而且它们先到先停，设的时候要算清楚哪个会先生效。为什么必须设：50 步每步 2.5K token 的失控 run，累计输入 3.19M、成本约 $16（平方累计，不是线性）。无进展检测比调小 max_steps 更准——判的是&quot;状态有没有变&quot;，能把浪费降到 1/14。最后，终止原因必须分八类（completed_verified / needs_clarification / waiting_approval / budget_exhausted / tool_unavailable / policy_blocked / cancelled_by_user / unrecoverable_error）——&quot;模型停了&quot;不是工程可用的终止原因。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是 Agent 方向的第一道门</strong>。它看起来简单（画个循环谁都会），但<strong>"怎么停"才是真问题</strong>——raw 里那句 <strong>"只保存消息历史，进程重启后不知道哪些写操作已完成"</strong> 和 <strong>"无限 <code class="mv-md-code">while</code> 等模型说 done"</strong> 就是两个反例。<strong>能说清终止原因的粒度，比能画出循环体更能证明你跑过线上。</strong></p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>Agent 的五条件</strong>是有目标、能观察、模型能选动作、<strong>动作改变环境</strong>、<strong>根据结果继续或停止</strong>——所以"问一次模型返回文本"不是 Agent，固定 DAG 是 Workflow。<strong>循环体只有四步</strong>（组装上下文 → 模型决策 → 校验并执行工具 → 记录 Step），<strong>工程的分量全在出口</strong>：正常出口是<strong>结果通过验证</strong>（而不是模型说 done），异常出口是<strong>多种预算 + 无进展检测</strong>。<strong>预算是七种不是一个</strong>——<code class="mv-md-code">max_steps</code>（防循环）、<code class="mv-md-code">max_tokens/cost</code>、<code class="mv-md-code">deadline</code>（防慢）、<code class="mv-md-code">max_tool_calls</code>、<code class="mv-md-code">per-tool quota</code>、<code class="mv-md-code">max_retries</code>（<strong>防重试放大</strong>）、<code class="mv-md-code">artifact size</code>；而且它们<strong>先到先停</strong>，设的时候要算清楚哪个会先生效。<strong>为什么必须设</strong>：50 步每步 2.5K token 的失控 run，<strong>累计输入 3.19M、成本约 $16</strong>（平方累计，不是线性）。<strong>无进展检测比调小 max_steps 更准</strong>——判的是"状态有没有变"，能把浪费降到 1/14。最后，<strong>终止原因必须分八类</strong>（completed_verified / needs_clarification / waiting_approval / budget_exhausted / tool_unavailable / policy_blocked / cancelled_by_user / unrecoverable_error）——<strong>"模型停了"不是工程可用的终止原因</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>五条件（动作改变环境 + 根据结果停止）</li><li>Workflow vs Agent</li><li>循环四步</li><li><strong>复杂度放可测试的边界组件，不放巨大 Prompt</strong></li><li>七种预算 + 先到先停</li><li>平方累计的失控成本（50 步 = 3.19M ≈ $16）</li><li>**无进展检测（状态没变</li><li>重复同参数调用）**</li><li>八种终止原因</li><li>验证优先级（确定性测试 &gt; 权威状态 &gt; 交叉证据 &gt; 模型 Judge &gt; 人工）</li><li><strong>模型自我反思不能替代外部 oracle</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Agent State、Context、Memory 有何区别？</strong></strong></p>
+<p class="mv-md-p"><strong>State 是运行时结构化事实；Context 是某一次模型调用看到的投影；Memory 是跨步骤 / 会话复用的信息</strong>。<strong>业务状态仍由数据库权威维护</strong>。恢复时从 State 和业务状态<strong>重新装配</strong> Context（[[母题-A5-上下文压缩与记忆]]）。</p>
+<p class="mv-md-p"><strong>2. <strong>怎么防止 Agent 无限循环？</strong></strong></p>
+<p class="mv-md-p"><strong>最大步数 / 时间 / 成本 / 工具次数；检测重复状态和重复调用；工具返回明确错误语义；每轮验证进展；连续无进展触发澄清、降级或人工；终止原因进 Eval</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>Checkpoint 存什么？</strong></strong></p>
+<p class="mv-md-p"><strong>目标、运行状态、当前节点、结构化中间结果、Artifact 引用、剩余预算、版本、已完成副作用与幂等键、待审批动作</strong>（[[母题-A4-长任务状态与Checkpoint]]）。</p>
+<p class="mv-md-p"><strong>4. <strong>Reflection 有什么局限？</strong></strong></p>
+<p class="mv-md-p"><strong>同一模型可能重复同一盲点</strong>，而且多一次调用增加成本。<strong>优先给外部测试 / 工具反馈</strong>；Reflection 适合生成候选修复或检查清单，并<strong>通过 Eval 验证增益</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>什么时候该用 Agent 而不是 Workflow？</strong></strong></p>
+<p class="mv-md-p"><strong>当"下一步做什么"无法预先穷举、需要模型看情况决定</strong>时。<strong>步骤固定就别用 Agent</strong>——它带来成本不可预测和行为不可穷举两个代价（[[母题-A7-多Agent拆分与协作]] 会从"多 Agent"的角度再讲一遍这个判据）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Agent 的"步"（Step）具体指什么？」——<strong>一次模型调用或一次工具调用都算一步</strong>。Step 要记录 <code class="mv-md-code">kind</code>（model / tool）、版本、耗时、错误码、<strong>幂等键</strong>——<strong>只存最终聊天文本就没法 Replay 和归因</strong>。</li><li>「怎么判断一个任务该给多少预算？」——<strong>先跑一批真实任务，统计步数与耗时的 P95</strong>，再<strong>按 P95 的 1.5–2 倍设预算</strong>。<strong>拍脑袋设的数字要么误杀正常任务，要么拦不住失控。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>连续无进展、预算耗尽、证据冲突各有独立终止原因</strong>——这是"终止原因结构化"在项目里的直接落地。 - <strong>EnergyOps</strong>：<strong>任务自愈</strong>——<strong>从"重试失败的任务"升级为"带进展检测与结构化终止的 Agent run"</strong>；Hook 链决定了"哪些动作在循环里被拦住"（[[母题-A6-沙箱权限与可信执行]]）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">五条件与 Workflow 之分 → 循环四步（点明"复杂度放边界组件"）→ <strong>七种预算与"先到先停"</strong> → 失控成本算式 → <strong>无进展检测（比调 max_steps 更准）</strong> → 八种终止原因与可观测性 → 验证优先级与"反思不能替代 oracle" → 收束到"三个出口"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>循环体很短，工程全在出口。</strong> 而出口的设计决定了两件事：<strong>花多少钱停下来</strong>（预算 + 无进展检测），以及<strong>停下来之后你知不知道为什么</strong>（结构化的终止原因）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出五条件并区分 Workflow；能画出循环四步与三个出口；<strong>能列出七种预算并解释"先到先停"</strong>；<strong>能算出 50 步失控 run 的 3.19M 与约 $16</strong>；<strong>能算出无进展检测把成本降到 1/14 并解释它为什么比调小 max_steps 更准</strong>；能背出八种终止原因并说清它的可观测性价值；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

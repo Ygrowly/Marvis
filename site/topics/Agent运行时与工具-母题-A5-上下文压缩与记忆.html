@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A5 · 上下文压缩与记忆</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A5 · 上下文压缩与记忆</h1>
+    <p class="mv-topic-meta">关联 母题-A4-长任务状态与Checkpoint（Checkpointer vs Store 的划分）· 母题-C1-上下文组装与窗口预算（压缩的一般原理与代价）· 母题-C6-成本与长上下文截断（压缩触发阈值与成本）· 母题-A3-失败恢复与幂等（摘要里必须留的副作用记录） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A5-上下文压缩与记忆.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 记忆要分三层，权威性不同 ② 压缩在 Agent 里的时机由状态决定 ③ 写入门槛决定记忆是资产还是噪声）· 读完约 12 分钟 · 需要先懂：[[母题-C1-上下文组装与窗口预算]]、[[母题-A4-长任务状态与Checkpoint]]</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"Agent 跑久了上下文满了怎么办？记忆该存什么？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：记忆分三层，权威性完全不同</h3>
+<figure-box num="记忆分三层：每层的作用域、寿命和写入门槛都不同" title="" note="运行状态（Checkpointer）→ 长期记忆（Store）→ 业务权威状态；混在一起的后果是拿模型自己的摘要当事实"><svg viewBox="0 0 680 340" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>记忆分三层：每层的作用域、寿命和写入门槛都不同</title>
+  <desc>第一层是 thread 级的运行状态，随一次目标执行产生，用 checkpointer 持久化，过了这次 run 就没用了。第二层是跨 thread 的长期记忆，用 store 持久化，只存跨任务稳定、经过验证、且获准保存的信息，每条要有来源、作用域和 TTL。第三层是业务权威状态，它不在 Agent 系统里，而在业务数据库里——任何时候都不应该用前两层的记忆去当事实。把三层混在一起，就会出现拿模型自己的摘要当业务真相的情况。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">记忆分三层：每层的作用域、寿命和写入门槛都不同</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">混在一起的后果是：拿模型自己总结的「已执行」当成工具真的执行成功了</text>
+
+  <!-- 三层 -->
+  <rect x="30" y="66" width="620" height="66" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">① 运行状态（Checkpointer）</text>
+  <text x="46" y="106" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">作用域：单个 thread　　寿命：一次 run　　写入：自动（每一步）</text>
+  <text x="46" y="124" font-family="system-ui,sans-serif" font-size="10" fill="#633806">内容：做到哪了、做过什么、还剩什么预算 —— 恢复的依据</text>
+
+  <rect x="30" y="140" width="620" height="66" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="46" y="162" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">② 长期记忆（Store）</text>
+  <text x="46" y="180" font-family="system-ui,sans-serif" font-size="10" fill="#633806">作用域：跨 thread　　寿命：用户 / 组织级　　写入：【有门槛】</text>
+  <text x="46" y="198" font-family="system-ui,sans-serif" font-size="10" fill="#633806">门槛：跨任务稳定 + 经过验证 + 获准保存；每条要有来源、作用域、TTL、删除机制</text>
+
+  <rect x="30" y="214" width="620" height="66" rx="8" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="236" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">③ 业务权威状态（不在 Agent 系统里）</text>
+  <text x="46" y="254" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">作用域：业务系统　　寿命：长期　　权威性：【最高】</text>
+  <text x="46" y="272" font-family="system-ui,sans-serif" font-size="10" fill="#633806">订单、权限、审批、账单 —— 任何恢复动作都要先查它，不能信前两层的记忆</text>
+
+  <!-- 底部 -->
+  <path d="M30 296 L650 296" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="318" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">压缩是有损的，所以摘要里必须留下<tspan font-weight="600">可回溯的指针</tspan>：已完成副作用 + 幂等键、证据 ID、Artifact 引用、未决问题与剩余预算。</text>
+  <text x="30" y="336" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">原始消息与工具结果要外部持久化——摘要不是审计记录，丢了指针就找不回来了。</text>
+</svg>
+</figure-box>
+<table class="mv-table"><thead><tr><th>层</th><th>作用域</th><th>寿命</th><th>写入方式</th><th>权威性</th></tr></thead><tbody><tr><td><strong>① 运行状态</strong></td><td><strong>单个 thread</strong></td><td>一次 run</td><td><strong>自动</strong>（每一步）</td><td>运行权威</td></tr><tr><td><strong>② 长期记忆</strong></td><td><strong>跨 thread</strong></td><td>用户 / 组织级</td><td><strong>有门槛</strong></td><td><strong>派生</strong>（需治理）</td></tr><tr><td><strong>③ 业务权威状态</strong></td><td>业务系统</td><td>长期</td><td>业务系统自己</td><td><strong>最高</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>这个分层的判据是"权威性"，不是"存哪"</strong>：</p>
+<pre class="mv-md-pre">① 运行状态：是"我做到哪了" —— 权威，但只对本次 run 有效
+② 长期记忆：是"我记住了什么" —— 【派生】，可能过期、可能被推断污染
+③ 业务状态：是"事情到底是什么样" —— 【唯一权威】</pre>
+<p class="mv-md-p">【推论】<strong>混在一起的后果很具体</strong>：<strong>拿模型自己总结的"已执行"当成工具真的执行成功了</strong>。<strong>这正是 [[母题-C1-上下文组装与窗口预算]] 里那句"不把模型自己总结的已执行当作工具执行成功"的机制版本。</strong></p>
+<p class="mv-md-p">【事实】<strong>LangGraph 的划分和这个同构</strong>（[[母题-A4-长任务状态与Checkpoint]] 引过）：</p>
+<pre class="mv-md-pre">Checkpointer = 单 thread、短期、thread 级  → 对应 ①
+Store        = 跨 thread、长期、需治理    → 对应 ②</pre>
+<p class="mv-md-p">【事实】<strong>OpenAI 那篇 Harness 工程给了一个更狠的说法</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"From the agent's point of view, anything it can't access in-context while running effectively doesn't exist."</strong></p>
+<p class="mv-md-p">【推论】<strong>这句话反过来推出一件重要的事</strong>：<strong>"我告诉过模型"不等于"模型知道"</strong>——<strong>知识必须落在 agent 能访问的地方（仓库里、可检索的存储里），而不是留在人的脑子里或聊天记录里。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"用户上周说过他偏好 A 方案"这句话，如果只留在聊天记录里，第二周就不算数了？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 压缩：Agent 里和纯对话里的区别【推导】</h3>
+<p class="mv-md-p">【事实】<strong>共同的原理</strong>（[[母题-C1-上下文组装与窗口预算]]）：</p>
+<pre class="mv-md-pre">压缩 = 把历史摘要掉，用摘要 + 最近若干条重新开始
+调法 = 先保 recall（不漏），再提 precision（删冗余）
+摘要必须有可回溯的指针，原始内容外部持久化
+触发阈值：Claude 平台默认 150,000 输入 token</pre>
+<p class="mv-md-p">【推导】<strong>Agent 里多出来的是"压缩时机的判据"</strong>：</p>
+<pre class="mv-md-pre">纯对话：什么时候压，主要看【窗口快满了】
+Agent ：什么时候压，还要看【当前处在哪个业务节点】
+
+因为压缩在 Agent 里是【有状态语义的】：
+  在一个工具调用序列中间压缩 → 可能丢掉"这一步还没做完"的标记
+  在副作用之后压缩           → 正好，因为结果已经落盘了（[[母题-A4-长任务状态与Checkpoint]]）</pre>
+<p class="mv-md-p">【推论】<strong>所以 Agent 的压缩点应该和 checkpoint 点对齐</strong>——<strong>study/04 把"Context 压缩或分支合并后"列为 checkpoint 时机之一</strong>，正是这个道理：<strong>压缩和 checkpoint 是同一个动作的两面，一个改上下文，一个存状态。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.1 压缩能省多少【推导】</h4>
+<pre class="mv-md-pre">50 步任务，每步新增 2.5K token，每 20 步压缩一次（压到 10K）
+
+不压缩：
+  累计输入 = 2.5K × (1 + … + 50) = 2.5K × 1,275 = 3.19M
+
+压缩（分三段）：
+  段 1（1–20）：prompt 从 2.5K 涨到 50K
+               累计 = 2.5K × 210 = 525K
+               段末压到 10K
+  段 2（21–40）：prompt 从 10K 涨到 60K
+               累计 = 20 × 10K + 2.5K × 210 = 200K + 525K = 725K
+               段末压到 10K
+  段 3（41–50）：prompt 从 10K 涨到 35K
+               累计 = 10 × 10K + 2.5K × 55 = 100K + 137.5K = 237.5K
+
+  合计 ≈ 1,487.5K ≈ 1.49M</pre>
+<p class="mv-md-p">【结论】<strong>压缩把累计输入从 3.19M 降到 1.49M，约一半（47%）。</strong></p>
+<p class="mv-md-p">【推论】<strong>而且压缩的收益随任务变长而变大</strong>：<strong>不压缩是"整段平方"，压缩是"分段平方"</strong>——<strong>段数越多，省得越多</strong>。（[[母题-C6-成本与长上下文截断]] 里那句"缓存改价格、压缩改占用"在这里同样成立，但 Agent 场景下压缩的触发点还要和状态对齐。）</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么 Agent 的压缩不能只看"窗口还剩多少"？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 摘要里必须留下什么【推导】</h3>
+<p class="mv-md-p">【推导】<strong>压缩是有损的，所以"留什么"是设计出来的，不是概括出来的</strong>。三类必须留：</p>
+<pre class="mv-md-pre">① 与副作用相关的：已完成的操作 + 幂等键
+   → 丢了会导致恢复时【重复执行】（[[母题-A3-失败恢复与幂等]]）
+
+② 与证据相关的：来源 ID / Artifact 引用
+   → 丢了会导致结论无法追溯（[[母题-G4-引用绑定与证据可追溯]]）
+
+③ 与进度相关的：未决问题、剩余预算、当前节点
+   → 丢了会导致恢复时不知道该从哪继续（[[母题-A4-长任务状态与Checkpoint]]）</pre>
+<p class="mv-md-p">【推导】<strong>算一下"多留这几个字段"的成本</strong>：</p>
+<pre class="mv-md-pre">在摘要里多保留约 200 token 的指针信息
+成本 = 200 × $5 / 1M = $0.001           （Opus 5 输入价）
+
+而丢掉"已完成副作用记录"的代价：
+  一次重复扣款 / 重复建单 → 对账、退款、客诉 → 【远大于 $0.001】</pre>
+<p class="mv-md-p">【结论】<strong>在摘要里保留指针的成本可以忽略，而丢掉的代价是事故。</strong></p>
+<p class="mv-md-p">【推论】<strong>这就是"摘要不是审计记录"这句话的正确理解</strong>：<strong>它不是"摘要可以随便写"，而是"摘要不该承担记录真相的责任"</strong>——<strong>真相要外部持久化，摘要只留指针。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"摘要写得好不好"这件事，不能用"读起来通不通顺"来判断？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 长期记忆的写入门槛【推导】</h3>
+<p class="mv-md-p">【事实】<strong>门槛是三条同时成立</strong>（[[母题-C1-上下文组装与窗口预算]] 给过）：</p>
+<pre class="mv-md-pre">跨任务稳定 + 对未来有用 + 经过授权（能治理）</pre>
+<p class="mv-md-p">【事实】<strong>不该自动写入的</strong>：<strong>临时推理、模型猜测、敏感数据</strong>。</p>
+<p class="mv-md-p">【推导】<strong>算一下"不设门槛"的代价</strong>：</p>
+<pre class="mv-md-pre">什么都写（每次 run 写 10 条）：
+  每天 10,000 run → 100,000 条/天
+  一年 ≈ 3,650 万条
+
+只写"跨任务稳定 + 已验证"的（每天约 50 条）：
+  一年 ≈ 18,250 条
+
+差约 2,000 倍</pre>
+<p class="mv-md-p">【结论】<strong>写入门槛决定长期记忆是"资产"还是"噪声"。</strong></p>
+<p class="mv-md-p">【推论】<strong>这个差别不是存储成本的问题，是检索质量的问题</strong>——<strong>当记忆里有 3,650 万条时，"回忆相关偏好"这件事本身就变成了一次低质量检索</strong>：<strong>大部分条目是噪声，真正有用的被淹没</strong>（和 [[母题-G1-切分策略与索引粒度]] 里"块太大导致信号被稀释"是同一个机制）。</p>
+<p class="mv-md-p">【事实】<strong>每条记忆应有的元数据</strong>：<strong>来源、主体、作用域、置信度、更新时间、TTL、删除机制</strong>。</p>
+<p class="mv-md-p">【推论】<strong>"删除机制"这一条是硬要求，不是可选项</strong>——<strong>因为记忆里可能有敏感信息，也可能有已经被推翻的结论</strong>（[[母题-G6-知识更新与增量索引]] 的删除传播在记忆上的版本）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"模型觉得重要就自动记下来"这个设计是危险的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 记忆的三种失效【事实】</h3>
+<p class="mv-md-p">【推导】<strong>长期记忆会以三种方式变坏，各要一种对策</strong>：</p>
+<table class="mv-table"><thead><tr><th>失效方式</th><th>表现</th><th>对策</th></tr></thead><tbody><tr><td><strong>过期</strong></td><td>用户偏好变了，记忆还是旧的</td><td><strong>TTL + 更新时间</strong>；关键事实回权威源重查</td></tr><tr><td><strong>污染</strong></td><td>模型推断被当成事实写进去</td><td><strong>写入门槛</strong>（只写验证过的）+ <strong>标注置信度与来源</strong></td></tr><tr><td><strong>过载</strong></td><td>条目太多，检索不出有用的</td><td><strong>写入门槛</strong>（Q2）+ 定期清理</td></tr></tbody></table>
+<p class="mv-md-p">【推论】<strong>第二类最隐蔽</strong>：<strong>模型推断被写进记忆后，下一轮它就不再有"这是推断"的标记了</strong>——<strong>它变成了一条"事实"</strong>。<strong>所以记忆条目必须自带来源与置信度</strong>，否则<strong>系统会逐渐把"自己猜的"当成"知道的"</strong>。</p>
+<p class="mv-md-p">【推论】<strong>这和 [[母题-C4-幻觉的成因与可控性]] 的"多轮对话里幻觉会累积"是同一个机制</strong>：<strong>上一轮的错误结论进了下一轮上下文，就变成了"已确认事实"。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么记忆条目必须自带来源和置信度？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"记忆越多越聪明，都存下来"</td><td><strong>写入门槛决定它是资产还是噪声</strong>：什么都写是每年 3,650 万条，只写稳定已验证的约 1.8 万条——<strong>差 2,000 倍</strong>。<strong>条目多了之后，"回忆相关偏好"本身就退化成一次低质量检索</strong></td></tr><tr><td>"模型自己总结的'已执行'可以当状态用"</td><td><strong>这是最危险的混淆</strong>。<strong>运行状态（①）是权威的，长期记忆（②）是派生的</strong>——<strong>拿模型自己的摘要当业务事实，就是 [[母题-C1-上下文组装与窗口预算]] 里点名的反例</strong></td></tr><tr><td>"摘要就是把历史概括一下"</td><td><strong>摘要的判据不是"通顺"，是"能不能恢复"</strong>。必须留下三类指针：<strong>已完成副作用 + 幂等键、证据 ID / Artifact 引用、未决问题与剩余预算</strong>。<strong>多留 200 token 的成本是 $0.001，丢掉副作用记录的代价是事故</strong></td></tr><tr><td>"压缩什么时候做，看窗口快满了就行"</td><td><strong>Agent 里还要看当前处在哪个业务节点</strong>。<strong>在工具调用序列中间压缩可能丢掉"这一步还没做完"的标记</strong>；<strong>在副作用之后压缩才是安全的</strong>。所以压缩点应该和 checkpoint 点对齐</td></tr><tr><td>"长期记忆写进去就不用管了"</td><td><strong>记忆会以三种方式变坏</strong>：过期、污染、过载。所以要 <strong>TTL + 更新时间 + 来源 + 置信度 + 删除机制</strong>——<strong>"删除机制"是硬要求</strong>（可能有敏感信息，也可能有被推翻的结论）</td></tr><tr><td>"提示里告诉过模型就行"</td><td><strong>OpenAI 的原话是"agent 访问不到的东西，等于不存在"</strong>。知识必须落在<strong>可访问、版本化、可检索</strong>的地方——留在聊天记录和人的脑子里都不算</td></tr><tr><td>"压缩和 checkpoint 是两件事"</td><td><strong>它们是同一个动作的两面</strong>：<strong>一个改上下文、一个存状态</strong>，而且<strong>压缩后必须 checkpoint</strong>——<strong>否则压缩后崩溃又回到压缩前，等于白压一次</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>记忆的核心问题是"权威性"，不是"容量"——分不清"我记住的"和"事情本来的样子"，压缩和记忆都会变成事故来源。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆-q1" tag="Agent运行时与工具" q="一个 50 步的 Agent 任务，每步新增 2.5K token，每 20 步压缩一次（压到 10K）。模型 Opus 5（输入 $5/MTok）。&#10;问：不压缩和压缩的累计输入各是多少？压缩省了多少？" a="``text&#10;不压缩：&#10;累计 = 2.5K × (1 + … + 50) = 2.5K × 1,275 = 3,190K = 3.19M&#10;压缩（分三段）：&#10;段 1（1–20）：2.5K × 210 = 525K，段末压到 10K&#10;段 2（21–40）：20 × 10K + 2.5K × 210 = 200K + 525K = 725K，段末压到 10K&#10;段 3（41–50）：10 × 10K + 2.5K × 55 = 100K + 137.5K = 237.5K&#10;合计 ≈ 1,487.5K ≈ 1.49M&#10;``&#10;【结论】降到约 47%（3.19M → 1.49M）。&#10;【推论】压缩的收益随任务变长而变大：不压缩是&quot;整段平方&quot;，压缩是&quot;分段平方&quot;。50 步分成 3 段能省一半；100 步分成 5 段省得更多。&#10;【补充】但压缩点的选择不能只看步数——要和业务节点对齐（第 2 节）：在工具调用序列中间压缩可能丢掉&quot;这一步还没做完&quot;的标记。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆-q2" tag="Agent运行时与工具" q="某系统把每次 run 的所有中间信息都写进长期记忆，平均每次 10 条，每天 10,000 个 run。&#10;问：一年会积累多少条记忆？如果改成只写&quot;跨任务稳定 + 经过验证&quot;的（每天约 50 条），差多少倍？" a="``text&#10;什么都写：&#10;100,000 条/天 × 365 = 36,500,000 条/年 ≈ 3,650 万条&#10;只写稳定已验证的：&#10;50 条/天 × 365 = 18,250 条/年&#10;差约 2,000 倍&#10;``&#10;【结论】差 2,000 倍。&#10;【推论】这个差别不是存储成本的问题，是检索质量的问题：当记忆里有 3,650 万条时，&quot;回忆相关偏好&quot;退化成一次低质量检索——大部分是噪声，有用的被淹没。 这和 [[母题-G1-切分策略与索引粒度]] 里&quot;块太大导致相似度信号被稀释&quot;是同一个机制。&#10;【推论】而且噪声会自我强化：模型从记忆里读到一堆自己的旧推断，会更倾向于继续沿用它们——越写越多、越多越乱。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆-q3" tag="Agent运行时与工具" q="在摘要里多保留 200 token 的指针信息（已完成副作用 + 幂等键 + Artifact 引用）。模型 Opus 5（输入 $5/MTok）。&#10;问：这个额外成本是多少？和&quot;丢掉副作用记录导致一次重复扣款&quot;相比，量级如何？" a="``text&#10;额外成本 = 200 token × $5 / 1M = $0.001&#10;``&#10;【结论】保留这些指针的成本是千分之一美元量级。&#10;【对比】一次重复扣款 / 重复建单的后果：对账、退款、客诉、可能的信任损失——任何一个都远大于 $0.001。&#10;【推论】所以&quot;摘要里要不要留副作用记录&quot;根本不是成本问题，是意识问题：&#10;摘要不是审计记录——它的意思是&quot;真相要外部持久化、摘要只留指针&quot;，不是&quot;摘要可以随便写&quot;。&#10;【补充】同一笔账也适用于&quot;证据 ID / Artifact 引用&quot;和&quot;未决问题&quot;——它们都只占几十个 token，但丢了就找不回来（[[母题-G4-引用绑定与证据可追溯]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们的 Agent 会把模型每轮总结的内容存进长期记忆，这样它下次就记得了。&quot;" a="三处问题。&#10;1. &quot;模型每轮总结的内容&quot;不是可信信息源。长期记忆是派生的、需要治理的；模型自己的推断没经过验证就写进去，会变成一条&quot;事实&quot;——而下一轮它读到这条时，已经看不到&quot;这是推断&quot;的标记了。这就是记忆污染。&#10;2. 没有写入门槛：什么都写会以 2,000 倍的量级累积噪声（Q2），让&quot;回忆相关偏好&quot;退化成低质量检索。&#10;3. 缺少治理字段：每条记忆应该有来源、主体、作用域、置信度、更新时间、TTL、删除机制——&quot;删除机制&quot;是硬要求（可能有敏感信息、也可能是被推翻的结论）。&#10;【准确说法】&quot;长期记忆只存跨任务稳定、对未来有用、经过授权、能治理的信息；临时推理、模型猜测、敏感数据不自动写入。每条记忆要带来源与置信度，这样才不会把'自己猜的'逐渐当成'知道的'。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;上下文快满了就压缩一下，把历史总结成一段话接着跑。&quot;" a="三处问题。&#10;1. 触发条件不完整：Agent 里除了看窗口，还要看当前处在哪个业务节点。在工具调用序列中间压缩，可能丢掉&quot;这一步还没做完&quot;的标记；在副作用之后压缩才安全（[[母题-A4-长任务状态与Checkpoint]]）。&#10;2. &quot;总结成一段话&quot;会丢掉必须留的指针：已完成副作用 + 幂等键、证据 ID / Artifact 引用、未决问题与剩余预算——丢了前者会导致恢复时重复执行副作用（Q3：多留这些只要 $0.001）。&#10;3. 压缩后必须 checkpoint：否则压缩后崩溃又回到压缩前，等于白压一次。study/04 把&quot;Context 压缩或分支合并后&quot;明确列为 checkpoint 时机之一。&#10;【准确说法】&quot;压缩点要和业务节点、checkpoint 点对齐；摘要要留三类指针；压缩完立刻 checkpoint。而且摘要不是审计记录——原始消息与工具结果要外部持久化，摘要只留引用。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">Agent 的上下文满了要压缩、跨会话要记东西——但&quot;压缩什么、记什么&quot;的判据是什么？为什么记忆不是越多越好？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A5-上下文压缩与记忆" tag="Agent运行时与工具" q="Agent 的上下文满了要压缩、跨会话要记东西——但&quot;压缩什么、记什么&quot;的判据是什么？为什么记忆不是越多越好？" a="记忆要分三层，判据是权威性不是容量——运行状态（Checkpointer，单 thread、短期、自动写入）→ 长期记忆（Store，跨 thread、需治理、有写入门槛）→ 业务权威状态（最高权威，任何恢复动作都要先查它）。混在一起的后果很具体：拿模型自己总结的&quot;已执行&quot;当成工具真的执行成功了。 压缩在 Agent 里比对话里多一条判据：除了看窗口，还要看当前处在哪个业务节点——工具调用序列中间压缩可能丢掉&quot;这一步还没做完&quot;，副作用之后压缩才安全；而且压缩点要和 checkpoint 点对齐，压缩后必须 checkpoint。收益能算：50 步每 20 步压一次，累计输入从 3.19M 降到 1.49M（约一半），而且任务越长省得越多。摘要必须留三类指针：已完成副作用 + 幂等键、证据 ID / Artifact 引用、未决问题与剩余预算——多留 200 token 只要 $0.001，丢掉副作用记录的代价是事故。长期记忆要有写入门槛（跨任务稳定 + 已验证 + 可治理），否则会以 2,000 倍量级累积噪声，让&quot;回忆&quot;退化成低质量检索。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>看起来是"内存管理"，实际是"权威性管理"</strong>。答"我们做了摘要压缩"是及格线；<strong>能说清"摘要里必须留哪些指针、长期记忆的写入门槛是什么"才算过关</strong>——因为<strong>这两件事做错，前者会导致重复执行副作用，后者会让检索被噪声淹没</strong>。</p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>记忆要分三层，判据是权威性不是容量</strong>——<strong>运行状态</strong>（Checkpointer，单 thread、短期、自动写入）→ <strong>长期记忆</strong>（Store，跨 thread、需治理、<strong>有写入门槛</strong>）→ <strong>业务权威状态</strong>（最高权威，任何恢复动作都要先查它）。<strong>混在一起的后果很具体：拿模型自己总结的"已执行"当成工具真的执行成功了。</strong> <strong>压缩</strong>在 Agent 里比对话里多一条判据：<strong>除了看窗口，还要看当前处在哪个业务节点</strong>——<strong>工具调用序列中间压缩可能丢掉"这一步还没做完"，副作用之后压缩才安全</strong>；而且<strong>压缩点要和 checkpoint 点对齐，压缩后必须 checkpoint</strong>。<strong>收益能算</strong>：50 步每 20 步压一次，累计输入从 <strong>3.19M 降到 1.49M（约一半）</strong>，而且<strong>任务越长省得越多</strong>。<strong>摘要必须留三类指针</strong>：<strong>已完成副作用 + 幂等键、证据 ID / Artifact 引用、未决问题与剩余预算</strong>——<strong>多留 200 token 只要 $0.001，丢掉副作用记录的代价是事故</strong>。<strong>长期记忆要有写入门槛</strong>（跨任务稳定 + 已验证 + 可治理），否则会以 <strong>2,000 倍</strong>量级累积噪声，让"回忆"退化成低质量检索。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三层记忆（运行状态</li><li>长期记忆</li><li>业务权威）</li><li><strong>权威性不同，不是容量不同</strong></li><li>Checkpointer 单 thread vs Store 跨 thread</li><li><strong>"agent 访问不到就等于不存在"</strong></li><li>压缩点与业务节点对齐 + 与 checkpoint 点对齐</li><li>50 步压缩降到 47%</li><li><strong>摘要三类指针</strong>（副作用+幂等键</li><li>证据ID</li><li>未决与预算）</li><li>200 token = $0.001 vs 一次重复扣款</li><li>写入门槛（2,000 倍差）</li><li>记忆三失效（过期</li><li>污染</li><li>过载）</li><li>记忆必备元数据（来源</li><li>作用域</li><li>置信度</li><li>TTL</li><li><strong>删除</strong>）</li><li>压缩后必须 checkpoint</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Agent State、Context、Memory 有何区别？</strong></strong></p>
+<p class="mv-md-p"><strong>State 是运行时结构化事实；Context 是某一次模型调用看到的投影；Memory 是跨步骤 / 会话复用的信息</strong>。<strong>业务状态仍由数据库权威维护</strong>。<strong>恢复时从 State 和业务状态重新装配 Context。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>Memory 应该存什么？</strong></strong></p>
+<p class="mv-md-p"><strong>只存跨任务稳定、对未来有用、经过授权、能治理的信息</strong>。临时推理、模型猜测、敏感数据不自动写入。每条有<strong>来源、主体、作用域、置信度、更新时间、TTL 和删除机制</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>怎么防止记忆污染？</strong></strong></p>
+<p class="mv-md-p"><strong>两道</strong>：<strong>写入门槛</strong>（只写验证过的）+ <strong>条目自带来源与置信度</strong>（这样模型读到它时知道这是"推断"还是"事实"）。<strong>最危险的是"模型推断写进去后，下一轮就看不到推断标记了"。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>压缩和 checkpoint 什么关系？</strong></strong></p>
+<p class="mv-md-p"><strong>同一个动作的两面</strong>：一个改上下文、一个存状态。<strong>压缩后必须 checkpoint</strong>，否则压缩后崩溃又回到压缩前，<strong>等于白压一次</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>长文档场景怎么保证 grounding？</strong></strong></p>
+<p class="mv-md-p">对超过 20k token 的文档，<strong>先要求逐字摘出相关原文（找不到就明说"没找到"），再基于摘录作答</strong>——这样引用在生成时就产生了，而且<strong>摘要里天然带着可回溯的指针</strong>（[[母题-G4-引用绑定与证据可追溯]]）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「多轮对话里幻觉会累积吗？」——<strong>会</strong>。上一轮的错误结论进了下一轮上下文，就变成"已确认事实"。<strong>所以摘要必须标注哪些是已验证事实、哪些是模型推断</strong>，关键状态要回权威源重查。</li><li>「子 Agent 的上下文怎么和主 Agent 交互？」——<strong>子 Agent 在自己的干净窗口里探索，只回传 1,000–2,000 token 的浓缩结论</strong>——<strong>这本质上是"压缩"的一种实现，而且它天然地只回传了结论、不带过程的噪声</strong>（[[母题-A7-多Agent拆分与协作]]）。</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>长审查任务压缩时保留证据 ID 和副作用记录</strong>——<strong>恢复时先查权威状态再重建最小上下文，而不是拿旧摘要直接续跑</strong>。 - <strong>EnergyOps</strong>：<strong>每个 MCP 工具只收到必要业务参数；日志和大表先检索聚合再进上下文</strong>——<strong>这是"减少新增"而不是"压缩历史"，两者要配合用</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">三层记忆与权威性 → Agent 的压缩为什么要看业务节点 → 压缩收益算式 → <strong>摘要必须留的三类指针</strong>（给成本对比）→ 长期记忆的写入门槛（给 2,000 倍）→ 记忆的三种失效 → 收束到"权威性不是容量"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>记忆的核心问题是"权威性"，不是"容量"。</strong> 分不清"我记住的"和"事情本来的样子"，<strong>压缩会丢掉恢复所需的指针，记忆会把模型自己的猜测固化成事实</strong>——<strong>两者都会变成事故来源。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清三层记忆与权威性差异；<strong>能说出 Agent 的压缩为什么要看业务节点</strong>；<strong>能算出 50 步压缩把累计输入降到 47%</strong>；<strong>能列出摘要的三类必需指针并给出 $0.001 vs 事故的成本对比</strong>；<strong>能算出写入门槛的 2,000 倍差并解释它影响的是检索质量</strong>；能说出记忆的三种失效与必备元数据；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

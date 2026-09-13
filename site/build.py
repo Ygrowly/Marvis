@@ -54,6 +54,8 @@ def split_front(text):
             for line in parts[1].strip().splitlines():
                 if ":" in line:
                     k, v = line.split(":", 1)
+                    # frontmatter 值里剥掉行内注释（`#` 之后），否则整串会被当值用
+                    v = re.sub(r"\s+#.*$", "", v)
                     meta[k.strip()] = v.strip()
             return meta, parts[2]
     return meta, text
@@ -325,6 +327,7 @@ def parse_topic(path):
         "breakpoint": grab(body, "本次断点"),
         "evidence": grab(body, "通过证据"),
         "guide": grab(body, "导读"),
+        "interactive": meta.get("interactive", ""),
         "lesson_html": md_to_html(lesson_md, figmap, used_figs) if lesson_md else "",
         "quiz": parse_quiz(quiz_md),
         "figures": [f for f in figures if f["file"] not in used_figs],
@@ -378,7 +381,7 @@ PAGE = """<!DOCTYPE html>
 <body class="mv-page">
 <div class="mv-wrap">
   <a class="mv-back" href="../index.html">← 返回训练台</a>
-  %%MODULE_BACK%%
+  %%MODULE_BACK%%%%INTERACTIVE%%
 
   <div class="mv-topic-head">
     <span class="mv-topic-module">%%MODULE%%</span>
@@ -550,7 +553,12 @@ def render_topic(t):
 
     mi = TOPIC_MODULE_INDEX.get(t["module"])
     module_back = ('<a class="mv-back mv-back-2" href="../modules/%s.html">← %s 模块概览</a>'
-                   % (esc(mi), esc(t["module"]))) if mi else ""
+                   % (esc(safe_fname(mi)), esc(t["module"]))) if mi else ""
+
+    # 交互版（archify 产出的自包含 HTML，放在 site/interactive/）——frontmatter: interactive: xxx.html
+    # 自带前导换行，空值时就什么也不留（否则每张卡都会多一行空白）
+    inter = ('\n  <a class="mv-back mv-back-2" href="../interactive/%s">交互版 →</a>'
+             % esc(t["interactive"])) if t.get("interactive") else ""
 
     problem = ""
     if t["problem"]:
@@ -601,6 +609,7 @@ def render_topic(t):
         ("%%EXPAND%%", expand),
         ("%%BODY%%", body),
         ("%%MODULE_BACK%%", module_back),
+        ("%%INTERACTIVE%%", inter),
     ):
         out = out.replace(k, v)
     return out
@@ -1081,7 +1090,7 @@ def parse_module_card(path):
         "bridge": bridge,
         "gate": gate,
         "cards": cards,
-        "page": "modules/%s.html" % module,
+        "page": "modules/%s.html" % safe_fname(module),
     }
 
 
@@ -1090,6 +1099,16 @@ CN_INDEX = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7
 # 运行时登记（main 里填充）：母题 key -> 母题页路径；模块名 -> 模块概览页
 TOPIC_PAGES = {}
 TOPIC_MODULE_INDEX = {}
+
+
+def safe_fname(s):
+    """文件名清洗：Windows 禁止 < > : " / \ | ? *，且不能以空格或点结尾。
+
+    2026-09-13 新增：模块卡的主线名会进文件名，一个 ASCII 双引号就让 write_text
+    抛 OSError、整个 build 静默中断（后面的主线页全不生成，模块页里留下死链）。
+    """
+    s = re.sub(r'[<>:"/\|?*]', "", s).strip().rstrip(".")
+    return s or "untitled"
 
 
 def line_short(name):
@@ -1106,8 +1125,10 @@ def line_question(name):
 
 def module_line_page(md, no):
     idx = CN_INDEX.get(no, 0)
-    return "modules/%s-%02d-%s.html" % (md["module"], idx, line_short(
-        next((l["name"] for l in md["lines"] if l["no"] == no), no)))
+    return "modules/%s-%02d-%s.html" % (
+        safe_fname(md["module"]), idx,
+        safe_fname(line_short(
+            next((l["name"] for l in md["lines"] if l["no"] == no), no))))
 
 
 def module_line_file(md, no):
@@ -1492,9 +1513,15 @@ def prune_dir(d, expected):
 
 
 def cleanup_html():
-    """清掉预览面板写回源文件的注入属性（否则会污染提交）"""
+    """清掉预览面板写回源文件的注入属性（否则会污染提交）
+
+    site/interactive/ 是 archify 产出的自包含 HTML，属于「外部产物」不是本站生成的
+    页面——它的 data-* 是它自己的运行时状态，扫过去改掉会静默改坏交互图。
+    """
     n = 0
     for p in SITE.rglob("*.html"):
+        if p.parent.name == "interactive":
+            continue
         txt = p.read_text(encoding="utf-8")
         new = DIRTY_ATTR.sub("", txt)
         if new != txt:

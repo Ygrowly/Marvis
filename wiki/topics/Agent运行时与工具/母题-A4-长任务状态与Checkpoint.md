@@ -6,6 +6,7 @@ updated: 2026-09-12
 status: candidate
 human_reviewed: false
 level: A
+interactive: rulearena-run-lifecycle.html
 ---
 
 # 母题 A4 · 长任务状态与 Checkpoint

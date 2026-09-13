@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent 运行时与工具模块卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">Agent 运行时与工具模块卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/Agent运行时与工具/Agent运行时与工具模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>8</b> 个母题</span>
+    <span class="mv-stat-i"><b>24</b> 道题（<b>15</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
+    <span class="mv-stat-i warn"><b>8</b> 草稿待验收</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="Agent运行时与工具-01-循环怎么转、什么时候停.html"><span class="mv-line-no">一</span><span class="mv-line-name">循环怎么转、什么时候停</span><span class="mv-line-q">模型怎么在循环里做决定，什么算"做完"</span><span class="mv-line-st">母题 2 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Agent运行时与工具-02-中断与失败之后怎么继续.html"><span class="mv-line-no">二</span><span class="mv-line-name">中断与失败之后怎么继续</span><span class="mv-line-q">进程重启、工具超时、用户确认之后怎么不出错</span><span class="mv-line-st">母题 3 · 题 8</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Agent运行时与工具-03-风险与复杂度怎么管.html"><span class="mv-line-no">三</span><span class="mv-line-name">风险与复杂度怎么管</span><span class="mv-line-q">权限、多 Agent、计划会变</span><span class="mv-line-st">母题 3 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="RuleArena（规则竞技场）· 主承载项目"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>显式 FSM 编排</strong>（准备 → 取证 → 各角色审查 → 合并 → 确定性验证 → 人工确认 → 完成）；<strong>Thread/Run/Step/Checkpoint/Artifact/Event 数据模型</strong>；<strong>每个步骤记录 Prompt/Model/Tool/Rule 版本</strong></li><li>解决什么问题：<strong>高风险修复发布前 interrupt</strong>；<strong>从任一步 fork 比较不同策略</strong>；<strong>Replay 默认使用记录的工具结果</strong></li><li>踩过的坑：【待填 —— 提示：为什么不用 LangGraph 的自由编排？】</li><li>决策与取舍：【待填 —— 提示：连续无进展、预算耗尽、证据冲突为什么要各有独立终止原因？】</li><li>对应母题：【A4】【A8】</li></ul></div></collapse-panel><collapse-panel title="EnergyOps（金山园区能耗）· 最硬的证据区"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>Hook 链 + R0/R1/R2 风险分级</strong>（这是简历最硬的一条 bullet）；<strong>30 个 MCP 工具封装</strong>、6 类 Capability Bundle</li><li>解决什么问题：<strong>Agent 在跑，但危险动作被 Hook 拦住</strong></li><li>踩过的坑：【待填 —— 提示：Hook 拦截 R2 的伪代码要能写出来（用 learn-claude-code 的 s03/s04 当底稿）】</li><li>决策与取舍：【待填 —— 提示：30 个工具怎么分组、哪些该延迟加载？】</li><li>对应母题：【A2】【A3】【A6】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>意图路由</strong>（该走 RAG 还是 NL2SQL 还是直接回答）；<strong>五层安全</strong></li><li>解决什么问题：<strong>Agent 的计划依赖领域判断</strong>——路由错了后面全错</li><li>踩过的坑：【待填】</li><li>决策与取舍：【待填 —— 提示：为什么"先判断意图"比"把所有工具都给模型"更可靠？】</li><li>对应母题：【A2】【A7】</li></ul></div></collapse-panel><collapse-panel title="Ovanta（全栈交易）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/Ovanta/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>弱相关</strong>——只到"如果给它加 Agent，幂等键该建在哪张表上"</li><li>对应母题：【A3】</li></ul></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

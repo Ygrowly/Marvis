@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 A2 · 工具调用与 MCP 边界</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Agent运行时与工具.html">← Agent运行时与工具 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Agent运行时与工具</span>
+    <h1 class="mv-topic-title">母题 A2 · 工具调用与 MCP 边界</h1>
+    <p class="mv-topic-meta">关联 母题-A1-计划执行循环与停止条件（工具是循环里的"行动"）· 母题-C1-上下文组装与窗口预算（工具定义与工具响应都占预算）· 母题-C6-成本与长上下文截断（响应进历史后被平方放大）· 母题-A6-沙箱权限与可信执行（工具的权限边界） ｜ 正本 wiki/topics/Agent运行时与工具/母题-A2-工具调用与MCP边界.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① "工具越多越好"是错的 ② 别把 API endpoint 直接包一层 ③ 工具返回什么，取决于"模型接下来还需不需要用它发起调用"）· 读完约 12 分钟 · 需要先懂：[[母题-C1-上下文组装与窗口预算]]</p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们的 Agent 有多少个工具？怎么定的？工具描述怎么写？"</p></div>
+  </div>
+
+<div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Agent 的 affordance 和传统软件不一样</h3>
+<p class="mv-md-p">【事实】Anthropic 原文点出的最常见错误：</p>
+<p class="mv-md-p mv-md-quote"><strong>"A common error we've observed is tools that merely wrap existing software functionality or API endpoints—whether or not the tools are appropriate for agents."</strong></p>
+<p class="mv-md-p">【推导】<strong>差别在哪</strong>：</p>
+<pre class="mv-md-pre">传统软件程序：内存便宜且充足
+  → 可以一次取出全部数据，再在程序里逐条处理
+
+LLM Agent：上下文有限且昂贵
+  → 如果工具返回全部联系人，它只能【token by token 读过去】
+  → 等于拿有限的上下文做【暴力搜索】</pre>
+<p class="mv-md-p">【事实】原文给了一个很直观的类比：</p>
+<p class="mv-md-p mv-md-quote"><strong>"imagine searching for a contact in your address book by reading each page from top-to-bottom—that is, via brute-force search"</strong></p>
+<p class="mv-md-p">【推论】<strong>人找通讯录不会从头读到尾</strong>——会先翻到那一页。<strong>所以工具设计的目标不是"暴露能力"，是"让 agent 用接近人的方式完成任务"。</strong></p>
+<figure-box num="工具设计：把 API endpoint 直接包一层，是把检索工作推给了模型" title="" note="左边是错误做法（返回全部、让模型暴力搜索）；右边是按工作流做 consolidation；底部是同一响应的 206 vs 72 token"><svg viewBox="0 0 680 344" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>工具设计：把 API endpoint 直接包一层，是把检索工作推给了模型</title>
+  <desc>左边是常见的错误做法：把 list_contacts 这样的 API 直接包装成工具，一次返回全部联系人，模型只能逐个读过去，用有限的上下文做暴力搜索。右边是正确做法：按 agent 的高频工作流设计工具（search_contacts、schedule_event），把多步操作合进一次调用。底部是同一个响应两种写法的 token 对比：详细版 206 token、精简版 72 token，后者只用三分之一。</desc>
+
+  <text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">工具设计：把 API endpoint 直接包一层，是把检索工作推给了模型</text>
+  <text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">「工具越多越好」是常见的错——更多工具往往带来更差的结果</text>
+
+  <!-- 左：错误做法 -->
+  <rect x="30" y="66" width="300" height="150" rx="8" fill="#F7F6F3" stroke="#E3E1DA"/>
+  <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">✗ 包装 API：list_contacts</text>
+  <text x="46" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">一次返回全部联系人</text>
+  <text x="46" y="130" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 模型只能一个一个读过去</text>
+  <text x="46" y="148" font-family="system-ui,sans-serif" font-size="10" fill="#633806">→ 拿有限的上下文做【暴力搜索】</text>
+  <text x="46" y="172" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">人也不会这么找通讯录——</text>
+  <text x="46" y="188" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">你会直接翻到的那一页，而不是从头读</text>
+  <text x="46" y="208" font-family="system-ui,sans-serif" font-size="10" fill="#633806">agent 的 affordance 和传统软件不同</text>
+
+  <!-- 右：正确做法 -->
+  <rect x="350" y="66" width="300" height="150" rx="8" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="88" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#633806">✓ 按工作流设计：consolidation</text>
+  <text x="366" y="110" font-family="system-ui,sans-serif" font-size="10" fill="#633806">list_users + list_events + create_event</text>
+  <text x="366" y="126" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 合成一个 <tspan font-family="monospace">schedule_event</tspan></text>
+  <text x="366" y="146" font-family="system-ui,sans-serif" font-size="10" fill="#633806">read_logs → <tspan font-family="monospace">search_logs</tspan>（只返回相关行 + 上下文）</text>
+  <text x="366" y="162" font-family="system-ui,sans-serif" font-size="10" fill="#633806">get_customer_by_id + list_transactions + list_notes</text>
+  <text x="366" y="178" font-family="system-ui,sans-serif" font-size="10" fill="#633806">　→ 合成一个 <tspan font-family="monospace">get_customer_context</tspan></text>
+  <text x="366" y="200" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">把中间产物消耗的上下文，</text>
+  <text x="366" y="214" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">从 agent 的上下文里搬回工具内部</text>
+
+  <!-- 底部 -->
+  <path d="M30 236 L650 236" stroke="#D8D5CC" stroke-width="1.2" fill="none"/>
+  <text x="30" y="260" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#2C2C2A">同一个响应的两种写法</text>
+
+  <rect x="30" y="272" width="300" height="52" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+  <text x="46" y="292" font-family="system-ui,sans-serif" font-size="10.5" fill="#2C2C2A">详细版：含 thread_ts / channel_id / user_id</text>
+  <text x="46" y="312" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">206 token　← 能继续发起后续调用</text>
+
+  <rect x="350" y="272" width="300" height="52" rx="7" fill="#FBF1E2" stroke="#E8D3AF"/>
+  <text x="366" y="292" font-family="system-ui,sans-serif" font-size="10.5" fill="#633806">精简版：只有内容，不带 ID</text>
+  <text x="366" y="312" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#633806">72 token　← 约三分之一</text>
+
+  <text x="30" y="340" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65">所以「该返回什么」不是一个格式问题，是「模型接下来还需不需要用它发起调用」的问题。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们能调的通路都封装成工具了"不是一句好话？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 原则一：按工作流做，不按 API 做【事实】</h3>
+<p class="mv-md-p">【事实】原文给的三组对照（<strong>这三组可以直接背</strong>）：</p>
+<pre class="mv-md-pre">✗ list_users + list_events + create_event
+✓ schedule_event        （自己找可用时间并排期）
+
+✗ read_logs
+✓ search_logs           （只返回相关行 + 一点上下文）
+
+✗ get_customer_by_id + list_transactions + list_notes
+✓ get_customer_context  （把该客户的近期相关信息一次性汇总）</pre>
+<p class="mv-md-p">【推导】<strong>consolidation 的收益有两层</strong>：</p>
+<pre class="mv-md-pre">① 减少调用次数   → 少几步、少几轮上下文累积
+② 把中间产物搬回工具内部 → 【这些中间产物本来会进 agent 的上下文，现在不进了】</pre>
+<p class="mv-md-p">【推论】<strong>第 ② 条才是关键</strong>：<strong>一次 <code class="mv-md-code">list_transactions</code> 返回的 100 条流水，如果只是为了让 agent 数个数，那这 100 条就白占了上下文。</strong> 把它合进 <code class="mv-md-code">get_customer_context</code>，计数在工具内部完成。</p>
+<p class="mv-md-p">【事实】<strong>原文对判据的表述</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Make sure each tool you build has a clear, distinct purpose. Tools should enable agents to subdivide and solve tasks in much the same way that a human would, given access to the same underlying resources, and simultaneously reduce the context that would have otherwise been consumed by intermediate outputs."</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.1 工具响应会被平方放大【推导】</h4>
+<pre class="mv-md-pre">一个工具返回 5,000 token 的原始日志，40 轮会话里有 10 次这样的调用
+
+这 10 × 5,000 = 50,000 token 会【留在历史里】
+之后的每一轮都要把它重发一遍（[[母题-C1-上下文组装与窗口预算]]）
+
+在剩余 30 轮里被重发：50,000 × 30 = 1,500,000 token 的额外输入
+成本（Opus 5，$5/MTok）= 1.5M × $5 / 1M = $7.5</pre>
+<p class="mv-md-p">【结论】<strong>工具响应的代价不是"这一次调用花了多少 token"，而是"它进了历史之后，被重发了多少次"。</strong></p>
+<p class="mv-md-p">【推论】<strong>改成 <code class="mv-md-code">search_logs</code> 只返回 500 token（1/10），就能省下约 $6.75。</strong></p>
+<p class="mv-md-p">【事实】<strong>所以原文建议对任何可能吃上下文的响应实现</strong>：<strong>分页、范围选择、过滤、截断</strong>，并给<strong>合理的默认值</strong>。<strong>Claude Code 把工具响应默认限制在 25,000 token。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"工具返回得多一点，信息更全"在 Agent 里反而更差？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 原则二：命名空间【事实】</h3>
+<p class="mv-md-p">【事实】原文的观察：</p>
+<p class="mv-md-p mv-md-quote"><strong>"Your AI agents will potentially gain access to dozens of MCP servers and hundreds of different tools… When tools overlap in function or have a vague purpose, agents can get confused about which ones to use."</strong></p>
+<p class="mv-md-p">【事实】<strong>两种命名空间方式</strong>：</p>
+<pre class="mv-md-pre">按服务：asana_search、jira_search
+按资源：asana_projects_search、asana_users_search</pre>
+<p class="mv-md-p">【事实】<strong>一个反直觉的实测结论</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"We have found selecting between prefix- and suffix-based namespacing to have non-trivial effects on our tool-use evaluations. Effects vary by LLM."</strong></p>
+<p class="mv-md-p">【推论】<strong>前缀还是后缀，对评测有实质影响，而且因模型而异——所以这个选择要靠自己的评测定，不能照搬。</strong></p>
+<p class="mv-md-p">【事实】<strong>原文还列了四种工具调用失败</strong>（<strong>这四种可以直接当追问的答案</strong>）：</p>
+<pre class="mv-md-pre">① 调错工具
+② 调对了工具但参数错
+③ 工具调用太少（没查够就下结论）
+④ 工具响应处理错误</pre>
+<p class="mv-md-p">【推论】<strong>命名反映任务的天然切分，能同时降低四类失败</strong>——<strong>因为它减少了加载进上下文的工具数与描述长度</strong>，把计算从"agent 的上下文"搬回"工具调用本身"。</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 原则三：返回什么，取决于"接下来还需不需要它"【推导】</h3>
+<p class="mv-md-p">【事实】原文给的同一份数据的两种响应（Slack 线程）：</p>
+<pre class="mv-md-pre">详细版（206 token）：含 thread_ts / channel_id / user_id
+  → 这些 ID 是【发起后续调用所必需的】
+
+精简版（72 token）：只有线程内容，不含 ID
+  → 省了约 2/3 的 token</pre>
+<p class="mv-md-p">【推导】<strong>所以"该返回什么"的判据不是"信息全不全"，是</strong>：</p>
+<pre class="mv-md-pre">模型接下来还需不需要用这些字段发起新调用？
+  需要 → 返回 ID 类字段（详细版）
+  不需要 → 只返回内容（精简版）</pre>
+<p class="mv-md-p">【事实】<strong>还有一条容易被忽略的</strong>：<strong>响应的结构（XML / JSON / Markdown）本身会影响评测表现</strong>——原文说<strong>没有万能解</strong>，<strong>因为模型是按 next-token prediction 训练的，对匹配训练数据的格式表现更好</strong>，<strong>要按自己的评测选</strong>。</p>
+<p class="mv-md-p">【事实】<strong>错误响应也要"可行动"</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"…prompt-engineer your error responses to clearly communicate specific and actionable improvements, rather than opaque error codes or tracebacks."</strong></p>
+<p class="mv-md-p">【事实】<strong>一个真实的例子</strong>：Claude 的 web search 工具上线时，<strong>它会在 <code class="mv-md-code">query</code> 参数里无意义地加上 "2025"，影响搜索结果</strong>——<strong>修法是改工具描述，不是改模型。</strong></p>
+<p class="mv-md-p">【推论】<strong>这两条合起来说明一件事</strong>：<strong>工具的描述、参数、返回、错误，全都是"给模型看的界面"</strong>——<strong>它们不是文档，是可调优的输入。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"工具报错返回一个错误码"是不合格的？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 原则四：怎么知道工具做得好不好——用 Agent 评估 Agent【事实】</h3>
+<p class="mv-md-p">【事实】原文的流程：</p>
+<pre class="mv-md-pre">① 先做一个 prototype（别一上来设计完美工具集）
+② 跑评测
+③ 和 agent 一起打磨工具（"with agents"）</pre>
+<p class="mv-md-p">【事实】<strong>要收集的指标</strong>：</p>
+<pre class="mv-md-pre">顶层准确率
+单个工具调用的耗时
+任务总耗时
+工具调用总次数
+总 token 消耗
+工具错误</pre>
+<p class="mv-md-p">【推导】<strong>每个指标对应一类可行动的诊断</strong>：</p>
+<pre class="mv-md-pre">冗余调用多      → 分页或 token 上限的参数需要调整
+参数无效的错误多 → 描述不清或缺少示例
+工具调用次数异常 → 可能有一批工具总是连着用 → 【合并的机会】</pre>
+<p class="mv-md-p">【推论】<strong>最后一条特别值</strong>：<strong>"工具调用总次数"这个指标能暴露出"经常被连起来调用的工具组合"，那就是 consolidation 的候选。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"重新设计工具"这件事不能靠拍脑袋，而要先跑评测？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"工具越多能力越强"</td><td><strong>反了</strong>。原文原话：<strong>"More tools don't always lead to better outcomes"</strong>。<strong>重叠或用途含糊的工具会分散 agent 的注意力</strong>，而且<strong>每个工具的描述都占上下文</strong></td></tr><tr><td>"把现有 API 全部封装成工具就行"</td><td><strong>这是最常见的错误</strong>（原文点名）。传统软件内存充足、可以遍历全部数据；<strong>agent 只能 token by token 读</strong>。<strong><code class="mv-md-code">list_contacts</code> 会逼 agent 暴力搜索，<code class="mv-md-code">search_contacts</code> 才是对的</strong></td></tr><tr><td>"工具返回的信息越多越好"</td><td><strong>响应会被平方放大</strong>：5,000 token 的日志在 40 轮里被重发 30 次 = 1.5M token ≈ $7.5。<strong>要分页 / 过滤 / 截断 + 合理默认值</strong>（Claude Code 默认上限 25,000 token）</td></tr><tr><td>"报错就返回错误码"</td><td><strong>要"可行动"</strong>：原文明确要求<strong>清楚地传达具体的、可改进的信息</strong>，而不是不透明的错误码或堆栈。<strong>错误响应也是给模型看的界面</strong></td></tr><tr><td>"命名前缀还是后缀无所谓"</td><td><strong>有非平凡的影响</strong>，而且<strong>因模型而异</strong>（原文实测）。<strong>要按自己的评测选</strong>，不能照搬别人的命名方案</td></tr><tr><td>"工具描述写清楚就行，不用给示例"</td><td><strong>对新一代模型，示例反而会限制探索空间</strong>（[[母题-C3-Prompt版本管理与回归]]）——<strong>更好的做法是设计接口本身</strong>（枚举值、参数命名、默认值）。<strong>"光是列出枚举值就在提示怎么用"</strong></td></tr><tr><td>"工具集设计是一次性的"</td><td><strong>原文的流程是"prototype → 评测 → 和 agent 一起打磨"</strong>。<strong>"工具调用总次数"这个指标能暴露"总被连着调用的组合"——那就是下一次 consolidation 的候选</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】读成一句话：<strong>工具不是"能力的暴露面"，是"给模型看的界面"——它的描述、参数、返回、错误都要按 agent 的 affordance 设计，而不是按 API 的形状包装。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界-q1" tag="Agent运行时与工具" q="某工具返回 5,000 token 的原始日志。一个 40 轮的 Agent 会话里有 10 次这样的调用。模型 Opus 5（输入 $5/MTok）。&#10;问：这些响应最终让总输入多了多少 token？多花多少钱？" a="``text&#10;这 10 次调用的结果会【留在历史里】：&#10;10 × 5,000 = 50,000 token&#10;之后的每一轮都要重发这段历史（[[母题-C1-上下文组装与窗口预算]]）：&#10;在剩余约 30 轮里被重发 → 50,000 × 30 = 1,500,000 token 的额外输入&#10;成本 = 1.5M × $5 / 1M = $7.5&#10;`&#10;【结论】工具响应的真实代价不是&quot;这一次花了 5,000 token&quot;，而是&quot;它进了历史之后被重发了多少次&quot;。&#10;【补充】改成 search_logs` 只返回 500 token（1/10），额外输入降到 150,000 token、成本降到 $0.75——省约 $6.75。&#10;【推论】这就是原文为什么建议对任何可能吃上下文的响应都实现分页 / 范围选择 / 过滤 / 截断，并给合理的默认值。&quot;返回全量、让模型自己挑&quot;在 Agent 里是最贵的做法。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界-q2" tag="Agent运行时与工具" q="某 Agent 加载了 30 个工具，每个工具的定义（名称 + 描述 + 参数 schema）平均约 200 token。&#10;问：这些定义每次请求占多少 token？它与&quot;最常用的只有 8 个&quot;相比差多少？这带来什么工程手段？" a="``text&#10;全部加载：30 × 200 = 6,000 token / 请求&#10;只留常用的 8 个：8 × 200 = 1,600 token / 请求&#10;差 4,400 token / 请求&#10;`&#10;【结论】工具定义是&quot;每一轮都在付&quot;的固定成本——而且成本有两层：&#10;`text&#10;① 钱的层面：这 6,000 token 每轮都要重发&#10;（如果在前缀里且缓存命中，按 0.1× 计——[[母题-C6-成本与长上下文截断]]）&#10;② 注意力层面：它每轮都占着 attention budget，而且【没有折扣】&#10;（[[母题-C1-上下文组装与窗口预算]]）&#10;`&#10;【推论】所以工程上有一个直接手段：把少用的工具标记为延迟加载（defer_loading`）——它们留在缓存前缀之外，用到时再通过工具搜索加载进来。代价从&quot;每轮都付&quot;变成&quot;用到才付&quot;。&#10;【补充】这也解释了 EnergyOps 的&quot;6 类 Capability Bundle&quot;在做什么：它不是分组展示，是控制&quot;每次请求加载哪些工具定义&quot;。能说出这一层，比说&quot;我们分了 6 类&quot;更像设计过。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界-q3" tag="Agent运行时与工具" q="某团队的工具集里有这三个：list_users、list_events、create_event。评测数据显示：这三个工具经常被连着调用（同一个任务里平均连着调 3 次），而且总 token 消耗偏高。&#10;问：这三个指标说明了什么？该怎么办？" a="&quot;经常被连着调用&quot; → 说明它们其实是同一个工作流的三个步骤，而 agent 每次都要自己把它们串起来。&#10;&quot;总 token 消耗偏高&quot; → 说明中间产物（用户列表、事件列表）都进了 agent 的上下文，而这些中间结果只是为了让 agent 挑一个时间。&#10;【结论】这是 consolidation 的典型信号。 应该合并成一个 schedule_event：自己找可用时间并排期。&#10;【收益有两层】：&#10;``text&#10;① 调用次数从 3 次降到 1 次 → 少几轮上下文累积&#10;② 中间产物（两个列表）不再进 agent 的上下文 → 直接省掉&#10;``&#10;【推论】原文的判据可以直接背：&#10;&quot;Tools should enable agents to subdivide and solve tasks in much the same way that a human would… and simultaneously reduce the context that would have otherwise been consumed by intermediate outputs.&quot;&#10;关键在最后半句：合并的目的不只是&quot;少调几次&quot;，是&quot;让中间产物不进上下文&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界-q4" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;我们把系统里所有的 API 都封装成了工具，一共 80 个，能力覆盖很全。&quot;" a="三处问题。&#10;1. &quot;包装 API&quot;是原文点名的常见错误：传统软件内存充足、可以一次取出全部数据再逐条处理；agent 只能 token by token 读。把 list_contacts 这样的一次性返回全部，等于逼 agent 用有限的上下文做暴力搜索。&#10;2. &quot;能力覆盖全&quot;不等于&quot;好用&quot;：原文原话是 &quot;More tools don't always lead to better outcomes&quot;。重叠或用途含糊的工具会让 agent 分不清该用哪个，而且每个工具的描述都占上下文（Q2 的 6,000 token/请求）。&#10;3. 80 个工具的定义开销很可观：按 200 token 一个算就是 16,000 token/请求，每轮都付——而且注意力层面没有折扣。&#10;【准确说法】&quot;按 agent 的高频工作流设计少量工具（原文建议&quot;a few thoughtful tools targeting specific high-impact workflows&quot;），并把经常被连着调用的组合合并（list_users+list_events+create_event → schedule_event）。判据是&quot;能不能减少中间产物占用的上下文&quot;，不是&quot;覆盖了多少 API&quot;。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界-q5" tag="Agent运行时与工具" q="下面这段话哪里不准确？&#10;&quot;工具调用失败时我们返回标准的错误码，模型看到就知道怎么回事了。&quot;" a="原文明确反对这个做法。&#10;&quot;…prompt-engineer your error responses to clearly communicate specific and actionable improvements, rather than opaque error codes or tracebacks.&quot;&#10;三处问题：&#10;1. 不透明的错误码对模型没有信息量：模型不知道&quot;该怎么改&quot;。要给出具体的、可改进的信息（哪个参数不合法、期望什么格式、可以试什么）。&#10;2. 错误响应本身就是一次&quot;提示机会&quot;：原文说，工具截断和错误响应可以用来引导 agent 采用更省 token 的策略（用过滤或分页），或者示范正确的参数格式。&#10;3. 真实案例：Claude 的 web search 工具上线时会在 query 里无意义地加上 &quot;2025&quot;，修法是改进工具描述——说明工具界面（描述 / 参数 / 错误）是可调优的输入，不是一次写死的文档。&#10;【准确说法】&quot;工具的错误响应要像&quot;给同事的错误提示&quot;一样写：哪里错了、期望什么、可以怎么改。它和工具描述一样，都是给模型看的界面。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">该给 Agent 做什么工具、做多少个——为什么&quot;把现有 API 包一层&quot;是错的？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界" tag="Agent运行时与工具" q="该给 Agent 做什么工具、做多少个——为什么&quot;把现有 API 包一层&quot;是错的？" a="工具不是&quot;能力的暴露面&quot;，是&quot;给模型看的界面&quot;——所以要按 agent 的 affordance 设计，而不是把 API 包一层。第一条原则：别把 API 直接封装——传统软件内存充足可以遍历全量，agent 只能 token by token 读，list_contacts 会逼它用有限上下文做暴力搜索，search_contacts 才是对的。第二条：按工作流做 consolidation（list_users+list_events+create_event → schedule_event；read_logs → search_logs），收益不只是少调几次，更是让中间产物不进上下文。第三条：命名空间（asana_projects_search），而且前缀还是后缀对评测有实质影响、因模型而异。第四条：返回什么取决于&quot;接下来还需不需要它发起调用&quot;——同一份数据详细版 206 token、精简版 72 token，差约 2/3。第五条：错误响应要&quot;可行动&quot;，不是不透明错误码。最后，工具的真实代价会被平方放大：5,000 token 的响应在 40 轮里能被重发 30 次 = 1.5M token ≈ $7.5；Claude Code 因此把工具响应默认限制在 25,000 token。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>直接对应你 EnergyOps 的 30 个 MCP 工具</strong>——面试官问"30 个工具会不会太多"，答"我们分成了 6 类 Capability Bundle"只是<strong>结果</strong>，<strong>说不出判据就还是背的</strong>。Anthropic 这篇原文里有一句很硬的话：<strong>"More tools don't always lead to better outcomes"</strong>，而且给了具体例子说明<strong>为什么</strong>。</p>
+  </div>
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>工具不是"能力的暴露面"，是"给模型看的界面"</strong>——所以要<strong>按 agent 的 affordance 设计，而不是把 API 包一层</strong>。第一条原则：<strong>别把 API 直接封装</strong>——传统软件内存充足可以遍历全量，<strong>agent 只能 token by token 读</strong>，<code class="mv-md-code">list_contacts</code> 会逼它用有限上下文做暴力搜索，<code class="mv-md-code">search_contacts</code> 才是对的。第二条：<strong>按工作流做 consolidation</strong>（<code class="mv-md-code">list_users</code>+<code class="mv-md-code">list_events</code>+<code class="mv-md-code">create_event</code> → <code class="mv-md-code">schedule_event</code>；<code class="mv-md-code">read_logs</code> → <code class="mv-md-code">search_logs</code>），<strong>收益不只是少调几次，更是让中间产物不进上下文</strong>。第三条：<strong>命名空间</strong>（<code class="mv-md-code">asana_projects_search</code>），而且<strong>前缀还是后缀对评测有实质影响、因模型而异</strong>。第四条：<strong>返回什么取决于"接下来还需不需要它发起调用"</strong>——同一份数据详细版 <strong>206 token</strong>、精简版 <strong>72 token</strong>，差约 2/3。第五条：<strong>错误响应要"可行动"</strong>，不是不透明错误码。最后，<strong>工具的真实代价会被平方放大</strong>：5,000 token 的响应在 40 轮里能被重发 30 次 = <strong>1.5M token ≈ $7.5</strong>；Claude Code 因此<strong>把工具响应默认限制在 25,000 token</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>别包装 API（agent 的 affordance 不同）</li><li><code class="mv-md-code">list_contacts</code> → <code class="mv-md-code">search_contacts</code></li><li><strong>consolidation 的收益是"中间产物不进上下文"</strong></li><li>namespacing（按服务</li><li>按资源；前后缀因模型而异）</li><li><strong>响应 206 vs 72 token</strong>，判据是"接下来还需不需要它"</li><li>分页</li><li>范围</li><li>过滤</li><li>截断 + 合理默认值</li><li><strong>Claude Code 默认 25,000 token 上限</strong></li><li>错误响应要可行动</li><li>四种失败（调错工具</li><li>参数错</li><li>调太少</li><li>响应处理错）</li><li>评测指标（准确率</li><li>耗时</li><li>调用次数</li><li>token</li><li>错误）</li><li><strong>"调用次数异常"暴露 consolidation 机会</strong></li><li>web search 的 "2025" 案例</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>工具数量多了会怎样？</strong></strong></p>
+<p class="mv-md-p"><strong>三种代价</strong>：① 每个工具的描述都占上下文（30 个 ≈ 6,000 token/请求，<strong>每轮都付，且注意力层面没有折扣</strong>）；② <strong>重叠或含糊的工具让 agent 分不清该用哪个</strong>；③ <strong>选错的概率上升</strong>。<strong>手段</strong>：consolidation + namespacing + <strong>延迟加载</strong>（<code class="mv-md-code">defer_loading</code>，把少用工具移出缓存前缀）。</p>
+<p class="mv-md-p"><strong>2. <strong>MCP 解决什么问题，边界在哪？</strong></strong></p>
+<p class="mv-md-p">MCP 是<strong>工具接入的标准化协议</strong>（把"每个客户端各写一套集成"变成"一次实现、多处复用"）。<strong>边界</strong>：<strong>MCP 只统一了"怎么暴露和调用"，没有统一"该不该暴露"</strong>——<strong>工具的职责划分、权限边界、返回设计仍然是你的事</strong>（[[母题-A6-沙箱权限与可信执行]]）。</p>
+<p class="mv-md-p"><strong>3. <strong>工具描述该怎么写？</strong></strong></p>
+<p class="mv-md-p"><strong>清晰、具体、有边界</strong>。但对<strong>新一代模型</strong>，<strong>给示例反而可能限制探索空间</strong>（[[母题-C3-Prompt版本管理与回归]]）——<strong>更好的做法是设计接口本身</strong>：把 <code class="mv-md-code">status</code> 做成 <code class="mv-md-code">pending / in_progress / completed</code> 的<strong>枚举</strong>，<strong>光是列出来就在提示怎么用</strong>。</p>
+<p class="mv-md-p"><strong>4. <strong>怎么知道该合并哪些工具？</strong></strong></p>
+<p class="mv-md-p"><strong>看"工具调用总次数"这个指标</strong>：<strong>经常被连着调用的工具组合，就是 consolidation 的候选</strong>；<strong>冗余调用多</strong>说明分页/token 参数要调；<strong>参数无效的错误多</strong>说明描述不清或缺示例。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「工具返回的结果要不要缓存？」——<strong>要区分"确定性工具"和"有副作用的工具"</strong>。只读且参数相同 → 可以缓存；<strong>有副作用的工具缓存等于跳过执行</strong>（[[母题-A3-失败恢复与幂等]]）。而且缓存要<strong>按租户 / 权限分区</strong>（[[母题-G6-知识更新与增量索引]]）。</li><li>「工具太多，全给模型 vs 按意图路由给一部分，怎么选？」——<strong>按评测定</strong>，但<strong>先天的判据是"意图能否可靠地判断"</strong>。数驭穹图的意图路由就是这个思路：<strong>先判断意图（RAG / NL2SQL / 直接回答），再给对应的工具子集</strong>。<strong>路由错了后面全错，所以路由本身的准确率要单独评测。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>EnergyOps</strong>：<strong>30 个 MCP 工具 + 6 类 Capability Bundle</strong>——<strong>Bundle 的作用是控制"每次请求加载哪些工具定义"</strong>（Q2 的 6,000 token 账）；<strong>哪些该延迟加载、哪些该合并，判据是本卡的"中间产物是否进上下文"</strong>。 - <strong>数驭穹图</strong>：<strong>意图路由</strong>——<strong>先判断意图再给工具子集</strong>，本质是"用路由换上下文与选择准确率"。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先破"包装 API"（给 affordance 的差别）→ consolidation 三组例子 + 收益的两层 → 命名空间 → 响应设计（206 vs 72 + 判据）→ 错误响应要可行动 → 平方放大的成本算式 → 评测指标与"调次数暴露合并机会" → 收束到"工具是界面"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>工具的每一个面（描述、参数、返回、错误）都是"给模型看的界面"。</strong> 所以设计判据不是"API 长什么样"，是"<strong>模型要分几步、中间产物占多少上下文</strong>"——<strong>能一步做完、中间结果不外露的工具，比功能更全的工具更好。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说清"包装 API"为什么错（affordance 的差别）；能背出 consolidation 的三组例子并说清<strong>收益是"中间产物不进上下文"</strong>；<strong>能算出 5,000 token 响应的 1.5M 平方放大与 $7.5</strong>；<strong>能算出 30 个工具的 6,000 token/请求并说出延迟加载</strong>；能说清 namespacing 的前后缀选择要靠评测；能说出四种工具调用失败；能说清错误响应为什么必须可行动；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>
