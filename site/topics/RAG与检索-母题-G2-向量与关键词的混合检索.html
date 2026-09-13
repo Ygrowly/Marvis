@@ -84,7 +84,10 @@
   第 4 层 ≈ 15
   第 5 层 ≈ 1
   → 最高约 5 层</pre>
-<p class="mv-md-p">【事实】得物文章给的实测口径一致：<strong>"100 万节点，图的最高层大概 5–6 层"</strong>；论文默认用 <code class="mv-md-code">mL = 1/ln(M)</code>（M=16 时约 0.36）作为晋升概率，真实分布比 1/M 更"胖"，<strong>但"层级越高节点越少"的指数衰减规律不变</strong>。</p>
+<p class="mv-md-p">【事实】得物文章给的实测口径：<strong>"100 万节点，图的最高层大概 5–6 层"</strong>。论文里第 L 层的节点占比是 <strong><code class="mv-md-code">exp(−L/mL)</code></strong>，论文推荐的归一化因子是 <strong><code class="mv-md-code">mL = 1/ln(M)</code></strong>（M=16 时约 0.36）。</p>
+<p class="mv-md-p">【纠正常见误解】<strong>注意 <code class="mv-md-code">mL = 1/ln(M)</code> 这个取值【恰好复现】简化的 <code class="mv-md-code">(1/M)^L</code>，不是"更胖"</strong>：</p>
+<pre class="mv-md-pre">exp(−L / mL) = exp(−L · ln M) = exp(ln(M^−L)) = M^−L = (1/M)^L</pre>
+<p class="mv-md-p"><strong>两者是同一个分布</strong>（M=16、L=1..5 逐层验算完全相同）。<strong>要让分布变"胖"（高层节点更多），得把 mL 调【大】</strong>——<code class="mv-md-code">mL</code> 越大，衰减越慢。<strong>说成"论文的分布比 1/M 更胖"是错的</strong>：论文的推荐值恰恰是让两者相等的那一个。<strong>而不论用哪个 mL，"层级越高节点越少"的指数衰减规律都成立。</strong></p>
 <p class="mv-md-p">【推论】<strong>上层的长距离边还有一个作用</strong>：帮搜索在早期跳过"看起来近但其实不对"的区域，避免卡在局部最优里。</p>
 <p class="mv-md-p">【事实】<strong>选型分档</strong>（得物的口径）：<strong>百万级以内用 HNSW，千万级用 IVF，亿级考虑 DiskANN 或分片</strong>。ES、Faiss、Milvus 都默认支持 HNSW。</p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"向量库慢"通常不是硬件问题，而是索引选型问题？</p>
