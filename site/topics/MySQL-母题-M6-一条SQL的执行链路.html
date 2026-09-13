@@ -153,6 +153,7 @@ B 驱动 A：外层循环 10 万次，每次去 A 的索引里查一次 → 约 
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PG 的执行链路里<strong>本来就没有查询缓存</strong>，但<strong>统计信息体系更完整</strong>（扩展统计、直方图、<code class="mv-md-code">pg_stat_statements</code>）；MySQL 8.0 移除查询缓存、8.0.18 才有 <code class="mv-md-code">EXPLAIN ANALYZE</code>。<strong>"一条 SQL 怎么走"两边都要会，但字段名和工具名不能混。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>优化器怎么估行数？</strong></strong></p>
 <p class="mv-md-p">按<strong>索引的区分度（基数）统计</strong>：<code class="mv-md-code">SHOW INDEX</code> 的 <code class="mv-md-code">cardinality</code>。<strong>估不准的常见原因</strong>：统计信息过期、数据倾斜（某个值占 90% 行）、条件是表达式/函数。<strong>PG 侧有扩展统计和更完整的直方图</strong>，MySQL 8.0 也有直方图，但两者都比"加索引"更少被人注意。</p>
 <p class="mv-md-p"><strong>2. <strong>server 层和引擎层为什么要分开？</strong></strong></p>

@@ -185,6 +185,7 @@ p → 1    → 发散</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>乐观锁在两边的写法几乎一样（条件更新），判据也一致</strong>——<strong>这是少数两边完全互通的机制</strong>；<strong>但"冲突时数据库怎么响应"不同</strong>：<strong>MySQL 悲观是排队等锁、乐观是返回 0 行；PG 悲观是等待、乐观是 0 行、Serializable 是报错重试</strong>（[[母题-P8-隔离级别与读一致性]]）。<strong>所以判据通用，实现细节按库区分。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>version 冲突之后怎么处理？</strong></strong></p>
 <p class="mv-md-p"><strong>读出权威状态，再决定重试还是放弃</strong>——<strong>"影响行数 0"是正常业务分支，不是异常</strong>。<strong>不要写 <code class="mv-md-code">while(true) retry</code></strong>：要有退避、抖动和上限。</p>
 <p class="mv-md-p"><strong>2. <strong>9.9 那次你的答案缺了什么？</strong></strong></p>

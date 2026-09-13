@@ -138,6 +138,7 @@ WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();   -- 不再回表</pre
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>这条最该记牢</strong>——PG 是堆表，<strong>所有索引都是二级索引、都要回表</strong>，没有"按主键查只要一次"这回事（PG 的 Index Only Scan 依赖 visibility map，见 [[母题-P2-堆表与回表]]）。<strong>面试时把 InnoDB 的聚簇语义套到 PG 上，是最容易被抓的方言错误。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然覆盖索引能免回表，为什么不全表都建宽索引？</strong></strong></p>
 <p class="mv-md-p">索引是<strong>欠写入的债</strong>：越宽，每次 <code class="mv-md-code">INSERT</code>/<code class="mv-md-code">UPDATE</code> 维护成本越高、页里能装的项越少、树还可能多一层。而且索引多了会干扰优化器的选择。<strong>覆盖是给热点查询的，不是给全表的。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">rows</code> 很小就一定快吗？</strong></strong></p>

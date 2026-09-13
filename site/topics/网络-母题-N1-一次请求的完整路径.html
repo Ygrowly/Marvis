@@ -162,6 +162,7 @@ TLS 握手   ≈ 2 RTT  ≈ 100ms
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">不同网关对同一个故障可能给不同状态码（有的网关把上游连接超时也报 502）。<strong>所以面试时不要说"某个码绝对是某个原因"，而要说"这个码在这一层的含义是……，实际要结合网关配置看"</strong>——这个分寸比背定义更能体现真做过线上。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>502 和 504 的区别，一句话说清？</strong></strong></p>
 <p class="mv-md-p"><strong>502 是上游答了但答得不对；504 是上游压根没答（等到超时）。</strong> 一个指向"上游进程状态"，一个指向"上游耗时"。</p>
 <p class="mv-md-p"><strong>2. <strong>连接池被打满，先做什么？</strong></strong></p>

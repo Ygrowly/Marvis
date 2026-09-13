@@ -138,6 +138,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 默认 RR + 间隙锁；PG 默认 RC + 快照</strong>——<strong>注意 40001 不是 RC 的行为</strong>：PG 在 <strong>RR 及以上</strong>才会因写冲突报序列化失败让你重试，<strong>默认的 RC 下它同样表现为等待 + 对更新后的版本重新求值</strong>（[[母题-P8-隔离级别与读一致性]]）。MySQL 靠锁"挡住"幻读；PG 没有间隙锁，靠检测冲突报错。<strong>默认值、幻读处理方式、冲突表现三项全不同</strong>——这是全库最容易说反的一组对照。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 A 是 undo、D 是 redo，不能反过来？</strong></strong></p>
 <p class="mv-md-p"><strong>undo 记前镜像，所以能撤销</strong>；<strong>redo 记后镜像，所以能重放</strong>。撤销要把数据往回变，重放要把数据往前推。<strong>一句话：撤销看前面，恢复看后面。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>RR 下两个事务同时 <code class="mv-md-code">UPDATE</code> 同一行会怎样？</strong></strong></p>

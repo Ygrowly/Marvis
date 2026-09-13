@@ -184,6 +184,7 @@ WHERE id = :id AND num &gt; 0;
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>排行榜在两边的答案一致</strong>（该用 Redis 就用 Redis，<strong>数据库选型不改变这个结论</strong>）；<strong>防超卖在 PG 里同样用条件更新</strong>（[[母题-P18-乐观并发控制]]），<strong>语法一致</strong>；<strong>差别在 PG 的连接模型下并发上限更低</strong>（[[母题-P17-连接模型与连接池]]），<strong>所以"Redis 前置削峰"在 PG 架构里更必要</strong>。<strong>这条能体现"同一条原理在不同架构下的不同权重"。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Redis 挂了排行榜怎么办？</strong></strong></p>
 <p class="mv-md-p"><strong>① 从 DB 重建</strong>（冷数据定时落 DB 是前提）；<strong>② 降级为"榜单维护中"，主玩法不受影响</strong>；<strong>③ 写路径要能容忍 Redis 不可用</strong>（丢分但不断游戏）。<strong>"依赖服务的可用性必须低于主链路"是通用原则。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>ZSet 为什么快？</strong></strong></p>

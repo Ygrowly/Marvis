@@ -205,6 +205,7 @@ PG：连接是「进程」
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 是一个连接一个线程，PG 是一个连接一个进程</strong>——<strong>所以 PG 的单连接更贵、<code class="mv-md-code">max_connections</code> 更保守、更需要池化中间件。</strong> <strong>而且 PG 的池化多一层复杂性：它有 <code class="mv-md-code">PREPARE</code> 这个会话级对象</strong>，<strong>而事务池化会把它搞乱</strong>。<strong>「我们在 MySQL 上池开 500 没事」这句话搬到 PG 上会直接撞墙。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>连接池该用哪种模式？</strong></strong></p>
 <p class="mv-md-p"><strong>先问应用需不需要会话状态</strong>：<strong>用不到 <code class="mv-md-code">PREPARE</code> / 临时表 / 会话级 <code class="mv-md-code">SET</code> / 游标 / <code class="mv-md-code">LISTEN</code> 的应用，事务级池化是免费的午餐</strong>；<strong>用得到的，要么改成会话级，要么用支持预处理语句跟踪的配置。</strong> <strong>这个判断不能拍脑袋，要看驱动的默认行为。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>池开多大？</strong></strong></p>

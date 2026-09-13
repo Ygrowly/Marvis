@@ -222,6 +222,7 @@ SELECT balance  → 80     ← 同一事务，结果变了</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 默认 RR、PG 默认 RC</strong>；<strong>MySQL 靠 next-key lock 挡幻读、PG 靠快照</strong>；<strong>MySQL 写冲突表现为等待、PG 表现为 40001</strong>；<strong>MySQL 的 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 没有 PG 那四种变体</strong>（PG 有 <code class="mv-md-code">FOR NO KEY UPDATE</code> / <code class="mv-md-code">FOR KEY SHARE</code> 这些更弱的锁，选对能大幅减少冲突）。<strong>能把「同名级别、不同机制」说清，这道题就满分。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 为什么不加间隙锁？</strong></strong></p>
 <p class="mv-md-p"><strong>因为它用快照隔离，幻读已经被快照挡住了，不需要用锁挡。</strong> <strong>加间隙锁会让并发插入互相阻塞</strong>（MySQL 的死锁大头就来自这里）。<strong>这是 PG 用「快照 + 报错」换「锁 + 等待」的一个具体体现</strong>（[[母题-P10-无间隙锁与锁变体]]）。</p>
 <p class="mv-md-p"><strong>2. <strong>Serializable 是不是就万无一失了？</strong></strong></p>

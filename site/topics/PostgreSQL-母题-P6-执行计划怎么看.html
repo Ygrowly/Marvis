@@ -178,6 +178,7 @@ ROLLBACK;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的 <code class="mv-md-code">EXPLAIN</code> 是<strong>只看计划不执行</strong>，要看实际执行要用 <code class="mv-md-code">EXPLAIN ANALYZE</code>（8.0.18+）或 <code class="mv-md-code">EXPLAIN FORMAT=JSON</code>；<strong>输出字段是 <code class="mv-md-code">type</code> / <code class="mv-md-code">key</code> / <code class="mv-md-code">rows</code> / <code class="mv-md-code">Extra</code> 这一套，没有 PG 的 <code class="mv-md-code">loops</code> / <code class="mv-md-code">Buffers</code> / <code class="mv-md-code">actual time</code> 这些维度</strong>。<strong>MySQL 的分析器输出里「rows」是估算值</strong>——<strong>两边「rows 是估算还是实测」这件事本身就不一样，别混着说。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么估计会差那么多？</strong></strong></p>
 <p class="mv-md-p">三类原因：<strong>统计信息过期</strong>、<strong>列之间有关联但统计是独立的</strong>（「城市=北京」和「区=海淀」相乘会把行数估得极小）、<strong>条件是表达式或函数导致无法估算</strong>。对应三种修法见 [[母题-P7-统计信息与慢查询定位]]。<strong>答这题要说「优化器不是猜的，它是按你给的统计算的」。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">EXPLAIN ANALYZE</code> 会不会本身改变行为？</strong></strong></p>

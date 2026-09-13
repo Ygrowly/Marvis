@@ -208,6 +208,7 @@ SQL B：单次 20 ms，每秒 300 次
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的对应工具是<strong>慢查询日志 + <code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">filtered</code> / <code class="mv-md-code">rows</code></strong>，没有 <code class="mv-md-code">pg_stat_statements</code> 这种「按总耗时聚合」的内置视图；MySQL 也<strong>没有 <code class="mv-md-code">CREATE STATISTICS</code> 扩展统计</strong>（多列相关性主要靠组合索引和 SQL 改写绕开）。<strong>「优化顺序是信息 → SQL → 索引」这条原则两边通用，但 PG 的工具强一截。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">CREATE STATISTICS</code> 具体解决什么？</strong></strong></p>
 <p class="mv-md-p"><strong>解决「多列相关」</strong>。典型场景：<code class="mv-md-code">city</code> 和 <code class="mv-md-code">district</code>（海淀一定在北京，两列强相关）、<code class="mv-md-code">status</code> 和 <code class="mv-md-code">deleted_at</code>（删掉的行不再是活跃态）。<strong>优化器原本假设独立相乘，扩展统计给它真实的联合分布。</strong> <strong>官方提醒：<code class="mv-md-code">mcv</code> 统计只建在【实际会一起出现在条件里】的列组合上，否则只是浪费 ANALYZE 与规划时间。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>统计信息准了，计划还是差怎么办？</strong></strong></p>

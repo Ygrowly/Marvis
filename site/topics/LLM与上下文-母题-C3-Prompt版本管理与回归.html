@@ -220,6 +220,7 @@ n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">代码的回归是<strong>确定性</strong>的——同一个 commit，测试要么过要么不过，重跑结果一致。Prompt 的回归是<strong>统计性</strong>的——同一份 prompt 重跑可能不同，所以需要样本量、置信度、训练/测试分离。<strong>这是"把软件工程实践搬到 LLM 上"最容易踩空的一点：照抄了流程，但没有照抄支撑流程的统计前提。</strong>（这也是本卡按 [[母题卡模板]] 的层级判定给 <strong>B 而非 A</strong> 的原因：<strong>"为什么必须消融"能推出来</strong>，但<strong>"该删哪一条"没有唯一答案</strong>，只能靠实验测出来。）</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>一次 prompt 改动，验证流程是什么？</strong></strong></p>
 <p class="mv-md-p">抽样快筛（便宜、抓大幅回退）→ 消融（逐段删，看哪段还在产生收益）→ 全量回归（发布门禁）→ <strong>held-out 验收</strong>。每一层的目的不同，不能互相替代。</p>
 <p class="mv-md-p"><strong>2. <strong>为什么不直接加规则？</strong></strong></p>

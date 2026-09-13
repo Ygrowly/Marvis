@@ -287,6 +287,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PostgreSQL 也以 B-tree 打底（见 [[母题-P1-索引类型选型]]），但它的表是<strong>堆表</strong>、索引叶子存 <code class="mv-md-code">ctid</code> 而不是整行——而且 PG 圈通常只说 B-tree，不说 B+ 树。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然 B+ 树这么矮，为什么还要尽量走覆盖索引？</strong></strong></p>
 <p class="mv-md-p">树高决定的是<strong>定位索引项</strong>的成本；二级索引查到的是主键值，要取整行还得<strong>回表</strong>再查一次聚簇索引。<strong>树高只有 3 层，可命中的每一行都要多付一次回表 IO</strong>——扫 1000 行时，回表才是大头（连到 [[母题-M3-聚簇索引与回表]]）。</p>
 <p class="mv-md-p"><strong>2. <strong>叶子的链表为什么做成双向的？</strong></strong></p>

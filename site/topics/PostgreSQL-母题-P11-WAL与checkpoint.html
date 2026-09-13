@@ -230,6 +230,7 @@ checkpoint 间隔 = 1 GB ÷ 10 MB/s = 【100 秒】
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 是 <strong>redo（崩溃恢复）+ undo（回滚与 MVCC）+ binlog（复制与时间点恢复）</strong>三套；PG 只有 <strong>WAL</strong> 一套。<strong>注意不要说「PG 的 WAL 相当于 MySQL 的 redo log」</strong>——<strong>WAL 同时承担了 redo、部分 binlog（通过逻辑解码）的功能，而 undo 那部分职能被 MVCC 结构替代了。</strong> <strong>另外 MySQL 的 <code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 才是那个「等不等落盘」的旋钮，语义和 <code class="mv-md-code">synchronous_commit</code> 对应但要分开讲。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">synchronous_commit = off</code> 丢的是已提交事务，为什么还能接受？</strong></strong></p>
 <p class="mv-md-p">因为<strong>它丢的是【连续的最后一段】，而且只丢数据不损坏数据</strong>——<strong>数据库状态等同于那些事务被干净地中止</strong>。<strong>判据是官方的原话：「客户端会不会采取依赖这个事务已被记住的外部动作」</strong>——<strong>银行不会用它记录 ATM 吐现金，但事件日志完全可以用。</strong> <strong>这就是「数量级口径」：不是"会不会丢"，而是"丢多少、丢的是哪一段、能不能补"。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>恢复要多久，怎么估算？</strong></strong></p>

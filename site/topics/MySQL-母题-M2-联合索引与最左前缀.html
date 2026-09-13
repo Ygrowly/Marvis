@@ -156,6 +156,7 @@ LIMIT 100</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PostgreSQL 里 <code class="mv-md-code">(a, b)</code> 的 B-tree 语义与 MySQL 一致（同样是字典序、同样的最左前缀），但 PG 还有 MySQL 没有的手段——<strong>部分索引</strong>（只索引 <code class="mv-md-code">WHERE status='PENDING'</code> 的那部分行），对低选择度的 <code class="mv-md-code">status</code> 反而比联合索引更划算（见 [[母题-P3-部分索引与表达式索引]]）。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 <code class="mv-md-code">WHERE b = 2</code> 用不上 <code class="mv-md-code">(a, b, c)</code>？</strong></strong></p>
 <p class="mv-md-p">因为 b 在每个 a 段内有序、段之间无序，找不到一个包含全部结果的连续区间。<strong>"用不上"准确含义是退化成扫描量≈全部，不是报错。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>范围列后面的列到底还能不能用？</strong></strong></p>

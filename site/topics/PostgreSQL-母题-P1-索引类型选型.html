@@ -191,6 +191,7 @@ GIN 的写入代价【明显更高】
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 里没有 GIN / GiST / BRIN 这套</strong>，它对应的是"全文索引 / 空间索引"这类特例，而<strong>多值包含在 MySQL 里通常要靠生成列或拆表解决</strong>——<strong>不要把"JSONB 用 GIN"这套说法套到 MySQL 上</strong>，那是 PG 的机制。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>GIN 为什么适合 JSONB 和数组？</strong></strong></p>
 <p class="mv-md-p"><strong>因为它们是"多值"字段</strong>：<strong>B-tree 只能比较整体，而 GIN 的倒排结构把"包含某个元素"变成一次键查找。</strong> <strong>答这题必须把"倒排"两个字说出来。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>时序数据用什么索引？</strong></strong></p>

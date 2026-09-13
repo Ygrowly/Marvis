@@ -69,6 +69,19 @@ def grab(text, name):
     return re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
 
 
+def grab_titled(text, name):
+    """抽 `**字段**：值` 或 `**字段（任意说明）**：值`。
+
+    2026-09-13 新增：`方言差异` 这一段的括号说明在库里有多达 13 种写法
+    （「面试安全底线」「跨中间件对照」「与 RAG 簇的分工」…），
+    grab() 的精确匹配只认裸名字，结果 47 张卡的这一段几乎全被静默丢掉。
+    """
+    pat = (r"\*\*" + re.escape(name) + r"(?:（[^）]*）)?\*\*\s*[：:]\s*(.+?)"
+           r"(?=\n\s*\n|\n\s*\*\*|\n\s*>|\n\s*---|\Z)")
+    m = re.search(pat, text, re.S)
+    return re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
+
+
 def grab_block(text, name):
     """抽 `**字段**：` 之后的整块内容（保留换行，可含代码块）"""
     pat = (r"\*\*" + re.escape(name) + r"\*\*\s*[：:]\s*\n?"
@@ -323,6 +336,7 @@ def parse_topic(path):
                       or to_pairs(grab_items(body, "追问链", "追问"))),
         "variants": grab_list(body, "同类变体") or grab_items(body, "类似题"),
         "related": grab(body, "关联母题"),
+        "contrast": grab_titled(body, "方言差异"),
         "transfer": grab(body, "可迁移场景"),
         "breakpoint": grab(body, "本次断点"),
         "evidence": grab(body, "通过证据"),
@@ -503,6 +517,11 @@ def render_topic(t):
                     % "".join("<li>%s</li>" % inline(k) for k in t["keywords"]))
 
     panels = []
+    # 方言差异排第一：卡里标的是「面试安全底线」，最容易说反的一段，
+    # 2026-09-13 审查发现原先根本没被解析成字段、47 张卡全丢在 md 里没上页面。
+    if t["contrast"]:
+        panels.append('<collapse-panel title="方言差异（面试安全底线）">'
+                      '<p class="mv-md-p">%s</p></collapse-panel>' % inline(t["contrast"]))
     if t["followups"]:
         items = ""
         for i, (fq, fa) in enumerate(t["followups"], 1):

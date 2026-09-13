@@ -183,6 +183,7 @@ Heap Fetches ≈ 返回行数     → 等于每行都回了堆 —— 【省了�
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的表是索引组织表，主键查询不回表；PG 是堆表，所有查询都可能回表。</strong> 被问覆盖索引时，<strong>先说"我项目里是 PG，机制是 X"，再说"MySQL 那边对应是 Y"</strong>——<strong>顺序反了就容易把两套混成一句。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 的主键一定是聚簇索引吗？</strong></strong></p>
 <p class="mv-md-p"><strong>不是</strong>。<strong>PG 的主键只是"唯一且非空的 B-tree 索引"，数据仍然是堆</strong>。<strong>这是最容易被 MySQL 语义污染的一题。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>PG 有聚簇吗？</strong></strong></p>

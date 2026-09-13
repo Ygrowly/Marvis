@@ -228,6 +228,7 @@ ALTER INDEX measurement_usls_idx ATTACH PARTITION measurement_usls_200602_idx;
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 原生分区的限制比 PG 硬得多</strong>——<strong>官方原文：<code class="mv-md-code">Foreign keys not supported for partitioned InnoDB tables</code>（分区 InnoDB 表【不支持外键】）</strong>，不是"限制更多"而是<strong>完全不支持</strong>；<strong>此外分区键必须出现在每个唯一键里（这一点两边一样）</strong>，但 MySQL 的工具链更少，<strong>实践中常直接用应用层分表</strong>。<strong>PG 的声明式分区是近年加强的重点，能力更完整</strong>（<strong>运行时裁剪、<code class="mv-md-code">DETACH CONCURRENTLY</code>、默认分区都是 MySQL 分区不具备或更弱的</strong>）。<strong>「我们用的是 PG 的分区表」这句话本身就是一条可以主动说的差异。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>分区数量和性能是什么关系？</strong></strong></p>
 <p class="mv-md-p"><strong>不是线性变好，是先好后坏</strong>：<strong>裁剪的收益随分区数上升，但规划时间与内存也上升</strong>。<strong>官方明确警告内存可能随时间显著增长，尤其是很多会话都碰到大量分区时。</strong> <strong>所以按「月/季」分、总数几十到几百，是把两条曲线折中的经验值。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">DETACH</code> 会不会阻塞写入？</strong></strong></p>

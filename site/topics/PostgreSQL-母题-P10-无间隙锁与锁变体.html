@@ -223,6 +223,7 @@ UPDATE t SET id = ? WHERE ...             → FOR UPDATE（强）
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的 RR + next-key lock 会<strong>阻止插入</strong>（表现为插入被阻塞）；PG <strong>不会</strong>。<strong>MySQL 的锁等待有 50 秒超时，PG 默认无限等。</strong> <strong>MySQL 没有四档行锁，也没有 advisory lock（要用 <code class="mv-md-code">GET_LOCK()</code>）。</strong> <strong>「PG 也靠间隙锁」是明确的概念性错误</strong>，和「SSE 是短连接」同一级别。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">FOR UPDATE</code> 是不是就万无一失了？</strong></strong></p>
 <p class="mv-md-p">不是。① <strong>它只锁匹配到的行</strong>，如果范围里还没有行（还没插入），照样锁不住——<strong>这正是「无间隙锁」的直接后果</strong>；② 它需要<strong>读的时候也用它</strong>，一旦某条路径忘了加锁就出现竞态；③ <strong>它会把并发冲突从「报错重试」变成「排队等待」</strong>，而 <strong>PG 默认无限等</strong>，高并发下可能拖垮吞吐。</p>
 <p class="mv-md-p"><strong>2. <strong>那 RuleArena 为什么不用它？</strong></strong></p>

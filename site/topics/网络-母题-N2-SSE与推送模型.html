@@ -143,6 +143,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>SSE 的行为强依赖链路上的代理与网关配置</strong>——同一个服务在直连时正常，加了网关就可能"卡住不发"（缓冲）或"几分钟断一次"（空闲超时）。<strong>所以面试时要说"它跑在 HTTP 上，但代理需要配合关缓冲和加心跳"，而不是简单地说"无需配置"。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>SSE 和 WebSocket 到底怎么选？</strong></strong></p>
 <p class="mv-md-p">先问"客户端要不要主动发"。<strong>只需要服务端推（进度、通知、LLM 逐字输出）就用 SSE</strong>，工程成本低得多；<strong>要双向（协作、游戏、实时输入）才上 WebSocket</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong>SSE 断线了会怎样？</strong></strong></p>

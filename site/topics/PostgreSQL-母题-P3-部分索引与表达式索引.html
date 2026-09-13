@@ -181,6 +181,7 @@ WHERE deleted_at IS NULL;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 没有部分索引</strong>，同需求要么靠前置过滤 + 组合索引，要么靠业务层改写。<strong>被问到时正确说法是</strong>："PG 用部分索引 + 表达式索引；<strong>MySQL 里我会用 <code class="mv-md-code">(status, updated_at)</code> 的联合索引，靠最左列过滤，但索引里仍然包含终态行</strong>。"</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 怎么做软删除的唯一约束？</strong></strong></p>
 <p class="mv-md-p"><strong>部分唯一索引</strong>：<code class="mv-md-code">CREATE UNIQUE INDEX ... ON users (lower(email)) WHERE deleted_at IS NULL</code>。<strong>删掉的行不参与唯一性，所以可以重新注册同一个邮箱。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">LIKE '%xx'</code> 能走索引吗？</strong></strong></p>

@@ -223,6 +223,7 @@ pg_wal 可用空间 = 500 GB
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的复制靠 <strong>binlog</strong>（Server 层逻辑日志）+ 各种格式（Statement / Row / Mixed）；<strong>PG 的物理复制走 WAL、逻辑复制走 WAL 逻辑解码</strong>。<strong>关键结论</strong>：<strong>MySQL 的 binlog 天生是逻辑的，所以按表过滤、跨版本是"本来就有的能力"；PG 的物理复制天生是物理的，逻辑复制是后补的能力层。</strong> <strong>「MySQL 用 binlog、PG 用逻辑复制/WAL」这句话本身就是两套机制的对照，说的时候要清楚自己在对照什么。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>逻辑复制的目标端能写吗？</strong></strong></p>
 <p class="mv-md-p"><strong>能</strong>（它是独立的可写表），<strong>代价是冲突要自己处理</strong>（目标端本地已有数据会与回放冲突）。<strong>这也是它能做多源汇聚的原因——同时也是它最难运维的地方。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>能不能用逻辑复制做双向同步？</strong></strong></p>

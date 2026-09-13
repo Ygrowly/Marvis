@@ -183,6 +183,7 @@ SQLSTATE: 40001</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的 Serializable 靠加锁 + 间隙锁，表现为等待与超时；PG 靠 SSI 主动报错</strong>。<strong>而且 PG 的 40001 有两个来源</strong>：<strong>SSI 的依赖环</strong>、<strong>RR 下的写冲突</strong>（[[母题-P8-隔离级别与读一致性]]）——<strong>MySQL 没有对等的第二种</strong>。<strong>「同名级别、不同失败方式」说清楚，这道题就满分。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>写偏斜是什么，为什么 RC/RR 拦不住？</strong></strong></p>
 <p class="mv-md-p">两个事务<strong>各读一部分数据、各写另一部分</strong>，<strong>各自的读集与写集不重叠</strong>，所以快照隔离看不出问题，<strong>但合起来破坏了一个跨行的不变量</strong>。<strong>只有 SSI 能自动拦住它</strong>，否则要靠显式锁或约束。</p>
 <p class="mv-md-p"><strong>2. <strong>能不能不用 SSI，只用 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 保证正确？</strong></strong></p>

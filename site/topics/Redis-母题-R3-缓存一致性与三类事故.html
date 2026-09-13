@@ -138,6 +138,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Redis 与 Memcached 在这个层面的差别</strong>——Memcached 只有 String、没有持久化、不支持复杂原子操作；<strong>所以"用 Redis 做限流/去重/分布式锁"这些用法在 Memcached 上做不出来</strong>。面试时能把"结构丰富 → 服务端能做原子操作 → 才支撑得起限流与去重"这条链讲清楚，比对比参数更有价值。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>先删缓存还是先写 DB？</strong></strong></p>
 <p class="mv-md-p"><strong>先写 DB 再删缓存</strong>。反过来会让"并发读把旧值写回缓存并长期保留"。</p>
 <p class="mv-md-p"><strong>2. <strong>删缓存失败了怎么办？</strong></strong></p>

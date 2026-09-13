@@ -154,6 +154,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Memcached 只有 String 一种结构</strong>（靠客户端序列化），<strong>Redis 的结构丰富是它的关键差异点</strong>；而 <strong>Redis 单线程 vs Memcached 多线程</strong>也是一个常见对比。<strong>能一句话说清"为什么结构丰富是优势"（服务端能做原子操作，不用把数据搬回客户端）</strong>，比列举结构名更有价值。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Redis 是单线程还是多线程？</strong></strong></p>
 <p class="mv-md-p"><strong>命令执行单线程，网络 IO 在 6.0 之后是多线程。</strong> 后台任务另有线程/子进程。</p>
 <p class="mv-md-p"><strong>2. <strong>单线程为什么还快？</strong></strong></p>

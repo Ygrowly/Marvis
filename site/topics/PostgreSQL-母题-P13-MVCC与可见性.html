@@ -182,6 +182,7 @@ VACUUM FULL  ：重写整张表到新文件，把空间还给操作系统
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的 MVCC 是<strong>undo log 版本链 + ReadView，purge 线程自动回收</strong>；PG 是<strong>版本留在堆里 + <code class="mv-md-code">xmin</code>/<code class="mv-md-code">xmax</code>，靠 VACUUM 回收</strong>。<strong>「MySQL 也要 VACUUM」是明确错误</strong>；<strong>「PG 有 undo log」也是明确错误</strong>。<strong>还有一处容易漏</strong>：<strong>PG 的 <code class="mv-md-code">xmin</code>/<code class="mv-md-code">xmax</code> 是行上的可见系统列，可以直接 <code class="mv-md-code">SELECT xmin, xmax FROM t</code></strong>——<strong>这是排查"这行为什么看得到/看不到"的最直接手段，MySQL 那边没有对等的东西。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>既然旧版本还在表里，那读的时候怎么知道该读哪个？</strong></strong></p>
 <p class="mv-md-p">按快照判定 <code class="mv-md-code">xmin</code>/<code class="mv-md-code">xmax</code>：<strong>同一个事务读同一个快照，看到的就是同一批版本</strong>。<strong>这也解释了 P8 那个反直觉现象</strong>——<strong>RC 下每条语句换一次快照，所以能看到不同版本；RR 下共用一个快照，所以结果一致。</strong> <strong>P8、P13 是同一件事的两个面。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">xmin</code>/<code class="mv-md-code">xmax</code> 是 32 位事务 ID，会不会用完？</strong></strong></p>

@@ -142,6 +142,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PG 没有 binlog、没有 prepare/commit 两阶段日志状态</strong>——它只有 WAL，恢复是"重放 WAL + 回滚未提交元组"，复制也走 WAL。<strong>"PG 也靠 binlog 裁决"这个说法一说出来就是错的。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>恢复要重放多久？</strong></strong></p>
 <p class="mv-md-p">取决于 <strong>check point 的位置</strong>。它越新，要重放的越少、恢复越快；但推进它需要更频繁刷脏页，<strong>代价是正常运行时更多的随机 IO</strong>。<strong>同一组参数的两面。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>恢复途中又崩了怎么办？</strong></strong></p>

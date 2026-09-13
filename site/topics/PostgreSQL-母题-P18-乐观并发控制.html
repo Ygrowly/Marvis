@@ -182,6 +182,7 @@ RETURNING id, status, version;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>核心思想两边一样（判断与写入合并为一条语句），但撞上时的行为不同</strong>：<strong>MySQL 是【等锁】（超时由 <code class="mv-md-code">innodb_lock_wait_timeout</code> 控制）</strong>；<strong>PG 是【对更新后的版本重新求值 <code class="mv-md-code">WHERE</code> 并继续】（官方口径）</strong>。<strong>所以 MySQL 上"两条 UPDATE 撞上会报超时"，在 PG 上表现为"两条都成功"。</strong> <strong>这一点不说清，会把两边的事故形态搞混。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>冲突高的时候该不该换成悲观锁？</strong></strong></p>
 <p class="mv-md-p"><strong>先别急</strong>：<strong>条件更新的期望尝试是 1/(1−p)、有上界（p = 80% 也才 5 次）</strong>；<strong>而悲观锁的队列是无上界的</strong>。<strong>只有一种情况必须换</strong>：<strong>临界区里有不可重试的东西</strong>（跨行不变量、外部副作用）——<strong>那时要先把那些东西挪出去，再决定。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>版本号怎么设计？</strong></strong></p>

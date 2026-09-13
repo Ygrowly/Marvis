@@ -224,6 +224,7 @@ Turn 3：35 个 block，断点在 35 → 检查 35 到 16（共 20 个位置）
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">传统后端的成本是"<strong>资源 × 时间</strong>"（CPU 小时、存储 GB·月），优化手段是扩容、降配、加缓存；LLM 的成本是"<strong>token × 单价</strong>"，而<strong>同一份 token 在不同位置（前缀 / 新增 / 输出 / 缓存）单价差 50 倍</strong>。所以 LLM 成本优化的核心动作是"<strong>把 token 搬到便宜的档位上去</strong>"——这是传统成本优化里没有的动作。<strong>把 LLM 账单当服务器账单看，就会只想到"少用点"，而想不到"换个档位计价"。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>命中率怎么监控？</strong></strong></p>
 <p class="mv-md-p">平台提供 <strong>cache diagnostics</strong>，能比较相邻两次请求、<strong>指出前缀从哪个位置开始分叉</strong>。要盯的是命中率和 <code class="mv-md-code">usage</code> 里的 cache 字段（两个都是 0 说明根本没缓存上，通常是不够长）。</p>
 <p class="mv-md-p"><strong>2. <strong>缓存为什么没命中？</strong></strong></p>

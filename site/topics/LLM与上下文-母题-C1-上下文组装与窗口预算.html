@@ -227,6 +227,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">数据库里的<strong>视图</strong>是查询时动态生成、不存数据的；LLM 的上下文恰好相反——<strong>每次都要把全部内容重新送进去、重新付钱、重新算注意力</strong>。同一个词，在数据库里是省成本的设计，在 LLM 这里<strong>是成本本身的来源</strong>。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>压缩和缓存到底谁解决什么？</strong></strong></p>
 <p class="mv-md-p">压缩解决<strong>占用</strong>（有损，必须留指针），缓存解决<strong>价格</strong>（无损，只对稳定前缀有效）。两者互补，不可互相替代。</p>
 <p class="mv-md-p"><strong>2. <strong>子 Agent 为什么能省上下文？</strong></strong></p>

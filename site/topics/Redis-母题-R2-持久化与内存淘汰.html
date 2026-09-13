@@ -288,6 +288,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Memcached 没有持久化</strong>（纯内存、重启即空），<strong>这是它和 Redis 的一个关键差异点</strong>；而 <strong>Kafka / RocketMQ 的持久化是"日志即数据本体"</strong>（消息就存在日志里，不是"内存数据的副本"）——<strong>和 Redis 的 AOF 目的完全不同</strong>。<strong>能说清"谁的数据本体在磁盘、谁的在内存"，比列举参数更有价值。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>RDB 和 AOF 选哪个？</strong></strong></p>
 <p class="mv-md-p">通常都开：RDB 做冷备与快速恢复，AOF 保最多丢 1 秒；4.0 后可用混合持久化。</p>
 <p class="mv-md-p"><strong>2. <strong>AOF 重写是干什么的？</strong></strong></p>

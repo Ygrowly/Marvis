@@ -202,6 +202,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 靠 binlog（Server 层逻辑日志）+ IO/SQL 线程 + relay log；PG 靠 WAL 字节流（物理流复制）或 WAL 逻辑解码（逻辑复制）</strong>。<strong>MySQL 没有"进程模型连接贵"的问题；PG 没有 binlog 这个东西</strong>。<strong>「PG 用 binlog 做复制」是明确错误。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 Row 格式更安全但更大？</strong></strong></p>
 <p class="mv-md-p"><strong>Statement 记 SQL</strong>，遇到 <code class="mv-md-code">NOW()</code> / <code class="mv-md-code">UUID()</code> 这类非确定函数<strong>主从执行结果可能不同（主从漂移）</strong>；<strong>Row 记每行的前后镜像</strong>，重放绝对精确，<strong>但一条批量 UPDATE 会把每一行的变化都记下来，日志量暴涨</strong>。<strong>Mixed 是折中。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>读写分离之后，主库的压力真的降了吗？</strong></strong></p>

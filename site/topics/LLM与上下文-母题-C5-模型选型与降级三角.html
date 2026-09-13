@@ -192,6 +192,7 @@ held-out ：最终配置 90.5%  vs  起点 78.6%   →  高 11.9 个点</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">传统后端选型是<strong>容量规划</strong>问题（QPS × 单请求耗时 → 需要几台机器），模型选型是<strong>质量—成本曲线</strong>问题（同一个"机器"有多个能力档位，且档位可以逐请求切换）。<strong>前者的瓶颈是资源，后者的瓶颈是你对"失败值多少钱"的判断。</strong> 把模型选型当容量规划做，就会漏掉 effort 这一维。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>便宜模型能不能扛？</strong></strong></p>
 <p class="mv-md-p">取决于任务形状和失败代价。<strong>先算"每个正确结果的全成本"</strong>；如果便宜模型的失败率把失败代价放大到超过节省，就不划算。上面的案例里，便宜模型<strong>配好 prompt 之后反而更准</strong>——所以"降级"要连 prompt 一起调，不是单独换模型。</p>
 <p class="mv-md-p"><strong>2. <strong>effort 怎么定？</strong></strong></p>

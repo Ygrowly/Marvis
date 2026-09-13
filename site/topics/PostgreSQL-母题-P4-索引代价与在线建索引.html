@@ -247,6 +247,7 @@ REINDEX INDEX CONCURRENTLY idx_x;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的在线 DDL 是 <code class="mv-md-code">ALGORITHM=INPLACE, LOCK=NONE</code> + pt-osc / gh-ost 影子表；PG 是 <code class="mv-md-code">CONCURRENTLY</code>。<strong>PG 还多两件 MySQL 没有的事：HOT 与「第三项代价 VACUUM 压力」。</strong> <strong>能把两边的「静默风险」和「HOT 这条免费通道」各说一句，这道题就满分。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么不能放在事务里，机制上是什么？</strong></strong></p>
 <p class="mv-md-p">因为它<strong>需要跨多个事务、让并发事务持续提交</strong>才能收集到完整数据；被放进一个事务里，就变成「持锁等待」，反而退化成普通 <code class="mv-md-code">CREATE INDEX</code> 的语义，所以 PG 直接禁止。<strong>它不是更聪明的锁，而是换了一套做法。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>如果建到一半应用在写，会不会丢行？</strong></strong></p>

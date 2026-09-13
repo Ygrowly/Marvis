@@ -176,6 +176,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">SQL 也是一种"结构化输出"，但它的约束发生在<strong>执行时</strong>——由数据库解析器拒绝非法语句，<strong>不允许你指定文法</strong>；LLM 这边可以把文法前置到<strong>采样时</strong>。反过来，SQL 有权威的元数据（表结构、权限）可以校验语义，<strong>LLM 的输出没有</strong>——这就是为什么 LLM 的结构化输出必须自带一层业务校验，而 SQL 不需要。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>重试几次合适？</strong></strong></p>
 <p class="mv-md-p">通常 <strong>1–2 次</strong>，且只对<strong>解析/结构错误</strong>重试；<strong>业务错误由程序直接拒绝</strong>，不让模型绕过约束。连续失败就换模型 / 简化任务 / 转人工，并且每次都进 Trace。</p>
 <p class="mv-md-p"><strong>2. <strong>schema 太复杂编译不过怎么办？</strong></strong></p>

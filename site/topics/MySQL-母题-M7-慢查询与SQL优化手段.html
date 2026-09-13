@@ -150,6 +150,7 @@ JOIN (SELECT id FROM task ORDER BY id LIMIT 1000000, 10) s ON t.id = s.id;</pre>
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PG 的对应工具是 <strong><code class="mv-md-code">pg_stat_statements</code>（按总耗时排序）+ <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>（真执行）</strong>，还能看 <code class="mv-md-code">Heap Fetches</code>；MySQL 靠<strong>慢查询日志 + <code class="mv-md-code">EXPLAIN</code></strong>（8.0.18+ 才有 <code class="mv-md-code">EXPLAIN ANALYZE</code>）。<strong><code class="mv-md-code">Using index</code> 在 MySQL 里表示覆盖索引，在 PG 里对应的是 <code class="mv-md-code">Index Only Scan</code>——名字完全不同，别串。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>怎么确认统计信息错了？</strong></strong></p>
 <p class="mv-md-p">对比 <code class="mv-md-code">EXPLAIN</code> 的 <code class="mv-md-code">rows</code>（估算）与 <code class="mv-md-code">EXPLAIN ANALYZE</code>（8.0.18+）的实际行数；<strong>差一个数量级以上就该 <code class="mv-md-code">ANALYZE TABLE</code></strong>。这条和 PG 的 [[母题-P7-统计信息与慢查询定位]] 是同一件事的两个实现。</p>
 <p class="mv-md-p"><strong>2. <strong>那条 20 多秒的 SQL 你具体怎么定位的？</strong></strong></p>

@@ -207,6 +207,7 @@ VACUUM 判断「这个死元组能不能清掉」的唯一问题：
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的长事务主要危险是「不放锁 + undo 链长」</strong>，<strong>PG 的长事务主要危险是「按住回收边界」</strong>。<strong>所以「长事务要短」这句话在两边都成立，但理由完全不同</strong>——<strong>在 PG 里说「长事务的危险是它占着锁」，等于把最重要的那半边漏掉了。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么「只读」也有害？</strong></strong></p>
 <p class="mv-md-p"><strong>因为回收看的是快照，不是"这个事务做了什么"。</strong> <strong>只读事务不做修改，但它持有快照，而快照决定了回收边界。</strong> <strong>所以只要它开着，膨胀就在积累。</strong> <strong>这条最反直觉，也最能区分"背过"和"懂了"。</strong></p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">idle in transaction</code> 为什么是头号来源？</strong></strong></p>

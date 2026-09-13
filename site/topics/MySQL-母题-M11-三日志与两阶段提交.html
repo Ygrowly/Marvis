@@ -157,6 +157,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PostgreSQL 只有 WAL 一套日志</strong>（没有 redo / undo / binlog 三套），旧版本留在堆里靠 VACUUM 回收，复制也走 WAL。<strong>所以 PG 不存在"两份日志要协调"的问题，也就没有 prepare/commit 两阶段日志状态。</strong> 不要把 MySQL 的三日志结构套到 PG 上。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>redo 循环写，为什么不怕覆盖掉还没刷盘的日志？</strong></strong></p>
 <p class="mv-md-p"><strong>check point 只在脏页真正刷盘后才前移</strong>；write pos 追上 check point 时<strong>必须停下来先刷脏页</strong>。顺序是"先刷页 → 再推 check point → 才释放空间"，<strong>不能反过来</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">innodb_flush_log_at_trx_commit</code> 设 0/2 能换多少性能？</strong></strong></p>

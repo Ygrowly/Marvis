@@ -160,6 +160,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的归档靠"两张表 + 迁移"；PG 可以用分区 + <code class="mv-md-code">DROP</code> 分区</strong>。<strong>MySQL 的分库分表是常见架构手段（有 ShardingSphere 生态）；PG 更常用原生分区与 FDW，分库分表相对少</strong>。<strong>说的时候要说清楚自己讲的是哪一套，别把"MySQL 需要分库分表"当成通用结论</strong>——PG 侧对应的问题是分区设计。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>分片键选错了怎么办？</strong></strong></p>
 <p class="mv-md-p"><strong>分片键是"最难改的决定"</strong>：改它要全量重分布数据，扩容也要迁移约 50%。<strong>所以选型必须基于真实的查询分布</strong>，而不是"字段看起来像 ID"。<strong>这和 [[母题-P16-分区表]] 的"分区键必须进大部分查询条件"是同一个原则。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>跨分片的事务怎么办？</strong></strong></p>

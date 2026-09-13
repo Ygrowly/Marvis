@@ -151,6 +151,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>Go 的 goroutine、Java 的虚拟线程、Node 的事件循环</strong>都是"用户态/轻量调度"这一族。<strong>所以这套"单位开销 + 谁调度 + 协作还是抢占"的框架可以直接迁移</strong>——面试时能说"Python 的协程和 Go 的 goroutine 是同一族思路，区别在调度器实现和是否抢占"，会显得视野更宽。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>协程和线程最本质的区别是什么？</strong></strong></p>
 <p class="mv-md-p"><strong>谁调度</strong>：线程由 <strong>OS 抢占式</strong>调度（会强行换），协程由<strong>程序协作式</strong>调度（你不让就一直占）。<strong>"阻塞代码能卡死事件循环"这个代价就是从这一条来的。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>asyncio 能利用多核吗？</strong></strong></p>

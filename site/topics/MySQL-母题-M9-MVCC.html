@@ -149,6 +149,7 @@ min_trx_id &lt;= trx_id &lt; max_trx_id
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 的旧版本在 undo log、靠 purge 回收；PG 的旧版本留在堆里、靠 VACUUM 回收。</strong> PG 没有 undo log、没有 ReadView（用 <code class="mv-md-code">xmin/xmax</code> + 快照）；MySQL 没有 VACUUM。<strong>两边只有"快照决定可见性"一条原理共通。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">m_ids</code> 为什么必需？</strong></strong></p>
 <p class="mv-md-p">因为<strong>"开始得早"不等于"已提交"</strong>：事务可能在你拍快照前就开始了、拍完之后才提交。它的 <code class="mv-md-code">trx_id</code> 比高水位小，光看水位判断不出来。</p>
 <p class="mv-md-p"><strong>2. <strong>undo log 什么时候能删？</strong></strong></p>

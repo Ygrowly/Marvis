@@ -181,6 +181,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">本卡管的是"<strong>幻觉作为一类错误的成因与对策</strong>"；检索怎么做到位（切分、混合检索、重排、增量索引）属于 RAG 簇（G 系列）。<strong>两边的接口是"检索失败率 ≠ 幻觉率"这一条</strong>——RAG 负责把失败率压下去，本卡负责告诉你压下去之后还剩什么。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>怎么让模型愿意说"我不知道"？</strong></strong></p>
 <p class="mv-md-p">两层：<strong>prompt 层</strong>显式给许可（"不确定就说不确定"）；<strong>评分层</strong>把"自信的错误"罚得比"承认不确定"更重，给恰当的弃答部分分。<strong>第二层更根本</strong>——因为第一层只是措辞，第二层才改激励。</p>
 <p class="mv-md-p"><strong>2. <strong>长文档怎么做 grounding？</strong></strong></p>

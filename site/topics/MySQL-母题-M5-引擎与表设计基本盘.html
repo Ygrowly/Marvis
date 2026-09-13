@@ -179,6 +179,7 @@ varchar(10) 存 'a'   → 1 字节内容 + 1 字节长度 = 2 字节
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">PostgreSQL 是<strong>堆表</strong>——主键不是数据顺序，所以「自增主键防页分裂」这条<strong>在 PG 里不成立</strong>；PG 的对应实践是用 <code class="mv-md-code">identity</code> / <code class="mv-md-code">bigserial</code>，而表膨胀要靠 <strong>VACUUM</strong> 处理，与页分裂是两套机制（[[母题-P5-表设计与数据类型]]、[[母题-P15-VACUUM与事务ID回卷]]）。<strong>面试时不要把这两套混着说。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>页分裂到底损失什么？</strong></strong></p>
 <p class="mv-md-p">① 分裂是同步写，抬高写入延迟；② 分裂后两页各约半满，<strong>同样的数据占更多页</strong>，范围扫描读更多页、缓存命中率下降；③ <strong>顺序写变随机写</strong>，失去 B+ 树最大的性能来源。</p>
 <p class="mv-md-p"><strong>2. <strong>那用趋势递增的雪花 ID 不就好了？</strong></strong></p>

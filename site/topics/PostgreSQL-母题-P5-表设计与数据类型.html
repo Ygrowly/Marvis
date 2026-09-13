@@ -214,6 +214,7 @@ timestamp（不带时区）只存字面值：
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 里 <code class="mv-md-code">CHAR</code> 与 <code class="mv-md-code">VARCHAR</code> 有明确的定长/变长存储差别；<strong>PG 里这套差别不成立</strong>——<code class="mv-md-code">varchar(n)</code> 与 <code class="mv-md-code">text</code> 的存储与开销<strong>完全相同</strong>（都是 1 字节头，内容超 126 字节后变 4 字节头），而 <code class="mv-md-code">char(n)</code> 因为定长补空格<strong>通常是三者中最慢的</strong>。<strong>所以"MySQL 的 varchar 有长度字节"不能当作两边的区别</strong>——<strong>PG 的 varchar / text 同样有长度头</strong>，真正的区别是 PG 里 <code class="mv-md-code">varchar</code> 与 <code class="mv-md-code">text</code> 完全等价。自增在 MySQL 是 <code class="mv-md-code">AUTO_INCREMENT</code>（没有 identity 那套语义）；时间类型是 <code class="mv-md-code">DATETIME</code> / <code class="mv-md-code">TIMESTAMP</code>（<strong><code class="mv-md-code">TIMESTAMP</code> 有 2038 上限</strong>）。<strong>PG 的 <code class="mv-md-code">timestamptz</code> 上限是 294276 AD</strong>，没有这个坑。<strong>两边的答案不一样，不要交叉使用。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>jsonb 存的配置项想做范围查询怎么办？</strong></strong></p>
 <p class="mv-md-p">两条路：① <strong>表达式索引</strong>把某个内部字段抽出来（<code class="mv-md-code">(data-&gt;&gt;'priority')</code>）建 B-tree；② <strong>如果被查询字段是核心业务字段，就把它提升成独立列</strong>——<strong>「能被高频查询的字段不该藏在 JSON 里」</strong>，<strong>这是比建索引更根本的建议</strong>。</p>
 <p class="mv-md-p"><strong>2. <strong>改了字段类型会不会锁表？</strong></strong></p>

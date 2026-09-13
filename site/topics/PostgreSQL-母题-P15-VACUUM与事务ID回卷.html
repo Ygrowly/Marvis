@@ -186,6 +186,7 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 没有 VACUUM、没有冻结、没有事务 ID 回卷</strong>——<strong>它靠 purge 线程自动回收版本链</strong>。<strong>所以「PG 的 DBA 一半时间在跟膨胀打交道」不是夸张，是版本留在堆里的直接后果。</strong> <strong>而「PG 有没有类似 purge 的东西」的正确答案是：有自动清理（autovacuum），但它会【跟不上】，而且它还要同时负责冻结——这是 purge 不需要做的事。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么 <code class="mv-md-code">VACUUM FULL</code> 不能天天跑？</strong></strong></p>
 <p class="mv-md-p"><strong>它要排他锁（业务中断）、要等量额外磁盘、还要产生大量 WAL</strong>。<strong>小表可以，大表上等于一次业务中断。</strong> <strong>大表在线重建的正确工具是 <code class="mv-md-code">pg_repack</code>。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>「冻结」这个词容易误解成什么？</strong></strong></p>
