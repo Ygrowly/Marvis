@@ -161,7 +161,7 @@
 <ul class="mv-md-ul"><li>子任务用独立上下文，<strong>只把结构化结果返回</strong></li><li>多 Agent 按权限域或专长隔离</li><li>大产物写对象存储，窗口里只留摘要和引用</li></ul>
 <h4 class="mv-md-h mv-md-h4">2.4 缓存 Caching【事实】</h4>
 <p class="mv-md-p">系统提示、稳定的工具定义、大段静态背景放在<strong>前面</strong>且保持不变，交给提供方的 prompt caching；<strong>动态内容一律追加在后面</strong>。</p>
-<p class="mv-md-p">【事实】定价结构（Claude API，2026-09 核实）：缓存<strong>写</strong>按基础输入价的 <strong>1.25×</strong>（5 分钟 TTL）或 <strong>2×</strong>（1 小时 TTL）；缓存<strong>读</strong>按 <strong>0.1×</strong>（Fable 5.1 / Mythos 5.1 是 0.025×）。最短可缓存长度按模型不同：Opus 5 与 Fable 5.1 是 <strong>512</strong> token，Sonnet 5 是 <strong>1,024</strong>，Haiku 4.5 是 <strong>4,096</strong>。缓存按前缀字节完全一致匹配，默认 5 分钟过期（每次命中会免费续期）。</p>
+<p class="mv-md-p">【事实】定价结构（Claude API，2026-09 核实）：缓存<strong>写</strong>按基础输入价的 <strong>1.25×</strong>（5 分钟 TTL）或 <strong>2×</strong>（1 小时 TTL）；缓存<strong>读</strong>按 <strong>0.1×</strong>，<strong>Fable 5.1 是 0.025×</strong>（$0.25/MTok——<strong>官方文档对 Mythos 5.1 标注为「是否同价发布时未定」，虽然它与 Fable 5.1 是同一个模型，但这句话不要说满</strong>）。最短可缓存长度按模型不同：Opus 5 与 Fable 5.1 是 <strong>512</strong> token，Sonnet 5 是 <strong>1,024</strong>，Haiku 4.5 是 <strong>4,096</strong>（<strong>注意这个最短长度不是单调的</strong>：最新一批是 512，反而 Opus 4.6/4.5 与 Haiku 4.5 是 4096）。缓存按前缀字节完全一致匹配，默认 5 分钟过期（每次命中会免费续期）。</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">3. 逐个淘汰（统一指标：每花一个 token 换来的任务成功率）</h3>
 <p class="mv-md-p">先立口径：<strong>不比"谁压得更小"，比"每花一个 token，任务成功率提升多少"。</strong></p>

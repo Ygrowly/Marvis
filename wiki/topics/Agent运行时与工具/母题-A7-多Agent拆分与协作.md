@@ -2,7 +2,7 @@
 type: topic
 topic: Agent运行时与工具
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 status: candidate
 human_reviewed: false
 level: A
@@ -14,7 +14,7 @@ level: A
 > **所属主线**：三 · 风险与复杂度怎么管（边界）
 > **层级**：A · 教材级（"多 Agent 有效是因为多了 token 和并行度"有实测支撑（80% 方差）；成本与收益都能算）
 > **关联母题**：[[母题-A5-上下文压缩与记忆]]（子 agent 只回传 1–2K 就是压缩）· [[母题-C1-上下文组装与窗口预算]]（隔离 = 四种手段之一）· [[母题-A1-计划执行循环与停止条件]]（effort 分档 = 预算思维）· [[母题-G5-RAG评测与幻觉率]]（多 Agent 的评测更麻烦：不能只测单个 agent）
-> **素材来源**：**Anthropic《How we built our multi-agent research system》**（2026-09-12 联网核实：**90.2% 提升、token 用量解释 80% 方差、15× token、effort 分档、并行降 90% 时间**）+ `study/06-Workflow-多Agent与长任务.md`。**三组算式为本次新增（待你核对）**
+> **素材来源**：**Anthropic《How we built our multi-agent research system》**（2026-09-12 联网核实：**90.2% 提升、token 用量解释 80% 方差、三因素合计 95%、15× token、effort 分档、并行降 90% 时间、"大多数编码任务的可并行部分比研究少"、同步执行的瓶颈**）+ **Anthropic《Effective context engineering for AI agents》**（2025-09-29——**"子 agent 探索用几万 token、只回传 1,000–2,000 token 浓缩结论"这句出自这篇，不在多 agent 那篇里**）+ `study/06-Workflow-多Agent与长任务.md`。**三组算式为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① 它有效的原因不是"更聪明" ② effort 必须分档 ③ 有些任务天生不适合拆）· 读完约 12 分钟 · 需要先懂：[[母题-A5-上下文压缩与记忆]]
 
