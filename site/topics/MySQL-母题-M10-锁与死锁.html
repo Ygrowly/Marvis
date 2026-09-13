@@ -50,7 +50,16 @@
 <p class="mv-md-p"><strong>三种锁的关系一句话</strong>：</p>
 <table class="mv-table"><thead><tr><th>锁</th><th>覆盖</th><th>防什么</th></tr></thead><tbody><tr><td>Record Lock</td><td>一条记录</td><td>改这一行</td></tr><tr><td>Gap Lock</td><td>一个空隙</td><td>往空隙里插入</td></tr><tr><td><strong>Next-Key Lock</strong></td><td>空隙 + 记录</td><td>上面两件一起</td></tr></tbody></table>
 <h4 class="mv-md-h mv-md-h4">2.4 一个必须先说清的边界【事实】</h4>
-<p class="mv-md-p"><strong>间隙锁只在 RR（及串行化）下存在。RC 下没有间隙锁。</strong></p>
+<p class="mv-md-p"><strong>间隙锁主要存在于 RR（及串行化）下。RC 下【搜索与索引扫描】不再加间隙锁。</strong></p>
+<p class="mv-md-p">【事实】<strong>官方的原话有一个常被漏掉的例外</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>间隙锁可以被显式关闭——把隔离级别改成 <code class="mv-md-code">READ COMMITTED</code> 就会关闭它。</strong> 这种情况下，<strong>间隙锁在搜索和索引扫描中被禁用</strong>，<strong>只在【外键约束检查】和【重复键检查】时仍然使用</strong>。</p>
+<p class="mv-md-p">【推论】<strong>所以"RC 下没有间隙锁"这句话要说全</strong>：</p>
+<pre class="mv-md-pre">RC 下：
+  搜索 / 索引扫描 → 【不加】间隙锁（这是最常被问的那一半）
+  外键检查 · 重复键检查 → 【仍然加】
+
+→ 说"RC 下完全没有间隙锁"不准确；
+  说"RC 下查询不再因为间隙锁被卡住插入"才是准确的那一半</pre>
 <p class="mv-md-p">【推导】所以隔离级别直接决定了锁的行为：</p>
 <ul class="mv-md-ul"><li><strong>RC 下</strong>：不会"因为间隙锁把插入卡住"，<strong>但会有幻读</strong></li><li><strong>RR 下</strong>：插入可能被卡，<strong>但幻读被挡住</strong></li></ul>
 <p class="mv-md-p"><strong>这把 M8（隔离级别）和 M10（锁）连起来了</strong>：<strong>"默认 RR" 这个选择的代价，就是用"插入可能被卡"换"幻读被挡住"。</strong></p>

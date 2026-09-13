@@ -25,7 +25,7 @@
 
 <div class="mv-section"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：先把三件「数据消失」的事拆开</h3>
 <p class="mv-md-p">面试里这三个问题经常被混着问，但它们<strong>触发条件完全不同</strong>：</p>
-<table class="mv-table"><thead><tr><th>场景</th><th>什么时候发生</th><th>谁会消失</th><th>由什么机制管</th></tr></thead><tbody><tr><td><strong>持久化</strong></td><td>进程挂了 / 机器断电</td><td><strong>整个内存</strong></td><td>RDB / AOF</td></tr><tr><td><strong>过期删除</strong></td><td>某个 key 的 TTL 到了</td><td>那个 key</td><td>惰性删除 + 定期删除</td></tr><tr><td><strong>内存淘汰</strong></td><td>内存到达 <code class="mv-md-code">maxmemory</code></td><td>被挑中的若干 key</td><td>8 种淘汰策略</td></tr></tbody></table>
+<table class="mv-table"><thead><tr><th>场景</th><th>什么时候发生</th><th>谁会消失</th><th>由什么机制管</th></tr></thead><tbody><tr><td><strong>持久化</strong></td><td>进程挂了 / 机器断电</td><td><strong>整个内存</strong></td><td>RDB / AOF</td></tr><tr><td><strong>过期删除</strong></td><td>某个 key 的 TTL 到了</td><td>那个 key</td><td>惰性删除 + 定期删除</td></tr><tr><td><strong>内存淘汰</strong></td><td>内存到达 <code class="mv-md-code">maxmemory</code></td><td>被挑中的若干 key</td><td>8 种（经典）/ 10 种（加 LRM）</td></tr></tbody></table>
 <p class="mv-md-p"><strong>先把它们分开，后面就不会答串。</strong> 一句话区分后两个：</p>
 <p class="mv-md-p mv-md-quote"><strong>过期删除问的是「这个 key 该死了吗」（时间维度）；内存淘汰问的是「必须谁死」（空间维度）。</strong></p>
 <p class="mv-md-p">【推导】为什么必须分开？因为<strong>触发源不同</strong>：前者由<strong>数据自己的属性</strong>（有没有设 TTL、到没到期）决定；后者由<strong>实例的状态</strong>（内存够不够）决定。<strong>一个 key 完全没用过期时间，也可能被淘汰；一个设了 TTL 的 key，也可能在被淘汰前就自然过期。</strong></p>
@@ -221,8 +221,16 @@
 <p class="mv-md-p"><strong>维度一：在哪个池子里挑？</strong></p>
 <table class="mv-table"><thead><tr><th>池子</th><th>含义</th><th>风险</th></tr></thead><tbody><tr><td><code class="mv-md-code">noeviction</code>（默认）</td><td>不淘汰，直接<strong>拒绝写入并报错</strong></td><td>写请求开始失败</td></tr><tr><td><code class="mv-md-code">volatile-*</code></td><td><strong>只在设了 TTL 的 key 里挑</strong></td><td>见下面的陷阱</td></tr><tr><td><code class="mv-md-code">allkeys-*</code></td><td><strong>在所有 key 里挑</strong></td><td>可能淘汰掉本来该常驻的数据</td></tr></tbody></table>
 <p class="mv-md-p"><strong>维度二：挑谁？（算法）</strong></p>
-<table class="mv-table"><thead><tr><th>算法</th><th>淘汰谁</th></tr></thead><tbody><tr><td><code class="mv-md-code">random</code></td><td>随机</td></tr><tr><td><code class="mv-md-code">ttl</code></td><td><strong>最快过期的先走</strong></td></tr><tr><td><code class="mv-md-code">lru</code></td><td><strong>最久没被访问的</strong></td></tr><tr><td><code class="mv-md-code">lfu</code></td><td><strong>访问频率最低的</strong>（4.0 新增）</td></tr></tbody></table>
-<p class="mv-md-p">1 + 4 + 3 = <strong>8 种</strong>。</p>
+<table class="mv-table"><thead><tr><th>算法</th><th>淘汰谁</th></tr></thead><tbody><tr><td><code class="mv-md-code">random</code></td><td>随机</td></tr><tr><td><code class="mv-md-code">ttl</code></td><td><strong>最快过期的先走</strong>（只有 <code class="mv-md-code">volatile-ttl</code> 这一种，没有 <code class="mv-md-code">allkeys-ttl</code>）</td></tr><tr><td><code class="mv-md-code">lru</code></td><td><strong>最久没被访问的</strong></td></tr><tr><td><code class="mv-md-code">lfu</code></td><td><strong>访问频率最低的</strong>（4.0 新增）</td></tr><tr><td><code class="mv-md-code">lrm</code></td><td><strong>最久没被修改的</strong>（较新版本新增：只按【写】的时间戳算，读不算——和 LRU 的唯一差别）</td></tr></tbody></table>
+<pre class="mv-md-pre">经典答案（Redis ≤ 7）：1 + 4 + 3 = 【8 种】
+  noeviction
+  allkeys-{lru, lfu, random}                → 3
+  volatile-{lru, lfu, random, ttl}          → 4
+  共 8 种
+
+较新版本再加 LRM 两个：allkeys-lrm / volatile-lrm → 【共 10 种】</pre>
+<p class="mv-md-p">【事实】<strong>注意 <code class="mv-md-code">ttl</code> 只有 <code class="mv-md-code">volatile-</code> 版</strong>——<strong>没有 <code class="mv-md-code">allkeys-ttl</code></strong>（"所有 key 里挑最快过期的"没有意义，因为没设 TTL 的 key 没有"最快过期"这个属性）。<strong>这也是为什么是 1 + 4 + 3 而不是 1 + 5 + 5。</strong></p>
+<p class="mv-md-p">【取舍】<strong>面试时怎么答</strong>：<strong>先把经典的 8 种列全（这是标准答案），再补一句"较新版本还加了 <code class="mv-md-code">lrm</code>（只按修改时间算，读不算），所以现在是 10 种"</strong>——<strong>既答到点上，又显示你不是背的旧资料。</strong></p>
 <h4 class="mv-md-h mv-md-h4">4.1 最容易踩的配置陷阱【事实】</h4>
 <p class="mv-md-p mv-md-quote"><strong>配了 <code class="mv-md-code">volatile-lru</code>，但业务里所有 key 都没设 TTL → 一个都挑不出来，行为等同于 <code class="mv-md-code">noeviction</code>。</strong></p>
 <p class="mv-md-p">内存满时直接写报错——<strong>而报错时你多半不会想到"是淘汰策略选错了"</strong>。所以：<strong>用 <code class="mv-md-code">volatile-*</code> 就要求业务真的给缓存设 TTL</strong>；否则应该用 <code class="mv-md-code">allkeys-*</code>。</p>
