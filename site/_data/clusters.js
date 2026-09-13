@@ -6,7 +6,12 @@
    ⚠️ 本表的**母题范围必须以模块卡正本为准**（`wiki/topics/{模块}/{模块}模块卡.md` 的「母题清单」节）。
       2026-09-12 清理：删掉 14 行旧规划残留（M18–M21 / R4–R8 / N4–N8），它们的计划内容已被现有卡合并
       （例：R5「过期与内存淘汰」并进了 R2）。**要扩母题先改模块卡，再回来加行**，否则进度页会挂出假欠账。
-   PostgreSQL 19 张卡已完成但**暂不进本表**（2026-09-12 决定）：模块页从训练台「模块学习」栏可达，不进派单。
+   **PostgreSQL 19 张 2026-09-13 已加入本表**（此前 2026-09-12 的"暂不进派单"决定已撤销）：
+     模块卡第 3 节原文写的是「母题卡…跑 site/build.py 自动生成母题页**并进复训牌组**」，
+     与当时 clusters.js 的排除互相矛盾——按本表自己的规则「母题范围以模块卡正本为准」，
+     正本说了算。**单独开一个 zone（'PostgreSQL 主战场'）**：三个项目全跑在 PG 上，
+     它不该和另外 5 个后端簇挤同一轮转，否则会被饿死。
+     至此 77 张母题卡全部进派单池。
 
    ── 顺序与前置（2026-09-13 加）─────────────────────────────
    学习序 = **topics 数组序**，与模块卡「母题清单」表的行序一致（这就是实际推进顺序）。
@@ -70,6 +75,30 @@ window.MARVIS_CLUSTERS = [
     ]
   },
   {
+    id: 'pg', name: 'PostgreSQL', zone: 'PostgreSQL 主战场',
+    topics: [
+      { id: 'P1', name: '索引类型选型', href: 'topics/PostgreSQL-母题-P1-索引类型选型.html' },
+      { id: 'P2', name: '堆表与回表', href: 'topics/PostgreSQL-母题-P2-堆表与回表.html' },
+      { id: 'P3', name: '部分索引与表达式索引', href: 'topics/PostgreSQL-母题-P3-部分索引与表达式索引.html' },
+      { id: 'P4', name: '索引代价与在线建索引', href: 'topics/PostgreSQL-母题-P4-索引代价与在线建索引.html' },
+      { id: 'P5', name: '表设计与数据类型', href: 'topics/PostgreSQL-母题-P5-表设计与数据类型.html' },
+      { id: 'P6', name: '执行计划怎么看', href: 'topics/PostgreSQL-母题-P6-执行计划怎么看.html' },
+      { id: 'P7', name: '统计信息与慢查询定位', href: 'topics/PostgreSQL-母题-P7-统计信息与慢查询定位.html' },
+      { id: 'P8', name: '隔离级别与读一致性', href: 'topics/PostgreSQL-母题-P8-隔离级别与读一致性.html' },
+      { id: 'P9', name: '序列化失败与重试', href: 'topics/PostgreSQL-母题-P9-序列化失败与重试.html' },
+      { id: 'P10', name: '无间隙锁与锁变体', href: 'topics/PostgreSQL-母题-P10-无间隙锁与锁变体.html' },
+      { id: 'P11', name: 'WAL与checkpoint', href: 'topics/PostgreSQL-母题-P11-WAL与checkpoint.html' },
+      { id: 'P12', name: '流复制与逻辑复制', href: 'topics/PostgreSQL-母题-P12-流复制与逻辑复制.html' },
+      { id: 'P13', name: 'MVCC与可见性', href: 'topics/PostgreSQL-母题-P13-MVCC与可见性.html' },
+      { id: 'P14', name: '长事务与表膨胀', href: 'topics/PostgreSQL-母题-P14-长事务与表膨胀.html' },
+      { id: 'P15', name: 'VACUUM与事务ID回卷', href: 'topics/PostgreSQL-母题-P15-VACUUM与事务ID回卷.html' },
+      { id: 'P16', name: '分区表', href: 'topics/PostgreSQL-母题-P16-分区表.html' },
+      { id: 'P17', name: '连接模型与连接池', href: 'topics/PostgreSQL-母题-P17-连接模型与连接池.html' },
+      { id: 'P18', name: '乐观并发控制', href: 'topics/PostgreSQL-母题-P18-乐观并发控制.html' },
+      { id: 'P19', name: '唯一约束与UPSERT', href: 'topics/PostgreSQL-母题-P19-唯一约束与UPSERT.html' }
+    ]
+  },
+  {
     id: 'llm', name: 'LLM 与上下文工程', zone: 'AI 主战场',
     /* 2026-09-12：C1–C6 已教材化，href 指到母题页；课程底库降为资料索引（study/02·01·10） */
     topics: [
@@ -125,12 +154,12 @@ window.MARVIS_CLUSTERS = [
        （90 秒骨架 → 决策链，后者要等前者到 L2 才解锁）。 */
     id: 'pitch', name: '项目口述', zone: '表达',
     topics: [
-      { id: 'P1', name: 'EnergyOps 90 秒骨架', proj: 'EnergyOps', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P2', name: 'EnergyOps 决策链', proj: 'EnergyOps', src: 'projects/EnergyOps/EnergyOps-项目说明.md' },
-      { id: 'P3', name: '数驭穹图 90 秒骨架', proj: '数驭穹图', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P4', name: '数驭穹图决策链', proj: '数驭穹图', src: 'projects/数驭穹图/数驭穹图项目说明.md' },
-      { id: 'P5', name: 'RuleArena 90 秒骨架', proj: 'RuleArena', src: 'wiki/interview/个人项目含金量表达铁律.md' },
-      { id: 'P6', name: 'RuleArena 决策链', proj: 'RuleArena', src: 'projects/RuleArena/RuleArena-项目说明.md' }
+      { id: 'T1', name: 'EnergyOps 90 秒骨架', proj: 'EnergyOps', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'T2', name: 'EnergyOps 决策链', proj: 'EnergyOps', src: 'projects/EnergyOps/EnergyOps-项目说明.md' },
+      { id: 'T3', name: '数驭穹图 90 秒骨架', proj: '数驭穹图', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'T4', name: '数驭穹图决策链', proj: '数驭穹图', src: 'projects/数驭穹图/数驭穹图项目说明.md' },
+      { id: 'T5', name: 'RuleArena 90 秒骨架', proj: 'RuleArena', src: 'wiki/interview/个人项目含金量表达铁律.md' },
+      { id: 'T6', name: 'RuleArena 决策链', proj: 'RuleArena', src: 'projects/RuleArena/RuleArena-项目说明.md' }
     ]
   }
 ];
