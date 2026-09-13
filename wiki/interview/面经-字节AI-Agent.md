@@ -37,7 +37,7 @@ AI 应用开发、Python 后端、真实业务、可信执行、数据/规则、
 
 ### 60 秒版本
 
-> 面试官您好，我是刘宇广，27 届数据科学与大数据技术专业，方向是 AI 应用开发和 Agent 后端。我的优势不是单纯做 Prompt Demo，而是把模型接入真实数据、工具和后端系统。实习中我用 FastAPI、PostgreSQL、Redis 等完成园区 EnergyOps，从能耗数据质量、异常告警到月度账单对账，并设计了 25 个 MCP 工具和风险分级。个人项目 RuleArena 聚焦多 Agent 规则审查与可执行状态验证，用确定性程序检查非法状态，并补充 checkpoint、Eval、Trace 和人工审批。数驭穹图则解决可信 NL2SQL/NL2BI，包括领域路由、Schema Linking、SQL 安全、权限和证据绑定。我希望继续深入 Agent Runtime、评测和高可靠 Python 后端，把 AI 能力真正落进业务闭环。
+> 面试官您好，我是刘宇广，27 届数据科学与大数据技术专业，方向是 AI 应用开发和 Agent 后端。我的优势不是单纯做 Prompt Demo，而是把模型接入真实数据、工具和后端系统。实习中我用 FastAPI、PostgreSQL、Redis 等完成园区 EnergyOps，从能耗数据质量、异常告警到月度账单对账，并设计了 30 个 MCP 工具和风险分级。个人项目 RuleArena 聚焦多 Agent 规则审查与可执行状态验证，用确定性程序检查非法状态，并补充 checkpoint、Eval、Trace 和人工审批。数驭穹图则解决可信 NL2SQL/NL2BI，包括领域路由、Schema Linking、SQL 安全、权限和证据绑定。我希望继续深入 Agent Runtime、评测和高可靠 Python 后端，把 AI 能力真正落进业务闭环。
 
 ### 选择哪个项目回答
 
