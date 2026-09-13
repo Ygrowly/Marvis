@@ -187,7 +187,7 @@ SQLSTATE: 40001</pre>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>写偏斜是什么，为什么 RC/RR 拦不住？</strong></strong></p>
 <p class="mv-md-p">两个事务<strong>各读一部分数据、各写另一部分</strong>，<strong>各自的读集与写集不重叠</strong>，所以快照隔离看不出问题，<strong>但合起来破坏了一个跨行的不变量</strong>。<strong>只有 SSI 能自动拦住它</strong>，否则要靠显式锁或约束。</p>
 <p class="mv-md-p"><strong>2. <strong>能不能不用 SSI，只用 <code class="mv-md-code">SELECT ... FOR UPDATE</code> 保证正确？</strong></strong></p>
-<p class="mv-md-p"><strong>能，但必须保证「读的时候也加锁」</strong>——<strong>只给写加锁的「先查再写」在 RC 下有竞态</strong>（这正是 RuleArena 不用 <code class="mv-md-code">FOR UPDATE</code> 的原因）。<strong>而一旦读也加锁，你就回到了"锁 + 等待 + 死锁"的老世界。</strong></p>
+<p class="mv-md-p"><strong>能，但必须保证「读的时候也加锁」</strong>——<strong>只给写加锁的「先查再写」在 RC 下有竞态</strong>。<strong>RuleArena 走的是条件更新而不是「读也加锁」这条路</strong>（项目文档 04 §15：<strong>MVP 优先业务唯一键 + 条件更新</strong>）——<strong>理由是「锁不能成为资金正确性的唯一保证」</strong>，<strong>不是「用不了锁」</strong>。<strong>而一旦读也加锁，你就回到了"锁 + 等待 + 死锁"的老世界。</strong></p>
 <p class="mv-md-p"><strong>3. <strong>重试会不会把压力放大成雪崩？</strong></strong></p>
 <p class="mv-md-p"><strong>会，而且是正反馈</strong>（Q2 的算式：C=1000 时吞吐归零）。<strong>所以正确写法必须带退避 + 抖动 + 上限 + 全局并发限制。</strong> <strong>能说出「重试也要限流」，就超出教科书答案了。</strong></p>
 <p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code> 是什么意思？</strong></strong></p>

@@ -264,16 +264,46 @@ ON CONFLICT (a, b) 需要有一个唯一索引【恰好】覆盖 (a, b)（顺序
 
 ### 6. 落到项目：RuleArena 的 Receipt
 
+【事实】**项目文档 04 §4 给的字段与 §5 给的约束**（这里按正本还原，别用简化版）：
+
 ```sql
+-- 表：ActionReceipt（项目文档字段清单见 04 §4）
 CREATE TABLE action_receipts (
-  idempotency_key  text        NOT NULL,   -- 参与约束 → 必须 NOT NULL
-  run_id           bigint      NOT NULL,
-  action_type      text        NOT NULL,
-  status           text        NOT NULL,
-  result_json      jsonb,
-  created_at       timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (idempotency_key)                  -- 最终防线
+  receipt_id        bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id            bigint      NOT NULL,
+  action_type       text        NOT NULL,
+  idempotency_key   text        NOT NULL,   -- 参与约束 → 必须 NOT NULL
+  request_hash      text        NOT NULL,   -- 同一个 key 但 hash 不同 → 必须报冲突，不能静默复用旧结果
+  processing_status text        NOT NULL,   -- ACCEPTED / COMPLETED / REJECTED / UNKNOWN（四态）
+  business_status   text,
+  result_json       jsonb,
+  error_type        text,
+  aggregate_version bigint,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  completed_at      timestamptz,
+
+  -- 项目文档 04 §5 的原文约束形状：
+  UNIQUE (run_id, action_type, idempotency_key)
 );
+```
+
+【事实】**Receipt 的处理状态是四态，不是两态**（04 §4 原话）：
+
+```text
+ACCEPTED ：已接收，尚未确认完成
+COMPLETED：事务已成功
+REJECTED ：确定性拒绝，没有副作用
+UNKNOWN  ：当前无法确认，需要人工 / 后续恢复
+```
+
+【纠正常见误解】**别把它简化成「ACCEPTED → 完成」两态**——**`REJECTED` 与 `UNKNOWN` 各有各的处置，而且方向相反**：
+
+```text
+查到 COMPLETED → 读权威 Snapshot，继续（复用结果，不重做）
+查到 REJECTED  → 确定性失败，按错误类型决定是否换业务动作
+查到 ACCEPTED  → 短暂等待 / 轮询，受预算限制
+查不到 Receipt → 确认请求未被接受后，才可用同一个 key 重试
+无法查询       → ACTION_UNKNOWN，停止当前分支
 ```
 
 【推论】**关键在「副作用与 Receipt 在同一个事务里提交」**：
@@ -453,7 +483,7 @@ PG 里 NULL 彼此不相等
 
 1. **`ON CONFLICT DO NOTHING` 和 `DO UPDATE` 怎么选？** —— **`DO NOTHING` 用于幂等写入**（"做过了就不管"）；**`DO UPDATE` 用于"存在就更新"**（计数器累加、状态推进）。**注意 `DO UPDATE` 拿的是行锁，而且会是"最后写入获胜"**——**要防止覆盖别人的更新，就得在 `SET` 里带条件**（`SET v = t.v + 1 WHERE t.v = :expected`）。**而 `DO UPDATE` 也会消耗序列值。**
 2. **为什么不能只靠应用层的分布式锁？** —— **因为它引入了新的失效模式**：**锁的获取可能失败/超时；持锁进程挂掉后锁的释放要靠 TTL（于是又有"锁过期了活还没干完"的窗口）。** **而数据库约束没有这些——它就在唯一的权威副本上。**
-3. **Receipt 的 `status` 字段有什么用？** —— **它解决"副作用做到一半崩溃"**：**Receipt 可以用 `ACCEPTED → APPLIED` 两态**，**重投时看到 `ACCEPTED` 说明"上一次可能没做完"，这时要走【权威查询】去确认实际状态**（[[母题-P18-乐观并发控制]] 的「用一次权威读取替代猜测」）。**只有 `APPLIED` 才能直接返回原结果。**
+3. **Receipt 的 `status` 字段有什么用？** —— **它解决"副作用做到一半崩溃"**：**Receipt 的处理状态是四态——`ACCEPTED` / `COMPLETED` / `REJECTED` / `UNKNOWN`**（项目文档 04 §4），**不是简单的两态**。**重投时看到 `ACCEPTED` 说明"上一次可能没做完"，这时要走【权威查询】去确认实际状态**；**只有 `COMPLETED` 才能直接复用原结果**；**`REJECTED` 是确定性失败**；**`UNKNOWN` 要停分支并保留证据**（[[母题-P18-乐观并发控制]] 的「用一次权威读取替代猜测」）。
 4. **序列会被填满吗？** —— **会，而且比预期快**（冲突也消耗）。**官方原话是序列"不能用来获得无空洞的序列"**——**所以主键连续这个期待本身就该放下。** **要抗高写入量就用 `bigint`，别在 `int4` 上赌。**
 5. **这套在分区表上有什么额外的坑？** —— **两个**：**① 唯一约束必须包含所有分区键列**（[[母题-P16-分区表]]），**所以幂等键的组成会被分区键绑住**；**② `ON CONFLICT DO UPDATE` 不能更新分区键**（官方明确不支持"需要移动到新分区"的更新）。**这两条在"分区 + 幂等"叠加时必须在设计阶段就验证。**
 

@@ -167,7 +167,7 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么唯一索引等值命中不产生间隙锁？</strong></strong></p>
 <p class="mv-md-p">精确命中后，<strong>没有"下一个需要保护的间隙"</strong>：唯一约束已经保证了不会再有相同的键插进来。<strong>所以这是锁范围最小的情形</strong>——这正好呼应了 M5"主键要精确"。</p>
 <p class="mv-md-p"><strong>2. <strong>为什么这个场景你项目里没用 <code class="mv-md-code">FOR UPDATE</code>？</strong></strong></p>
-<p class="mv-md-p">（RuleArena 的取舍）任务认领是<strong>低频写</strong>，而状态扫描是<strong>范围条件</strong>（正好命中 3.3 的 ③）：用 <code class="mv-md-code">FOR UPDATE</code> 会<strong>锁大 + 有死锁风险 + 要排队</strong>三样一起来。<strong>条件更新（乐观锁，M16）一次原子写解决，重复执行第二次影响 0 行。</strong> 这正是"锁机制"决定工程选择的实例。</p>
+<p class="mv-md-p">（RuleArena 的取舍）<strong>项目文档给的理由是「权威性」不是「频率」</strong>：<code class="mv-md-code">04 §15</code> 原话<strong>「MVP 优先业务唯一键 + 条件更新」</strong>，<code class="mv-md-code">Q7</code> 原话<strong>「锁可以降低竞争，但不能成为资金正确性的唯一保证……只有真实高竞争时再评估锁」</strong>。<strong>而且认领的判据是「状态是否匹配」（PG 侧还有状态回流的问题），用 <code class="mv-md-code">FOR UPDATE</code> 会把锁等待、死锁风险与排队三样成本一起带进来</strong>；<strong>条件更新（乐观锁，M16）一次原子写解决，重复执行第二次影响 0 行。</strong> 这正是"锁机制"决定工程选择的实例。<strong>注意别说成「完全不用锁」——文档 <code class="mv-md-code">04 §12</code> 给的是「在事务中锁定订单行 </strong>或<strong> 使用乐观版本条件更新」。</strong></p>
 <p class="mv-md-p"><strong>3. <strong>RR 下 <code class="mv-md-code">SELECT</code> 不加锁，那为什么还会有死锁？</strong></strong></p>
 <p class="mv-md-p">死锁来自<strong>当前读</strong>（<code class="mv-md-code">UPDATE</code> / <code class="mv-md-code">FOR UPDATE</code>）和<strong>写操作的加锁顺序</strong>，与快照读无关。</p>
 <p class="mv-md-p"><strong>4. <strong>间隙锁能不能关掉？</strong></strong></p>

@@ -8,7 +8,7 @@
   <!-- 竞态 -->
   <rect x="30" y="66" width="620" height="86" rx="8" fill="#FBEEEA" stroke="#E6C4BA"/>
   <text x="46" y="88" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#8A3A28">「先查再写」为什么必然有竞态</text>
-  <text x="46" y="108" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: SELECT ... WHERE status='QUEUED' → 查到　｜　B: SELECT 同样 → 也查到</text>
+  <text x="46" y="108" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: SELECT ... WHERE status='READY' → 查到　｜　B: SELECT 同样 → 也查到</text>
   <text x="46" y="126" font-family="monospace,sans-serif" font-size="9.5" fill="#8A3A28">A: UPDATE ... WHERE id=1 → 1 行　｜　B: UPDATE ... WHERE id=1 → 【也 1 行】</text>
   <text x="46" y="144" font-family="system-ui,sans-serif" font-size="9.5" fill="#8A3A28">→ 两个都认为自己有资格改，重复认领。而且 RC 下 UPDATE 撞上时官方行为是【对更新后的版本重新求值 WHERE 并继续】，不是报错</text>
 
@@ -17,7 +17,7 @@
   <text x="30" y="192" font-family="system-ui,sans-serif" font-size="11.5" font-weight="600" fill="#2C2C2A">条件更新：判断条件搬进 WHERE，一次原子操作完成判断与写入</text>
 
   <rect x="30" y="204" width="620" height="34" rx="6" fill="#F7F6F3" stroke="#E3E1DA"/>
-  <text x="44" y="226" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">UPDATE tasks SET status='RUNNING', version=version+1 WHERE id=:id AND status='QUEUED' AND version=:v RETURNING ...</text>
+  <text x="44" y="226" font-family="monospace,sans-serif" font-size="9.5" fill="#2C2C2A">UPDATE attack_run SET status='SEARCHING', worker_id=:w WHERE id=:id AND status='READY' RETURNING ...</text>
 
   <rect x="30" y="248" width="300" height="70" rx="7" fill="#E8F0E4" stroke="#B9D3AB"/>
   <text x="46" y="268" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#2C5A20">影响 1 行 → 抢到了</text>

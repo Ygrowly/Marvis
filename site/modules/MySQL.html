@@ -52,7 +52,7 @@ version = version + 1
 WHERE id = :id
 AND version = :expected_version
 AND refunded_amount + :amount &lt;= paid_amount;</pre>
-<p class="mv-md-p">影响行数为 0 → 说明版本冲突或超额，读出权威 Snapshot 后返回冲突，<strong>不盲目重试业务动作</strong>。为什么不用悲观锁：扣退款是低频写、读多写少，加锁会把锁等待和死锁风险带进来；正确性最终靠数据库唯一约束 <code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code> 兜底，而不是靠内存锁或 Redis 锁。Checkpoint 只存 frontier / 预算 / 版本元组，<strong>不存业务结论</strong>——因为「动作」与「Checkpoint」之间永远存在崩溃窗口，不存在完美保存顺序。</p></div><div class="mv-pj-item"><b>对应母题</b><p class="mv-md-p">M7、M10、M16、M17</p>
+<p class="mv-md-p">影响行数为 0 → 说明版本冲突或超额，读出权威 Snapshot 后返回冲突，<strong>不盲目重试业务动作</strong>。为什么优先条件更新而不是悲观锁：项目文档 <code class="mv-md-code">04 §15</code> 给的是<strong>「MVP 优先业务唯一键 + 条件更新」</strong>，<code class="mv-md-code">Q7</code> 给的是<strong>「锁可以降低竞争，但不能成为资金正确性的唯一保证」</strong>——<strong>理由是权威性，不是「低频写」</strong>；而且文档 <code class="mv-md-code">04 §12</code> 同时给了<strong>「锁定订单行 </strong>或<strong> 乐观版本条件更新」</strong>，所以别说成「完全不用锁」。正确性最终靠数据库唯一约束 <code class="mv-md-code">UNIQUE(run_id, action_type, idempotency_key)</code> 兜底，而不是靠内存锁或 Redis 锁。Checkpoint 只存 frontier / 预算 / 版本元组，<strong>不存业务结论</strong>——因为「动作」与「Checkpoint」之间永远存在崩溃窗口，不存在完美保存顺序。</p></div><div class="mv-pj-item"><b>对应母题</b><p class="mv-md-p">M7、M10、M16、M17</p>
 <hr class="mv-md-hr"></div></collapse-panel>
   </div>
 </div>

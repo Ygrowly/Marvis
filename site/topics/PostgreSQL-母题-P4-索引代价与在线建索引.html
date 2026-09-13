@@ -115,14 +115,14 @@ updated_at 不被任何索引引用 + 页内有空间：
   每次更新 → 走 HOT → 写 1 个堆元组 + 0 个索引项 = 1 次元组写</pre>
 <p class="mv-md-p"><strong>4 倍差距。</strong> 这也解释了为什么 PG 里<strong>把「经常被更新的列」放进索引是一个要慎重权衡的动作</strong>——它不是多占一点空间，而是<strong>永久关掉了这条更新路径的 HOT</strong>。</p>
 <p class="mv-md-p">【事实】<strong>第二个条件（页内有空间）可以手动提高概率</strong>：</p>
-<pre class="mv-md-pre">CREATE TABLE agent_runs (...) WITH (fillfactor = 90);</pre>
+<pre class="mv-md-pre">CREATE TABLE attack_run (...) WITH (fillfactor = 90);</pre>
 <p class="mv-md-p"><strong><code class="mv-md-code">fillfactor</code> 默认 100（完全填满）</strong>，取值 10–100。调小它 = <strong><code class="mv-md-code">INSERT</code> 只把页填到指定比例，剩下的空间专门留给「在本页更新行」</strong>。</p>
 <p class="mv-md-p">【纠正常见误解】<strong>不调 fillfactor 不等于没有 HOT</strong>——官方文档明确说：<strong>新版本会自然地流向新页、已有页空出来时也会接纳新版本，所以 HOT 仍会发生</strong>。<strong><code class="mv-md-code">fillfactor</code> 是「提高概率」，不是「开关」。</strong></p>
 <p class="mv-md-p">【取舍】<strong>HOT 也有代价</strong>：页只填 90% → 同样的行数要多占约 <strong>11%</strong> 的页（1/0.9）→ 表更大、顺序扫描要读更多页。<strong>官方给的口径很清楚：从不更新的表，填满才是最优；只有【高频更新】的表才该调小 fillfactor。</strong> 所以它是「用顺序读换随机写」的交易。</p>
 <p class="mv-md-p">【事实】<strong>能不能验证？能</strong>——<code class="mv-md-code">pg_stat_all_tables</code> 里可以同时看到 <strong>HOT 更新与非 HOT 更新的次数</strong>：</p>
 <pre class="mv-md-pre">SELECT relname, n_tup_upd, n_tup_hot_upd,
        round(100.0 * n_tup_hot_upd / nullif(n_tup_upd, 0), 1) AS hot_pct
-FROM pg_stat_all_tables WHERE relname = 'agent_runs';</pre>
+FROM pg_stat_all_tables WHERE relname = 'attack_run';</pre>
 <p class="mv-md-p"><strong>「该不该为这张表调 fillfactor」这个问题，不需要猜——查一下 hot_pct 就有答案。</strong></p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么「多建一个索引」的影响，会比它的体积看起来大得多？</p>
 <hr class="mv-md-hr">

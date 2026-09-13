@@ -197,15 +197,36 @@ ON CONFLICT (k) DO UPDATE SET v = excluded.v;
 <p class="mv-md-p">【结论】<strong>在分区表上，<code class="mv-md-code">DO UPDATE</code> 不能改分区键</strong>——<strong>而分区键通常就是业务上的时间字段，很容易被顺手更新。</strong> <strong>这是分区与 UPSERT 交叉处的一个硬限制，上线前必须验证。</strong></p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">6. 落到项目：RuleArena 的 Receipt</h3>
-<pre class="mv-md-pre">CREATE TABLE action_receipts (
-  idempotency_key  text        NOT NULL,   -- 参与约束 → 必须 NOT NULL
-  run_id           bigint      NOT NULL,
-  action_type      text        NOT NULL,
-  status           text        NOT NULL,
-  result_json      jsonb,
-  created_at       timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (idempotency_key)                  -- 最终防线
+<p class="mv-md-p">【事实】<strong>项目文档 04 §4 给的字段与 §5 给的约束</strong>（这里按正本还原，别用简化版）：</p>
+<pre class="mv-md-pre">-- 表：ActionReceipt（项目文档字段清单见 04 §4）
+CREATE TABLE action_receipts (
+  receipt_id        bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id            bigint      NOT NULL,
+  action_type       text        NOT NULL,
+  idempotency_key   text        NOT NULL,   -- 参与约束 → 必须 NOT NULL
+  request_hash      text        NOT NULL,   -- 同一个 key 但 hash 不同 → 必须报冲突，不能静默复用旧结果
+  processing_status text        NOT NULL,   -- ACCEPTED / COMPLETED / REJECTED / UNKNOWN（四态）
+  business_status   text,
+  result_json       jsonb,
+  error_type        text,
+  aggregate_version bigint,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  completed_at      timestamptz,
+
+  -- 项目文档 04 §5 的原文约束形状：
+  UNIQUE (run_id, action_type, idempotency_key)
 );</pre>
+<p class="mv-md-p">【事实】<strong>Receipt 的处理状态是四态，不是两态</strong>（04 §4 原话）：</p>
+<pre class="mv-md-pre">ACCEPTED ：已接收，尚未确认完成
+COMPLETED：事务已成功
+REJECTED ：确定性拒绝，没有副作用
+UNKNOWN  ：当前无法确认，需要人工 / 后续恢复</pre>
+<p class="mv-md-p">【纠正常见误解】<strong>别把它简化成「ACCEPTED → 完成」两态</strong>——<strong><code class="mv-md-code">REJECTED</code> 与 <code class="mv-md-code">UNKNOWN</code> 各有各的处置，而且方向相反</strong>：</p>
+<pre class="mv-md-pre">查到 COMPLETED → 读权威 Snapshot，继续（复用结果，不重做）
+查到 REJECTED  → 确定性失败，按错误类型决定是否换业务动作
+查到 ACCEPTED  → 短暂等待 / 轮询，受预算限制
+查不到 Receipt → 确认请求未被接受后，才可用同一个 key 重试
+无法查询       → ACTION_UNKNOWN，停止当前分支</pre>
 <p class="mv-md-p">【推论】<strong>关键在「副作用与 Receipt 在同一个事务里提交」</strong>：</p>
 <pre class="mv-md-pre">幂等写入的正确形态：
   BEGIN
@@ -252,7 +273,7 @@ ON CONFLICT (k) DO UPDATE SET v = excluded.v;
 <p class="mv-md-p"><strong>2. <strong>为什么不能只靠应用层的分布式锁？</strong></strong></p>
 <p class="mv-md-p"><strong>因为它引入了新的失效模式</strong>：<strong>锁的获取可能失败/超时；持锁进程挂掉后锁的释放要靠 TTL（于是又有"锁过期了活还没干完"的窗口）。</strong> <strong>而数据库约束没有这些——它就在唯一的权威副本上。</strong></p>
 <p class="mv-md-p"><strong>3. <strong>Receipt 的 <code class="mv-md-code">status</code> 字段有什么用？</strong></strong></p>
-<p class="mv-md-p"><strong>它解决"副作用做到一半崩溃"</strong>：<strong>Receipt 可以用 <code class="mv-md-code">ACCEPTED → APPLIED</code> 两态</strong>，<strong>重投时看到 <code class="mv-md-code">ACCEPTED</code> 说明"上一次可能没做完"，这时要走【权威查询】去确认实际状态</strong>（[[母题-P18-乐观并发控制]] 的「用一次权威读取替代猜测」）。<strong>只有 <code class="mv-md-code">APPLIED</code> 才能直接返回原结果。</strong></p>
+<p class="mv-md-p"><strong>它解决"副作用做到一半崩溃"</strong>：<strong>Receipt 的处理状态是四态——<code class="mv-md-code">ACCEPTED</code> / <code class="mv-md-code">COMPLETED</code> / <code class="mv-md-code">REJECTED</code> / <code class="mv-md-code">UNKNOWN</code></strong>（项目文档 04 §4），<strong>不是简单的两态</strong>。<strong>重投时看到 <code class="mv-md-code">ACCEPTED</code> 说明"上一次可能没做完"，这时要走【权威查询】去确认实际状态</strong>；<strong>只有 <code class="mv-md-code">COMPLETED</code> 才能直接复用原结果</strong>；<strong><code class="mv-md-code">REJECTED</code> 是确定性失败</strong>；<strong><code class="mv-md-code">UNKNOWN</code> 要停分支并保留证据</strong>（[[母题-P18-乐观并发控制]] 的「用一次权威读取替代猜测」）。</p>
 <p class="mv-md-p"><strong>4. <strong>序列会被填满吗？</strong></strong></p>
 <p class="mv-md-p"><strong>会，而且比预期快</strong>（冲突也消耗）。<strong>官方原话是序列"不能用来获得无空洞的序列"</strong>——<strong>所以主键连续这个期待本身就该放下。</strong> <strong>要抗高写入量就用 <code class="mv-md-code">bigint</code>，别在 <code class="mv-md-code">int4</code> 上赌。</strong></p>
 <p class="mv-md-p"><strong>5. <strong>这套在分区表上有什么额外的坑？</strong></strong></p>
