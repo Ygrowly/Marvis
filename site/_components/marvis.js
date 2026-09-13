@@ -307,7 +307,9 @@
       this.querySelector('.mv-rd-stat').textContent =
         '今日到期 ' + due.length + ' · 本牌组 ' + ((dk.cards || []).length) + ' 个';
 
-      if (this.idx < 0 || this.idx >= this.queue.length) {
+      var idle = (this.idx < 0 || this.idx >= this.queue.length);
+      this._slot.className = 'mv-rd-slot' + (idle ? ' is-idle' : '');
+      if (idle) {
         this._slot.innerHTML = '<div class="mv-rd-empty">' +
           (due.length ? '点「开始今日复训」，一次一个母题，先说后翻。' : '今天没有到期内容。') +
           '</div>';

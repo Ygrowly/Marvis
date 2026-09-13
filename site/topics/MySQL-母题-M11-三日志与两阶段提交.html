@@ -150,7 +150,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">三条日志各管一件事——<strong>undo 管回滚和 MVCC 旧版本（前镜像），redo 管崩溃恢复（后镜像、物理、循环写），binlog 管复制与时间点恢复（逻辑、追加写、Server 层）</strong>。用 <strong>WAL</strong> 把"随机写数据页"换成"顺序写日志"，同时拿到性能和崩溃安全性。而<strong>两阶段提交存在的唯一理由，是让 redo 和 binlog 逻辑一致</strong>——不做的话，两个崩溃窗口分别造出"主库多从库少"和"从库多主库少"。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>WAL 换掉随机写</li><li>顺序 vs 随机差 2–3 个数量级</li><li>undo 前镜像</li><li>redo 后台镜像</li><li>循环写</li><li>binlog 逻辑</li><li>追加写</li><li>Server 层</li><li>redo 用完即弃所以循环，binlog 长期保留所以追加</li><li>write pos 追上 check point = 写入卡顿</li><li>先刷页再推 check point</li><li>双一</li><li>prepare → binlog → commit</li><li>崩溃窗口 = 主从不一致</li><li>binlog 是否完整 = 唯一裁决依据</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>WAL 换掉随机写</li><li>顺序 vs 随机差 2–3 个数量级</li><li>undo 前镜像</li><li>redo 后台镜像·循环写</li><li>binlog 逻辑·追加写·Server 层</li><li>redo 用完即弃所以循环，binlog 长期保留所以追加</li><li>write pos 追上 check point = 写入卡顿</li><li>先刷页再推 check point</li><li>双一</li><li>prepare → binlog → commit</li><li>崩溃窗口 = 主从不一致</li><li>binlog 是否完整 = 唯一裁决依据</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

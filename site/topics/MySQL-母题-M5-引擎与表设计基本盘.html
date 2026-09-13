@@ -172,7 +172,7 @@ varchar(10) 存 'a'   → 1 字节内容 + 1 字节长度 = 2 字节
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">选 InnoDB 是因为它的<strong>三条硬差异</strong>——支持事务、行级锁、崩溃恢复——正好对应业务表的三个硬要求；MyISAM 只适合"读多写少 + 无事务 + 数据可重建"。表设计的三条硬规则都有可算的依据：<strong>主键用自增</strong>（随机主键导致页分裂，填充率降到约一半、<strong>页数翻倍</strong>，还让缓存能装的页减半）、<strong>长度不定用 varchar</strong>（<code class="mv-md-code">char(10)</code> 存 <code class="mv-md-code">'a'</code> 占 10 字节 vs <code class="mv-md-code">varchar(10)</code> 占 2 字节，<strong>差 5 倍</strong>）、<strong>远期时间用 DATETIME</strong>（TIMESTAMP 只有 4 字节，<code class="mv-md-code">2^31−1</code> 秒 ÷ 31,557,600 ≈ 68 年，<strong>2038-01-19 溢出</strong>）。另外<strong>主键会被复制进每一个二级索引</strong>——BIGINT→UUID 让单个索引从 18B/条涨到 46B/条。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>三条硬差异（事务</li><li>行锁</li><li>崩溃恢复）</li><li>索引组织表 vs 非聚集索引（叶子存主键 vs 存地址）</li><li>自增=顺序写，随机=页分裂</li><li>填充率 100%→50% → 页数翻倍 → 缓存减半</li><li>主键被复制进每个二级索引，18B→46B</li><li>char 补空格、varchar 存长度（2 字节差 8 字节）</li><li>2038-01-19 = 2^31−1 秒 ÷ 31,557,600 ≈ 68 年</li><li>雪花是趋势递增，是折中不是替代</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三条硬差异（事务/行锁/崩溃恢复）</li><li>索引组织表 vs 非聚集索引（叶子存主键 vs 存地址）</li><li>自增=顺序写，随机=页分裂</li><li>填充率 100%→50% → 页数翻倍 → 缓存减半</li><li>主键被复制进每个二级索引，18B→46B</li><li>char 补空格、varchar 存长度（2 字节差 8 字节）</li><li>2038-01-19 = 2^31−1 秒 ÷ 31,557,600 ≈ 68 年</li><li>雪花是趋势递增，是折中不是替代</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

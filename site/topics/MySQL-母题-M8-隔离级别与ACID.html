@@ -131,7 +131,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">事务就是"一组动作一起成败"。<strong>A 靠 undo（前镜像）、D 靠 redo（后镜像）、I 靠锁管写写 + MVCC 管读写、C 是前三者加约束共同得到的结果——它不是独立机制。</strong> 并发三问题是脏读、不可重复读、幻读，四个隔离级别逐级挡住它们，越严格并发越低。<strong>InnoDB 默认 RR，靠 MVCC 挡快照读的幻读、靠间隙锁挡当前读的幻读。</strong></div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>一起成败</li><li>撤销看前镜像、恢复看后镜像</li><li>undo=A、redo=D、锁+MVCC=I</li><li><strong>一致性是结果不是机制</strong></li><li>脏读=未提交</li><li>不可重复读=同一行</li><li>幻读=行数</li><li>RC 挡脏读、RR 再加不可重复读</li><li>快照读 vs 当前读</li><li>默认 RR 是历史+权衡</li><li>MySQL RR vs PG RC</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>一起成败</li><li>撤销看前镜像、恢复看后镜像</li><li>undo=A、redo=D、锁+MVCC=I</li><li><strong>一致性是结果不是机制</strong></li><li>脏读=未提交·不可重复读=同一行·幻读=行数</li><li>RC 挡脏读、RR 再加不可重复读</li><li>快照读 vs 当前读</li><li>默认 RR 是历史+权衡</li><li>MySQL RR vs PG RC</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

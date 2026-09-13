@@ -45,7 +45,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.mv-wrap { max-width: 60rem; margin: 0 auto; }
+.mv-wrap { max-width: 54rem; margin: 0 auto; }
 
 .mv-h1 { font-size: 1.625rem; font-weight: 600; line-height: 1.4; margin: 0 0 0.375rem; }
 .mv-sub { font-size: 0.875rem; color: var(--mv-muted); margin: 0 0 2rem; }
@@ -164,7 +164,9 @@ review-deck { display: block; }
 .mv-rd-title { font-size: 0.9375rem; font-weight: 600; }
 .mv-rd-stat { font-size: 0.8125rem; color: var(--mv-muted); font-family: var(--mv-mono); }
 .mv-rd-slot { min-height: 16rem; }
-.mv-rd-empty { color: var(--mv-muted); font-size: 0.9375rem; padding: 2.5rem 0; text-align: center; }
+.mv-rd-empty { color: var(--mv-muted); font-size: 0.9375rem; padding: 1.25rem 0; text-align: center; }
+/* 未开始时不要把 card 区撑成一个大空盒（原来固定 16rem，空闲态留出大片死空间）*/
+.mv-rd-slot.is-idle { min-height: 0; }
 .mv-rd-ladder { display: flex; gap: 0.375rem; margin-top: 1rem; flex-wrap: wrap; }
 .mv-rd-step {
   font-size: 0.8125rem; padding: 0.25rem 0.75rem; border-radius: 999px;
@@ -565,7 +567,9 @@ figure-box { display: block; }
   background: var(--mv-surface-2); border: 1px solid var(--mv-border);
   border-radius: var(--mv-radius-sm); padding: .75rem 1rem; margin: 0 0 1.25rem;
 }
-.mv-lesson { max-width: 64ch; }
+/* 2026-09-13：此处原有 max-width: 64ch，导致正文只有 ~640px 而页头是整幅 60rem，
+   「头宽身窄」+ 左贴边，看起来又窄又没居中。去掉上限，让正文与页头同宽。 */
+.mv-lesson { max-width: none; }
 .mv-lesson .mv-md-p { line-height: 1.85; }
 .mv-lesson .mv-md-ul li { line-height: 1.85; }
 .mv-lesson .mv-md-quote {
@@ -632,3 +636,16 @@ figure-box { display: block; }
 .h0 { background: var(--mv-surface-2); }
 .h1 { background: #9FE1CB; }
 .h2 { background: var(--mv-ok); }
+
+/* ---------- 模块卡（训练台「模块学习」网格） ---------- */
+.mv-modcards { display: grid; gap: .625rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.mv-modcard {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm);
+  background: var(--mv-surface); padding: .75rem .875rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.mv-modcard:hover { border-color: var(--mv-accent); box-shadow: 0 1px 6px rgba(83,74,183,.10); }
+.mv-modcard-name { font-weight: 600; font-size: .9375rem; color: var(--mv-text); }
+.mv-modcard-meta { margin-top: .25rem; font-size: .8125rem; color: var(--mv-muted); font-family: var(--mv-mono); }
+.mv-modcard-meta b { color: var(--mv-accent); font-weight: 600; }

@@ -223,7 +223,7 @@ checkpoint 间隔 = 1 GB ÷ 10 MB/s = 【100 秒】
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>WAL 是「先写日志、再改数据页」</strong>：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；<strong>提交时靠 <code class="mv-md-code">fsync</code> 保证这个事务的 WAL 已经落盘</strong>（<code class="mv-md-code">synchronous_commit = on</code>），所以崩溃后能用 WAL 把已提交的改动重放出来。<strong>checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」</strong>——它不影响正确性，只影响<strong>崩溃后要重放多久</strong>。PG 不需要 undo，是因为<strong>旧版本本来就留在堆里</strong>（P13），不靠日志回滚。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>预写日志</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li><strong>off 丢的是三倍 wal_writer_delay ≈ 600ms 的【整段】</strong></li><li>checkpoint 推进恢复起点</li><li><code class="mv-md-code">checkpoint_timeout</code> 5min</li><li><code class="mv-md-code">max_wal_size</code> 1GB</li><li><strong>full_page_writes（检查点后首写整页）</strong></li><li><code class="mv-md-code">wal_compression</code></li><li><code class="mv-md-code">pg_stat_checkpointer</code></li><li>为什么不需要 undo</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>预写日志</li><li>LSN</li><li>fsync 与 synchronous_commit</li><li><strong>off 丢的是三倍 wal_writer_delay ≈ 600ms 的【整段】</strong></li><li>checkpoint 推进恢复起点</li><li><code class="mv-md-code">checkpoint_timeout</code> 5min · <code class="mv-md-code">max_wal_size</code> 1GB</li><li><strong>full_page_writes（检查点后首写整页）</strong></li><li><code class="mv-md-code">wal_compression</code></li><li><code class="mv-md-code">pg_stat_checkpointer</code></li><li>为什么不需要 undo</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

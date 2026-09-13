@@ -159,6 +159,31 @@ def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def split_kw(s):
+    """把「恢复关键词」那一行切成条目。
+
+    2026-09-13 修：原先 `re.split(r"[/｜|·]", ...)` 有两个错——
+      ① 括号里的 `/` 也被切：`（状态没变 / 重复同参数调用）` 被撕成两个碎片
+      ② `·` 根本不是顶层分隔符，是【条目内部】的子列表标记：
+         `分页 · 范围 · 过滤 · 截断 + 合理默认值`、`Resume · Replay · Retry · Fork 四分工`
+         按它切会切出一堆无意义的单字芯片
+    实测：33/93 张卡受影响，而这些词正是「卡住时重建整条链」用的。
+    顶层真正的分隔符只有 `/`（`｜`/`|` 保留兜底，实测顶层从未出现）。
+    """
+    out, buf, depth = [], [], 0
+    for ch in s:
+        if ch in "（(":
+            depth += 1
+        elif ch in "）)":
+            depth = max(0, depth - 1)
+        if ch in "/｜|" and depth == 0:
+            out.append("".join(buf)); buf = []
+        else:
+            buf.append(ch)
+    out.append("".join(buf))
+    return [x.strip() for x in out if x.strip()]
+
+
 def inline(s):
     s = esc(s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
@@ -329,7 +354,7 @@ def parse_topic(path):
         "conclusion": a,
         "problem": grab_block(body, "题目"),
         "importance": grab(body, "为什么重要"),
-        "keywords": [x.strip() for x in re.split(r"[/｜|·]", grab(body, "恢复关键词")) if x.strip()],
+        "keywords": split_kw(grab(body, "恢复关键词")),
         "invariant": grab(body, "核心不变量 / 主线") or grab(body, "核心不变量"),
         "skeleton": grab(body, "完整回答骨架"),
         "followups": (grab_numbered(body, "追问") or grab_numbered(body, "两层追问")
@@ -1280,9 +1305,9 @@ def render_module_index(md):
         ("%%MODULE%%", esc(md["module"])),
         ("%%SUMMARY%%", esc(md["summary"]) if md["summary"]
             else '<span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span>'),
-        ("%%REASON%%", esc(md["reason"])),
-        ("%%INCLUDE%%", esc(md["include"])),
-        ("%%EXCLUDE%%", esc(md["exclude"])),
+        ("%%REASON%%", inline(md["reason"])),
+        ("%%INCLUDE%%", inline(md["include"])),
+        ("%%EXCLUDE%%", inline(md["exclude"])),
         ("%%NLINE%%", str(len(md["lines"]))),
         ("%%NTOPIC%%", str(len(md["topics"]))),
         ("%%NQ%%", str(n_q)),
@@ -1313,7 +1338,7 @@ def render_module_line(md, ln, prev_ln, next_ln):
         card_link = ('<a class="mv-mt-link" href="../%s">单卡 →</a>' % esc(cpage)) if cpage else ""
         head = ('<div class="mv-mt-head"><span class="mv-mt-id">%s</span>'
                 '<span class="mv-mt-name">%s</span>%s%s</div>'
-                % (esc(t["id"]), esc(t["name"]), chip, card_link))
+                % (esc(t["id"]), esc(plain(t["name"])), chip, card_link))
 
         if not tc:
             ctx = ('<p class="mv-mt-empty">讲解待提炼。这道母题将覆盖的题：</p>'
@@ -1328,7 +1353,7 @@ def render_module_line(md, ln, prev_ln, next_ln):
 
         ref = ['<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>' % inline(tc["conclusion"])]
         if tc["keywords"]:
-            ref.append('<ul class="mv-kw">%s</ul>' % "".join("<li>%s</li>" % esc(k)
+            ref.append('<ul class="mv-kw">%s</ul>' % "".join("<li>%s</li>" % inline(k)
                                                              for k in tc["keywords"]))
         if tc["invariant"]:
             ref.append('<p class="mv-md-p"><strong>主线</strong>：%s</p>' % inline(tc["invariant"]))

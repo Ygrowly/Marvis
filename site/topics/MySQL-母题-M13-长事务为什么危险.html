@@ -180,7 +180,7 @@ SELECT ...;        -- 隐式开了一个事务
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">长事务按住<strong>两样东西</strong>，所以危害是<strong>两条独立的链</strong>。走 MVCC 的那条：<strong>ReadView 不释放 → purge 不敢清理它还可能读的旧版本 → undo 膨胀、版本链变长 → 快照读回溯变慢（一行每秒改 100 次、挂 2 小时就是 72 万节，单次回溯 72 毫秒）、回滚成本更高</strong>。走锁的那条：<strong>写锁持到事务结束 → 其他写事务排队 → 死锁概率上升</strong>。<strong>反直觉点：只读事务触发不了锁那条，但 MVCC 那条照样走</strong>——最常见的真实形态是 <code class="mv-md-code">SET autocommit = 0</code> 之后跑了查询忘了提交，<strong>这种连接 CPU 低、几乎无查询，监控上很不起眼，却在按住全库的回收边界</strong>。监控口径：<strong>盯最老事务的 <code class="mv-md-code">trx_started</code></strong>（PG 侧对应最老事务的 <code class="mv-md-code">xmin</code>）。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>按住两样东西（ReadView</li><li>锁）</li><li>purge 的清理判据是"没有 ReadView 还需要它"</li><li>版本链 100×7200 = 72 万节</li><li>回溯 72ms，正常 1μs</li><li>只读事务也危险（它只走 MVCC 那条）</li><li><code class="mv-md-code">autocommit = 0</code> 忘了提交 = 最常见的真实事故</li><li>五条纪律（事务里不做 RPC、不做计算、批量分批、注意导出）</li><li>**分批把锁持有与 undo 峰值各降到 1</li><li>1000**</li><li>盯最老 trx_started</li><li>MySQL 是 undo 膨胀、PG 是表膨胀</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>按住两样东西（ReadView / 锁）</li><li>purge 的清理判据是"没有 ReadView 还需要它"</li><li>版本链 100×7200 = 72 万节</li><li>回溯 72ms，正常 1μs</li><li>只读事务也危险（它只走 MVCC 那条）</li><li><code class="mv-md-code">autocommit = 0</code> 忘了提交 = 最常见的真实事故</li><li>五条纪律（事务里不做 RPC、不做计算、批量分批、注意导出）</li><li>**分批把锁持有与 undo 峰值各降到 1</li><li>1000**</li><li>盯最老 trx_started</li><li>MySQL 是 undo 膨胀、PG 是表膨胀</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

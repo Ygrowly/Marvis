@@ -182,13 +182,13 @@ ok('把 D1 挪到队尾后改派 D2', g('pickDrill().id') === 'D2', '派了 ' + 
 console.log('\n【13】项目线：骨架 → 决策链，每天 1 条');
 fresh();
 ok('派 EnergyOps 90 秒骨架', needOf('proj')[0].label.includes('EnergyOps 90 秒骨架'));
-fresh("S.lv['pitch/P1'].l = 2;");
+fresh("S.lv['pitch/T1'].l = 2;");
 ok('P1 到 L2 后改派 EnergyOps 决策链', needOf('proj')[0].label.includes('EnergyOps 决策链'),
   needOf('proj')[0].label);
-fresh("['pitch/P1','pitch/P2','pitch/P3','pitch/P4','pitch/P5'].forEach(function(k){ S.lv[k].l = 2; });");
+fresh("['pitch/T1','pitch/T2','pitch/T3','pitch/T4','pitch/T5'].forEach(function(k){ S.lv[k].l = 2; });");
 ok('只剩最后一条时派 RuleArena 决策链', needOf('proj')[0].label.includes('RuleArena 决策链'),
   needOf('proj')[0].label);
-run("S.lv['pitch/P6'].l = 2;");
+run("S.lv['pitch/T6'].l = 2;");
 ok('六条全到 L2 后不再派项目线', g('projectNext()') === null);
 ok('没有项目条目的日子不再出现复习条目', true);
 

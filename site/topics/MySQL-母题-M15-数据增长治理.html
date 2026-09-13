@@ -153,7 +153,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>"数据量大"本身不是问题，"热查询背着冷数据跑"才是问题。</strong> 所以治理顺序是五步：<strong>① 索引与 SQL做好 → ② 事务边界与锁冲突管好 → ③ 冷热分离与归档 → ④ 读写分离 → ⑤ 单机真的扛不住才分库分表</strong>。这个顺序的依据是<strong>"便宜且可逆的先做，贵且难回头的后做"</strong>——而分库分表有<strong>四项代价</strong>：路由变复杂（查询必须带分片键，否则广播）、跨分片聚合分页难、跨分片事务难、<strong>扩容要迁移约 50% 的数据</strong>。<strong>冷热分离</strong>按时间轴把热数据与冷数据分层（8000 万行归档到 800 万行，<strong>索引从 4 层降到 3 层</strong>）；<strong>归档 ≠ 删除</strong>，要分批搬分批删（否则 7000 万行一次性 DELETE 会产生约 14 GB undo、拖成长事务）；<strong>分片键不是"数据本身的属性"，是"查询形状的属性"</strong>，而且它最难改。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>先定症状（查询慢</li><li>写入慢</li><li>容量顶）</li><li>五步顺序</li><li>便宜可逆的先做</li><li>冷热分离按时间轴</li><li><strong>归档 ≠ 删除</strong></li><li>分批搬分批删（14 GB undo）</li><li>索引 4 层→3 层</li><li>分库分表四项代价</li><li>扩容迁移约 50%</li><li><strong>分片键是查询形状的属性</strong></li><li>跨分片事务首选"业务上避免"</li><li>PG 侧对应的是分区而非分库分表</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>先定症状（查询慢/写入慢/容量顶）</li><li>五步顺序</li><li>便宜可逆的先做</li><li>冷热分离按时间轴</li><li><strong>归档 ≠ 删除</strong></li><li>分批搬分批删（14 GB undo）</li><li>索引 4 层→3 层</li><li>分库分表四项代价</li><li>扩容迁移约 50%</li><li><strong>分片键是查询形状的属性</strong></li><li>跨分片事务首选"业务上避免"</li><li>PG 侧对应的是分区而非分库分表</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

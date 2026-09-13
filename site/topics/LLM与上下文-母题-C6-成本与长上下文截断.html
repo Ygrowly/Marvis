@@ -100,8 +100,8 @@
   最后一轮 prompt 长度 = k·n           （线性）
   累计输入 token        = k·n(n+1)/2   （平方）</pre>
 <p class="mv-md-p">【推论】所以账单里有两块成本，来源完全不同：</p>
-<pre class="mv-md-pre">第一块：每一轮**新增**的内容      → 线性，跟任务本身多大有关
-第二块：每一轮**重发**的历史      → 平方，跟会话多长有关</pre>
+<pre class="mv-md-pre">第一块：每一轮新增的内容      → 线性，跟任务本身多大有关
+第二块：每一轮重发的历史      → 平方，跟会话多长有关</pre>
 <p class="mv-md-p"><strong>缓存打的是第二块</strong>（把重发的历史变便宜），<strong>压缩打的是第二块</strong>（把重发的历史直接删掉），<strong>降 effort 打的是输出那一块</strong>。<strong>三个杠杆打的是不同的成本项——所以它们不是互相替代的。</strong></p>
 <h4 class="mv-md-h mv-md-h4">1.3 缓存的机制：三个必须知道的东西【事实】</h4>
 <p class="mv-md-p"><strong>① 断点（breakpoint）</strong> 缓存<strong>只在断点处写入</strong>：标记一个 block 为断点，就只写一条"到这个 block 为止的前缀哈希"的条目。<strong>哈希是累积的</strong>——断点之前任何一处变了，哈希就变了，命中就没了。</p>
@@ -192,7 +192,7 @@
 Turn 2：15 个 block，断点在 15 → 15 处没有条目，往前找 → 在 10 处命中
         只重新处理 block 11–15，并在 15 处写新条目
 Turn 3：35 个 block，断点在 35 → 检查 35 到 16（共 20 个位置）
-        → 一条都没找到。turn 2 写的 block 15 条目，**恰好落在窗口外一格**
+        → 一条都没找到。turn 2 写的 block 15 条目，恰好落在窗口外一格
         → 完全未命中</pre>
 <p class="mv-md-p">【结论】<strong>"自动断点跟着走"只在"每轮新增少于 20 个 block"时成立。</strong> 超过 20 就会有掉出去的风险，这时要<strong>额外加一个显式断点</strong>（最多 4 个），在更早的位置开一个新回看窗口。</p>
 <p class="mv-md-p">【反直觉补充】一轮里<strong>连续的工具调用块算作 1 个位置</strong>（连续的 <code class="mv-md-code">tool_use</code> 算一个，连续的 <code class="mv-md-code">tool_result</code> 也算一个）。所以"一轮里发了 20 个并行工具调用"<strong>不会</strong>把上一轮的条目挤出窗口。</p>
@@ -217,7 +217,7 @@ Turn 3：35 个 block，断点在 35 → 检查 35 到 16（共 20 个位置）
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">降本的第一性是——<strong>同一个 token 有四种价钱</strong>：普通输入 1×、缓存写入 1.25×（1 小时 TTL 是 2×）、<strong>缓存读出 0.1×</strong>、<strong>输出 5×</strong>。所以优先级按"是否有损"排：<strong>① 提高缓存命中率</strong>（无损，实测能把 100 轮会话的账单降到约 1/9，而模型看到的 token 一个没变）；<strong>② 去掉 prompt 拐杖</strong>（唯一降本又提质的杠杆）；<strong>③ compaction 和工具结果清理</strong>（有损，必须留指针，默认在 150K token 触发）；<strong>④ 调 effort / 换模型</strong>（换质量，要 held-out 验证）。而缓存这一层最反直觉的地方是：<strong>"开了"不等于"命中"</strong>——前缀逐字节相同、同一模型同一 effort、TTL 内、达到最短长度、在 20-block 回看窗口内，<strong>五个条件同时满足才命中</strong>；写了没读到还要付 1.25×，比不缓存更贵。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>四类价钱：1×</li><li>1.25×(2×)</li><li>0.1×</li><li>5×</li><li>写而不读更贵</li><li>命中五条件：逐字节</li><li>同模型同 effort</li><li>TTL 内</li><li>够长</li><li>回看 20 block</li><li>最短长度 512</li><li>1024</li><li>4096，不够长静默不缓存</li><li>一行动态值 = $28.75（100 轮）</li><li>失败-回看窗口 20 个 block，超出要加断点（最多 4 个）</li><li>连续工具块算 1 个位置</li><li>降本顺序：无损 → 双赢 → 有损 → 换质量</li><li>缓存改价格、压缩改用量</li><li>defer_loading</li><li>1 小时 TTL 给长工具调用</li><li>预热 max_tokens: 0</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>四类价钱：1×</li><li>1.25×(2×)</li><li>0.1×</li><li>5×</li><li>写而不读更贵</li><li>命中五条件：逐字节·同模型同 effort·TTL 内·够长·回看 20 block</li><li>最短长度 512·1024·4096，不够长静默不缓存</li><li>一行动态值 = $28.75（100 轮）</li><li>失败-回看窗口 20 个 block，超出要加断点（最多 4 个）</li><li>连续工具块算 1 个位置</li><li>降本顺序：无损 → 双赢 → 有损 → 换质量</li><li>缓存改价格、压缩改用量</li><li>defer_loading</li><li>1 小时 TTL 给长工具调用</li><li>预热 max_tokens: 0</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

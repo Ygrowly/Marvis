@@ -201,7 +201,7 @@ SQL B：单次 20 ms，每秒 300 次
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">偏差来自三类原因——<strong>统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数</strong>；对应三种修法——<strong><code class="mv-md-code">ANALYZE</code>（或调 autovacuum 的 analyze 阈值）、<code class="mv-md-code">CREATE STATISTICS</code> 建扩展统计、建表达式索引或改写 SQL</strong>。定位慢查询的第一站是 <strong><code class="mv-md-code">pg_stat_statements</code></strong>（按总耗时排序，先治「最贵的」），再对单条用 <code class="mv-md-code">EXPLAIN (ANALYZE, BUFFERS)</code>。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>pg_stat_statements</li><li>ANALYZE</li><li>autovacuum analyze 阈值（50 + 10%）</li><li>n_distinct 与 MCV</li><li>直方图桶数</li><li><strong>独立假设</strong></li><li>CREATE STATISTICS（ndistinct</li><li>dependencies</li><li>mcv）</li><li>表达式与函数</li><li>generic plan 陷阱</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>pg_stat_statements</li><li>ANALYZE</li><li>autovacuum analyze 阈值（50 + 10%）</li><li>n_distinct 与 MCV</li><li>直方图桶数</li><li><strong>独立假设</strong></li><li>CREATE STATISTICS（ndistinct · dependencies · mcv）</li><li>表达式与函数</li><li>generic plan 陷阱</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

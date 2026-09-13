@@ -213,7 +213,7 @@ n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">Prompt 不是配置文件，是<strong>针对当时模型写的控制层</strong>——它和模型是一个耦合系统，模型一变，同一份 prompt 的收益和代价全变。所以改动必须走<strong>消融</strong>：逐段删除、跑同一套 Eval、看指标是掉了还是变好；验收必须用<strong>没参与调优的 held-out 集合</strong>（真实案例：训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%）。反直觉的实证是：Anthropic 为 Claude 5 代<strong>删掉了 80%+ 的系统提示</strong>，编码评测无损失；清掉六类"拐杖"后<strong>成本降 14.6%、准确率升 5.3%（错误率腰斩）</strong>。而验证一次消融只要几美元——<strong>所以"要不要做消融"是习惯问题，不是成本问题。</strong></div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>prompt 是控制层不是配置</li><li>一条指令的生命周期（补偿 → 沉淀 → 模型升级 → 变成冲突 → 消融）</li><li>六类拐杖（验证仪式</li><li>强调助推</li><li>强制流程</li><li>过时示例</li><li>矛盾规则</li><li>过期配置）</li><li>消融方向是"删"不是"加"</li><li>删 80% 系统提示无损失</li><li>标准误 √(p(1−p)</li><li>n)，200 条 ≈ ±2%</li><li>held-out 90.5% vs 78.6%</li><li>准确率 +5.3% = 错误率腰斩</li><li>消融成本 $12 vs 年化 $32K–$320K</li><li>分层验证：抽样快筛 + 全量门禁</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>prompt 是控制层不是配置</li><li>一条指令的生命周期（补偿 → 沉淀 → 模型升级 → 变成冲突 → 消融）</li><li>六类拐杖（验证仪式·强调助推·强制流程·过时示例·矛盾规则·过期配置）</li><li>消融方向是"删"不是"加"</li><li>删 80% 系统提示无损失</li><li>标准误 √(p(1−p)/n)，200 条 ≈ ±2%</li><li>held-out 90.5% vs 78.6%</li><li>准确率 +5.3% = 错误率腰斩</li><li>消融成本 $12 vs 年化 $32K–$320K</li><li>分层验证：抽样快筛 + 全量门禁</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

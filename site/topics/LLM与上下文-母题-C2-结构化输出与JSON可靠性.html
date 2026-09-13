@@ -169,7 +169,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">模型的输出是<strong>逐 token 采样</strong>出来的，所以"结构正确"不是天然保证，而是要在<strong>正确的层</strong>堵住。三层各管一段：<strong>提示约束</strong>只降低概率（免费但不保证）、<strong>解码约束</strong>（<code class="mv-md-code">strict</code> / <code class="mv-md-code">json_schema</code>）把不合语法的 token 概率压成 0（保证，但 grammar 编译成本随 schema 复杂度指数增长，且有 20 工具 / 24 可选参数 / 16 union 的硬上限）、<strong>事后校验</strong>拦住语义错误（必须，因为上面两层都管不了）。<strong>关键认知：JSON 合法 ≠ 业务合法</strong>——枚举是否存在、ID 是否有效、用户是否有权限，只能自己校验；而且 <code class="mv-md-code">refusal</code> 和 <code class="mv-md-code">max_tokens</code> 会绕过 schema。重试的正确位置是<strong>兜底不是主路径</strong>，因为它是拿延迟买成功率，且转人工率按 p³ 放大。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>逐 token 采样 → 长输出尾部易崩</li><li>四种失败：语法</li><li>缺字段</li><li>类型</li><li>枚举越界</li><li>三层约束各管一段</li><li>解码约束 = 采样时概率压成 0</li><li>grammar 编译指数成本</li><li>20 strict 工具</li><li>24 可选参数</li><li>16 union</li><li>改 name</li><li>description 不失效，改结构失效</li><li>改 format 会让 prompt cache 失效</li><li>refusal 与 max_tokens 绕过 schema</li><li>枚举大小写坑</li><li>JSON 合法 ≠ 业务合法</li><li>重试 = 拿延迟买成功率，p³ 放大尾部</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>逐 token 采样 → 长输出尾部易崩</li><li>四种失败：语法·缺字段·类型·枚举越界</li><li>三层约束各管一段</li><li>解码约束 = 采样时概率压成 0</li><li>grammar 编译指数成本</li><li>20 strict 工具 · 24 可选参数 · 16 union</li><li>改 name·description 不失效，改结构失效</li><li>改 format 会让 prompt cache 失效</li><li>refusal 与 max_tokens 绕过 schema</li><li>枚举大小写坑</li><li>JSON 合法 ≠ 业务合法</li><li>重试 = 拿延迟买成功率，p³ 放大尾部</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

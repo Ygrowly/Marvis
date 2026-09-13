@@ -67,9 +67,16 @@ ok('项目线板块列出三个项目', ['EnergyOps', '数驭穹图', 'RuleArena
 ok('项目线板块有骨架/决策链条目', need.includes('90 秒骨架') && need.includes('决策链'));
 ok('无 L2 母题时不出现抽检板块', !need.includes('开始抽检'));
 ok('加餐区渲染', el('extrabox').innerHTML.includes('mv-cl') || el('extrabox').innerHTML.includes('mv-bd'));
-ok('能力簇 10 个折叠块', (el('clusters').innerHTML.match(/mv-pg-c"/g) || []).length === 10,
+/* 期望值从数据推导，不写死——2026-09-13 加 PostgreSQL 簇时 10/55 这两个硬编码值
+   立刻过期（55+19=74），测试反而成了噪声源。 */
+const wantClusters = (global.window.MARVIS_CLUSTERS || []).length;
+const wantChips = (global.window.MARVIS_CLUSTERS || [])
+  .reduce((n, c) => n + ((c.topics || []).length), 0);
+ok('能力簇 ' + wantClusters + ' 个折叠块',
+  (el('clusters').innerHTML.match(/mv-pg-c"/g) || []).length === wantClusters,
   (el('clusters').innerHTML.match(/mv-pg-c"/g) || []).length + ' 个');
-ok('能力簇含全部 55 条母题 chip', (el('clusters').innerHTML.match(/mv-pg-chip/g) || []).length === 55,
+ok('能力簇含全部 ' + wantChips + ' 条母题 chip',
+  (el('clusters').innerHTML.match(/mv-pg-chip/g) || []).length === wantChips,
   (el('clusters').innerHTML.match(/mv-pg-chip/g) || []).length + ' 条');
 ok('近 7 天区（无历史时给空态）', el('recent').innerHTML.length > 0);
 ok('热力图 35 格', (el('heat').innerHTML.match(/mv-hc/g) || []).length === 35,

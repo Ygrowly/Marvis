@@ -172,7 +172,7 @@ doc_B:  "7 天无理由退货政策说明"
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion"><strong>召回和精排的优化目标不同</strong>——召回面对全量，目标是"<strong>不漏</strong>"，所以只能用便宜的方法（双塔，文档向量可预计算）；精排面对已经缩小过的候选集，目标是"<strong>排得准</strong>"，所以可以用贵的方法（交叉编码器）。<strong>两者的本质差别是"有没有词级交互"</strong>：双塔把 query 和 doc 分别编码，<strong>编码时看不到对方</strong>，所以"除外""不适用"这类否定词被平均掉（<strong>这是结构性损失，换更大的双塔也补不回来</strong>）；交叉编码器把两者拼在一起，能看到逐词交互。<strong>代价是延迟随候选数线性增长</strong>（5ms × N，重排 200 条就是 1 秒，比 ANN 召回慢两个数量级），所以常见折中是"召回几百 → 重排 50–100 → 进上下文 5–20"。<strong>收益要说清口径</strong>：Contextual Retrieval 里重排把失败率从 2.9% 降到 1.88%，<strong>相对重排前降 35%、相对基线累计降 67%——这两个数不能混</strong>。最后，<strong>Recall@K 高不等于答案好</strong>，还要看 nDCG@K。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>召回要"不漏"、精排要"排得准"</li><li>双塔 = 分别编码 + 可预计算 + 无词级交互</li><li>交叉编码器 = 拼在一起 + 不能预计算 + 有词级交互</li><li><strong>双塔的损失是结构性的</strong>，换大模型补不回来</li><li>重排延迟 = 5ms × N（200 条 = 1 秒）</li><li>常见折中：召回几百 → 重排 50–100 → 进上下文 5–20</li><li>重排收益口径：绝对 1.02 个点</li><li>相对前一环 35%</li><li>相对基线累计 67%</li><li>Recall@K 看"有没有捞到"，nDCG@K 看"排得对不对"</li><li>Anthropic 实测 5</li><li>10</li><li>20 里 20 最好</li><li>难题才启用重排</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>召回要"不漏"、精排要"排得准"</li><li>双塔 = 分别编码 + 可预计算 + 无词级交互</li><li>交叉编码器 = 拼在一起 + 不能预计算 + 有词级交互</li><li><strong>双塔的损失是结构性的</strong>，换大模型补不回来</li><li>重排延迟 = 5ms × N（200 条 = 1 秒）</li><li>常见折中：召回几百 → 重排 50–100 → 进上下文 5–20</li><li>重排收益口径：绝对 1.02 个点 · 相对前一环 35% · 相对基线累计 67%</li><li>Recall@K 看"有没有捞到"，nDCG@K 看"排得对不对"</li><li>Anthropic 实测 5</li><li>10</li><li>20 里 20 最好</li><li>难题才启用重排</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

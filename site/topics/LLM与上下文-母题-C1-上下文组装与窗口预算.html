@@ -220,7 +220,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">上下文窗口是<strong>容量</strong>不是<strong>质量</strong>——Transformer 的注意力是 n² 关系，token 越多这份预算越被摊薄，实测表现为 context rot。所以目标不是"塞满窗口"，而是<strong>找到最小的那组高信号 token</strong>。工程上是四种手段的组合：<strong>选择</strong>（只放当前步骤所需）、<strong>压缩</strong>（摘要 + 外部持久化指针）、<strong>隔离</strong>（子任务独立窗口，只回传 1–2K）、<strong>缓存</strong>（稳定前缀复用）。另外成本是<strong>平方增长</strong>的——每轮都要重发全部历史，40 轮 × 15K 的会话累计输入 12.3M，是最后一轮 prompt 的 20.5 倍。缓存能把重复内容降到 0.1× 计价但<strong>不改占用</strong>；要真正降占用只能靠压缩。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>n² → attention budget → context rot</li><li>最小高信号 token 集</li><li>窗口里装了什么（输出与 thinking 也算、缓存前缀照样占）</li><li>平方计费，(n+1)</li><li>2 倍</li><li>四手段：选择</li><li>压缩</li><li>隔离</li><li>缓存</li><li>压缩先 recall 后 precision</li><li>摘要 ≠ 审计记录，只留指针</li><li>缓存改价格不改占用</li><li>混合策略：CLAUDE.md 预注入 + glob</li><li>grep 即时取</li><li>子 Agent 只回传 1–2K</li><li>compaction 默认 150K 触发</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>n² → attention budget → context rot</li><li>最小高信号 token 集</li><li>窗口里装了什么（输出与 thinking 也算、缓存前缀照样占）</li><li>平方计费，(n+1)</li><li>2 倍</li><li>四手段：选择·压缩·隔离·缓存</li><li>压缩先 recall 后 precision</li><li>摘要 ≠ 审计记录，只留指针</li><li>缓存改价格不改占用</li><li>混合策略：CLAUDE.md 预注入 + glob</li><li>grep 即时取</li><li>子 Agent 只回传 1–2K</li><li>compaction 默认 150K 触发</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

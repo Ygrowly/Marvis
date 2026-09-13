@@ -174,7 +174,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">幻觉不是一个 bug，是<strong>四件不同的事叠加</strong>：① 预训练只有流畅语言的正例、没有真假标签，所以<strong>任意低频事实（比如生日）从统计上就学不出来</strong>，而拼写这类有规律的错误会随规模消失；② 评测只按准确率排名时，"猜"的期望收益为正、"弃答"稳定为零，<strong>模型被训成应试高手</strong>；③ 上下文里根本没有那条信息；④ 信息给了却被稀释、冲突或忽略。<strong>对策必须按来源分开</strong>：给证据 + 先摘录再作答 + 引用绑定（治③④）、允许弃答 + 改评分（治②）、上下文管理（治④）。最关键的一个换算：<strong>错误和弃答不能同价</strong>——实测数据里，准确率更低（22% vs 24%）的模型，错误率只要 26% vs 75%，按业务成本算总成本只有对方的 <strong>38%</strong>。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>四类来源</li><li>预训练没有真假标签 → 有规律的错消失、随机的错留下</li><li>生日类比</li><li>准确率口径奖励猜测（1</li><li>365 &gt; 0）</li><li>SimpleQA 22-26 vs 24-75</li><li>错误与弃答分开定价</li><li>校准比准确便宜</li><li>先摘录再作答（&gt;20k 文档）</li><li>引用绑定 + 生成后撤稿</li><li>RAG 只治第三类，可能加重第四类</li><li>检索失败率 ≠ 幻觉率</li><li>改主口径而不是加一个小评测</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>四类来源</li><li>预训练没有真假标签 → 有规律的错消失、随机的错留下</li><li>生日类比</li><li>准确率口径奖励猜测（1/365 &gt; 0）</li><li>SimpleQA 22-26 vs 24-75</li><li>错误与弃答分开定价</li><li>校准比准确便宜</li><li>先摘录再作答（&gt;20k 文档）</li><li>引用绑定 + 生成后撤稿</li><li>RAG 只治第三类，可能加重第四类</li><li>检索失败率 ≠ 幻觉率</li><li>改主口径而不是加一个小评测</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

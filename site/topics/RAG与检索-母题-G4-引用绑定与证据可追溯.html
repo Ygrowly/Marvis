@@ -161,7 +161,7 @@
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">可追溯不是"给个出处"，是<strong>让每句话都有据可查、没据的那句不出现</strong>。<strong>粗引用（文末列链接）把校验成本全推给读者</strong>——用户无法判断哪句可疑，只能全信或全不信；<strong>细引用（逐条绑片段 + 可定位到版本）把校验成本降到"可疑的那几条"</strong>。<strong>关键动作不是"要求模型给引用"，而是"生成之后回头验证引用"</strong>——把每条结论回原文找支撑，<strong>找不到的直接撤掉</strong>（Anthropic 管这叫"生成后自查撤稿"）。理由是：<strong>"要求"改的是概率，"验证"才是机制</strong>——模型完全可以编一个看起来像引用的东西。<strong>代价</strong>：逐条验证会让 token 成本接近翻倍（10 条结论 ≈ 8,500 token vs 生成 4,500 token），所以<strong>只对高风险结论做</strong>（金额、权限、生效时间）。<strong>拒答是设计的一部分</strong>：把"自信的错误"（10 单位）换成"坦白的不知道"（1 单位），<strong>总代价降到 1/10</strong>——错误越贵，拒答越值钱。最后，<strong>引用和下载要再次鉴权</strong>——权限从召回到展示之间可能已经变了。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>引用粒度决定校验成本由谁承担</li><li>粗引用 300 秒 vs 细引用 60 秒</li><li><strong>"要求引用"是 prompt，"验证引用"才是机制</strong></li><li>生成后自查撤稿（找不到支撑就撤）</li><li>逐条验证成本 ≈ 2 倍，只对高风险结论做</li><li>先摘录再作答（引用在生成时产生）</li><li>拒答把代价降到 1</li><li>10，错误越贵越值钱</li><li>引用要能定位到文档</li><li>章节</li><li>版本</li><li>SQL 结果绑运行 ID</li><li>引用和下载再次鉴权</li><li>引用不支持结论 = 判失败</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>引用粒度决定校验成本由谁承担</li><li>粗引用 300 秒 vs 细引用 60 秒</li><li><strong>"要求引用"是 prompt，"验证引用"才是机制</strong></li><li>生成后自查撤稿（找不到支撑就撤）</li><li>逐条验证成本 ≈ 2 倍，只对高风险结论做</li><li>先摘录再作答（引用在生成时产生）</li><li>拒答把代价降到 1</li><li>10，错误越贵越值钱</li><li>引用要能定位到文档·章节·版本</li><li>SQL 结果绑运行 ID</li><li>引用和下载再次鉴权</li><li>引用不支持结论 = 判失败</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

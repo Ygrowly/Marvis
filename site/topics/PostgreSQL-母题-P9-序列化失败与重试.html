@@ -176,7 +176,7 @@ SQLSTATE: 40001</pre>
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">PG 的 Serializable 用的是 <strong>SSI（Serializable Snapshot Isolation）</strong>：它在快照隔离之上<strong>检测可能导致非可串行化结果的读写依赖环</strong>，一旦发现就<strong>主动让其中一个事务失败</strong>（SQLSTATE <code class="mv-md-code">40001</code>）。<strong>所以失败是设计的一部分，不是异常</strong>——正确做法是<strong>在应用层捕获 40001、重试整个事务</strong>（带退避和上限），而不是重试单条语句。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>SSI</li><li>读写依赖与依赖环</li><li>40001</li><li><strong>重试整个事务</strong></li><li>幂等</li><li>**谓词锁会升级（每页 2 行</li><li>每表 32 页 → 整表锁）**</li><li><code class="mv-md-code">SIReadLock</code></li><li>全表扫必然拿整表锁</li><li><code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code></li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>SSI</li><li>读写依赖与依赖环</li><li>40001</li><li><strong>重试整个事务</strong></li><li>幂等</li><li><strong>谓词锁会升级（每页 2 行 · 每表 32 页 → 整表锁）</strong></li><li><code class="mv-md-code">SIReadLock</code></li><li>全表扫必然拿整表锁</li><li><code class="mv-md-code">SERIALIZABLE READ ONLY DEFERRABLE</code></li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>

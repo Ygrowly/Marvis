@@ -167,7 +167,7 @@ WHERE TIME_TO_SEC(TIMEDIFF(NOW(), trx_started)) &gt; 60;</pre>
     <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
     <div class="mv-conclusion">索引的代价是<strong>三笔</strong>——写放大（一次写维护 N+1 棵 B+ 树）、空间（主键被复制进每个二级索引，BIGINT→UUID 能让单个索引膨胀 2.6 倍）、优化器负担。大表 DDL 的危险<strong>不在"扫 5000 万行慢"，而在 MDL</strong>：长事务持读锁 → DDL 等写锁 → <strong>后续查询因队列 FIFO 全排在 DDL 后面</strong> → 积压数 = QPS × 等待秒数（2000 QPS 等 30 秒 = 6 万个请求）→ 连接池打满 → 整个服务雪崩。<strong><code class="mv-md-code">LOCK=NONE</code> 只解决"DDL 不阻塞别人"，没解决"别人阻塞 DDL"。</strong> 所以真正的处方式是：<strong>先查并处理长事务 + 设短 <code class="mv-md-code">lock_wait_timeout</code> + 按表规模选在线 DDL 或影子表 + 低峰执行 + 备回滚</strong>。</div>
     
-    <ul class="mv-kw" style="margin-top:1.25rem"><li>三笔代价（写放大</li><li>空间</li><li>优化器负担）</li><li>一次写维护 N+1 棵 B+ 树</li><li>主键被复制进每个二级索引，BIGINT→UUID 膨胀 2.6 倍</li><li><strong>MDL 连锁</strong>（读锁持住 → DDL 等写锁 → FIFO 不能插队 → 后续查询全排队）</li><li>积压 = QPS × 等待秒数</li><li>连接池打满 → 雪崩</li><li><code class="mv-md-code">LOCK=NONE</code> 只解决一半</li><li>INPLACE 不是万能</li><li>pt-osc 触发器 vs gh-ost binlog</li><li>任何情况都先查长事务</li></ul>
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三笔代价（写放大/空间/优化器负担）</li><li>一次写维护 N+1 棵 B+ 树</li><li>主键被复制进每个二级索引，BIGINT→UUID 膨胀 2.6 倍</li><li><strong>MDL 连锁</strong>（读锁持住 → DDL 等写锁 → FIFO 不能插队 → 后续查询全排队）</li><li>积压 = QPS × 等待秒数</li><li>连接池打满 → 雪崩</li><li><code class="mv-md-code">LOCK=NONE</code> 只解决一半</li><li>INPLACE 不是万能</li><li>pt-osc 触发器 vs gh-ost binlog</li><li>任何情况都先查长事务</li></ul>
     <p class="mv-note">卡住时靠这几个词重建整条链。</p>
 
   </div>
