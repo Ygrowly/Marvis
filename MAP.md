@@ -111,7 +111,7 @@ aliases: [MAP, 正本登记表, 主题地图]
 | 外部素材 | `raw/` | 唯一入口，允许积压 |
 | 主题综述 | `wiki/sources/` | AI 粗加工区，状态最高 `candidate`。当前最新：`2026-09-14-agent-非原子工具调用与验证.md`（arXiv 双论文，供 RuleArena §1.6 定位校验引用） |
 | 知识系统形式 | `site/PLAN.md` | 方案定稿；用法见 `site/README.md` |
-| 模板 | `templates/` | 母题卡 / 模块深挖卡 / 一页纸 / 每日复盘 |
+| 模板 | `templates/` | 母题卡 / 模块深挖卡 / **项目说明模板**（2026-09-14 建，从 RuleArena 的写法反推）/ 一页纸 / 每日复盘 |
 
 ## 三、视图登记（md 正本 → html 视图）
 
