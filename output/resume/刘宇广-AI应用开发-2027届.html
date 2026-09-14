@@ -104,7 +104,7 @@
     <div class="ent" data-page-node-id="vSB5Dq2ZBZ0c2pVnY9eR6m">
       <div class="row" data-page-node-id="4ZrTsmXGavOv2w5fzqnsuk"><div class="org" data-page-node-id="kGHezfbCRaP6ZjqdFd6zJS">KINGSOFT 金山 · AI 开发实习生</div><div class="dt" data-page-node-id="Sx7zIdJ8mOZZHssE7KQ4BQ">2026/05 - 至今</div></div>
       <div class="proj" data-page-node-id="CSzImUC4FcP6E86CKjk0fX">EnergyOps Agent · 园区能耗智能运营平台 <span class="note" data-page-node-id="3pYnxFwDDiDL15dAB71AdN">（独立设计与实现，Mentor 把关业务方向）</span></div>
-      <div class="sum" data-page-node-id="ULlJwyv2Oc9e2zSF9bEGGr">面向园区行政与财务团队，对接第三方能耗平台约 604 台水电表累计读数（差分求区间用量），经分层建模、异常治理、告警诊断与受控 Agent 入口，形成从原始读数到月度结算的可信运营闭环。</div>
+      <div class="sum" data-page-node-id="ULlJwyv2Oc9e2zSF9bEGGr">面向园区行政与财务团队，对接第三方能耗平台约 604 台水电表累计读数（差分求区间用量），经分层建模、异常治理、告警诊断与受控 Agent 入口，最终产出<b>可交付财务的月度结算单</b>（带计算说明、规则版本与差异检查）。</div>
       <ul data-page-node-id="cRPHRTskbUWqDprMK6pAgr">
         <li data-page-node-id="j8SoJsxYg6JAKEmAVWSiAO"><b data-page-node-id="2Bc1LZLCTmfDIE9KKwcBpS">「三账一体」核心设计</b>：独立构建 <b data-page-node-id="IsqBlQr1aekHJr4fRPWWt9">raw→interval→hourly→daily 四层能耗数据模型</b>，定义 7 类质量状态与可信白名单（含停用表残留起始数据、新表无起始读数），把参差读数整理为可信用能账、异常账与结算账，可信聚合完整率 96.8%→99.7%</li>
         <li data-page-node-id="5jn8eQIntrztx1M7ThJwy2">将查询、设备、规则、告警、导出与结算封装为 <b data-page-node-id="Wdh9Sky2COgHDfr6xK2ClL">30 个 MCP 工具</b>与 6 类 Capability Bundle，实施 <b data-page-node-id="yZZMv3g5uM2BxJACvchfU9">R0/R1/R2 操作风险分级</b>与 Before/After Tool Hook 校验链，固定 72 条任务集（同模型同权限）完成率 83.3%→95.8%，80 条越权用例（跨租户 / 越权限 / 越范围）拦截率 100%</li>
@@ -117,12 +117,12 @@
     <div class="ent" data-page-node-id="fDWnNVttWkBny8GRvsDLHa">
       <div class="row" data-page-node-id="Xke50s3gcLR8BbRAxPYsfr"><div class="org" data-page-node-id="3cGm3jddHr5D8hqr3gfcNE">慧泽致远 · AI 应用开发实习生</div><div class="dt" data-page-node-id="DaoTj8QMlKxnlSK8pfPHwO">2025/10 - 2026/03</div></div>
       <div class="proj" data-page-node-id="beaScP03kf2Dc3wOMedWJl">数驭穹图 · 企业 AI 数据分析与协作平台 <span class="note" data-page-node-id="QfFSyKnA3mxBzrM9cSWSwu">（初创团队核心开发：Data Agent 链路、安全边界与评测模块）</span></div>
-      <div class="sum" data-page-node-id="7NZPBCz60oF3o1snZBZa3b">面向缺少专业数据团队的中小企业业务人员，统一接入数据库、飞书、文件与协同表格等 6 类数据源，通过 Data Agent 完成自然语言→可信查询→分析解释→结果沉淀为表格 / 报告 / 看板的完整闭环。</div>
+      <div class="sum" data-page-node-id="7NZPBCz60oF3o1snZBZa3b">面向缺少专业数据团队的中小企业业务人员，统一接入数据库、飞书、文件与协同表格等 6 类数据源，完成自然语言→可信查询→分析解释→结果沉淀；产出的是<b>有来源、有口径、可验证、且能继续编辑共享的分析结果</b>，不是一段 SQL。</div>
       <ul data-page-node-id="rXhRje9lL9aZ9hen58GeGP">
         <li data-page-node-id="w0gAcX9PegNRMIGWvTDoRZ"><b data-page-node-id="xZCBWI5KFH4v7JJEApf5cA">「SQL 能执行 ≠ 业务答案正确」</b>：设计 Data Agent <b data-page-node-id="fNpjxtFMWaVpESbCoWNBb6">六阶段可归因链路</b>（意图路由→Domain Schema 检索→NL2SemQL 语义解析→SQL 生成→安全校验→查询执行）与限次自愈，单条 Bad Case 定位 30min→8min，150 条评测集「可执行且口径正确」的查询占比 78%→91%（含人工复核判定）</li>
         <li data-page-node-id="QBGli31baomySwOKHWe8do">构建 <b data-page-node-id="HAzrrHAkYanUnigtG2dVNp">5 层查询安全边界</b>（租户权限→受治理 Tool 注册→Tool Call Schema/Validator 校验→只读 SQL AST 审查→输出字段脱敏），300 条正常与对抗请求中危险语句拦截率 100%、正常查询误拦率 2.7%</li>
         <li data-page-node-id="VDORHz4EvtEhDzByAsI5T7">设计<b data-page-node-id="cWtijXiAwSuKiiLGSiqzPf">轻量湖仓与查询路由</b>：文件、协同表格与同步数据以 Parquet 副本交由 DuckDB 本地计算，强实时查询走只读受限连接（EXPLAIN 成本预估、慢查询熔断降级），分析负载与客户生产库物理隔离；大结果外置为 <b data-page-node-id="2xlkhB9GO93nEvrXuJA2Tm">Artifact</b>，单次分析上下文 Token 18.4K→3.6K（↓80.4%）</li>
-        <li data-page-node-id="C0FJgojW32mrVrUPfUG9O1">沉淀出海电商、医美、教育 <b data-page-node-id="DyWFdVgPpNMMRvZctDvmNl">3 套 Domain Pack</b>（65 个核心指标 + 120 个术语别名 + 表关联约束），结合领域路由与混合检索，Top-K Schema 召回率 81%→95%；分析全程绑定 call_id / query_fingerprint / result_hash <b data-page-node-id="DoQ0MaHoyajS9ejMwMk7Cc">三重证据</b></li>
+        <li data-page-node-id="C0FJgojW32mrVrUPfUG9O1">沉淀出海电商、医美、教育 <b data-page-node-id="DyWFdVgPpNMMRvZctDvmNl">3 套 Domain Pack</b>（65 个核心指标 + 120 个术语别名 + 表关联约束），结合领域路由与混合检索，Top-K <b>Schema</b> 召回率 81%→95%；分析全程绑定 call_id / query_fingerprint / result_hash <b data-page-node-id="DoQ0MaHoyajS9ejMwMk7Cc">三重证据</b></li>
         <li data-page-node-id="gJujSuTA9Qr3DEyBHYUTIi">建立<b data-page-node-id="Bnc3DHejhwxXhaHiwQoyZM">语义资产健康度评分</b>与口径一票否决：核心指标缺少业务定义即暂停该域自动问数；Schema/DDL 变更自动生成差异任务并降级资产可信度——过期语义不能冒充当前口径</li>
       </ul>
     </div>
