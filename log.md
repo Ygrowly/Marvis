@@ -1,5 +1,25 @@
 # Log
 
+## 2026-09-14（AI Coding 驱动工作流落盘）
+
+- **新增正本**：`wiki/thinking/AI-Coding驱动工作流.md`（`candidate` / `human_reviewed: false`）。内容＝对本人原有 AI Coding 三步法的诊断 + 三个结构性缺口 + 三个转变 + 面试五维 + 行动规则 + 母题式验收。
+- **为什么不并入现有正本**：MAP 里 CORE-28（JD 横向总览）、F10（能力地图）、`study/00` 的节点映射三处都只是**台账行 / 映射行**，承载不了方法论正文；方法论按目录职责归 `wiki/thinking/`。已按闸门第 2 条登记。
+- **来源落 `raw/`**：5 篇官方一手资料（Claude Code 官方最佳实践、Finding your unknowns、Steering Claude Code、Claude 5 代上下文工程新规则、2026 三家 Agent 面试指南），违反唯一入口原则的临时抓取已归位。
+- **同步更新**：`wiki/topics/AI应用开发能力地图.md` F10 行加双链并刷 `updated:`；`MAP.md` 学习区加登记行。
+- **待办（本人）**：① 该文档的验收未过，需闭卷复述 + 两层追问 + 在 RuleArena/EnergyOps 真跑一次完整流程；② 是否把结论拆成 `questions.md` 的一条活跃问题（当前无对应问题，本次是显式要求下的例外加工）。
+
+## 2026-09-14（RuleArena 转向 + 派单简化 + 冻结前全库审查）
+
+- **RuleArena 定位转向**：从「电商规则对抗验证」转为「**业务 Agent 上线前的执行门禁**」（被测对象＝调工具的 Agent，裁决从离线搜索推进到运行时拦截）。正本 `projects/RuleArena/RuleArena-项目说明.md` 重写为 v0.3；未实现部分落成可执行规格 `E:\code\my\RuleArena\docs\agent-gateway-spec.md`（D1–D5 + 四条不变量）。
+- **口径统一到 golden-v4**：全库旧口径（0–20% / 未超过 BFS / 24 Case / golden-v2 / deepseek-v3.2）清零，覆盖简历四份、账本、口述脚本、九本编号手册、7 份 wiki 材料。**顺手修掉一条超口径主张**：简历原写「反例一键导出 pytest 回归」，该功能只在 `docs/product-requirements.md` 待办里、无实现。
+- **外部校验**：搜到两篇 2026 年 arXiv 论文（非原子工具调用 / agentic clearing），证实设计成立但**不能声称首创**；落综述 `wiki/sources/2026-09-14-agent-非原子工具调用与验证.md`。
+- **归档**：`projects/PayTrace/`、`projects/Ovanta/` → `archive/`（25 条 rename，零删除）；新建 `archive/README.md`；账本、手册、两份 map 文件同步路径。
+- **派单引擎简化**（`site/progress.html`）：① 等级 5 档 → 3 档（未接触/会了/常练）；② 复训间隔 1-3-7-14-30 → **1/3/7/14**，学完即进复训；③ 门控阈值降到 L1，抽检池单列 `EXAM_MIN=2`；④ 五板块各加「继续派发」按钮，当天封顶 8 条；⑤ 新增「强行解锁」（用户确认，系统只说明代价）；⑥ **修掉真 bug**：`clusters.js` 给全部母题补 `href` 后「有卡=读过」导致 `ready` 池恒空、主线新学一条也派不出。
+- **修引用**：`study/NN` 旧编号 47 处（含复合写法 `study/08/09/11`）→ 迁移后的 wiki 路径；悬空双链 50 处（`wiki/sources` 历史链 + 母题卡短名互引）→ 改指现正本或拆为纯文本；`wiki/interview/2027届秋招总面试准备手册.md` 第 35 行旧路径失配。
+- **清理**：删 `archive/PayTrace/*.bak`、`.workbuddy/tmp_*`；三个站点测试全绿；`site/build.py` 通过。
+- **待办（冻结前唯一未决）**：派单迁移对 localStorage 存量数据的影响需本人确认——新规则把「无到期日且无自评日期」的 L1 一律回「未接触」，可能让页面上已读进度显示归零（教学上正确，是否接受由本人定）。
+- **影响页面**：约 40 个 md + 站点视图全量重建
+
 ## 2026-09-10（全库治理第二轮：正本制 + 母题卡化）
 
 - **背景**：09-06 那次治理只治了目录、没治产出行为。之后 4 天新增约 30 份文件，无一份是更新已有正本 —— 全库再次分散。

@@ -158,34 +158,39 @@ Worker 同时运行 2 个 Live Run，若平均 60 秒：
 
 ## 6. Benchmark 成本估算
 
-完整 Benchmark：
+> **2026-09-14 口径更新**：算式按当前 golden-v4 的实际运行形态重算（dev 跑四基线、hidden 只跑 Multi 且重复 3 次），不再按「全矩阵」估算——旧版按 24 Case 算出的 288 / 144 已作废。
+
+实际运行矩阵：
 
 ```text
-24 Case
-× 4 Baseline
-× 3 次重复
-= 288 个 baseline-case runs
+development 21 Case × 4 Baseline × 1 次 =  84 个 baseline-case runs
+hidden      17 Case × 1 Baseline × 3 次 =  51 个 baseline-case runs
+                                      总计 135 个 baseline-case runs
 ```
 
 其中 Random/BFS 不调用 LLM；Single/Multi 调用 LLM：
 
 ```text
-24 × 2 × 3 = 144 个 LLM runs
+development：21 × 2 × 1 =  42 个 LLM runs
+hidden     ：17 × 1 × 3 =  51 个 LLM runs
+                    总计 93 个 LLM runs
 ```
 
 按平均 25,000 tokens/run：
 
 ```text
-总 Token ≈ 3,600,000
-合理范围：2.5M～5M tokens
+总 Token ≈ 2,325,000
+合理范围：1.8M～3.5M tokens
 ```
 
 时间估算：
 
 - 单 Run 45～80 秒；
 - 并发 3；
-- 144 个 LLM runs 理论约 36～64 分钟；
-- 加上队列、Replay、限流和失败重试，建议口径 45～90 分钟。
+- 93 个 LLM runs 理论约 24～42 分钟；
+- 加上队列、Replay、限流和失败重试，建议口径 30～60 分钟。
+
+> **为什么 hidden 只跑 Multi**：hidden 的用途是**最终裁决**而不是横向对比，重复 3 次是为了把 `pass@k` 与 `pass^k` 分开（这一步正是本项目最有价值的实测发现）。**扩到四基线的代价 = hidden 17 × 4 × 3 = 204 个 baseline-case runs，其中 102 个是 LLM run**，按上面的口径约翻一倍——是否值得，取决于下一轮要回答的问题。
 
 ### 成本公式
 
@@ -197,10 +202,10 @@ cost = input_tokens × input_price
      + optional tool/provider cost
 ```
 
-为了容量估算，可假设综合每百万 Token 1～5 美元，则 3.6M tokens：
+为了容量估算，可假设综合每百万 Token 1～5 美元，则 2.3M tokens：
 
 ```text
-约 3.6～18 美元/完整 3-repeat LLM Benchmark
+约 2.3～11.5 美元/完整 golden-v4 口径 Benchmark
 ```
 
 这只是示意区间。真实面试应说：具体成本由实际模型计价、输入/输出比例和缓存命中决定，项目会从原始 LLMCall 统计。
@@ -249,9 +254,9 @@ Trace 与指标：50～150 KB
 
 | 指标 | MVP 目标/估算 | 类型 |
 | --- | ---: | --- |
-| Golden Set | 24 Case | TARGET |
-| normal Confirmed 误报 | 0 | TARGET/GATE |
-| Confirmed Replay | 3/3 | TARGET/GATE |
+| Golden Set | 21 + 17 双评测集 | TARGET（**已建成**，E1）；**发现率实测 8/14，未达 75% 门槛** |
+| normal Confirmed 误报 | 0 | TARGET/GATE（**实测 dev 0/7、hidden 0/3**） |
+| Confirmed Replay | 3/3 | TARGET/GATE（**实测稳定重放 42/42**） |
 | hidden 漏洞发现率 | ≥75% | TARGET/GATE |
 | 历史 P0 回归 | 100% | TARGET/GATE |
 | Ground Truth 泄漏 | 0 | TARGET/GATE |
@@ -332,8 +337,8 @@ Candidate 确认率不是越高越好到 100%。Agent 搜索未知路径允许�
 | --- | --- |
 | “实现三策略 Agent” | 代码、隔离测试和实际 Trace |
 | “真实 API 重放” | Sandbox HTTP 日志/Receipt/E2E |
-| “重放 3/3” | 同版本 ReplayRun IDs |
-| “hidden ≥75%” | 当前完整 BenchmarkRun 和 Case 分母 |
+| “重放 3/3” | 同版本 ReplayRun IDs（golden-v4 实测 42/42） |
+| “hidden ≥75%” | 当前完整 BenchmarkRun 和 Case 分母（**实测 8/14 = 57%，未达标**） |
 | “0 正常误报” | normal Case 原始 Run 与重算 |
 | “Token 降低 X%” | 同 Case/模型/预算前后实际数据 |
 | “在线部署” | URL、版本和 smoke test |
@@ -351,7 +356,7 @@ Candidate 确认率不是越高越好到 100%。Agent 搜索未知路径允许�
 
 ### Benchmark
 
-> 24 Case 和 hidden 75% 是 MVP 质量门禁目标。只有真实 BenchmarkRun 完成后，我才会把结果写进简历；如果没有达到，就表述为当前限制，而不是把目标当成绩。
+> **2026-09-14 更新**：BenchmarkRun **已跑完**（golden-v4 / deepseek-v4.1-flash）。结果已按实测写进 README、简历与账本：dev 集 Multi 5/14 高于 BFS 2/14，hidden 重复三次 `pass@3 = 8/14` 而 `pass^3 = 1/14`；机制层误报 0 / 泄漏 0 / 稳定重放 42/42；门禁如实拒绝放行。**hidden 发现率 ≥75% 仍是 TARGET**（实测 57% 未达标）。
 
 ### 成本
 
@@ -371,8 +376,8 @@ Candidate 确认率不是越高越好到 100%。Agent 搜索未知路径允许�
 延迟：P50 45s，P95 80s，hard timeout 90s
 真实 Replay：8～20 API actions，P95 3s 内
 存储：约 200KB/run，1000 runs 含索引约 0.5GB
-完整评测：24 cases × 4 baselines × 3 repeats
-LLM runs 144，约 2.5M～5M tokens，45～90min
+完整评测：dev 21 × 4 baselines × 1 + hidden 17 × 1 × 3
+LLM runs 93，约 1.8M～3.5M tokens，30～60min
 全部是 Mock 容量估算，最终以实际 Run 替换
 ```
 

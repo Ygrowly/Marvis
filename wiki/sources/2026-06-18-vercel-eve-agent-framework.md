@@ -48,4 +48,4 @@ Vercel 发布开源 AI Agent 框架 Eve，用目录结构和文件约定把 Agen
 
 - [[04-Agent-Runtime与Harness]]
 - [[AI应用开发能力地图]]
-- [[MetricOps Agent]]
+- [[EnergyOps-项目说明]]

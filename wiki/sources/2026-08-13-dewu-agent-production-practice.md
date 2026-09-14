@@ -20,10 +20,10 @@ sources:
   - "raw/OpenSandbox 再进化：Credential Vault 让真实密钥不再进入沙箱.md"
 related:
   - "[[2026-06-24-agent-loop-harness-review]]"
-  - "[[MetricOps Agent]]"
-  - "[[AI BI Text-to-SQL]]"
+  - "[[EnergyOps-项目说明]]"
+  - "[[数驭穹图项目说明]]"
   - "[[04-Agent-Runtime与Harness]]"
-  - "[[金山能源管理系统]]"
+  - "[[EnergyOps-项目说明]]"
 ---
 
 # 主题：生产级 Agent 工程实践（得物 12 篇）
@@ -89,7 +89,7 @@ related:
 ## 是否值得继续
 
 - 结论：值得深读。
-- 原因：这是「Harness 理论」在生产场景的完整落地样本，与 [[MetricOps Agent]]、[[AI BI Text-to-SQL]]、EnergyOps 的工程化改造直接同构；门禁、成本模型、受控执行都是 Agent 后端面试的硬通货，且能直接回答「你做的项目为什么是生产级」。
+- 原因：这是「Harness 理论」在生产场景的完整落地样本，与 [[EnergyOps-项目说明]]、[[数驭穹图项目说明]]、EnergyOps 的工程化改造直接同构；门禁、成本模型、受控执行都是 Agent 后端面试的硬通货，且能直接回答「你做的项目为什么是生产级」。
 
 ## 推荐代表来源
 
@@ -108,7 +108,7 @@ related:
 
 ## 可能更新的知识页
 
-- [[MetricOps Agent]]：补受控执行、成本模型、Skill 即 SOP。
-- [[AI BI Text-to-SQL]]：补语义层、口径显式化、需求质量门禁。
-- [[金山能源管理系统]]：补 Agent 化改造的 HITL 分级与副作用时机。
+- [[EnergyOps-项目说明]]：补受控执行、成本模型、Skill 即 SOP。
+- [[数驭穹图项目说明]]：补语义层、口径显式化、需求质量门禁。
+- [[EnergyOps-项目说明]]：补 Agent 化改造的 HITL 分级与副作用时机。
 - [[04-Agent-Runtime与Harness]]：补 Harness 分层与「通用 Agent + 业务 Skill」模式。

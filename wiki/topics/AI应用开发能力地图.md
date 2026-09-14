@@ -1,7 +1,7 @@
 ---
 type: topic
 created: 2026-09-01
-updated: 2026-09-06
+updated: 2026-09-14
 status: integrated
 human_reviewed: true
 aliases: [AI开发, AI应用, 能力台账]
@@ -403,7 +403,7 @@ aliases: [AI开发, AI应用, 能力台账]
 | F07 | 跨团队协作 | 与产品/前端/测试/业务对齐接口、口径、风险和时间 | E/M3 候选 | 实习经历 |
 | F08 | 文档 | README、架构、开发、Review、Runbook、ADR 简洁一致 | E/M2 | RuleArena 材料 |
 | F09 | Git 协作 | 分支、Commit、PR、Review、rebase/冲突、回滚 | G/M2 | GitHub 项目 |
-| F10 | AI Coding | 用 AGENTS.md/Spec/测试/Review 驱动 AI，同时能审查结果 | E/M2 | RuleArena 开发流程 |
+| F10 | AI Coding | 用 AGENTS.md/Spec/测试/Review 驱动 AI，同时能审查结果 | E/M2 | RuleArena 开发流程；方法正文见 [[AI-Coding驱动工作流]] |
 | F11 | 开源证据 | 仓库可运行、README 清楚、Demo 在线、Issue/Commit 可信 | G/U | RuleArena |
 | F12 | 技术英语 | 能读官方文档/JD，写英文 README 摘要并做基础英文介绍 | G/M1 | 个人网站/GitHub |
 
@@ -618,5 +618,5 @@ RuleArena 不应只是“多 Agent 审查 Demo”，而应专门补齐这些能�
 
 - [[08-Python异步与AI后端]]
 - [[04-Agent-Runtime与Harness]]
-- [[秋招面试地图]]
+- 秋招面试地图（原页已删）
 

@@ -252,7 +252,7 @@ inspect_state
 - Receipt 确认动作处理；
 - Snapshot/Event 确认业务状态；
 - Oracle 判不变量；
-- Replay 3/3；
+- 独立重放 3/3（golden-v4 实测 42/42）；
 - Fixed 回归。
 
 ### Recovery

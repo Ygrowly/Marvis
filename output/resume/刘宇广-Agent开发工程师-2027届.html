@@ -122,15 +122,15 @@
 
     <div class="exp">
       <div class="exp-head">
-        <div><span class="company">RuleArena · 电商规则对抗验证与发布门禁平台</span><span class="title">个人项目 · 独立设计与实现</span></div>
+        <div><span class="company">RuleArena · 业务 Agent 上线前的执行门禁平台</span><span class="title">个人项目 · 独立设计与实现</span></div>
         <div class="date">2026/06 - 至今</div>
       </div>
-      <div class="summary">面向电商促销、退款、积分与会员权益的规则变更风险：把自然语言规则编译为经人工确认的可执行契约，由受控 Agent 搜索高风险动作序列，经真实 HTTP API 重放与确定性 Oracle 裁决，沉淀可回归的最小反例——Agent 找路径，确定性程序证明问题。</div>
+      <div class="summary">面向业务 Agent 上线前的执行门禁：Agent 负责做事，系统负责证明它没做错。要解决的根本矛盾是——工具返回 ACK 不等于业务成功，Agent 说做完了没人能验；信任必须由 Agent 之外的三层给出：类型化工具契约、运行时门禁、独立 Oracle（确定性裁决，不采信 Agent 自述）。<strong>当前已实现并实测的是确定性裁决层与评测体系；被测 Agent 与运行时门禁为设计阶段</strong>——这正是这个项目在演进的证据。</div>
       <ul class="bullets">
         <li>设计自然语言规则→候选 <strong>RuleSpec</strong>→确定性校验→歧义清单→人工确认→不可变 RuleVersion 的编译链路，仅允许优惠、退款、积分、会员领域固定原语，禁止动态表达式求值，未确认规则不得进入攻击运行</li>
-        <li><strong>「候选风险 ≠ 确认漏洞」</strong>：Agent 提议只算候选，经 Reference Simulator 快速探索→干净 Commerce Sandbox（独立 FastAPI + PostgreSQL，幂等键、ActionReceipt、只追加事件）真实 HTTP 重放→独立 Oracle 依据资金守恒、状态生命周期与幂等不变量裁决方可确认；Agent 不能触达 Ground Truth</li>
-        <li>实现 <strong>VALUE_FLOW / LIFECYCLE / BOUNDARY</strong> 三个隔离策略与 Random、BFS 基线归一化预算消融，建立 24 Case 双评测集（development 16 + hidden 8 隔离）与发布门禁（正常场景误报 0、同版本独立重放 3/3、Ground Truth 泄漏 0）</li>
-        <li>确认违规经删除式 <strong>Delta Debugging</strong> 压缩为 1-minimal 反例并绑定完整证据链，修复版本自动重放历史反例与正常 Case，反例一键导出 pytest 回归；显式 FSM 编排支持 Checkpoint 恢复与 <strong>ACTION_UNKNOWN</strong> 超时语义</li>
+        <li><strong>「候选风险 ≠ 确认漏洞」</strong>防自证架构：Agent 提议只算候选，经 Reference Simulator 快速探索→干净 Commerce Sandbox（独立 FastAPI + PostgreSQL，幂等键、ActionReceipt、只追加事件）真实 HTTP 重放→独立 Oracle 依据资金守恒、状态生命周期与幂等不变量裁决方可确认；Agent 全程无法触达 Ground Truth</li>
+        <li>建立 <strong>21 + 17 双评测集</strong>（hidden 物理隔离、Runtime 不可读）与四基线归一化预算消融（<strong>golden-v4 / deepseek-v4.1-flash</strong> / seed 20260831）：dev 集 Multi-strategy <strong>5/14 高于确定性 BFS 2/14</strong>；但 hidden 集重复 3 次暴露 <strong>pass@3 = 8/14 而 pass^3 = 1/14</strong>——单次成绩掩盖了搜索的不可复现。据此 Release Gate 如实拒绝放行（hidden 57% &lt; 门槛 75%），机制层误报 0 / 泄漏 0 / 稳定重放 42/42</li>
+        <li>确认违规经删除式 <strong>Delta Debugging</strong> 压缩为 1-minimal 反例并绑定完整证据链（请求序列 + 回执 + 事件 + 状态 Diff + 违反的不变量），修复版本自动重放历史反例与正常 Case，反例沉淀为可添加进回归套件的用例；显式 FSM 编排支持 Checkpoint 恢复与 <strong>ACTION_UNKNOWN</strong> 超时语义</li>
       </ul>
     </div>
   </div>

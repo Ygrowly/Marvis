@@ -5,7 +5,7 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
-const code = html.match(/<script>\n([\s\S]*?)<\/script>/)[1];
+const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
 global.window = {};
 require(path.join(ROOT, '_data', 'clusters.js'));

@@ -342,7 +342,7 @@ Agent/Simulator 认为可疑，但还没有真实 API 证据。
 3. Receipt 和事件完整；
 4. Oracle 对真实快照检测到 invariant 失败；
 5. 版本元组固定；
-6. 同一路径连续 Replay 3/3。
+6. 同一路径独立重放 3/3（golden-v4 机制层实测 42/42）。
 
 ### 分类
 
@@ -512,7 +512,7 @@ Agent 找到的路径可能有 10～12 步，其中只有 5～6 步真正必要�
 - Oracle 每条 invariant 正反例；
 - Static import/模块边界测试；
 - Candidate → Replay divergence 测试；
-- Replay 3/3；
+- Replay 3/3（机制层实测 42/42）；
 - Delta Debugging 删除关键/非关键动作测试；
 - Fixed 版本旧反例消失、正常 Case 仍通过。
 

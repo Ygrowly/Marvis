@@ -109,13 +109,13 @@ Python、FastAPI、PostgreSQL、DuckDB、Parquet、Cloudflare R2、Univer、MCP�
 
 ---
 
-### RuleArena | 电商规则对抗验证与发布门禁平台
+### RuleArena | 业务 Agent 上线前的执行门禁平台
 
 **个人项目（独立设计与实现） | 2026.08 - 至今**
 
 **项目描述：**
 
-面向电商促销、退款、积分与会员权益的**上线前规则对抗验证**（区别于面向可用性的故障注入，判定基准是资金正确性）：把自然语言规则编译为经人工确认的可执行契约（RuleSpec），由受控 Agent 搜索高风险动作序列，经干净环境真实 HTTP API 重放与确定性 Oracle 裁决，沉淀可回归的最小反例。核心设计哲学：Agent 负责「找到人没想到的路径」，确定性程序负责「证明路径真的有问题」。
+面向**业务 Agent 上线前的执行门禁**：Agent 负责做事（读工单、调工具、处理退款），系统负责证明它没做错。根本矛盾是——工具返回 ACK 不等于业务成功，Agent 说做完了没人能验；信任必须由 Agent 之外的三层给出：类型化工具契约、运行时门禁（调用前拦边界、重试时查幂等回执、返回后重读权威状态）、独立 Oracle（按资金守恒/生命周期/幂等不变量确定性裁决）。核心设计哲学：Agent 负责「执行」，确定性程序负责「证明」。当前已实现并实测的是确定性裁决层与评测体系，被测 Agent 与运行时门禁为设计阶段。
 
 核心实现：
 
@@ -125,9 +125,8 @@ Python、FastAPI、PostgreSQL、DuckDB、Parquet、Cloudflare R2、Univer、MCP�
 
 **项目业绩：**
 
-- 以 24 Case 双评测集（development 16 + hidden 8 物理隔离）做四基线归一化预算消融（golden-v2/deepseek-v3.2）：LLM 策略发现率 0–20%，未超过确定性 BFS 的 20–22%，据此如实降级「多策略」卖点、Release Gate 拒绝放行；机制层零误报、零泄漏、稳定 3/3 全部通过
-- 实现 VALUE_FLOW/LIFECYCLE/BOUNDARY 三隔离策略与 Random、BFS 基线归一化预算消融；确认违规经 Delta Debugging 压缩为 1-minimal 最小反例
-- 反例绑定完整证据链并一键导出 pytest 回归，修复版本自动重放历史反例与正常 Case，形成随使用增厚的回归资产库
+- 以 21 Case development 集（14 缺陷 + 7 正常）做四基线归一化预算消融（golden-v4 / deepseek-v4.1-flash / seed 20260831 / 每 Case 1 次）：Multi-strategy 5/14 高于确定性 BFS 2/14；但 hidden 集连续重复 3 次暴露 **`pass@3 = 8/14` 而 `pass^3 = 1/14`**——「跑 3 次至少成一次」不等于「3 次次次都成」，搜索不可复现是当前最大的真实短板
+- 据此 Release Gate 如实拒绝放行（hidden 8/14 = 57% < 门槛 75%；9 项检查过 8 项）；机制层全部通过——dev 误报 0/7、hidden 误报 0/3、Ground Truth 泄漏 0、稳定重放 42/42
 
 ---
 
@@ -154,7 +153,7 @@ Python、FastAPI、PostgreSQL、DuckDB、Parquet、Cloudflare R2、Univer、MCP�
 
 ### AI应用/Agent开发方向（唯一版本）
 
-我做的是 Agent 应用的工程层：用 Agent 能力做业务应用，同时自研运行时关键模块（工具治理、上下文压缩、链路归因），让不确定的模型输出在生产里可验证、可回滚、可评测。2 段实习：金山独立设计实现 EnergyOps Agent 的数据链路与工具治理（30 个 MCP 工具按风险分级，固定 72 条任务集完成率 83.3%→95.8%、越权拦截 100%）；初创团队核心开发企业问数平台 Data Agent 链路（150 条评测集「可执行且口径正确」占比 78%→91%）。个人项目 RuleArena 做上线前规则对抗验证，四基线实测中如实降级对自己不利的卖点、发布门禁拒绝放行。Python 后端基本盘扎实（FastAPI/PostgreSQL/Redis，幂等控制、状态机、异步任务）。2027 届，可提前实习并连续实习到毕业。
+我做的是 Agent 应用的工程层：用 Agent 能力做业务应用，同时自研运行时关键模块（工具治理、上下文压缩、链路归因），让不确定的模型输出在生产里可验证、可回滚、可评测。2 段实习：金山独立设计实现 EnergyOps Agent 的数据链路与工具治理（30 个 MCP 工具按风险分级，固定 72 条任务集完成率 83.3%→95.8%、越权拦截 100%）；初创团队核心开发企业问数平台 Data Agent 链路（150 条评测集「可执行且口径正确」占比 78%→91%）。个人项目 RuleArena 做业务 Agent 上线前的执行门禁，用双评测集与重复运行把搜索层的不可复现如实暴露出来（pass@3 = 57% vs pass^3 = 7%），并据此拒绝放行。Python 后端基本盘扎实（FastAPI/PostgreSQL/Redis，幂等控制、状态机、异步任务）。2027 届，可提前实习并连续实习到毕业。
 
 ---
 
@@ -467,19 +466,19 @@ Python后端扎实，熟练使用AI编程工具，上手快
 ---
 
 
-### RuleArena | 电商规则对抗验证与发布门禁平台
+### RuleArena | 业务 Agent 上线前的执行门禁平台
 
 个人项目（独立设计与实现） | 2026.08 - 至今 | GitHub: github.com/Ygrowly
 
 **项目描述：**
 
-面向电商促销、退款、积分与会员权益的**上线前规则对抗验证**（区别于面向可用性的故障注入：判定基准是资金正确性，而不是系统崩不崩）：把自然语言规则编译为经人工确认的可执行契约（RuleSpec），由受控 Agent 搜索高风险动作序列，经干净环境真实 HTTP API 重放与确定性 Oracle 裁决，沉淀可回归的最小反例。核心设计哲学：Agent 负责「找到人没想到的路径」，确定性程序负责「证明路径真的有问题」。
+面向**业务 Agent 上线前的执行门禁**：Agent 负责做事（读工单、调工具、处理退款），系统负责证明它没做错。要解决的根本矛盾是——**工具返回 ACK 不等于业务成功，Agent 说做完了没人能验**；所以信任必须由 Agent 之外的三层给出：类型化工具契约（只能做被批准的动作）、运行时门禁（调用前拦边界、重试时查幂等回执、返回后重读权威状态而不信 ACK）、独立 Oracle（按资金守恒/生命周期/幂等不变量做确定性裁决）。核心设计哲学：**Agent 负责「找到与执行」，确定性程序负责「证明」**。
 
 - 设计自然语言→候选 RuleSpec→确定性校验→歧义清单→人工确认→不可变 RuleVersion 的编译链路，仅允许优惠、退款、积分、会员领域固定原语，禁止动态表达式求值，未确认规则不得进入攻击运行
 - 「候选风险 ≠ 确认漏洞」防自证架构：Agent 提议只算候选，经 Reference Simulator 快速探索→独立 Commerce Sandbox（FastAPI+PostgreSQL，幂等键、ActionReceipt、只追加事件）真实 HTTP 重放→独立 Oracle 依据资金守恒、状态生命周期与幂等不变量裁决方可确认，Agent 全程无法触达 Ground Truth
-- 以 24 Case 双评测集（development 16 + hidden 8 物理隔离）做四基线归一化预算消融，口径为同一版本元组、同一预算、seed 20260831、每 Case 1 次（golden-v2 / deepseek-v3.2）：LLM 策略发现率 0–20%（Random 0/9、Single Agent 0/9、Multi-strategy 0/9），**未超过确定性 BFS 的 20–22%（2/9）**；按项目 Spec「未优于基线则如实降级价值主张」执行，Release Gate 因 hidden 发现率 0/5 < 门槛 75% 保持拒绝放行；同时机制层全部正常——dev 误报 0/7、hidden 误报 0/3、Ground Truth 泄漏 0、Multi-strategy hidden 三次运行一致 3/3
+- 以 21 Case development 集 + 17 Case hidden 集（物理隔离、Runtime 全程不可读）做四基线归一化预算消融，口径为同一版本元组、同一预算、seed 20260831、每 Case 1 次（golden-v4 / deepseek-v4.1-flash）：**Multi-strategy 5/14 高于确定性 BFS 2/14**（Random 0/14、Single Agent 4/14）；但按项目自己的统计口径把 hidden 集连续重复 3 次后，**`pass@3 = 8/14` 而 `pass^3 = 1/14`**——单次成绩掩盖了搜索的不可复现，这条比任何单次发现率都重要。据此 Release Gate 如实拒绝放行（hidden 8/14 = 57% < 门槛 75%，9 项检查过 8 项，含版本/预算/seed 匹配、正常误报 0、历史 P0 100%、无 INFRA_FAILED）；机制层全部正常——dev 误报 0/7、hidden 误报 0/3、Ground Truth 泄漏 0、稳定重放 42/42
 - 实现 VALUE_FLOW/LIFECYCLE/BOUNDARY 三隔离策略与 Random、BFS 基线归一化预算消融；**门禁承诺的是「预算内未发现」，不承诺「规则安全」**——分层不混淆
-- 确认违规经删除式 Delta Debugging 压缩为 1-minimal 反例并绑定完整证据链，修复版本自动重放历史反例与正常 Case，反例一键导出 pytest 回归；显式 FSM 编排支持 Checkpoint 恢复与 ACTION_UNKNOWN 超时语义
+- 确认违规经删除式 Delta Debugging 压缩为 1-minimal 反例并绑定完整证据链，修复版本自动重放历史反例与正常 Case，反例沉淀为可添加进回归套件的用例；显式 FSM 编排支持 Checkpoint 恢复与 ACTION_UNKNOWN 超时语义
 
 ---
 
@@ -507,7 +506,7 @@ Python后端扎实，熟练使用AI编程工具，上手快
 
 我做的是 Agent 应用的工程层：用 Agent 能力做业务应用，同时自研运行时关键模块（工具治理、上下文压缩、执行链路归因），让不确定的模型输出在生产里可验证、可回滚、可评测。三段经历构成一条主线——**数据可信（数驭穹图）→ 执行可控（EnergyOps）→ 结果可证（RuleArena）**。
 
-在金山独立设计实现 EnergyOps Agent 的数据链路与工具治理：30 个 MCP 工具收敛为 6 类 Capability Bundle，实施 R0/R1/R2 三级操作风险管控，在固定 72 条任务集（同模型同权限）上任务完成率由 83.3% 提升至 95.8%，80 条越权用例（跨租户 / 越权限 / 越范围）拦截率 100%。在初创公司核心开发企业问数平台 Data Agent 链路与 5 层查询安全边界，150 条评测集「SQL 可执行且结果口径正确」的查询占比由 78% 提升至 91%（判定含人工复核）。个人项目 RuleArena 做电商规则上线前的对抗验证：四基线实测中 LLM 策略发现率 0–20% 未超过确定性 BFS 的 20–22%，据此如实降级「多策略」卖点、Release Gate 拒绝放行。具备扎实的 Python 后端基本盘（FastAPI / PostgreSQL / Redis，幂等控制、状态机约束、异步任务编排）。核心原则是「能由代码确定性保证的，不交给模型」。2027 届应届生，可全职实习并提前到岗。
+在金山独立设计实现 EnergyOps Agent 的数据链路与工具治理：30 个 MCP 工具收敛为 6 类 Capability Bundle，实施 R0/R1/R2 三级操作风险管控，在固定 72 条任务集（同模型同权限）上任务完成率由 83.3% 提升至 95.8%，80 条越权用例（跨租户 / 越权限 / 越范围）拦截率 100%。在初创公司核心开发企业问数平台 Data Agent 链路与 5 层查询安全边界，150 条评测集「SQL 可执行且结果口径正确」的查询占比由 78% 提升至 91%（判定含人工复核）。个人项目 RuleArena 做业务 Agent 上线前的执行门禁（工具契约 + 运行时拦截 + 独立 Oracle）：双评测集实测中 dev 集策略上限已超过确定性 BFS，但重复运行暴露搜索不可复现（pass@3 = 57% vs pass^3 = 7%），据此如实拒绝放行。具备扎实的 Python 后端基本盘（FastAPI / PostgreSQL / Redis，幂等控制、状态机约束、异步任务编排）。核心原则是「能由代码确定性保证的，不交给模型」。2027 届应届生，可全职实习并提前到岗。
 
 ---
 

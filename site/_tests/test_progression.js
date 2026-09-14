@@ -9,7 +9,7 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
-const code = html.match(/<script>\n([\s\S]*?)<\/script>/)[1];
+const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
 global.window = {};
 require(path.join(ROOT, '_data', 'clusters.js'));
@@ -133,7 +133,14 @@ Object.keys(byCluster).forEach(cid => {
 });
 ok('同簇内数组序即学习序', bad2.length === 0, bad2.join('; '));
 
-ok('抽检按 ~7 天一轮', examDays.length >= 6 && examDays.length <= 8,
+/* 抽检轮次随 L2 池子变暖而变化（三级制下池子冷、轮次自然少），
+   所以不再断言「固定 6-8 轮」，改断言真正的规则：轮次存在、且间隔 ≥ EXAM_GAP-1 天。 */
+var _gaps = [];
+for (var _i = 1; _i < examDays.length; _i++) {
+  _gaps.push(Math.round((new Date(examDays[_i]) - new Date(examDays[_i - 1])) / 86400000));
+}
+ok('抽检确实在跑且不密于 7 天一轮',
+  examDays.length >= 2 && _gaps.every(function (x) { return x >= 6; }),
   examDays.length + ' 轮：' + examDays.join(', '));
 
 const maxLoad = Math.max(...loadByDay), avgLoad = loadByDay.reduce((a, b) => a + b, 0) / loadByDay.length;

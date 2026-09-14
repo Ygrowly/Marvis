@@ -28,7 +28,7 @@
   <h2 class="mv-h2">加餐 <small>有精力再做 · 不完成不计欠账，完成照常升 L</small></h2>
   <div id="extrabox"></div>
 
-  <h2 class="mv-h2">能力簇 <small>只有 L3 能在面试里说出口 · 点开看母题</small></h2>
+  <h2 class="mv-h2">能力簇 <small>到「常练」才算能说出口 · 点开看母题</small></h2>
   <div id="clusters"></div>
 
   <h2 class="mv-h2">独立日课 <small>手撕是肌肉记忆，不占模块时间</small></h2>
@@ -66,14 +66,14 @@
   </div>
 
   <div class="mv-note" style="margin-top:2rem">
-    <b>派单规则</b>：复训只派<b>今天到期</b>的（1-3-7-14-30 阶梯），按逾期天数排序，必做预算 4 条，多出来的进加餐、不计欠账。<br>
-    <b>依赖门控</b>：同一能力簇内前一条到 L2 才解锁下一条（所以每簇每天最多派 1 条新题）；跨簇前置写在 <code>_data/clusters.js</code> 的 <code>after</code> 字段里。<br>
-    <b>自适应配额</b>：昨天必做全交 → 今天 2 条新题，前天也全交 → 3 条；有欠账 → 回 1 条；连欠 2 天 → 0 条（减负，只留复训）。<br>
+    <b>派单规则</b>：复训只派<b>今天到期</b>的（1 → 3 → 7 → 14 阶梯：答对翻倍、答错回明天），按逾期天数排序，必做预算 4 条，多出来的进加餐、不计欠账。<br>
+    <b>继续派发</b>：每个板块都有「+ 继续派」按钮，不必等到第二天；当天总条数封顶 8 条。<br>
+    <b>依赖门控</b>：同一能力簇内前一条到「<b>会了</b>」才解锁下一条（所以每簇每天最多派 1 条新题）；跨簇前置写在 <code>_data/clusters.js</code> 的 <code>after</code> 字段里。<b>强行解锁</b>按钮可以跳过——由你自己判断，系统只如实说明代价。<br>
+    <b>自适应配额</b>：昨天必做全交 → 今天 2 条新题，前天也全交 → 3 条，连续 3 天全交 → 4 条（上限）；有欠账 → 回 1 条；连欠 2 天 → 0 条（减负，只留复训）。<br>
     <b>项目线</b>：EnergyOps / 数驭穹图 / RuleArena 各 2 条（90 秒骨架 → 决策链），每天 1 条，不占 zone 轮转名额。<br>
     <b>抽检</b>：每 7 天一轮，从已到 L2 的母题里按「忘得多 → 有断点 → 久没自评」抽 5 题，每题 60 秒口述、连答不回头，结果直接改等级。<br>
     <b>断点回流</b>：复训卡面和抽检卡面会摊开这条母题上次的<b>断点原文</b>（来自母题卡的「本次断点」），复训从「重做整道题」变成「重做你上次没说出来的那一句」。<br>
-    <b>升级规则</b>：命中 → 升一级并进入 1-3-7-14-30 阶梯；部分 → 停在「能复述」；忘了 → 掉回「读过」且明天重派。
-    L4（面试验证过）暂不开放自评，等真实面试回来补。<br>
+    <b>升级规则</b>（三级制）：命中 → 进「<b>常练</b>」且复训间隔翻倍；部分 → 留在当前档、明天再来；忘了 → 回「会了」、明天重派。学完即进复训，不用爬级。<br>
     数据存在本机浏览器（localStorage，键名 mv.progress.v1），换机器或清缓存前记得导出备份。
   </div>
 
@@ -99,16 +99,18 @@
 var KEY = 'mv.progress.v1';
 var VAULT = 'Marvis';
 var GOAL = 0.6;
-var STEPS = [1, 3, 7, 14, 30];
-var LVN = ['未接触', '读过', '能复述', '能口述', '验证过'];
+var STEPS = [1, 3, 7, 14];   // 复训间隔：答对一次翻一档，封顶 14 天
+var LVN = ['未接触', '会了', '常练'];
 var SCOREN = { hit: '命中', part: '部分', miss: '忘了' };
 
-var MASTER = 2;        // 门控阈值：前置到 L2 才解锁下一条
+var MASTER = 1;        // 门控阈值：前置到「会了」(L1) 就解锁下一条
+var EXAM_MIN = 2;      // 抽检池门槛：只有「常练」(L2) 才进抽检——刚会的还不配被抽
 var REV_BUDGET = 4;    // 复训必做预算（条）
 var REV_RELIEVE = 2;   // 减负模式下的复训预算
-var NEW_MAX = 3;       // 自适应新题上限
+var NEW_MAX = 4;       // 自适应新题上限（＝主线新学每天最多 4 条）
 var EXTRA_MAX = 4;     // 加餐上限（条）
 var EXTRA_REV_MAX = 2; // 加餐里最多放几条复训溢出
+var DAY_CAP = 8;       // 当天总条数封顶（含「继续派发」手动补的），防手滑
 
 var PROJECT_CID = 'pitch'; // 项目线：这个簇不参与 zone 轮转，单开板块每天 1 条
 var EXAM_GAP = 7;      // 抽检间隔（天）
@@ -183,6 +185,16 @@ function load() {
   if (!st.exam || typeof st.exam !== 'object') st.exam = { lastIssued: null, lastDone: null, rounds: 0 };
   flat().forEach(function (t) {
     if (!st.lv[t.key]) st.lv[t.key] = { l: t.link ? 1 : 0, due: null, last: null, hit: 0, miss: 0 };
+  });
+  /* 三级制迁移（2026-09-14）：旧的 L3「能口述」/ L4「验证过」都并进 L2「常练」。
+     迁移是幂等的——映射后的值永远 ≤2，重复执行不会再变。 */
+  Object.keys(st.lv).forEach(function (k) {
+    var v = st.lv[k];
+    if (v.l > 2) v.l = 2;
+    /* 「有卡」≠「学过」：从没练过的（没到期日、也没自评过）回「未接触」。
+       否则 2026-09 site 迁移给全部母题补了 href 之后，所有条目一出生就是 L1，
+       ready 池永远为空——主线新学一条也派不出来。 */
+    if (v.l === 1 && !v.due && !v.last) v.l = 0;
   });
   return st;
 }
@@ -350,7 +362,7 @@ function examRanked() {
   var cutoff = daysAgo(2);
   var pool = flat().filter(function (x) {
     var s = S.lv[x.key];
-    return x.link && s && s.l >= MASTER && !(s.last && s.last > cutoff);
+    return x.link && s && s.l >= EXAM_MIN && !(s.last && s.last > cutoff);
   });
   pool.sort(function (a, b) {
     var sa = S.lv[a.key], sb = S.lv[b.key];
@@ -373,7 +385,8 @@ function examPool() {
 /* 自适应新题配额 */
 function quota() {
   if (S.relieve) return 0;
-  var y = needStats(daysAgo(1)), b = needStats(daysAgo(2));
+  var y = needStats(daysAgo(1)), b = needStats(daysAgo(2)), c = needStats(daysAgo(3));
+  if (y && y.all && b && b.all && c && c.all) return Math.min(4, NEW_MAX);  // 连续全交 → 顶格
   if (y && y.all && b && b.all) return Math.min(3, NEW_MAX);
   if (y && y.all) return Math.min(2, NEW_MAX);
   return Math.min(1, NEW_MAX);
@@ -413,7 +426,7 @@ function mkRev(x, need) {
   return {
     type: 'rev', key: x.key, need: need, done: false, link: x.link,
     label: '复训：' + x.name,
-    sub: x.cname + ' · 当前 L' + lvOf(x.key) +
+    sub: x.cname + ' · 当前 ' + LVN[lvOf(x.key)] +
          (od > 0 ? ' · <b style="color:var(--mv-danger)">逾期 ' + od + ' 天</b>' : ' · 今天到期') +
          bpLine(x.link)
   };
@@ -438,7 +451,7 @@ function mkExam(x, need) {
   return {
     type: 'exam', key: x.key, need: need, done: false, link: x.link,
     label: '抽检：' + x.name,
-    sub: x.cname + ' · 当前 L' + s.l + ' · 命中 ' + (s.hit || 0) + ' 次 · 忘 ' + (s.miss || 0) + ' 次' +
+    sub: x.cname + ' · 当前 ' + LVN[s.l] + ' · 命中 ' + (s.hit || 0) + ' 次 · 忘 ' + (s.miss || 0) + ' 次' +
          bpLine(x.link)
   };
 }
@@ -496,6 +509,81 @@ function buildDay() {
     items: items, revOver: revOver, revBudget: budget, quotaN: n,
     readyLeft: Math.max(0, ready.length - n), examN: examN
   };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   继续派发（2026-09-14）：不必等到第二天。
+   每个板块一个按钮，点一次补一条；不重复当天已派过的，且当天总数封顶 DAY_CAP。
+   ══════════════════════════════════════════════════════════════ */
+function dayUsed(d) {
+  var u = {};
+  d.items.forEach(function (x) { u[x.key] = 1; });
+  return u;
+}
+function nextRev(d) {
+  var u = dayUsed(d);
+  var q = reviewQueue();
+  for (var i = 0; i < q.length; i++) { if (!u[q[i].key]) return q[i]; }
+  return null;
+}
+function nextNew(d) {
+  var u = dayUsed(d);
+  var ready = scanClusters().ready;
+  for (var i = 0; i < ready.length; i++) { if (!u[ready[i].key]) return ready[i]; }
+  return null;
+}
+function nextProj(d) { var p = projectNext(); return (p && !dayUsed(d)[p.key]) ? p : null; }
+function nextDrill(d) {
+  var D = window.MARVIS_DRILL;
+  if (!D || !D.topics.length) return null;
+  var u = dayUsed(d);
+  for (var i = 0; i < D.topics.length; i++) {
+    if (!u['drill/' + D.topics[i].id]) return D.topics[i];
+  }
+  return null;
+}
+
+/* 点一次补一条。返回 'ok' / 'empty'（该板块没得派了） / 'cap'（当天满了） */
+function addOne(type) {
+  var d = S.days[today()];
+  if (!d) return 'empty';
+  if (d.items.length >= DAY_CAP) return 'cap';
+  var it = null;
+  if (type === 'new') {
+    var c = nextNew(d);
+    if (c) it = mkNew(c, false);
+  } else if (type === 'rev') {
+    var x = nextRev(d);
+    if (x) it = mkRev(x, false);
+  } else if (type === 'proj') {
+    var p = nextProj(d);
+    if (p) it = mkProj(p, false);
+  } else if (type === 'drill') {
+    var dr = nextDrill(d);
+    if (dr) it = {
+      type: 'drill', key: 'drill/' + dr.id, need: false, done: false, link: dr.href,
+      label: '手撕：' + dr.name, sub: '日课 · 10 分钟限时，关掉 AI 补全（手动补派）'
+    };
+  }
+  if (!it) return 'empty';
+  d.items.push(it);
+  save(); render();
+  return 'ok';
+}
+
+/* 强行解锁：被门控挡住的下一条新母题。前置没到「会了」也能学——
+   要不要跳过由自己判断，系统不擅自改规则，只如实说明代价。 */
+function forceUnlock() {
+  var locked = scanClusters().locked;
+  if (!locked.length) { alert('当前没有可强行解锁的母题。'); return; }
+  var c = locked[0];
+  var pre = c.miss.map(function (p) { return p.id + '（' + LVN[p.lv] + '）'; }).join('、');
+  if (!confirm('这条前置还没到「会了」：' + pre + '。\n\n跳过它会打乱记忆链顺序——确定要强行解锁「' + c.name + '」吗？')) return;
+  var d = S.days[today()];
+  if (!d) return;
+  if (d.items.length >= DAY_CAP) { alert('今天已经 ' + DAY_CAP + ' 条了，明天再来。'); return; }
+  d.items.push(mkNew(c, false));
+  save(); render();
 }
 
 /* 当天派单只建一次就冻结（保证反复打开不重派、结果稳定）。
@@ -577,7 +665,7 @@ function rate(ds, idx) {
   var s = S.lv[it.key];
   if (!s) return;
   RATE_DS = ds; RATE_IDX = idx;
-  var nextHit = Math.min(3, s.l + 1);
+  var nextHit = Math.min(2, s.l + 1);
   document.getElementById('ratebody').innerHTML =
     '<p style="margin:0 0 .375rem;font-size:1.0625rem;font-weight:600">' +
       it.label.replace(/^(复训|新母题|项目|抽检)：/, '') + '</p>' +
@@ -585,7 +673,7 @@ function rate(ds, idx) {
     (it.link ? '<p style="margin:0 0 .5rem"><a href="' + it.link + '" target="_blank" style="color:var(--mv-accent)">打开材料</a></p>' : '') +
     '<div class="mv-bd" style="margin:0 0 1rem;font-size:.875rem;color:var(--mv-muted)">' +
       (ds === today() ? '' : '<b>' + ds + '</b> 的补评 · ') +
-      '当前 L' + s.l + '（' + LVN[s.l] + '） · 命中 → L' + nextHit + ' · 部分 → 停在 L2 以内 · 忘了 → 掉回 L1' +
+      '当前 ' + LVN[s.l] + ' · 命中 → ' + LVN[nextHit] + '（间隔翻倍）· 部分 → 留在' + LVN[s.l] + ' · 忘了 → 回「会了」，明天再来' +
     '</div>' +
     hintPanel(it) +
     '<div style="display:flex;gap:.625rem;flex-wrap:wrap;margin-top:1.25rem">' +
@@ -604,10 +692,10 @@ function applyRate(ds, idx, score) {
   var it = S.days[ds].items[idx];
   var s = S.lv[it.key];
   if (score === 'hit') {
-    s.l = Math.min(3, s.l + 1); s.hit++; s.miss = 0;
-    s.due = shift(ds, STEPS[Math.min(s.hit - 1, 4)]);
+    s.l = Math.min(2, s.l + 1); s.hit++; s.miss = 0;
+    s.due = shift(ds, STEPS[Math.min(s.hit - 1, STEPS.length - 1)]);
   } else if (score === 'part') {
-    s.l = Math.max(1, Math.min(s.l, 2)); s.hit = 0; s.miss++; s.due = shift(ds, 1);
+    s.l = Math.max(1, s.l); s.hit = 0; s.miss++; s.due = shift(ds, 1);
   } else {
     s.l = Math.min(s.l, 1); s.hit = 0; s.miss++; s.due = shift(ds, 1);
   }
@@ -795,6 +883,20 @@ function projectBoard() {
   }).join('');
 }
 
+/* 「继续派发」按钮：不必等到第二天，点一次补一条（当天总数封顶 DAY_CAP）
+   不用内联 onclick——用 data-add + 文档级委托，省掉一层引号转义 */
+function addBtn(type, text) {
+  return ' <button class="mv-btn" style="padding:.125rem .5rem;font-size:.8125rem" data-add="' +
+    type + '">+ ' + text + '</button>';
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('[data-add]') : null;
+  if (!b) return;
+  var r = addOne(b.getAttribute('data-add'));
+  if (r === 'empty') alert('这个板块今天没有可派的了。');
+  else if (r === 'cap') alert('今天已经 ' + DAY_CAP + ' 条了，明天再来。');
+});
+
 function board(title, count, rows, note) {
   return '<div class="mv-cl" style="margin-bottom:1rem">' +
     '<div class="mv-cl-head"><span class="mv-cl-title">' + title + '</span>' +
@@ -855,7 +957,8 @@ function render() {
       ? '另有 <b>' + day.revOver + '</b> 条同样到期，' +
         (extraRevN > 0 ? '加餐里先放了 ' + extraRevN + ' 条，' : '') +
         '剩余的明天优先补（必做预算 ' + (day.revBudget || REV_BUDGET) + ' 条，超出的不计欠账）。'
-      : '1-3-7-14-30 阶梯驱动：到期的才派，逾期久的先做。断点会摊在卡面上。'));
+      : '1-3-7-14 阶梯驱动：到期的才派，逾期久的先做。断点会摊在卡面上。' +
+        addBtn('rev', '继续派复训')));
 
   /* 抽检：7 天一轮，只在有题时出现 */
   if (gExam.length || day.examN) {
@@ -874,8 +977,11 @@ function render() {
   h += board('主线新学', cntDone(day, 'new'),
     gNew.length ? gNew.join('') : '<div class="mv-note" style="margin:0">今天不派新题' +
       (S.relieve ? '（减负模式：先做到 2 条，全交一天后自动恢复）。' : '。') + '</div>',
-    '自适应配额 ' + (day.quotaN != null ? day.quotaN : 0) + ' 条 · ' +
-    (day.readyLeft > 0 ? '还有 ' + day.readyLeft + ' 条可解锁（见加餐）。' : '当前没有更多可解锁的母题。') +
+    '自适应配额 ' + (day.quotaN != null ? day.quotaN : 0) + ' 条（上限 ' + NEW_MAX + '）· ' +
+    (day.readyLeft > 0 ? '还有 ' + day.readyLeft + ' 条可解锁。' : '当前没有更多可解锁的母题。') +
+    addBtn('new', '继续派新题') +
+    (scan.locked.length ? ' <button class="mv-btn" style="padding:.125rem .5rem;font-size:.8125rem" ' +
+      'onclick="forceUnlock()">强行解锁下一条</button>' : '') +
     (lockedNote(scan.locked) ? '<br>' + lockedNote(scan.locked) : ''));
 
   h += board('项目线', cntDone(day, 'proj'),
@@ -885,10 +991,12 @@ function render() {
       '</div>') +
     '<div style="margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--mv-border)">' +
       projectBoard() + '</div>',
-    '三个项目各两条：90 秒骨架 → 决策链。骨架到 L2 才解锁决策链。');
+    '三个项目各两条：90 秒骨架 → 决策链。骨架到「会了」才解锁决策链。' +
+      addBtn('proj', '继续派项目线'));
 
   h += board('日课', cntDone(day, 'daily'),
-    gDaily.length ? gDaily.join('') : '<div class="mv-note" style="margin:0">—</div>', '');
+    gDaily.length ? gDaily.join('') : '<div class="mv-note" style="margin:0">—</div>',
+    '手撕按「没练过的优先」补派。' + addBtn('drill', '继续派手撕'));
 
   document.getElementById('needbox').innerHTML = h;
 
@@ -901,10 +1009,10 @@ function render() {
   /* ── 能力簇 ── */
   var ch = '';
   (window.MARVIS_CLUSTERS || []).forEach(function (c) {
-    var cnt = [0, 0, 0, 0, 0];
-    c.topics.forEach(function (t) { cnt[lvOf(c.id + '/' + t.id)]++; });
+    var cnt = [0, 0, 0];
+    c.topics.forEach(function (t) { cnt[Math.min(2, lvOf(c.id + '/' + t.id))]++; });
     var n = c.topics.length;
-    var ok = cnt[3] + cnt[4];
+    var ok = cnt[2];
     var list = '';
     c.topics.forEach(function (t) {
       var l = lvOf(c.id + '/' + t.id);

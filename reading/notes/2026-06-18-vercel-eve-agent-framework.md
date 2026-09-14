@@ -23,6 +23,6 @@ status: reading
 
 ## 可以迁移到哪里
 
-- [[MetricOps Agent]]
+- [[EnergyOps-项目说明]]
 - [[04-Agent-Runtime与Harness]]
-- [[AI应用开发面试题]]
+- AI应用开发面试题（原页已删）

@@ -16,7 +16,7 @@ sources:
 related:
   - "[[04-Agent-Runtime与Harness]]"
   - "[[AI应用开发能力地图]]"
-  - "[[MetricOps Agent]]"
+  - "[[EnergyOps-项目说明]]"
   - "[[阅读判断训练]]"
 ---
 
@@ -80,7 +80,7 @@ AI Coding 的关键瓶颈正在从“怎么提示模型”迁移到“如何设�
 ## 是否值得继续
 
 - 结论：值得深读。
-- 原因：该主题直接关系到 [[MetricOps Agent]]、AI 应用开发能力、后续面试表达和个人使用 Codex/Claude Code 的方法。它不是单篇热点，而是一组会改变开发流程设计的工程判断。
+- 原因：该主题直接关系到 [[EnergyOps-项目说明]]、AI 应用开发能力、后续面试表达和个人使用 Codex/Claude Code 的方法。它不是单篇热点，而是一组会改变开发流程设计的工程判断。
 
 ## 推荐代表来源
 
@@ -91,7 +91,7 @@ AI Coding 的关键瓶颈正在从“怎么提示模型”迁移到“如何设�
 
 ## 阅读问题
 
-1. 对 [[MetricOps Agent]] 来说，最小可用 harness 应该先包含哪些：状态文件、技能、评测、hook、sub-agent 还是自动化？
+1. 对 [[EnergyOps-项目说明]] 来说，最小可用 harness 应该先包含哪些：状态文件、技能、评测、hook、sub-agent 还是自动化？
 2. 哪些任务适合 loop 自动跑，哪些任务必须保持 human-in-the-loop？判断标准是风险、可验证性、寿命还是用户影响面？
 3. 如何设计“写查分离”：同一个模型不同提示词够不够，还是必须不同模型/不同工具权限？
 4. 当前项目有没有可以外置成 skill/rule 的重复经验？哪些只是 lesson，哪些已经能升级为 pattern？
@@ -101,5 +101,5 @@ AI Coding 的关键瓶颈正在从“怎么提示模型”迁移到“如何设�
 
 - [[04-Agent-Runtime与Harness]]：补充 Harness/Loop 在 Agent 工程化中的位置。
 - [[AI应用开发能力地图]]：加入“验证、评测、权限、状态、记忆、review”作为 AI 应用工程能力。
-- [[MetricOps Agent]]：设计最小 harness 和长期 loop 路线。
+- [[EnergyOps-项目说明]]：设计最小 harness 和长期 loop 路线。
 - [[阅读判断训练]]：加入“AI 摘要/AI 代码不是掌握证明，验证才是核心”的判断规则。

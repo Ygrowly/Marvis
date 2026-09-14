@@ -2,19 +2,19 @@
 
 ## 1. 20 秒项目介绍
 
-> 我做了一个电商规则对抗验证平台。它把退款、优惠和积分规则转成可确认的 RuleSpec，让 Agent 搜索异常操作组合，再通过真实 API 重放和确定性 Oracle 判断是否真的造成资金或权益异常，最后把问题沉淀成可回归的最小反例。
+> 我做了一个业务 Agent 上线前的执行门禁。起因是我写了个客服退款 Agent，测试时发现它工具超时重试之后多退了一笔钱，而且它认为自己是正确的。所以重点是：怎么在 Agent 动钱之前拦住错误，动完之后独立证明它没做对。
 
 关键词：
 
 ```text
-电商规则 / Agent 搜路径 / API 重放 / Oracle / 最小反例
+业务 Agent 门禁 / 工具契约 / 运行时拦截 / 独立 Oracle / 失败证据
 ```
 
 ---
 
 ## 2. 90 秒项目介绍
 
-> 电商里很多问题不是单条规则错误，而是订单、优惠券、积分和退款按特殊顺序组合后出错。人工测试只能覆盖想到的路径，单纯让 LLM 审 PRD 又只能给风险提示，所以我设计了 RuleArena。系统先把自然语言规则编译成严格 RuleSpec，存在歧义必须人工确认；然后用 BFS 和三个隔离策略搜索动作序列，先在 Reference Simulator 中快速探索，再从干净环境调用独立 Commerce Sandbox 的真实 HTTP API 重放。模型只能提出动作，漏洞是否成立由 Oracle 根据退款、积分、优惠券、会员权益和幂等不变量判断。确认问题会被压缩为 1-minimal 反例，修复后继续回归。项目还设计了 24 个开发和隐藏 Case，对比 Random、BFS、Single Agent 和 Multi-strategy，避免把多 Agent 当成没有证据的卖点。最终在线 Demo 展示规则确认、攻击路径、状态 Diff、确定性证据和修复前后对比。
+> 做 Agent 应用的人都会遇到一个问题：Agent 调了工具，但它不知道业务上到底成功没有——工具返回超时不代表失败，回 ACK 也不代表成功；而 Agent 自己说做完了，没人能验。我的项目就是解决这个。一条工单进来，Agent 读诉求、查订单、调工具处理；中间是运行时门禁：调用前做边界检查，重试时用幂等键和回执查询判断上次到底成没成，返回后重读权威状态而不信 ACK；最后独立 Oracle 从账本、快照、事件重算业务不变量——退款不能超过实付、积分要守恒、权益不能残留。评测是同一份 Agent 跑两次，一次裸跑、一次加门禁，比的是终态正确率和意外资损笔数。搜索能力那边我用 21 个开发集 + 17 个隐藏集做了四基线消融：历史上限已经超过确定性 BFS，但三次重复暴露 `pass^3` 只有 7%——搜索不可复现，这恰恰是为什么必须有独立的运行时门禁；门禁也因此如实拒绝放行。最终 Demo 展示工单、动作序列、状态 Diff、确定性证据和对照结果。
 
 ---
 
@@ -22,27 +22,27 @@
 
 ### 业务背景
 
-> 电商中的优惠、积分、订单、退款和会员通常是不同模块。单条规则不难，风险来自合法动作的组合，例如订单支付发积分，全额退款恢复优惠券，但实现遗漏积分撤销，用户退款后还能用残留积分兑换新券。传统单元测试依赖人提前想到路径，LLM 阅读 PRD 又只能生成可能风险，无法证明系统真的可复现。
+> 做 Agent 应用的人都会遇到一个问题：Agent 调了工具，但它不知道业务上到底成功没有。工具超时不代表失败（可能只是响应丢了，业务其实成功了），回 ACK 也不代表成功；而 Agent 自己说做完了，没人能验。我是在写客服退款 Agent 时踩到这个坑的：第一次退款超时，Agent 判断失败去重试，第二笔退款真的发生了。所以问题不在 Agent 聪不聪明，而在于**工具不可靠时，没有人能证明它没做错**。我把这个问题放在电商售后这个业务世界里做——因为它的动作有限、状态可查、不变量可算、损失能换算成钱。
 
 ### 产品方案
 
-> RuleArena 是规则上线前的对抗验证和发布门禁平台。用户从内置模板修改自然语言规则，Rule Compiler 生成严格 RuleSpec；Pydantic 和领域 Validator 校验字段、金额和引用，存在歧义时要求人工确认，最终冻结不可变 RuleVersion。
+> RuleArena 是业务 Agent 上线前的执行门禁，信任由 Agent 之外的三层给出。第一层是类型化工具契约：被测 Agent 只能调用被批准的闭集动作（查订单、退款、发券、查积分、兑换、查权益），每个动作都有 schema，越界即拒绝，Agent 只能提议不能直接写库。第二层是运行时门禁，三段拦截：调用前做边界检查、重试时用幂等键和回执查询判断上次成没成、返回后重读权威状态而不信 ACK；三条都失败就 fail closed，拒绝继续或转人工。第三层是独立 Oracle，按八条业务不变量对权威状态做确定性裁决。规则文本仍然会编译成经人工确认的 RuleSpec 并冻结版本——那是「什么算对」的契约，歧义必须人工澄清。
 
 ### Agent Runtime
 
-> 主流程由显式 Workflow 控制，Agent 只负责未知路径搜索。系统先运行 Random 和 BFS，再启动 ValueFlow、Lifecycle、Boundary 三个隔离策略。Agent 只能看到当前状态、合法动作、有限历史和预算，只输出结构化 ActionProposal，不能访问数据库、代码或 Ground Truth。
+> 主流程由显式 Workflow 控制。模型只负责它该负责的两件事：理解用户诉求、提出下一步动作。它只输出结构化 ActionProposal，不能访问数据库、代码或 Ground Truth。搜索能力那边，Random 和 BFS 先建确定性基线，再启动 ValueFlow、Lifecycle、Boundary 三个隔离策略；每个策略有独立上下文和预算，不互相聊天。
 
 ### 真实验证
 
-> 路径先在纯 Python Reference Simulator 中快速执行，用 state_hash 去重；可疑路径只是 Candidate。它必须从干净环境调用独立 Commerce Sandbox 的 HTTP API 重放，获取 Receipt、事件和规范化 Snapshot。确定性 Oracle 不复用 Sandbox 的状态转换，只按 RuleVersion 检查退款、积分、券、权益、幂等和账本不变量。连续重放 3/3 后才算 Confirmed，再通过删除式 Delta Debugging 得到 1-minimal Counterexample。
+> 路径先在纯 Python Reference Simulator 中快速执行、用 state_hash 去重；可疑路径只是 Candidate，必须从干净环境调用独立 Commerce Sandbox 的 HTTP API 重放，取回 Receipt、事件和规范化 Snapshot。**Oracle 不复用 Sandbox 的状态转换代码**，只按冻结的 RuleVersion 检查退款、积分、券、权益、幂等和账本不变量——**被测实现自身的缺陷不能反过来定义裁决标准**。确认要独立重放 3/3（golden-v4 机制层实测稳定重放 42/42），再通过删除式 Delta Debugging 得到 1-minimal 反例。
 
 ### 工程可靠性
 
-> 写动作使用业务幂等键，Receipt、聚合、账本和事件同事务提交。超时后先用相同 key 查询权威状态，无法确认就记录 ACTION_UNKNOWN，而不是盲目重试。PostgreSQL 保存权威 Run 和 Sandbox 状态，Redis/ARQ 只做队列，SSE 只通知；Worker 崩溃后通过 Checkpoint、Receipt 和 Snapshot 恢复。
+> 两条线都是同一套机制。**写动作**用业务幂等键，Receipt、聚合、账本和事件同事务提交；超时后先用相同 key 查询权威状态，无法确认就记录 ACTION_UNKNOWN，而不是盲目重试——**Agent 自己重试也不产生第二笔退款，靠的就是这套**。**被测 Agent 重试**时，门禁用同一个幂等键查出「上一次其实成功了」，返回既有回执而不是再执行一次。PostgreSQL 保存权威状态，Redis/ARQ 只做队列，SSE 只通知；Worker 崩溃后通过 Checkpoint、Receipt 和 Snapshot 恢复。
 
 ### 评测和价值
 
-> 项目用 16 个 development 和 8 个 hidden Case 比较 Random、BFS、Single 和 Multi-strategy，报告发现率、normal Confirmed 误报、Candidate 确认率、重放稳定性、Token、延迟和 pass@k/pass^k。所有指标从原始 Run 重算并绑定完整版本元组。如果多策略在公平预算下没有优势，我会降低 Multi-Agent 宣传。最终交付不是一份模型报告，而是一条可重放、可裁决、可回归的业务反例。
+> 评测口径是**同一份 Agent 代码跑两次**——一次裸跑、一次加门禁，比终态正确率、**意外资损笔数与金额**、自述成功但实际失败的比例、必要转人工率和单任务成本；固定任务集、重复 K 次、报置信区间。搜索能力那边我用 21 个开发集和 17 个隐藏集比较 Random、BFS、Single 和 Multi-strategy，报告发现率、normal Confirmed 误报、Candidate 确认率、重放稳定性、Token、延迟和 pass@k / pass^k。所有指标从原始 Run 重算并绑定完整版本元组。**单次成绩我不会当能力上界讲**：hidden 集重复三次暴露 `pass^3 = 1/14`，所以门禁拒绝放行。最终交付不是一份模型报告，而是一条可重放、可裁决、可回归的失败证据。
 
 ---
 
@@ -50,19 +50,19 @@
 
 ### 1. RuleArena 解决什么问题？
 
-解决电商退款、优惠、积分和会员规则在特殊动作顺序、重复请求和状态恢复中的组合漏洞。它主动搜索未知路径，并把风险转换成真实 API 可复现、Oracle 可裁决的反例。
+解决「**Agent 调了有副作用的工具，却无法确定业务上到底成功没有**」这个问题：工具超时不代表失败、回 ACK 不代表成功、Agent 的自述没人能验。它把信任交给 Agent 之外的三层——类型化工具契约、运行时门禁、独立 Oracle——并把确认的失败转换成可复现、可裁决、可回归的证据。
 
 ### 2. 为什么不是一段 Prompt？
 
 Prompt 只能生成风险猜测。RuleArena 还有不可变 RuleVersion、可执行 Sandbox、副作用幂等、独立 Oracle、Replay、最小化、回归和 Benchmark，这些都是确定性工程系统能力。
 
-### 3. 为什么选择电商领域？
+### 3. 为什么选择电商售后这个业务世界？
 
-它有清晰业务价值、有限动作和状态、可计算的不变量、直观损失故事，并与交易后端、售后 Agent 和 Agent Commerce 可迁移。
+不是「因为电商好做」，是**因为它是「Agent 动钱」最典型、最容易讲清损失的地方**：动作有限且可枚举、状态可查询、不变量可计算、损失可换算成金额。**这三条正是外部接入的硬门槛**——动作空间不可枚举、权威状态算不出守恒的系统，接进来也裁决不了。换领域（SaaS 套餐退款、游戏付费道具、支付补偿）只要满足同样三条，机制整体可迁移。
 
-### 4. 没有真实电商项目，业务世界从哪里来？
+### 4. 为什么不直接接客户的真实系统、做成通用平台？
 
-通过独立 FastAPI + PostgreSQL Commerce Sandbox 实现最小可执行交易和售后服务，使用真实 HTTP、事务、账本、事件和幂等。它不是企业生产，但保留真实业务机制并提供可控 Ground Truth。
+两个原因，一个原则一个工程。**原则上**：接进来的前提是能裁决——动作空间要可枚举、权威状态要能重算（有账本流水而不是只有一个总数）、不变量要自洽；不满足的系统接进来也证明不了任何事，反而会让人误以为「测过了」。**工程上**：通用平台会把两周的 MVP 变成工具注册、插件、记忆、权限、沙箱和多入口的一堆工程，反而削弱业务闭环。所以 MVP 先用独立 Commerce Sandbox 把机制跑通——**它是真实业务系统的替身，不是任何客户的系统**；外部接入走 TargetAdapter 接测试/staging 环境，且必须先过上面那道门槛。
 
 ### 5. RuleSpec 的作用是什么？
 
@@ -90,7 +90,7 @@ Simulator、Sandbox 和 Oracle 独立实现，只共享动作/快照 Schema 和�
 
 ### 11. 什么情况下才算 Confirmed Violation？
 
-Candidate 从干净 Sandbox API 重放成功、Oracle 对真实状态检测到 invariant 失败、版本固定且连续 Replay 3/3。Agent confidence 不参与裁决。
+Candidate 从干净 Sandbox API 重放成功、Oracle 对真实状态检测到 invariant 失败、版本固定且独立重放 3/3（golden-v4 机制层实测稳定重放 42/42）。Agent confidence 不参与裁决。
 
 ### 12. 反例为什么要最小化？
 
@@ -158,7 +158,7 @@ Live Agent Run 明确失败或暂停；已冻结规则的 BFS、历史反例回�
 
 ### 28. 项目最大的局限是什么？
 
-MVP 状态空间和规则类型有限，不覆盖真实分布式并发、完整电商链路和形式化安全证明；24 Case 规模也只适合作为 MVP 回归基线。
+MVP 状态空间和规则类型有限，不覆盖真实分布式并发、完整电商链路和形式化安全证明；**双评测集（21 + 17）的规模也只适合作为 MVP 回归基线**。更硬的局限是实测暴露的：**搜索层不可复现**——hidden 集重复三次，`pass@3 = 8/14` 而 `pass^3 = 1/14`，具体规则要放行不能只靠搜索覆盖。**正因如此才有运行时门禁这一层**；而被测 Refund Agent 与门禁本身目前仍是设计阶段，尚未有实测数字。
 
 ### 29. 如何证明没有过度设计？
 
@@ -202,11 +202,11 @@ MVP 状态空间和规则类型有限，不覆盖真实分布式并发、完整�
 
 以下是设计模板，最终量化数字必须替换为实际证据。
 
-> **RuleArena｜AI 驱动的电商规则对抗验证与发布门禁平台**
+> **RuleArena｜业务 Agent 上线前的执行门禁平台**
 
-- 面向退款、优惠、积分与会员权益等跨流程规则变更，将自然语言规则编译为经人工确认的类型化 RuleSpec，以显式 Workflow 约束 Agent 动作、预算、状态和失败恢复。
-- 设计 Reference Simulator + Commerce Sandbox + Deterministic Oracle 分层验证链路，由多策略搜索候选路径，经真实 HTTP API 重放、业务不变量裁决和 Delta Debugging 生成 1-minimal Counterexample。
-- 建立 Random/BFS/Single/Multi 消融、development/hidden Golden Set、全链路 Trace 和版本化 Release Gate，评估发现率、误报、重放稳定性、Token、延迟与单位缺陷成本。
+- 面向 Agent 调用有副作用工具的场景（退款、发券、积分、权益），把业务规则编译为经人工确认的类型化 RuleSpec，以显式 Workflow 约束 Agent 动作、预算、状态和失败恢复。
+- 设计**工具契约 + 运行时门禁 + 独立 Oracle** 三层信任结构：门禁在调用前拦边界、重试时查幂等回执、返回后重读权威状态而不信 ACK；Oracle 按八条业务不变量对权威状态做确定性裁决，经 Delta Debugging 生成 1-minimal Counterexample。
+- 建立 Random/BFS/Single/Multi 消融、development/hidden 双评测集、全链路 Trace 和版本化 Release Gate，评估发现率、误报、重放稳定性、Token、延迟与单位缺陷成本；**并用重复运行把 `pass@k` 与 `pass^k` 分开报**。
 
 如果实际门禁达成，再补：
 
@@ -231,13 +231,14 @@ Confirmed 反例重放 [X/X]，hidden 发现率 [X%]，
 
 ### 需要证据后再说
 
-- “已实现 24 Case”；
-- “hidden 发现率 75%”；
-- “误报为 0”；
-- “P95 80 秒”；
+- “hidden 发现率 75%”（那是**门禁阈值**，不是成绩）；
+- **“被测 Refund Agent 与运行时门禁已上线”**——目前是设计阶段（E3），只能说设计；
+- “P95 80 秒”（容量估算，尚未压测校准）；
 - “已在 Railway 部署”；
 - “有真实用户持续使用”；
-- “Multi-Agent 提升 X%”。
+- “Multi-Agent 提升 X%”（上限有了，但 `pass^3` 说明稳定增益未证明）。
+
+> **已从本清单移除（golden-v4 已实测）**：~~“已实现 24 Case”~~（现为 21 + 17 双集）、~~“误报为 0”~~（实测 dev 0/7、hidden 0/3）。
 
 ### 不能说
 
@@ -308,7 +309,7 @@ Confirmed 反例重放 [X/X]，hidden 发现率 [X%]，
 
 ### 第三段：评测
 
-11. 24 Case；
+11. 双评测集（21 + 17）；
 12. hidden 隔离；
 13. Baseline 公平；
 14. pass@k/pass^k；
@@ -417,7 +418,7 @@ TARGET ≠ MEASURED
 证据：Receipt/Event/Snapshot/Trace
 产物：3/3 + 1-minimal Counterexample
 恢复：idempotency + Receipt + Checkpoint + ACTION_UNKNOWN
-评测：16 dev + 8 hidden + 4 baselines
+评测：21 dev + 17 hidden + 4 baselines（pass@k / pass^k 分开报）
 门禁：0 normal FP / hidden target / P0 regression / leakage 0
 边界：预算内未发现 ≠ 绝对安全
 ```

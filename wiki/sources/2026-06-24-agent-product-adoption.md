@@ -81,10 +81,10 @@ Agent 产品不是只有“高权限本地智能体”一条路：开发者/极�
 2. 本地 Agent 的权限边界如何表达给用户，才能既可控又不牺牲能力？
 3. Memory 和 Skills 如何从“个人配置”变成“团队/行业可复用资产”？
 4. 面试中讲 OpenClaw 时，哪些是架构事实，哪些只是营销热度？
-5. [[MetricOps Agent]] 更像开发者工具、办公工具，还是企业内部 workflow agent？对应的交互门槛应该如何设定？
+5. [[EnergyOps-项目说明]] 更像开发者工具、办公工具，还是企业内部 workflow agent？对应的交互门槛应该如何设定？
 
 ## 可能更新的知识页
 
 - [[04-Agent-Runtime与Harness]]：补充 Agent 产品常见部件：Gateway、Tools、Skills、Channels、Memory、Heartbeat。
 - [[AI应用开发能力地图]]：加入“Agent 产品化与用户采用”维度。
-- [[项目表达地图]]：补充“普通用户 AI 产品设计”案例。
+- 项目表达地图（原页已删）：补充“普通用户 AI 产品设计”案例。

@@ -55,10 +55,12 @@
 
 ## 3. Golden Set 设计
 
-MVP 固定 24 个 Case：
+MVP 固定双评测集（当前版本 golden-v4）：
 
-- development 16；
-- hidden 8。
+- development 21（14 缺陷 + 7 正常）；
+- hidden 17（14 缺陷 + 3 正常，物理隔离、Runtime 不可读）。
+
+> **版本化说明**：评测集规模随版本演进（golden-v1 为 16 + 8，v4 扩至 21 + 17）。**任何一版的数字只在该版口径内可比**，引用时必须带上版本号；跨版本比较前先看 `benchmarks/README.md` 的版本历史。
 
 必须覆盖：
 
@@ -101,7 +103,7 @@ Ground Truth 来源：
 2. 可解释的 Vulnerable/Fixed 实现差异；
 3. 从干净 Sandbox 手工/确定性执行路径；
 4. Oracle 产生明确证据；
-5. 同版本连续 Replay 3/3；
+5. 同版本独立重放 3/3（golden-v4 机制层实测 42/42）；
 6. 记录构造理由和版本。
 
 正常 Case 也需要证明：
@@ -246,7 +248,7 @@ confirmed candidates / replayed candidates
 违反同一 invariant 的成功重放次数 / 重放次数
 ```
 
-Confirmed 发布要求 3/3。
+Confirmed 发布要求独立重放 3/3（golden-v4 机制层实测 42/42）。
 
 ### 单位确认漏洞成本
 
@@ -412,20 +414,21 @@ Gate 只能使用完全匹配当前版本元组的最新完整 Benchmark。修�
 
 目标口径：
 
-- 24 Case；
-- normal Confirmed 误报 0；
-- Confirmed 反例 Replay 3/3；
-- hidden 漏洞发现率 ≥75%；
+- 双评测集（development 21 + hidden 17）；
+- normal Confirmed 误报 0（**golden-v4 实测：dev 0/7、hidden 0/3**）；
+- Confirmed 反例独立重放 3/3（**golden-v4 实测：稳定重放 42/42**）；
+- hidden 漏洞发现率 ≥75%（**TARGET**；golden-v4 实测 8/14 = 57% **未达标**）；
 - 历史 P0 回归 100%；
-- Ground Truth 泄漏 0；
+- Ground Truth 泄漏 0（**实测 0**）；
 - 当前版本完整 Benchmark。
 
-Multi-strategy 未优于 Single/BFS 时：
+**当搜索层未达标或不可复现时（这正是 golden-v4 的状态）：**
 
 - 不删除实现；
-- 如实报告；
-- 降低“多 Agent”宣传；
+- 如实报告，**并成对陈述**：搜索层不可复现（`pass@3 = 8/14` vs `pass^3 = 1/14`）+ 机制层达标（误报 0 / 泄漏 0 / 重放 42/42）；
+- **降低“多 Agent”与“搜索覆盖”的宣传**；
 - 分析是任务不适合、策略不独立、预算浪费还是 Case 太浅；
+- **并得出结构性结论**：搜索保证不了覆盖，所以必须由**运行时门禁**在 Agent 执行侧兜住——这是两大支柱分工的实测依据；
 - 下一版本再验证，不修改答案迎合结果。
 
 ---
@@ -508,7 +511,7 @@ P0 发布阻断。定位 Oracle、规则歧义、Case 标注或 Sandbox 污染�
 
 ## 18. 验证方法
 
-- 24 Case 数量和分布检查；
+- 双评测集数量与分布检查（21 + 17）；
 - 每个 Ground Truth 3/3；
 - hidden loader 权限测试；
 - 人为注入 Ground Truth 标记，泄漏测试必须失败；
@@ -523,9 +526,9 @@ P0 发布阻断。定位 Oracle、规则歧义、Case 标注或 Sandbox 污染�
 
 ## 19. 高频问题与标答
 
-### Q1：为什么 24 个 Case 足够？
+### Q1：为什么 21 + 17 个 Case 足够？
 
-它不是统计意义上的完整行业覆盖，而是两周 MVP 的固定回归基线，用来覆盖三类规则和关键故障类型。需要诚实说明局限，后续根据 Bad Case 扩展。
+它不是统计意义上的完整行业覆盖，而是 MVP 的固定回归基线，用来覆盖三类规则和关键故障类型——**并且它已经被证明足以暴露真问题**：hidden 集重复三次跑出 `pass@3 = 8/14` 而 `pass^3 = 1/14`，说明这套规模已经能把「单次成绩」和「稳定能力」区分开。需要诚实说明局限，后续根据 Bad Case 扩展。
 
 ### Q2：hidden 如何保证不泄漏？
 
@@ -559,12 +562,12 @@ Confirmed 会影响发布决策，正常规则被阻断代价高。普通 Candid
 
 ## 20. 3 分钟标答
 
-> 我没有用一个黄金 Demo 来证明多 Agent 有效，而是设计了 24 个版本化 Case，其中 16 个 development、8 个 hidden，覆盖优惠、退款积分、会员权益，以及正常、缺陷、幂等、顺序和价值守恒场景。每个 Ground Truth 入集前都要在指定 Sandbox 和 Oracle 版本上重放 3/3。评测比较 Random、BFS、Single Agent 和三个隔离策略，既做等总预算，也报告并行时间，避免 Multi-Agent 只是花了更多 Token。指标包括漏洞发现率、normal Confirmed 误报、Candidate 确认率、重放稳定率、延迟、Token 和单位确认漏洞成本，并同时看 pass@k 和 pass^k。所有指标从原始 AttackRun、Replay 和 OracleResult 重算，分母为零返回 N/A，基础设施失败单独统计。Release Gate 绑定 Rule、Scenario、Sandbox、Oracle、Runtime、模型、Prompt、seed 和预算的完整版本元组，任何版本变化都会让旧结果失效。hidden 数据只由 Evaluation Runner 读取，不能进入 Runtime、Prompt、Trace 或公共 API。如果多策略没有在公平预算下优于 BFS 或单 Agent，我会如实降低 Multi-Agent 的价值主张，而不是修改 Case 制造提升。
+> 我没有用一个黄金 Demo 来证明多 Agent 有效，而是设计了版本化的双评测集——当前 golden-v4 是 21 个 development（14 缺陷 + 7 正常）和 17 个 hidden（14 缺陷 + 3 正常），覆盖优惠、退款积分、会员权益，以及正常、缺陷、幂等、顺序和价值守恒场景。每个 Ground Truth 入集前都要在指定 Sandbox 和 Oracle 版本上独立重放 3/3；每个 Case 的环境只表现它自己声明的缺陷轴，避免一条路径踩中别的 Case 的缺陷被错记。评测比较 Random、BFS、Single Agent 和三个隔离策略，既做等总预算，也报告并行时间，避免 Multi-Agent 只是花了更多 Token。指标包括漏洞发现率、normal Confirmed 误报、Candidate 确认率、重放稳定率、延迟、Token 和单位确认漏洞成本，并同时看 pass@k 和 pass^k。**实测结果是诚实的两半**：dev 集 Multi-strategy 5/14 已经高于确定性 BFS 2/14，说明上限提上来了；但把 hidden 集连续重复 3 次后，`pass@3 = 8/14` 而 `pass^3 = 1/14`——**单次成绩掩盖了搜索不可复现**，所以门禁如实拒绝放行。所有指标从原始 AttackRun、Replay 和 OracleResult 重算，分母为零返回 N/A，基础设施失败单独统计。Release Gate 绑定 Rule、Scenario、Sandbox、Oracle、Runtime、模型、Prompt、seed 和预算的完整版本元组，任何版本变化都会让旧结果失效。hidden 数据只由 Evaluation Runner 读取，不能进入 Runtime、Prompt、Trace 或公共 API。最后一点也是这个实测带出的结构性结论：**搜索保证不了覆盖，所以光有离线搜索不够，必须由运行时门禁在 Agent 执行侧兜住**。
 
 关键词：
 
 ```text
-16 dev + 8 hidden
+21 dev + 17 hidden
 Ground Truth 3/3
 Random/BFS/Single/Multi
 equal budget

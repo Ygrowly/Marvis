@@ -6,7 +6,7 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
-const m = html.match(/<script>\n([\s\S]*?)<\/script>/);
+const m = html.match(/<script>\r?\n([\s\S]*?)<\/script>/);
 if (!m) throw new Error('找不到内联脚本');
 const code = m[1];
 
@@ -44,7 +44,7 @@ function ok(label, cond, extra) {
 /* 重置到「全新一天」：清空所有状态，重建今日派单 */
 function fresh(extraJs) {
   run("S = { lv:{}, days:{}, drill:[], extra:{}, resetAt:null, relieve:false };" +
-      "flat().forEach(function(t){ S.lv[t.key] = { l: t.link?1:0, due:null, last:null, hit:0, miss:0 }; });" +
+      "flat().forEach(function(t){ S.lv[t.key] = { l: 0, due:null, last:null, hit:0, miss:0 }; });" +
       (extraJs || '') +
       "FLAT = null; render();");
 }
@@ -148,8 +148,8 @@ const ei = g("S.days[today()].items.findIndex(i=>!i.need)");
 if (ei >= 0) {
   const key = g(`S.days[today()].items[${ei}].key`);
   run(`rate('${g('today()')}', ${ei}); doRate('hit');`);
-  ok('加餐做完 → 该母题升到 L2', g(`S.lv['${key}'].l`) === 2, 'L' + g(`S.lv['${key}'].l`));
-  ok('升 L 后进入 1-3-7-14-30 阶梯（首次命中 +1 天）', g(`S.lv['${key}'].due`) === g("shift(today(), 1)"),
+  ok('加餐做完 → 该母题升到「会了」(L1)', g(`S.lv['${key}'].l`) === 1, 'L' + g(`S.lv['${key}'].l`));
+  ok('升 L 后进入复训阶梯（首次命中 +1 天）', g(`S.lv['${key}'].due`) === g("shift(today(), 1)"),
     g(`S.lv['${key}'].due`));
   run(`rate('${g('today()')}', ${ei});`);
   ok('已评条目不可重复评（只读）', g(`S.lv['${key}'].hit`) === 1, 'hit=' + g(`S.lv['${key}'].hit`));
@@ -170,7 +170,7 @@ ok('连欠 3 天 → 减负', g('debtStats().relieve') === true);
 run("S.resetAt = today();");
 ok('清账重开后欠账归零', g('debtStats().debt') === 0);
 ok('清账后不进入减负', g('debtStats().relieve') === false);
-ok('清账不动等级', g("S.lv['sql/M1'].l") >= 1);
+ok('清账不动等级（级别重开前是多少还是多少）', g("S.lv['sql/M1'].l") === 0, 'L' + g("S.lv['sql/M1'].l"));
 
 fresh();
 const firstDrill = g('pickDrill().id');
@@ -237,8 +237,8 @@ ok('5 题全部标记完成', todayItems().filter(i => i.type === 'exam' && i.do
   todayItems().filter(i => i.type === 'exam' && i.done).length + ' 题');
 ok('记录本轮已完成', g('S.exam.lastDone') === g('today()'));
 ok('轮次 +1', g('S.exam.rounds') === 1, g('S.exam.rounds'));
-ok('答对的升到 L3', g("S.lv['sql/M1'].l") === 3, 'L' + g("S.lv['sql/M1'].l"));
-ok('答「部分」的停在 L2', g("S.lv['sql/M3'].l") === 2, 'L' + g("S.lv['sql/M3'].l"));
+ok('答对的到「常练」(L2，三级制顶格)', g("S.lv['sql/M1'].l") === 2, 'L' + g("S.lv['sql/M1'].l"));
+ok('答「部分」的停在 L2 不升', g("S.lv['sql/M3'].l") === 2, 'L' + g("S.lv['sql/M3'].l"));
 run("examRate('hit');");
 ok('队列走完后重复点击无害', todayItems().filter(i => i.type === 'exam' && i.done).length === 5);
 
