@@ -101,6 +101,7 @@ aliases: [MAP, 正本登记表, 主题地图]
 | 活跃项目（3） | `projects/{项目}/{项目}-项目说明.md` | EnergyOps / 数驭穹图 / RuleArena；编号学习手册同目录 |
 | 活跃 / 归档分界 | `projects/` 与 `archive/` | **`projects/` ＝ 活跃准备范围**（EnergyOps / 数驭穹图 / RuleArena，进简历与面试稿）；**`archive/` ＝ 已移出准备范围、只留档备查**（PayTrace / Ovanta，2026-09-13 移出，不进简历、面试不主动提）。说明见 `archive/README.md` |
 | 简历族 | `output/resume/简历写作方法论.md` + `简历版面规划.md` | 本体与导出物同目录 |
+| 简历版面校验 | `output/resume/check_layout.py` | **改完 HTML 必须跑**：`python check_layout.py --export`。简历是固定 A4 + `overflow:hidden`，溢出会被静默裁掉，只有渲染后的 PDF 能证明（2026-09-15 建） |
 | 证据材料 | `output/evidence/` | 6 份硬证据 |
 | JD 情报 | `jd/六家公司AI应用开发岗位-横向对比总览.md` | + 6 份公司融合 JD |
 
