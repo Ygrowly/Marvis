@@ -201,6 +201,10 @@ held-out ：最终配置 90.5%  vs  起点 78.6%   →  高 11.9 个点</pre>
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 429 字 · 按 4 字/秒折算约 107 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">选型不是挑跑分最高的，是在<strong>（模型 × effort）二维空间</strong>里、用<strong>每个正确结果的全成本</strong>这一个指标来搜。跑分是那些评测上的表现，不是你的任务分布上的——从 SimpleQA 看，准确率高和错误率低可以是相反方向（24% vs 22% 的准确率，对应 75% vs 26% 的错误率）。</p>
+<p class="mv-md-p">effort 怎么定：<strong>跑一次 sweep</strong>（对几个档位各跑一遍你的评测集），看曲线——平坦就说明任务不受思考算力约束，加 effort 没收益；陡峭且你需要跨过门槛，就加。effort 曲线是<strong>凸的</strong>：边际每分成本（$0.704）高于低档平均（$0.465），最后一档多 0.5 分要多花 46%，落在噪声里。effort 太低则会<strong>证据不足就收手，而且答案看起来是完整的</strong>。</p>
+<p class="mv-md-p">降级链路三个要求：已验证（备用配置要在 held-out 上过门禁）、有明确质量底线（降级保的是可用性不是质量）、可观测（降级要打点报警——<strong>不知道自己在降级比降级更危险</strong>）。</p>
+<p class="mv-md-p">选型不是一次性决策：模型迭代、缓存定价变化、effort 参数引入都会让最优解移动。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：在（模型 × effort）二维里用"每个正确结果的全成本"搜；effort 靠 sweep 的曲线定。</li><li><strong>推导链</strong>：跑分 ≠ 你的任务分布 → 全成本口径 → sweep 看曲线（平坦/陡峭）→ 降级三要求 → 最优解会随模型与定价移动。</li><li><strong>量化</strong>：边际每分成本 $0.704 &gt; 低档平均 $0.465；最后一档多 0.5 分多花 46%（落在噪声里）。</li><li><strong>边界与常见误解</strong>："便宜模型 + 拉满 effort = 最优"×（曲线是凸的）；"effort 拉满最保险"×（太低会证据不足就收手且答案看起来完整）；"选型是一次性决策"×。</li></ul></collapse-panel>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">传统后端选型是<strong>容量规划</strong>问题（QPS × 单请求耗时 → 需要几台机器），模型选型是<strong>质量—成本曲线</strong>问题（同一个"机器"有多个能力档位，且档位可以逐请求切换）。<strong>前者的瓶颈是资源，后者的瓶颈是你对"失败值多少钱"的判断。</strong> 把模型选型当容量规划做，就会漏掉 effort 这一维。</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>便宜模型能不能扛？</strong></strong></p>
 <p class="mv-md-p">取决于任务形状和失败代价。<strong>先算"每个正确结果的全成本"</strong>；如果便宜模型的失败率把失败代价放大到超过节省，就不划算。上面的案例里，便宜模型<strong>配好 prompt 之后反而更准</strong>——所以"降级"要连 prompt 一起调，不是单独换模型。</p>

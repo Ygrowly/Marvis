@@ -11,8 +11,11 @@
 ```text
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
-  progress.html       进度页（手写，数据存 localStorage）：五板块派单（复训/抽检/主线新学/项目线/日课）+ 依赖门控 + 闭卷自评 + 断点回流 + 欠账减负 + 近 7 天回顾 + 热力图
-  _data/clusters.js   进度页数据源：10 个能力簇（含项目线）+ 日课母题清单 + 跨簇前置 after（M3 起计划改由 build.py 生成）
+  progress.html       进度页（手写，数据存 localStorage）：首屏一张今日清单（类型标签）＋五个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负
+  _data/clusters.js   进度页数据源：7 簇 / 49 条主线 / 手撕日课（脚本从模块卡生成，勿手改）
+  projects/           项目口述页（build 生成，勿手改）：骨架 + 决策链，默认折叠
+  _build/mermaid/     自带 mermaid.min.js（浏览器端渲染用；页面外链 _data/mmd-boot.js）
+                      另有可选的构建期预渲染器 mmd.py + cache/（默认不跑）
   _data/breaks.js     断点回流数据（build 生成）：母题页路径 → 上次断点 / 一句话结论 / 恢复关键词 / 追问
   _tests/             派单引擎回归测试（手跑，build 不管）：node site/_tests/test_dispatch.js 等三个
   modules/            模块学习页（build 生成，勿手改）：{模块}.html 概览 + {模块}-NN-{主线}.html 子页
@@ -152,7 +155,30 @@ A: 答案，可以换多行
 文件放 `site/figures/`。build 会把 SVG 内联进页面（多图时自动加 id 前缀防冲突）。
 流程：**md 里描述需要什么图 → AI 生成 svg → 人看图对不对**。人不需要会写 SVG。
 
-### 4. 模块卡 —— 生成模块学习页
+### 5. mermaid 流程图 —— 直接写在 fenced block 里
+
+````md
+```mermaid
+flowchart LR
+    A["入口"] --> B["出口"]
+```
+````
+
+**md 里照常写 mermaid，Obsidian 里能看，页面上就地渲染。** 两条轨，默认走轨二：
+
+| 轨 | 何时用 | 怎么工作 |
+|---|---|---|
+| **轨二 · 浏览器渲染（默认）** | 平时写卡、改完就想看 | build 只把源码放进 `<div class="mermaid">`；页面外链 `_data/mmd-boot.js`，加载站点自带的 `_build/mermaid/mermaid.min.js` 现场渲染（取不到再走 CDN）。**改完 md 跑一次 build 就行，不碰无头浏览器** |
+| 轨一 · 构建期预渲染（可选） | 想离线看、想打开更快 | `MARVIS_MMD_PRERENDER=1 python site/build.py`：用无头 Edge 渲成内联 SVG 进页面，页面零依赖 |
+
+| 环节 | 说明 |
+|---|---|
+| 失效 | 图语法错或 mermaid 没加载到，**页面上保留可读的图源码**，不静默丢内容 |
+| 宽度 | 按原始像素宽出图（`useMaxWidth:false`），外面套横向滚动容器；超 880px 自动加一行「可左右拖动」提示 |
+| 折叠面板 | 图在收起的面板里时，mermaid 量不到尺寸会渲成 16×16 空图——`mmd-boot.js` 渲染前把隐藏祖先临时搬到屏幕外，渲完还原，所以折叠里的图也是对的 |
+| 预渲染缓存 | `site/_build/mermaid/cache/<sha1(源码)[:16]>.svg`，那段 md 没改就不重渲。重建：`python site/_build/mermaid/mmd.py --scan`（清缓存加 `--clear`）；缓存已 gitignore |
+
+### 6. 模块卡 —— 生成模块学习页
 
 正本 `wiki/topics/{模块}/{模块}模块深挖卡.md`，按 `templates/模块深挖卡模板.md` 写。build 按**标题**取节（不是硬编码序号），产出：
 
@@ -194,7 +220,7 @@ A: 答案，可以换多行
 4. **入口只放每日必需**：其余进弹窗或子页。首页是「5 秒内开始练」的地方，不是展厅。
 5. **规则只写在本文件与 PLAN.md**：不复制进 html，否则必然两边不一致。
 6. **判据**：视图的价值 = 是否增加了**编码通道**（图/动/交互）或**提取动作**。只改排版 = 不做。
-7. **只有 `status: integrated` 的正本才生成视图**；`candidate` / `reading` 停在 md。
+7. **`status` 只标内容是否定稿，不再拦视图**（2026-09-25 状态机退场）：有「一句话结论」或「完整回答骨架」就进复训牌组，练没练过由进度页的本机数据说话。
 
 ## 死法预警
 

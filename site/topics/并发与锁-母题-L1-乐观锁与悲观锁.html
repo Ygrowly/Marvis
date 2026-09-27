@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 L1 · 乐观锁还是悲观锁，冲突率多高才该换</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/并发与锁.html">← 并发与锁 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">并发与锁</span>
+    <h1 class="mv-topic-title">母题 L1 · 乐观锁还是悲观锁，冲突率多高才该换</h1>
+    <p class="mv-topic-meta">关联 母题-M16-乐观锁与悲观锁（数据库实现视角）· 母题-P18-乐观并发控制（PG 的 SSI 与重试）· 母题-M17-排行榜与防超卖（业务场景）· 母题-O1-上下文切换与死锁（锁的物理代价）· 母题-M10-锁与死锁（数据库层的锁与死锁检测）· 母题-L2-锁的粒度与临界区（缩临界区是第三条路）· 母题-Q2-重复与乱序（幂等 —— "不用锁"的另一种解法） ｜ 正本 wiki/topics/并发与锁/母题-L1-乐观锁与悲观锁.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 乐观锁<strong>也加锁</strong>，只是只拿一条语句 ② 判据是一个算式：期望尝试次数 = 1/(1−p) ③ 还有第三条路——<strong>条件更新</strong>，既不加锁也不重试）· 读完约 11 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问"乐观锁和悲观锁有什么区别、你项目里用哪个"。你答完区别之后他追问："<strong>那什么情况下该换？</strong>给我一个判据。"——请用数字回答，并说清"防超卖"该怎么做。</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：并发控制的目标不是"不出错"，是"给出错定价"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 两种方案，两种定价方式【事实】</h4>
+<p class="mv-md-p"><strong>先各自介绍，再用同一指标衡量</strong>（指标 = <strong>同一个数据被并发修改时，谁的浪费更少</strong>）：</p>
+<p class="mv-md-p"><strong>悲观锁（pessimistic）</strong>：<strong>先排队，再动手</strong>。动手之前先拿到独占权（数据库的 <code class="mv-md-code">SELECT ... FOR UPDATE</code>、代码里的 <code class="mv-md-code">mutex</code>）。</p>
+<p class="mv-md-p"><strong>乐观锁（optimistic）</strong>：<strong>先动手，提交时校验</strong>。读的时候记住一个"版本"，写的时候要求版本没变过；变了就说明中间被别人改过，<strong>这次白干，重来</strong>。</p>
+<p class="mv-md-p">【推导】<strong>两者不是"快慢"的关系，是"把代价花在哪"的关系</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>悲观锁</th><th>乐观锁</th></tr></thead><tbody><tr><td>什么时候付出代价</td><td><strong>动手之前</strong>（排队等）</td><td><strong>动手之后</strong>（可能白干）</td></tr><tr><td>最坏情况是什么</td><td><strong>排队很长、可能死锁</strong></td><td><strong>反复冲突、一直重试</strong></td></tr><tr><td>并发度</td><td><strong>被压成串行</strong>（同一份数据同一时刻只有一个持有者）</td><td><strong>不受锁限制</strong>（只有写那一条语句会串行）</td></tr><tr><td>适合什么</td><td>冲突率高、临界区短、重试代价大</td><td>冲突率低、计算便宜、能安全重试</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>所以合适的问法不是"哪个快"，而是</strong>："<strong>这段并发里，冲突发生得有多频繁？</strong>"——<strong>下一节把这个问题变成了一个算式。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 一个必须先纠正的认知：乐观锁也加锁【纠错】</h4>
+<p class="mv-md-p">【事实】<strong>"乐观锁就是不加锁"是错的</strong>。以数据库为例：</p>
+<pre class="mv-md-pre">悲观锁的写法（把锁跨越多条语句）：
+  BEGIN
+    SELECT stock FROM t WHERE id = 1 FOR UPDATE;   ← 在这里就拿到行锁
+    ... 应用层计算 ...
+    UPDATE t SET stock = 新值 WHERE id = 1;         ← 一直持锁到这里
+  COMMIT                                            ← 才释放
+
+乐观锁的写法（锁只覆盖一条语句）：
+  UPDATE t SET stock = 新值, version = version + 1
+   WHERE id = 1 AND version = 我之前读到的版本;      ← 这条语句本身也要拿行锁</pre>
+<p class="mv-md-p">【推导】<strong>两条写法都要拿行锁，差别在"持有多久"</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>持锁时间</th><th>由此推出</th></tr></thead><tbody><tr><td>悲观锁</td><td><strong>跨越"读 → 应用层计算 → 写"整段</strong></td><td>计算越慢、外部调用越多，别人排队越久</td></tr><tr><td>乐观锁</td><td><strong>只有那一条 <code class="mv-md-code">UPDATE</code></strong></td><td>计算再慢也不影响别人；<strong>代价转移成"可能白干"</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>【这就是"乐观锁更快"的真实含义】</strong>：不是"不用锁"，而是<strong>把持锁时间从"整个业务处理"压缩到"一条语句"</strong>，代价是可能重来。<strong>这句话说清楚，比背定义有用得多。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"乐观锁就是不加锁"这个说法在数据库场景里是错的？</p>
+<h3 class="mv-md-h mv-md-h3">2. 判据：冲突率多高才该换（本卡的核心算式）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 期望尝试次数【推导】</h4>
+<figure-box num="乐观锁与悲观锁把成本花在哪，以及冲突率的判据" title="" note="期望尝试次数 = 1/(1−p)；p = 10% 只要 1.11 次，p = 90% 要 10 次"><svg viewBox="0 0 680 380" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>乐观锁与悲观锁把成本花在哪，以及冲突率的判据</title>
+<desc>悲观锁强制串行、不浪费工作；乐观锁允许并发、冲突时白干。期望尝试次数等于 1 除以 1 减冲突率。</desc>
+<defs>
+<marker id="figopt-vs-pessimistic-svg-arrowL1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两种锁把代价花在不同的地方 —— 判据是冲突率</text>
+
+<rect x="40" y="46" width="290" height="150" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">悲观锁：先排队，绝不白干</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价一：并发度被压成串行（吞吐上限 = 1 / 持锁时间）</text>
+<text x="56" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价二：排队本身要等（连接被占住）</text>
+<text x="56" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价三：多把锁就有死锁风险</text>
+<text x="56" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">适合：冲突率高、重试代价大、临界区短</text>
+<text x="56" y="174" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">不是「更慢」——是把不确定性换成了排队</text>
+
+<rect x="350" y="46" width="290" height="150" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="366" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">乐观锁：先干，提交时校验</text>
+<text x="366" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价一：冲突时白干（要多试几次）</text>
+<text x="366" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价二：重试可能形成风暴</text>
+<text x="366" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价三：只保护「同一条记录」的并发</text>
+<text x="366" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">适合：冲突率低、计算便宜、能安全重试</text>
+<text x="366" y="174" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">★ 它在数据库层仍然要拿行锁，只是只拿一条语句</text>
+
+<rect x="40" y="212" width="600" height="94" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="234" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">可算的判据：期望尝试次数 = 1 ÷ (1 − 冲突率 p)</text>
+<text x="58" y="256" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">p = 1% → 1.01 次　　p = 10% → 1.11 次　　p = 30% → 1.43 次</text>
+<text x="58" y="276" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">p = 50% → 2.00 次　　p = 70% → 3.33 次　　p = 90% → 10.0 次</text>
+<text x="58" y="296" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">→ 冲突率低（几十个百分点以内）时乐观锁划算；再高就该换悲观，或者把临界区缩到极小</text>
+
+<rect x="40" y="322" width="600" height="52" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="342" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">还有第三种做法：不用锁，用「条件更新」——把判断和写入合成一条原子语句</text>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">如 UPDATE stock SET n = n - 1 WHERE id = 1 AND n &gt;= 1：改到 0 行就代表「不够了」，不必先查再改</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">设<strong>冲突率 p</strong> = 一次尝试被别人抢先的概率（假设各次尝试独立），那么<strong>"成功一次"需要的尝试次数服从几何分布</strong>：</p>
+<pre class="mv-md-pre">期望尝试次数 = 1 / (1 − p)</pre>
+<p class="mv-md-p">【推导】<strong>把几个 p 代进去，判据就出来了</strong>：</p>
+<table class="mv-table"><thead><tr><th>冲突率 p</th><th>期望尝试次数</th><th>多做的功（浪费比例）</th></tr></thead><tbody><tr><td>1%</td><td><strong>1.01</strong></td><td>约 1%</td></tr><tr><td>10%</td><td><strong>1.11</strong></td><td>约 11%</td></tr><tr><td>30%</td><td><strong>1.43</strong></td><td>约 43%</td></tr><tr><td>50%</td><td><strong>2.00</strong></td><td>约 100%（等于全部白干一遍）</td></tr><tr><td>70%</td><td><strong>3.33</strong></td><td>约 233%</td></tr><tr><td>90%</td><td><strong>10.0</strong></td><td>约 900%</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>这个表就是本卡最重要的判据</strong>：</p>
+<pre class="mv-md-pre">p 小（几十个百分点以内）  → 乐观锁划算：多做的功可以忽略，而并发度没被限制
+p 大（过半）              → 乐观锁开始"白干比干活还多"
+p 很大（接近 1）          → 乐观锁基本就是"反复重试"，必须换方案</pre>
+<h4 class="mv-md-h mv-md-h4">2.2 两边的账要放在同一个坐标系里【推导】</h4>
+<pre class="mv-md-pre">乐观锁：处理 N 个请求，实际尝试 N / (1 − p) 次
+        → 【多做的工作量】= N × p / (1 − p)
+        → 好处：这 N 次尝试【可以并发进行】，不被锁串起来
+           （只有最后那条 UPDATE 会短暂串行）
+
+悲观锁：不浪费任何工作，但同一份数据的处理被【强制串行】
+        → 吞吐上限 = 1 / 持锁时间
+        → 好处：不会白干，冲突率再高也不受影响</pre>
+<p class="mv-md-p">【推导】<strong>两者的分界不是"哪个快"，而是</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>"重试浪费掉的时间" 与 "排队等掉的时间" 哪个更长。</strong></p>
+<p class="mv-md-p">而<strong>这两个量都可以被同一件事压缩</strong>——<strong>缩短临界区</strong>（[[母题-L2-锁的粒度与临界区]]）：</p>
+<ul class="mv-md-ul"><li>悲观锁下缩短持锁时间 → 排队变短</li><li>乐观锁下缩短单次尝试时间 → 每次白干也更便宜、窗口也更小</li></ul>
+<p class="mv-md-p"><strong>【所以"缩临界区"是比"换锁"更优先的动作】</strong>——它两边都改善。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 第三种做法：条件更新（既不加锁也不重试）【推导】</h4>
+<p class="mv-md-p">【推导】<strong>"防超卖"这道题最能说明问题</strong>——它有三种做法，<strong>最实用的那种既不是乐观锁也不是悲观锁</strong>：</p>
+<table class="mv-table"><thead><tr><th>做法</th><th>写法</th><th>超卖</th><th>吞吐</th><th>死锁风险</th></tr></thead><tbody><tr><td><strong>① 先查再改</strong>（错）</td><td><code class="mv-md-code">SELECT n</code> → 应用判断 → <code class="mv-md-code">UPDATE n = 算出来的值</code></td><td><strong>会超卖</strong> ❌</td><td>高</td><td>无</td></tr><tr><td><strong>② 悲观锁</strong></td><td><code class="mv-md-code">SELECT ... FOR UPDATE</code> → 判断 → <code class="mv-md-code">UPDATE</code></td><td>不会</td><td><strong>低</strong>（串行）</td><td>有（多行时）</td></tr><tr><td><strong>③ 条件更新</strong>（推荐）</td><td><code class="mv-md-code">UPDATE t SET n = n - 1 WHERE id = 1 AND n &gt;= 1</code></td><td>不会</td><td><strong>高</strong></td><td>无</td></tr><tr><td><strong>④ 乐观锁（版本号）</strong></td><td>读 version → <code class="mv-md-code">UPDATE ... WHERE version = N</code></td><td>不会</td><td>中（冲突时要重试）</td><td>无</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>为什么 ① 会超卖</strong>：<strong>"读"和"写"是两条语句，中间别人也能读</strong>——两个请求都读到 <code class="mv-md-code">n = 1</code>，都判断"够"，都执行 <code class="mv-md-code">n = 1 - 1 = 0</code>，结果<strong>卖了两件但库存只减了一</strong>。<strong>这不是"锁选错了"，是"根本没有原子性"。</strong></p>
+<p class="mv-md-p">【推导】<strong>为什么 ③ 更好</strong>：<strong>把"判断"和"写入"合进一条语句，数据库保证这条语句原子执行</strong>：</p>
+<pre class="mv-md-pre">UPDATE t SET n = n - 1 WHERE id = 1 AND n &gt;= 1;
+  → 影响行数 = 1：扣减成功
+  → 影响行数 = 0：库存不够（或 id 不存在）→ 直接返回"卖完了"</pre>
+<p class="mv-md-p"><strong>它不需要"先读"、不需要重试、不需要显式拿锁</strong>——<strong>因为竞争被数据库在这一条语句里解决掉了</strong>。（<strong>注意 <code class="mv-md-code">n = n - 1</code> 是"基于当前值"的写法，不是"基于我读到的值"</strong>——这就是它和 ① 的本质差别。）</p>
+<p class="mv-md-p">【事实】<strong>EnergyOps 里用的是同一类做法</strong>：任务抢占不靠锁，而是一条带条件的 <code class="mv-md-code">UPDATE</code>——<code class="mv-md-code">WHERE 状态 = 待处理 AND 租约版本 = 我看到的那个</code>，<strong>改到 0 行就说明被别人抢先，主动退让</strong>（<code class="mv-md-code">02-aggregation-and-recovery.md</code>）。</p>
+<p class="mv-md-p">【取舍】<strong>所以完整的决策顺序是三问</strong>：</p>
+<pre class="mv-md-pre">① 能不能用「条件更新」把判断和写入合成一条原子语句？  → 能，就别用锁
+② 不能（需要跨多条语句 / 跨多行的不变量），冲突率高不高？  → 低用乐观、高用悲观
+③ 真的要悲观锁，能不能把临界区再缩小？  → 能就缩（L2）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"防超卖"的标准答案不是"用乐观锁"也不是"用悲观锁"？</p>
+<h3 class="mv-md-h mv-md-h3">3. 乐观锁的重试：不处理就会变成风暴</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 重试要退避【推导】</h4>
+<p class="mv-md-p">【推导】<strong>上游在重试时，冲突率会自己变大</strong>——因为重试的请求又回到了同一个竞争池里，形成正反馈：</p>
+<pre class="mv-md-pre">假设 50 个并发请求抢同一行，冲突率 50%
+  第一次：50 个请求，25 个成功、25 个失败
+  这 25 个立刻重试 → 25 个请求抢 1 行 → 冲突率更高
+  → 失败者再重试 → ……
+  结果：成功次数没变多，但【打到数据库的请求数翻了几倍】</pre>
+<p class="mv-md-p">【推导】<strong>三条对策</strong>：</p>
+<table class="mv-table"><thead><tr><th>对策</th><th>做什么</th><th>代价</th></tr></thead><tbody><tr><td><strong>指数退避 + 抖动</strong></td><td>失败后等 <code class="mv-md-code">随机(0, base × 2^次数)</code> 再试</td><td>单次延迟变大</td></tr><tr><td><strong>限制重试次数</strong></td><td>试 2–3 次就放弃，返回"稍后重试"给用户</td><td>用户体验（要能接受）</td></tr><tr><td><strong>退化成排队</strong></td><td>冲突率持续高就切悲观锁 / 用队列串行</td><td>复杂度</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>"重试几次"是个必须显式定的参数，不能默认无限重试</strong>——<strong>无限重试 = 把冲突率放大成请求量</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 冲突失败必须能和"业务失败"区分【推导】</h4>
+<p class="mv-md-p">【推导】<strong><code class="mv-md-code">UPDATE</code> 影响 0 行有两种含义</strong>，混在一起会误导：</p>
+<pre class="mv-md-pre">影响 0 行 = ① 版本不匹配（并发冲突 → 应该重试）
+          ② 条件不满足（业务规则不通过 → 重试一万次也没用）</pre>
+<p class="mv-md-p"><strong>处理方式</strong>：要么把两种条件分开（先做业务校验，再用版本号做并发控制），要么在"0 行"之后再查一次当前状态来区分。<strong>否则会出现"对一个永远不会成功的操作反复重试"</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"乐观锁失败就重试"这句话是不完整的？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"乐观锁就是不加锁"</td><td>【事实】<strong>错</strong>。数据库里乐观锁<strong>同样要拿行锁</strong>，只不过只有那一条 <code class="mv-md-code">UPDATE</code> 持锁；真正的区别是<strong>持锁时间从"整个业务处理"压缩到"一条语句"</strong>，代价变成"可能白干"</td></tr><tr><td>"乐观锁一定比悲观锁快"</td><td>【推导】<strong>看冲突率</strong>。p 超过一半时，乐观锁"白干的工作量"就超过了它省下的排队时间（期望尝试 2 次以上）。<strong>判据是 <code class="mv-md-code">1/(1−p)</code>，不是感觉</strong></td></tr><tr><td>"悲观锁慢，高并发要避免"</td><td>【取舍】<strong>悲观锁把不确定性换成了排队</strong>——如果临界区很短、冲突率很高，它反而更稳。<strong>"慢"是因为临界区太长，不是因为锁本身</strong></td></tr><tr><td>"库存扣减先查再改就行"</td><td>【推导】<strong>会超卖</strong>。读和写是两条语句，中间没有原子性。<strong>正确写法是条件更新：<code class="mv-md-code">UPDATE ... SET n = n-1 WHERE n &gt;= 1</code></strong></td></tr><tr><td>"乐观锁失败就重试"</td><td>【推导】不完整。<strong>必须</strong>：① <strong>区分</strong>"版本冲突"与"业务条件不满足"；② <strong>限制次数</strong>；③ <strong>指数退避 + 抖动</strong>，否则重试自己会把冲突率推高</td></tr><tr><td>"有版本号就万无一失"</td><td>【事实】版本号只保护<strong>你读的那一行</strong>。跨行 / 跨表的不变量（比如"订单总额 = 明细之和"）它管不了——那需要事务 + 约束</td></tr><tr><td>"冲突高就把重试次数调大"</td><td>【推导】<strong>反了</strong>。冲突高说明"白干比例高"，正确动作是<strong>换方案</strong>（条件更新 / 悲观锁 / 队列串行），不是加大重试</td></tr><tr><td>"乐观锁没有死锁问题"</td><td>【事实】单条 <code class="mv-md-code">UPDATE</code> 确实不易死锁，<strong>但如果一次事务里更新多行、加锁顺序不一致，照样会死锁</strong>（[[母题-M10-锁与死锁]]）</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="并发与锁/母题-L1-乐观锁与悲观锁-q1" tag="并发与锁" q="某接口对同一行做&quot;读出 → 计算 → 写回&quot;，单次尝试耗时 5 ms，实测冲突率 60%。&#10;问：① 期望尝试几次？② 多做了多少百分比的工作？③ 如果换成悲观锁（持锁 4 ms、串行），哪个更快？④ 你会怎么改？" a="``&#10;① 期望尝试次数 = 1 / (1 − 0.6) = 1 / 0.4 = 【2.5 次】&#10;② 多做的功 = (2.5 − 1) / 1 = 【150%】——三分之二的算力在重复劳动&#10;③ 同一行的吞吐对比：&#10;乐观：每秒成功次数 ≈ 1 / (5ms × 2.5) = 80 次/秒（并行下能更高，但浪费 150% 的算力）&#10;悲观：串行，每秒 ≈ 1 / 4ms = 250 次/秒&#10;→ 【悲观在这组参数下明显更好】：它不浪费工作，而且持锁时间比乐观的&quot;单次尝试&quot;还短&#10;`&#10;④ 改法优先级：&#10;顺序 · 动作 · 为什么&#10;1 · 先找能不能转成条件更新 · 如果这段业务本质是&quot;读一个值 → 判断 → 改一个值&quot;，那就该写成一条 UPDATE ... WHERE 条件`，既不排队也不重试&#10;2 · 缩临界区（[[母题-L2-锁的粒度与临界区]]） · 把&quot;5ms 里不属于临界区的部分&quot;（外部调用、日志、序列化）挪出事务，两边的账都会变好&#10;3 · 换悲观锁 · 冲突率 60% 已经很高，排队比白干划算&#10;4 · 退化成串行队列 · 同一份数据的竞争本质上就是串行的——把并发收成一个队列，比让 N 个线程互相踩更干净&#10;【这一步在验证什么】验证 2.1 的判据：冲突率过半时乐观锁&quot;白干比干活多&quot;（150% vs 100%）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="并发与锁/母题-L1-乐观锁与悲观锁-q2" tag="并发与锁" q="下面这段扣库存的代码有什么问题？高并发下会看到什么现象？&#10;``sql&#10;-- 事务里&#10;SELECT stock FROM product WHERE id = 1;     -- 假设读到 1&#10;-- 应用层判断：if stock &gt;= 1 { ... }&#10;UPDATE product SET stock = 0 WHERE id = 1;  -- 用的还是&quot;我读到的那个值&quot;算出来的结果&#10;``" a="问题不在锁，在没有原子性——&quot;读&quot;与&quot;写&quot;是两条语句，中间任何事务都能插进来。&#10;``&#10;T1 读到 stock = 1&#10;T2 读到 stock = 1          ← 两条 SELECT 之间没有任何互斥&#10;T1 判断&quot;够&quot;，写 stock = 0   ← 卖出 1 件&#10;T2 判断&quot;够&quot;，写 stock = 0   ← 又卖 1 件（但库存已经是 0 了）&#10;→ 【超卖 1 件】&#10;`&#10;高并发下的现象：stock 最终停在 0 或某个非负值，但订单数比库存多——而且这种 bug 在低并发压测时复现不了（没有重叠窗口）。&#10;正确写法（条件更新）：&#10;`sql&#10;UPDATE product SET stock = n - 1&#10;WHERE id = 1 AND stock &gt;= 1;&#10;-- 影响 1 行 → 扣减成功；影响 0 行 → 卖完了，直接返回&#10;`&#10;【这一步在验证什么】验证 2.3：&quot;先查再改&quot;的错误不是锁选错了，而是把&quot;判断 + 写入&quot;拆成了两步。&#10;这里还有一个关键点值得说：SET stock = n - 1 和 SET stock = 0`（我算出来的值）语义不同——前者是&quot;基于当前值减一&quot;（数据库读取时锁定当前值），后者是&quot;写入一个可能已经过期的快照&quot;。很多&quot;看起来加了判断却还是超卖&quot;的代码，问题就出在这一字之差上。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="并发与锁/母题-L1-乐观锁与悲观锁-q3" tag="并发与锁" q="某服务峰值 2000 QPS 都在抢同一行，冲突率 50%，代码里失败就无限重试（每次重试不打散）。&#10;问：① 实际打到数据库的请求量会变成多少？② 这会引发什么连锁反应？③ 最小改动该怎么改？" a="``&#10;① 每次&quot;成功&quot;需要 1/(1−0.5) = 2 次尝试&#10;期望总请求量 = 2000 × 2 = 【4000 次/秒】&#10;⚠️ 注意这是【下限】：因为重试的请求又加入了竞争池，&#10;冲突率会被推高（50% → 更高），实际会超过 2 倍&#10;`&#10;② 连锁反应：&#10;反应 · 机制&#10;连接池被打满 · 请求数翻倍 → 连接占用翻倍 → 排队 → 超时&#10;数据库 CPU 上升但有效吞吐不升 · 大部分 UPDATE 是白干的&#10;P99 抬升 · 重试的请求要走&quot;多次往返&quot;，尾延迟被拉长&#10;雪崩 · 上游超时重试 + 本层重试叠加 → 请求量再翻倍&#10;③ 最小改动（按性价比排序）：&#10;`&#10;1. 改成条件更新（如果业务允许）→ 直接消除重试&#10;2. 给重试加「指数退避 + 抖动」+ 上限 2–3 次&#10;失败就返回&quot;排队中/请稍后&quot;，让上游控制节奏&#10;3. 同一份数据的竞争本质是串行的 → 引入队列把它显式串起来&#10;（这就是 RuleArena 用队列 + 幂等替代&quot;抢锁&quot;的思路）&#10;``&#10;【这一步在验证什么】验证 3.1：无限重试会把&quot;冲突率&quot;放大成&quot;请求量&quot;——这是乐观锁在生产里最常见的翻车方式。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="并发与锁/母题-L1-乐观锁与悲观锁-q4" tag="并发与锁" q="下面这段话哪里错了？&#10;&quot;乐观锁就是不加锁，所以它一定比悲观锁快，高并发场景应该都用乐观锁。&quot;" a="三处都错。&#10;1. &quot;乐观锁就是不加锁&quot;错了。在数据库里，乐观锁那条 UPDATE ... WHERE version = N 本身也要拿行锁——它和悲观锁的真正区别是持锁时间：悲观锁把锁从&quot;读&quot;一直持有到&quot;写&quot;，乐观锁只持有写那一条语句。所以准确说法是&quot;把持锁时间从整个业务处理压缩到一条语句&quot;，而不是&quot;不锁&quot;。&#10;2. &quot;一定比悲观锁快&quot;错了。两者是把代价花在不同地方：悲观的代价是强制串行 + 排队，乐观的代价是冲突时白干。用同一个算式比就行：&#10;``&#10;期望尝试次数 = 1 / (1 − p)&#10;p = 10% → 1.11 次（乐观划算）&#10;p = 50% → 2.00 次（白干 100%）&#10;p = 90% → 10.0 次（完全不可接受）&#10;`&#10;冲突率过半之后，&quot;白干的工作量&quot;就超过了它省下的排队时间——这时悲观锁反而更稳。&#10;3. &quot;高并发场景都用乐观锁&quot;错了。决定因素是冲突率而不是并发量：&#10;`&#10;10000 QPS 打 10000 个【不同的】行 → 冲突率≈0 → 乐观锁极好&#10;100 QPS 打【同一个】热门行        → 冲突率极高 → 乐观锁会很惨&#10;`&#10;真正的高并发场景（比如秒杀）通常既不用乐观也不用悲观，而是：条件更新 + 异步下单 + 把竞争收进队列（[[母题-M17-排行榜与防超卖]]）。&#10;准确说法：*乐观锁不是不加锁，而是只拿一条语句的锁，代价变成&quot;冲突时白干&quot;。选哪个看冲突率：1/(1−p)` 接近 1 就用乐观，逼近 2 以上就该换条件更新、缩临界区或改用排队。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="并发与锁/母题-L1-乐观锁与悲观锁-q5" tag="并发与锁" q="下面这段话哪里错了？&#10;&quot;用版本号做乐观锁就万无一失了，反正版本不对就会更新失败，不会出现数据不一致。&quot;" a="&quot;万无一失&quot;错了，漏了三件事，而且它保护的范围比你想的小。&#10;1. 它只保护&quot;你读的那一行&quot;。版本号是行级的：&#10;``&#10;✅ 能保护：同一行的并发修改（&quot;这条记录的 name 被两个人同时改&quot;）&#10;❌ 保护不了：【跨行 / 跨表的不变量】——&#10;比如&quot;账户余额 = 所有流水之和&quot;、&quot;订单总额 = 明细之和&quot;&#10;两个人的修改可能落在不同行上，各自版本都对，但合起来违反了不变量&#10;→ 这类不变量要靠【事务 + 约束】或【把聚合写进一条语句】来保证&#10;`&#10;2. &quot;更新失败&quot;之后如果不处理，等于什么都没保护。影响 0 行`有两种含义——版本冲突（该重试）和业务条件不满足（重试无用）。不区分就会出现&quot;对一个永远不可能成功的操作反复重试&quot;（3.2）。&#10;3. 无限重试会把冲突放大成请求风暴（Q3）。版本号保护的是数据，不是系统——风暴照样能把数据库打垮。&#10;4. 还有一个隐藏前提：&quot;重试必须是安全的&quot;。如果那次失败的操作里有不可回滚的副作用（已经发了短信、已经调了外部接口），重试会造成重复副作用——这时要先靠幂等键把它变成安全的（[[母题-Q2-重复与乱序]]），再谈重试。&#10;准确说法：*版本号是行级的并发保护，只保证&quot;这一行不会被两个人按同一个旧值覆盖&quot;；跨行不变量要靠事务与约束，重试要限次 + 退避，有副作用的操作要先幂等再重试。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">乐观锁与悲观锁各自的代价花在哪，冲突率多高时应该换。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="并发与锁/母题-L1-乐观锁与悲观锁" tag="并发与锁" q="乐观锁与悲观锁各自的代价花在哪，冲突率多高时应该换。" a="乐观锁和悲观锁不是&quot;快慢&quot;之别，而是把代价花在不同地方——悲观锁在动手前排队（并发被压成串行，但不浪费工作），乐观锁在提交时校验（并发不受限，但冲突时白干）。判据可以算：期望尝试次数 = 1/(1−冲突率 p)，p = 10% 只要 1.11 次、p = 50% 就要 2 次（等于白干一遍）、p = 90% 要 10 次——所以冲突率低用乐观、高则换方案。还要纠正一个关键认知：乐观锁在数据库里同样要拿行锁，只是只拿一条语句（UPDATE ... WHERE version = N），真正的差别是持锁时间。而最好的答案往往既不是乐观也不是悲观，而是&quot;条件更新&quot;：UPDATE ... SET n = n−1 WHERE n ≥ 1——把判断和写入合成一条原子语句，不排队也不重试（EnergyOps 的任务抢占用的就是这类带条件的 UPDATE）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">乐观锁和悲观锁不是"快慢"之别，而是<strong>把代价花在不同地方</strong>——<strong>悲观锁在动手前排队</strong>（并发被压成串行，但不浪费工作），<strong>乐观锁在提交时校验</strong>（并发不受限，但冲突时白干）。<strong>判据可以算</strong>：期望尝试次数 = <strong>1/(1−冲突率 p)</strong>，p = 10% 只要 1.11 次、p = 50% 就要 2 次（等于白干一遍）、p = 90% 要 10 次——<strong>所以冲突率低用乐观、高则换方案</strong>。还要纠正一个关键认知：<strong>乐观锁在数据库里同样要拿行锁</strong>，只是只拿一条语句（<code class="mv-md-code">UPDATE ... WHERE version = N</code>），<strong>真正的差别是持锁时间</strong>。而<strong>最好的答案往往既不是乐观也不是悲观，而是"条件更新"</strong>：<code class="mv-md-code">UPDATE ... SET n = n−1 WHERE n ≥ 1</code>——<strong>把判断和写入合成一条原子语句，不排队也不重试</strong>（EnergyOps 的任务抢占用的就是这类带条件的 UPDATE）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>悲观=先排队不白干</li><li>乐观=先干再校验会白干</li><li><strong>乐观锁也拿锁，只是只拿一条语句</strong></li><li><strong>持锁时间 vs 白干</strong></li><li>**期望尝试 = 1</li><li>(1−p)**</li><li>10%→1.11、30%→1.43、50%→2、90%→10</li><li><strong>先查再改会超卖（读改写不原子）</strong></li><li><strong>条件更新 <code class="mv-md-code">SET n = n−1 WHERE n ≥ 1</code></strong></li><li>影响 0 行要区分"冲突"与"条件不满足"</li><li>重试要限次 + 退避 + 抖动</li><li>无限重试会把冲突率放大成请求量</li><li>版本号只保护一行、管不了跨行不变量</li><li>缩临界区优先于换锁</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 471 字 · 按 4 字/秒折算约 118 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">乐观锁和悲观锁不是"快慢"之别，而是<strong>把代价花在不同地方</strong>：<strong>悲观锁在动手前排队</strong>（并发被压成串行，但不浪费工作），<strong>乐观锁在提交时校验</strong>（并发不受限，但冲突时白干）。</p>
+<p class="mv-md-p">判据可以算：<strong>期望尝试次数 = 1/(1−冲突率 p)</strong>——p = 10% 只要 1.11 次；p = 50% 就要 2 次（等于白干一遍）；p = 90% 要 10 次。所以<strong>冲突率低用乐观</strong>，冲突率过半或重试代价很高或临界区本身很短时换悲观。<strong>顺序上：先想能不能改成条件更新，再想缩临界区，最后才换锁</strong>。</p>
+<p class="mv-md-p">数据库里两种实现：<strong>版本号</strong>（<code class="mv-md-code">UPDATE ... SET ..., version = version + 1 WHERE id = ? AND version = N</code>，看影响行数）和<strong>条件更新</strong>（<code class="mv-md-code">UPDATE ... SET n = n − 1 WHERE id = ? AND n ≥ 1</code>）。<strong>最好的答案往往既不是乐观也不是悲观，而是条件更新</strong>——把判断和写入合成一条原子语句，<strong>不排队也不重试</strong>。</p>
+<p class="mv-md-p">一个关键纠正：<strong>乐观锁在数据库里同样要拿行锁</strong>，只是只拿一条语句的时间——<strong>真正的差别是持锁时间</strong>。失败处理：<strong>限次（2–3 次）+ 指数退避 + 抖动</strong>，先区分"版本冲突"与"业务条件不满足"（后者重试一万次也没用）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：代价位置不同；判据 <code class="mv-md-code">1/(1−p)</code>；最好答案是条件更新而不是乐观/悲观二选一。</li><li><strong>推导链</strong>：排队 vs 校验 → 期望尝试次数 → 换锁的三个条件 → 实现（版本号/条件更新）→ 失败重试的纪律。</li><li><strong>量化</strong>：p=10% → 1.11 次、p=50% → 2 次、p=90% → 10 次；高冲突下乐观 N² vs 悲观 N。</li><li><strong>边界与常见误解</strong>："乐观锁不加锁"×（差别在持锁时间）；"先查再改 + 事务"防不住并发窗口；单条 UPDATE 不易死锁，但事务里多行且加锁顺序不同照样会。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | 应用/数据库层（本卡） | 内核层（[[母题-O1-上下文切换与死锁]]） | 分布式层（[[母题-L3-分布式锁与fencing-token]]） | |---|---|---|---| | 互斥 | <code class="mv-md-code">SELECT ... FOR UPDATE</code> / 条件更新 | <code class="mv-md-code">mutex</code> / 自旋锁 | Redis / ZK / 数据库锁 | | 乐观并发 | 版本号 / <code class="mv-md-code">WHERE 条件</code> | <code class="mv-md-code">CAS</code> 指令 | 带版本的 CAS 存储（etcd revision） | | 失败怎么处理 | 重试（限次 + 退避） | 自旋 / 让出 CPU | 重新抢锁 / 退避 | | 死锁 | 数据库主动检测并回滚一个 | 四条件同时满足即卡死 | 锁服务超时释放（<strong>可能误杀</strong>） |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>什么情况该换悲观锁？</strong></strong></p>
+<p class="mv-md-p"><strong>冲突率过半之后</strong>（<code class="mv-md-code">1/(1−p)</code> ≥ 2，白干的工作量已经超过一次），或者<strong>重试代价很高</strong>（重试要做昂贵计算 / 有外部调用），或者<strong>临界区本身很短</strong>（排队不痛）。<strong>注意顺序：先想能不能改成条件更新，再想缩临界区，最后才换锁。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>乐观锁失败怎么重试？</strong></strong></p>
+<p class="mv-md-p"><strong>限次（2–3 次）+ 指数退避 + 抖动</strong>，并在失败后返回"稍后重试"而不是无限重试。<strong>还要先区分"版本冲突"与"业务条件不满足"</strong>——后者重试一万次也没用。</p>
+<p class="mv-md-p"><strong>3. <strong>防超卖该怎么做？</strong></strong></p>
+<p class="mv-md-p"><strong>条件更新</strong>：<code class="mv-md-code">UPDATE ... SET stock = stock − 1 WHERE id = ? AND stock ≥ 1</code>，看影响行数。<strong>别用"先查再改"，也别一上来就 <code class="mv-md-code">FOR UPDATE</code></strong>。真要极致吞吐再上"Redis 预扣 + 异步落库 + 幂等"（[[母题-M17-排行榜与防超卖]]）。</p>
+<p class="mv-md-p"><strong>4. <strong>乐观锁真的不会有死锁吗？</strong></strong></p>
+<p class="mv-md-p"><strong>单条 <code class="mv-md-code">UPDATE</code> 不容易死锁，但一次事务里更新多行、加锁顺序不同样会死锁</strong>（[[母题-M10-锁与死锁]]）。<strong>"乐观"指的是并发控制策略，不是"没有锁"。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>冲突率怎么测？</strong></strong></p>
+<p class="mv-md-p">三个来源：① <strong>更新影响 0 行的比例</strong>（最直接，版本冲突会体现在这里）；② 版本号 / 业务键的<strong>热点分布</strong>（同一个 key 被多少请求打）；③ 压测时对比"实际尝试次数 / 成功次数"。<strong>有了这个数才能谈选型，否则都是感觉。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「CAS 和乐观锁是一回事吗？」——<strong>思想同源、层次不同</strong>：CAS 是 CPU/语言层的<strong>一条原子指令</strong>（比较并交换），乐观锁是<strong>应用层的策略</strong>（读版本 → 带版本写）。ABA 问题见 [[母题-L2-锁的粒度与临界区]]</li><li>「MVCC 算乐观还是悲观？」——<strong>都不算</strong>。MVCC 是<strong>读写不互斥</strong>的机制：读走快照、写走新版本，<strong>冲突只有在"写写"时才需要处理</strong>（[[母题-M9-MVCC]]、[[母题-P13-MVCC与可见性]]）</li><li>「PG 的序列化失败为什么建议重试？」——那是 <strong>SSI（可串行化快照隔离）</strong> 把冲突检测推迟到提交时，失败即 <code class="mv-md-code">40001</code>，<strong>它的补偿手段就是"重试"，和乐观锁是同一套逻辑</strong>（[[母题-P9-序列化失败与重试]]、[[母题-P18-乐观并发控制]]）</li><li>「任务抢占怎么保证只有一个 Worker 干？」——<strong>不用锁</strong>：一条带条件的 <code class="mv-md-code">UPDATE</code>（<code class="mv-md-code">WHERE 状态 = 待处理 AND 租约版本 = 我看到的</code>），<strong>改到 0 行就退让</strong>——这就是 EnergyOps 的做法</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps</strong>——<strong>任务抢占用"带租约版本的条件更新"</strong>，一句话实现加锁 + 判断 + 推进；通知超时进 <code class="mv-md-code">result_unknown</code> 而不是直接重试，正是"重试前先确认状态"。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先讲"两者把代价花在不同地方" → <strong>纠正"乐观锁不加锁"</strong>（持锁时间之差）→ 给判据算式 <code class="mv-md-code">1/(1−p)</code> 与数值表 → 说明两边其实可以被同一动作改善（缩临界区）→ <strong>给第三条路：条件更新</strong>（防超卖标准答案）→ 重试的三条对策与"0 行的两种含义" → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>并发控制的一切手段都是在给"出错"定价，而不是消灭它。</strong> 悲观锁把"出错"定价成"排队时间"，乐观锁定价成"白干的工作量"，条件更新则把定价降到最低（因为它让数据库在一条语句里解决竞争）。<strong>而定价的依据永远是一个可算的量——冲突率。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能闭卷说清"两种锁把代价花在哪"并纠正"乐观锁不加锁"；能用 <code class="mv-md-code">1/(1−p)</code> 算出该选哪个；能当场写出防超卖的条件更新并说清它为什么优于"先查再改"；能说清重试的三条对策与"0 行的两种含义"；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

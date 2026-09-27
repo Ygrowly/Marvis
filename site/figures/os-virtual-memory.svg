@@ -1,0 +1,44 @@
+<svg viewBox="0 0 680 396" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>虚拟内存的三个账本与 OOM 的选择逻辑</title>
+<desc>VSZ 是虚拟地址空间预留，RSS 是常驻物理页，anon-rss 才是 OOM 关心的部分；OOM 按 oom_badness 打分，且分整机 OOM 与 cgroup OOM 两类。</desc>
+<defs>
+<marker id="arrow5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">三个「内存」不是一回事 —— 分不清就排不出故障</text>
+
+<rect x="40" y="46" width="196" height="112" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">VSZ / total-vm</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">虚拟地址空间，含 mmap</text>
+<text x="56" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">文件与地址预留</text>
+<text x="56" y="132" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">基本没有参考价值</text>
+<text x="56" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">≠ 内存泄漏</text>
+
+<rect x="242" y="46" width="196" height="112" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="258" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">RSS</text>
+<text x="258" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">常驻内存，真正占着</text>
+<text x="258" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">物理页的部分</text>
+<text x="258" y="132" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">「用了多少内存」看它</text>
+<text x="258" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">内核侧 25KB/线程不计入</text>
+
+<rect x="444" y="46" width="196" height="112" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="460" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">anon-rss</text>
+<text x="460" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">RSS 里的匿名页</text>
+<text x="460" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">（堆、栈）</text>
+<text x="460" y="132" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">排查 OOM 看它</text>
+<text x="460" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">被回收的才是这部分</text>
+
+<rect x="40" y="170" width="600" height="106" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="192" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">OOM 是算出来的：杀 oom_badness() 得分最高的任务</text>
+<text x="58" y="214" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">points ＝ (rss_anon + rss_file + rss_shmem + swapents + pgtables_pages) + oom_score_adj × totalpages ÷ 1000</text>
+<text x="58" y="236" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">· 页表本身也计入 → 疯狂映射小区域的进程可能「光凭页表」被杀　· init 与内核线程永不杀</text>
+<text x="58" y="254" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">· 与 victim 共享地址空间的一起杀（「杀线程」实际是杀整个进程）　· 5 秒内不连杀</text>
+<text x="58" y="270" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">oom_score_adj：−1000 ~ 1000，默认 0；−1000 = 免死，但全设免死会让内核 panic</text>
+
+<rect x="40" y="288" width="600" height="94" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="308" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">两类 OOM —— 「整机还剩 40% 却被杀」的答案在这里</text>
+<text x="58" y="330" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">整机 OOM：日志前缀「Out of memory:」，全系统范围挑 victim，确实内存不够</text>
+<text x="58" y="348" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">cgroup OOM：日志前缀「Memory cgroup out of memory:」，撞 memory.max，只在本 cgroup 内挑</text>
+<text x="58" y="368" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">→ 后者的发生与宿主机剩余内存【无关】。先看日志前缀，再查 memory.max / memory.current，别看 free -h</text>
+</svg>

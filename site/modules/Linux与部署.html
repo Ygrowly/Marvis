@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Linux 与部署模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">Linux 与部署模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/Linux与部署/Linux与部署模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>22</b> 道题（<b>12</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>3</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="Linux与部署-01-盒子.html"><span class="mv-line-no">一</span><span class="mv-line-name">盒子</span><span class="mv-line-q">容器到底隔离了什么、限制了哪些资源；为什么"容器里的上限"和"宿主机还剩多少"经常是两回事</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Linux与部署-02-上线.html"><span class="mv-line-no">二</span><span class="mv-line-name">上线</span><span class="mv-line-q">从镜像到一个能服务的进程，中间要过哪几关（配置、依赖、健康检查、优雅退出、信号）</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Linux与部署-03-排查.html"><span class="mv-line-no">三</span><span class="mv-line-name">排查</span><span class="mv-line-q">CPU / 内存 / 磁盘 / 网络四类症状分别先看什么；哪些数字最容易误判</span><span class="mv-line-st">母题 1 · 题 10</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"受控并发 + 低优先级回补"是这个模块最直接的证据</strong>——服务重启后<strong>扫描最近七天缺口并低优先级回补</strong>（<code class="mv-md-code">02-aggregation-and-recovery.md</code>），这既是<strong>启动期的依赖就绪问题</strong>（X2：服务起来时任务表里可能有积压），也是<strong>排查问题</strong>（X3：怎么知道重启后有没有漏算）。</li><li>解决什么问题：<strong>重启不等于状态清零</strong>——<strong>能恢复的只有落到数据库里的部分</strong>（这正是 [[母题-O1-上下文切换与死锁]] 的进程模型在运维层的对应）。</li><li>踩过的坑：<strong>Checkpoint 被当成"业务完成证明"</strong>——它是恢复线索，所以<strong>重启后的自检（扫描缺口）必须存在</strong>，不能假设"没报错就是都跑过了"。</li><li>决策与取舍：<strong>当前规模不上 MQ、不上复杂编排</strong>——<code class="mv-md-code">EnergyOps-快速学习掌握与面试实战.md</code> 里明确"达到升级条件才引入"。<strong>这与本模块第 0 节的"边界判断"同源：能不能不上，先算账。</strong></li><li>对应母题：【X2、X3】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"资源上限"在应用层的落地</strong>——超时、扫描量、行数、并发、内存配额、取消能力（<code class="mv-md-code">07-权限安全与生产隔离.md</code>、<code class="mv-md-code">08-查询性能与成本控制.md</code>）。<strong>这些正是容器/进程级限制在业务层的对应物</strong>：<strong>限制不是"不信任用户"，而是"防止一个请求把整个服务拖下水"。</strong></li><li>解决什么问题：<strong>只读副本 / 分析库 / 对象存储这一串依赖同时可用</strong>才能完成一次问数——<strong>这是 X2 的"启动依赖与降级路径"问题</strong>：某一环不可用时，应该 fail closed（权限不确定就不放行）还是降级。</li><li>踩过的坑：<strong>权限不确定时必须 fail closed</strong>（<code class="mv-md-code">07</code> 明确）；<strong>超时、取消要能真正中断</strong>（依赖底层 IO 机制，见 [[母题-O3-IO模型与零拷贝]]）。</li><li>决策与取舍：<strong>限额与配额优先于"加机器"</strong>——因为<strong>"加机器"不解决"单个请求无上界"</strong>（[[母题-O2-虚拟内存与缺页]] 的同一结论）。</li><li>对应母题：【X3】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"进程随时可能崩"被当成设计前提</strong>——PostgreSQL 存权威状态，Redis/ARQ 负责队列、限流与短期进度（<code class="mv-md-code">06-architecture-and-scenarios.md</code>、<code class="mv-md-code">04-idempotency-and-recovery.md</code> §9）。<strong>这就是 X1 与 X2 合起来要说的事：容器里的进程是"会被随时拿走"的</strong>，所以<strong>生命周期必须由外部状态来重建</strong>。</li><li>解决什么问题：<strong>Worker 重启后的状态重建</strong>——起来先读 AttackRun 和最后一个 Receipt，再校准 Checkpoint。</li><li>踩过的坑：<strong>容器内存与任务上限</strong>——<code class="mv-md-code">08-capacity-cost-and-facts.md</code> 给 Redis 只配 256~512MB，意味着<strong>这个容器被 cgroup 限制</strong>：<strong>超了是 cgroup OOM，和宿主机还剩多少内存无关</strong>（[[母题-O2-虚拟内存与缺页]] 4.3 的判据）。</li><li>决策与取舍：<strong>K8s、RabbitMQ、通用 DAG 都进了"主动删除"清单</strong>（<code class="mv-md-code">06</code> §秒级删除清单）——<strong>明确不做的比做的更能说明取舍</strong>。</li><li>对应母题：【X1、X2】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

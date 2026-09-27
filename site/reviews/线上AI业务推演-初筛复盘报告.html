@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>线上 AI 业务推演 初筛 复盘报告</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">面试诊断</span>
+    <h1 class="mv-topic-title">线上 AI 业务推演 初筛 复盘报告</h1>
+    <p class="mv-topic-meta">形式 线上 AI 业务推演（初筛），AI 面试官「小沙」连续追问，共 7 问，一题一问一追 ｜ 场景主线 电商平台售后自动退款系统，服装品类 ｜ 题面规模 10 万售后单/天，其中约 2 万笔符合自动退款条件、单笔 50–500 元；系统可读订单状态、物流轨迹、历史客诉；拦截或处理不了的转外包人工客服 ｜ 数据来源 你提供的完整对话记录（含 AI 每轮复述与追问原话）</p>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">总评</h2>
+    <div class="mv-problem"><p class="mv-md-p">一句话总评</p>
+<p class="mv-md-p"><strong>整场 17.7 / 25（7 题，最高 22、最低 12）</strong>，处于 16–19 档中上：<strong>「给一个能执行的方案」是你的强项，「先算清账再动方案」是你的短板。</strong></p>
+<p class="mv-md-p">七题里五题站在 18 分以上，其中 A5（超时重试防重）22 分、A7（排期砍需求）21 分，是两段能直接进题库的答案。扣分全部集中在两个位置：<strong>一是不算账</strong>——全程只算「该拦的没拦」带来的资损，一次没算「正常客户被拦」带来的误伤；给了分档线 60/30 却没说这数字从哪来。<strong>二是不用题面给的钩子</strong>——题面给了「单笔 50–500 元」「2 万笔/天」「转外包人工客服」三个数，分别对应金额维度、对账范围、外包容量，三处一个都没被用上。</p>
+<p class="mv-md-p">最值得改的一件事：<strong>养成「给数字自带口径」和「先算两侧账」两个条件反射</strong>——这两条都不是知识缺口，你的库里早就有（<code class="mv-md-code">主张-证据账本</code> 第 5 节定了证据等级，<code class="mv-md-code">系统设计题四段法</code> 里有估算环节），只是<strong>没在嘴里跑起来</strong>。</p>
+<p class="mv-md-p mv-md-quote">说明：分数是诊断工具，用来定位哪一维最弱，不预测录用结果。</p>
+<hr class="mv-md-hr"></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">先改这些 · 低分题 Top <span class="mv-topic-meta">点题号跳到对应题的答案</span></h2>
+    <a class="mv-weak-row" href="#q-A1"><span class="mv-qid">A1</span><span class="mv-chip">12/25</span><span class="mv-weak-q">业务方原话「最近有些人天天退货、薅我们羊毛，系统得管管、不能全给自动退了、得转人工」——面对这句原话，你会怎么把它**落地成系统里的判断逻辑**？</span><span class="mv-chip warn">缺需求翻译，只算单侧账</span><span class="mv-weak-go">跳到该题 →</span></a>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">分数分布 <span class="mv-topic-meta">共 7 题 · 颜色越深分越高 · 悬停看题号与归因</span></h2>
+    <figure-box num="1" title="各模块逐题得分与平均分（满分 25）"><svg viewBox="0 0 378 230" width="100%" role="img" xmlns="http://www.w3.org/2000/svg"><title>各模块逐题得分与平均分</title><desc>每行一个面试模块，方块是该模块每道题的得分（颜色越深分越高），行末是模块平均分。</desc><text x="218" y="15" text-anchor="end" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">初筛 · 一、需求翻译与判定逻辑</text><g><title>A1 · 业务方原话「最近有些人天天退货、薅我们羊毛，系统得管管、不能 —— 12 分（缺需求翻译，只算单侧账）</title><rect x="232" y="0" width="30" height="30" rx="5" fill="#EF9F27"/><text x="247" y="16" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">12</text></g><g><title>A2 · 要把「增强拦截、提高门槛」落地成**代码能执行的规则**，你 —— 20 分（阈值无口径，漏金额维度）</title><rect x="268" y="0" width="30" height="30" rx="5" fill="#639922"/><text x="283" y="16" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">20</text></g><text x="314" y="15" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="12" font-weight="500" fill="#639922">16.0</text><text x="218" y="61" text-anchor="end" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">初筛 · 二、状态机与流程约束</text><g><title>A3 · 确定判断逻辑后，一笔售后单从进来到结束，在你的系统里会经过* —— 18 分（转人工未建模，拒绝路径缺失）</title><rect x="232" y="46" width="30" height="30" rx="5" fill="#639922"/><text x="247" y="62" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">18</text></g><text x="314" y="61" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="12" font-weight="500" fill="#639922">18.0</text><text x="218" y="107" text-anchor="end" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">初筛 · 三、线上故障排查</text><g><title>A4 · 用户投诉：前端提示「退款已受理」，但订单系统里没有退款记录。 —— 18 分（未先止血，异步验证手段缺失）</title><rect x="232" y="92" width="30" height="30" rx="5" fill="#639922"/><text x="247" y="108" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">18</text></g><text x="314" y="107" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="12" font-weight="500" fill="#639922">18.0</text><text x="218" y="153" text-anchor="end" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">初筛 · 四、资损防护与对账</text><g><title>A5 · 退款 API 响应超时、但底层支付网关**其实已经退款成功* —— 22 分（幂等键粒度未定义）</title><rect x="232" y="138" width="30" height="30" rx="5" fill="#3B6D11"/><text x="247" y="154" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">22</text></g><g><title>A6 · 财务月底对账，发现系统记录的自动退款总金额，和支付网关实际支 —— 13 分（未分「在途假差异」与真差错）</title><rect x="268" y="138" width="30" height="30" rx="5" fill="#EF9F27"/><text x="283" y="154" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">13</text></g><text x="314" y="153" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="12" font-weight="500" fill="#639922">17.5</text><text x="218" y="199" text-anchor="end" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">初筛 · 五、排期压缩与取舍</text><g><title>A7 · 排期被压缩，只有你和另一个后端、两周后必须上线，**必须砍需 —— 21 分（未给影子模式，未重定义验收）</title><rect x="232" y="184" width="30" height="30" rx="5" fill="#3B6D11"/><text x="247" y="200" text-anchor="middle" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="11" fill="#FFFFFF">21</text></g><text x="314" y="199" dominant-baseline="central" font-family="ui-monospace,monospace" font-size="12" font-weight="500" fill="#3B6D11">21.0</text></svg></figure-box>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">逐题（按模块）<span class="mv-topic-meta">题干直接可见 · 答案先自答再展开</span></h2>
+    <collapse-panel title="初筛 · 模块 A · 需求翻译与判定逻辑 · 平均 16.0（2 题）" open><div class="mv-qitem" id="q-A1"><div class="mv-qhead"><span class="mv-qid">A1</span><span class="mv-qtime">第 1 轮</span><span class="mv-chip">12/25</span><span class="mv-chip warn">缺需求翻译，只算单侧账</span><span class="mv-chip ghost">需求翻译</span></div><div class="mv-qtext">业务方原话「最近有些人天天退货、薅我们羊毛，系统得管管、不能全给自动退了、得转人工」——面对这句原话，你会怎么把它<strong>落地成系统里的判断逻辑</strong>？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：你会不会先做需求翻译，而不是照着最后半句直接动手。</p>
+<p class="mv-md-p"><strong>参考回答（90 秒）</strong>：</p>
+<p class="mv-md-p mv-md-quote">「这句原话里混了三个东西：一个<strong>现象</strong>（有人天天退货）、一个<strong>判断</strong>（这是薅羊毛）、一个<strong>方案</strong>（转人工）。我不会照着最后半句直接改代码，先做三件事。</p>
+<p class="mv-md-p mv-md-quote"><strong>第一，把现象变成可度量的定义。</strong> 「天天退货」是频率问题，要给窗口和口径；「薅我们羊毛」是收益问题，要定义成「用户以明显低于正常成本的方式获得了确定收益」。这两个词不定义清楚，规则没法写，写出来也不能被评审。</p>
+<p class="mv-md-p mv-md-quote"><strong>第二，问清业务方的边界。</strong> 提高门槛一定同时动两个指标——<strong>漏放</strong>（该拦的没拦）带来资损，<strong>误拦</strong>（正常客户被卡）带来客诉和流失。业务方只说了前一半，后一半必须问出来：能接受的误拦率是多少。不问这个，规则一定做过紧。</p>
+<p class="mv-md-p mv-md-quote"><strong>第三，确认改造范围与下游容量。</strong> 是只调自动退款这一条链路，还是所有售后类型都动？被拦下来的单转外包人工——<strong>外包是有限容量的资源</strong>，日处理上限是多少？如果拦下来 3 万单、人能处理的只有 1 万单，那只是把堵点从系统搬到了人身上。</p>
+<p class="mv-md-p mv-md-quote">这三件事有答案之后，落地形态是：把原来的「符合条件即自动退款」改成「先过一遍风险准入」；准入输出三档——<strong>放行 / 有条件放行 / 转人工</strong>，另加一个<strong>不确定出口</strong>（指标缺失或分数在边界上的，一律转人工，不默认放行）。具体判据就是下一问的指标。」</p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：一句话给了方向和三个动作（增强拦截 / 提高门槛 / 降级转人工），<strong>没有做翻译、没有问边界、没有算容量</strong>。这题考的不是方案，是「能不能先不动手」。</p></collapse-panel></div><div class="mv-qitem" id="q-A2"><div class="mv-qhead"><span class="mv-qid">A2</span><span class="mv-qtime">第 2 轮</span><span class="mv-chip">20/25</span><span class="mv-chip warn">阈值无口径，漏金额维度</span><span class="mv-chip ghost">指标设计</span></div><div class="mv-qtext">要把「增强拦截、提高门槛」落地成<strong>代码能执行的规则</strong>，你会怎么把「天天退货」和「薅羊毛」翻译成具体的指标和判断条件？比如具体的数值、时间范围或判定字段</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：能不能把两个口语词变成可执行的字段与条件，并且说清数字的性质。</p>
+<p class="mv-md-p"><strong>参考回答</strong>：</p>
+<p class="mv-md-p mv-md-quote">分两步，先定义拆解，再给判定条件。</p>
+<p class="mv-md-p mv-md-quote"><strong>一、「天天退货」= 频率异常。</strong> 可用字段：近 30 天退货申请次数、近 30 天退货率、连续退货天数、退货间隔的中位数。<strong>其中退货率必须说清分母</strong>——我用「签收完成单数」做分母，不用下单数，因为未签收的单会把比率稀释掉。</p>
+<p class="mv-md-p mv-md-quote"><strong>二、「薅羊毛」= 收益套利。</strong> 本质是「收益大于成本」，所以必须带金额维度：近 30 天退款总金额、退款金额占下单金额之比、以及<strong>退款是否集中在低客单价段</strong>。题面说单笔 50–500 元——<strong>50 元档的套取成本最低、收益比最高</strong>，正常用户的退款分布应该跟他的下单分布一致，明显偏离本身就是特征。再加行为特征：<strong>仅退款占比</strong>（不退货只退钱，是最高危形态）、七天无理由在临近期限提交的比例、退货物流异常（空包、虚假单号、地址异常）、同一收货地址或设备关联的账号数。</p>
+<p class="mv-md-p mv-md-quote"><strong>三、判定条件分两轨，不混在一起。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>硬规则轨</strong>（不评分，直接拒绝自动退款并转人工，同时落证据）：命中风控黑名单、有空包或虚假物流记录、同一收货地址关联 3 个以上账号且都在近 30 天高频退款。</p>
+<p class="mv-md-p mv-md-quote"><strong>评分卡轨</strong>（分段赋分再加权，输出 0–100，用于分层处置）：高分转人工；中档自动放行但<strong>强制走「退货验收后退款」、不接受仅退款</strong>；低档正常自动退。</p>
+<p class="mv-md-p mv-md-quote"><strong>四、这里必须交代一句</strong>：<strong>上面这些阈值和权重都是我拍的初值，不是校准过的参数。</strong> 做法是先用硬规则上线跑两周，把人工审核的判定结果积累成样本，再回测校准权重和分档线——<strong>这是分档线唯一可靠的来源</strong>。没有这一步，任何分档线都不该被当规格用。</p>
+<p class="mv-md-p mv-md-quote"><strong>五、加一个不确定出口</strong>：指标缺失（比如物流轨迹拉不到）或分数落在档位边界上的，归「不确定」，转人工。</p>
+<p class="mv-md-p"><strong>改了什么</strong>：① 把「提高门槛」拆成频率 / 套利 / 行为三类特征；② <strong>补上金额维度，用上了题面的 50–500 元</strong>；③ 明确分母口径；④ 硬规则与评分卡分轨；⑤ <strong>给数字自带性质标注</strong>；⑥ 补不确定出口。</p>
+<p class="mv-md-p"><strong>你当时的答案已经是全场最好的一题</strong>（分层处置四档加硬指标双轨，思路成熟），上面只是把它补到满分。</p></collapse-panel></div></collapse-panel><collapse-panel title="初筛 · 模块 B · 状态机与流程约束 · 平均 18.0（1 题）" open><div class="mv-qitem" id="q-A3"><div class="mv-qhead"><span class="mv-qid">A3</span><span class="mv-qtime">第 3 轮</span><span class="mv-chip">18/25</span><span class="mv-chip warn">转人工未建模，拒绝路径缺失</span><span class="mv-chip ghost">状态建模</span></div><div class="mv-qtext">确定判断逻辑后，一笔售后单从进来到结束，在你的系统里会经过<strong>哪几个核心状态</strong>？其中哪些状态之间的跳转是你会在代码里严格禁止的？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>参考回答</strong>：</p>
+<p class="mv-md-p mv-md-quote">我按「一单进来会经历什么」画，然后单独说约束。</p>
+<p class="mv-md-p mv-md-quote"><strong>主状态与路径</strong>：待受理 → 风控判定中 → 分叉。放行 → 待退款 → 已退款；拦截 → 待人工处理 → 人工放行 → 已退款，或 人工拒绝 → 已拒绝；有条件放行 → 待退货 → 待验收 → 已退款（验收不通过则退回待人工处理）。</p>
+<p class="mv-md-p mv-md-quote"><strong>终态是闭集，三个</strong>：已退款、已拒绝、已关闭。<strong>三者的职责必须写清</strong>——已退款代表钱出去了；已拒绝代表判定或人工否决；已关闭代表超时未处理、用户撤销或系统回收。职责不区分开，资损报表和客服口径一定会对不上。</p>
+<p class="mv-md-p mv-md-quote"><strong>禁止跳转，我收成一条原则</strong>：<strong>终态是吸收态，只能由非终态单向进入，进入后不可迁出。</strong> 按这条原则，已退款不能变任何状态、已拒绝和已关闭不能变已退款，都成立。但<strong>枚举法会漏</strong>——将来加一个状态就漏一条。所以代码里我不写枚举，写<strong>状态转移白名单</strong>：只允许显式登记过的 (from, to) 组合，其他一律拒绝并抛异常。</p>
+<p class="mv-md-p mv-md-quote"><strong>还要补两条</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>一是「转人工」本身应该是一个状态，不是终点。</strong> 它叫「待人工处理」，有进入、有出口。它的出口是人工判定结果，<strong>兜底是超时未处理</strong>——要给 SLA，比如 24 小时未处理自动升级或先按「拒绝自动退款」处理。不给兜底，这一单会永远挂在中间态，这才是真正的资损黑洞。</p>
+<p class="mv-md-p mv-md-quote"><strong>二是「有条件放行」那档不是一个状态，而是两个</strong>：待退货、待验收，中间还有验收不通过的回退分支。</p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：把「异常转人工」当成了流程终点，<strong>没有把它建成状态</strong>；只画了退款路径，<strong>拒绝路径没画</strong>；三个终态的职责边界没定义；禁止跳转给的是枚举而不是原则。</p></collapse-panel></div></collapse-panel><collapse-panel title="初筛 · 模块 C · 线上故障排查 · 平均 18.0（1 题）" open><div class="mv-qitem" id="q-A4"><div class="mv-qhead"><span class="mv-qid">A4</span><span class="mv-qtime">第 4 轮</span><span class="mv-chip">18/25</span><span class="mv-chip warn">未先止血，异步验证手段缺失</span><span class="mv-chip ghost">故障排查</span></div><div class="mv-qtext">用户投诉：前端提示「退款已受理」，但订单系统里没有退款记录。<strong>日志无任何报错、退款 API 也没挂</strong>。你会怎么一步步缩小排查范围？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：资损类问题的处理顺序——先止血还是先定位。</p>
+<p class="mv-md-p"><strong>参考回答</strong>：</p>
+<p class="mv-md-p mv-md-quote">先说我不做什么：<strong>不会一上来就查代码。</strong> 前端已经告诉用户「退款已受理」而系统里没有记录，这是一个已经发生的资金口径问题，顺序应该是<strong>先盘点影响面并止血，再定位根因</strong>。</p>
+<p class="mv-md-p mv-md-quote"><strong>第一步 · 定影响面，用数据不用猜。</strong> 按时间窗口拉出所有触达过「退款已受理」这个提示的请求，去重后与退款流水表做左连接，<strong>差集就是受影响单量</strong>。同时画两条曲线：起始时间（什么时候开始有的）和分布形态（散点还是连续）——散点偏个例，连续偏系统性问题。这一步的输出是三个数：影响单量、时间起点、金额合计。</p>
+<p class="mv-md-p mv-md-quote"><strong>第二步 · 止血，在定位之前。</strong> 把该文案先改成「处理中」（<strong>文案本身就是给用户的行动指令</strong>），受影响订单进补偿队列，按后续对账结果补退或更正提示。先堵口子，再慢慢查。</p>
+<p class="mv-md-p mv-md-quote"><strong>第三步 · 定位，从链路外往里走。</strong> 无报错加 API 正常，说明进程没崩、协议层通，<strong>问题不在「调用」，在「落库」</strong>。所以先看这条链路上有几个写动作：受理记录写哪张表、退款流水写哪张表、网关流水写哪张表。<strong>拿一笔具体订单去查这三张表</strong>，看卡在哪一步——这比看日志有用得多，因为它给的是数据事实。</p>
+<p class="mv-md-p mv-md-quote"><strong>第四步 · 三个假设与各自的验证方式。</strong> ① 受理动作本身就没写订单侧的表（前端展示的「已受理」来自前置记录，两条链路本来就是分开的）→ 验证：对表差集。② 异步写的消息发出去了但消费失败被吞 → <strong>这类失败的关键证据不在应用日志里，在消息队列的堆积、死信队列和 ack 记录上</strong>；日志看不到报错恰恰是因为异常被捕获了，或者根本没进消费者。③ 事务边界问题——先提交后发消息（消息丢了）或先发消息后提交（消息先到、数据没提交）→ 验证：看事务边界和消息发送的位置。</p>
+<p class="mv-md-p mv-md-quote"><strong>第五步 · 修复与防线。</strong> 修数据（补退、更正状态）→ 修代码（把「受理」和「落库」做成不可分割的动作，要么同事务，要么用本地消息表）→ 加监控。<strong>最该加的一个指标是「受理量 与 退款流水量 的比率告警」</strong>——这个指标一旦偏移当天就能发现，不用等用户投诉。</p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：没有先算影响面、没有先止血；把「对比三方状态机定义和文案」放在第二步，<strong>但「订单里没有退款记录」是一个数据事实，应该先去数据层做三表比对</strong>，定义层是后面的事；异步失败怎么验证没说（答案是死信队列与 ack，不是应用日志）。</p></collapse-panel></div></collapse-panel><collapse-panel title="初筛 · 模块 D · 资损防护与对账 · 平均 17.5（2 题）" open><div class="mv-qitem" id="q-A5"><div class="mv-qhead"><span class="mv-qid">A5</span><span class="mv-qtime">第 5 轮</span><span class="mv-chip">22/25</span><span class="mv-chip warn">幂等键粒度未定义</span><span class="mv-chip ghost">幂等与防重</span></div><div class="mv-qtext">退款 API 响应超时、但底层支付网关<strong>其实已经退款成功</strong>，系统没拿到结果、给前端返回了「系统繁忙请重试」。用户立刻狂点重试，<strong>系统会发生什么、你怎么防范</strong>？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：超时是「未知」不是「失败」；幂等键怎么选、谁来生成。</p>
+<p class="mv-md-p"><strong>参考回答（把这题补到满分）</strong>：</p>
+<p class="mv-md-p mv-md-quote">会发生什么：网关侧已经退成功一笔，但我们拿到的是超时，<strong>超时被当成失败处理</strong>；用户重试又发起新的一笔——如果每次重试各自生成新的业务单号，幂等拦不住，实际会重复退款 N 次。</p>
+<p class="mv-md-p mv-md-quote">防范分四层：</p>
+<p class="mv-md-p mv-md-quote"><strong>① 前端</strong>：按钮防抖、置灰倒计时、改文案。<strong>文案本身是给用户的行动指令</strong>——「系统繁忙请重试」就是在教用户点击，应该改成「处理中，请勿重复提交」。</p>
+<p class="mv-md-p mv-md-quote"><strong>② 状态语义</strong>：超时不能记为失败。分布式调用只有三种结果——<strong>成功、失败、未知</strong>。超时必须落「处理中 / 未知」，且这一单没结清之前不允许再发起新的一笔。</p>
+<p class="mv-md-p mv-md-quote"><strong>③ 幂等</strong>：<strong>关键是键怎么选、谁来生成。</strong> 用<strong>售后单号加退款批次号</strong>这类稳定的业务键，由<strong>服务端生成或校验</strong>；不接受前端传的请求 ID——前端每次点击都会生成新 ID，那幂等就是白做的。重复请求直接返回上一笔的结果，而不是抛错。</p>
+<p class="mv-md-p mv-md-quote"><strong>④ 主动确权与对账</strong>：超时后不等，异步去调网关的<strong>查询接口</strong>拿真实状态，把本地状态改对；再兜一层，T+1 用网关账单与本地退款流水做比对，把没对上的单捞出来。</p>
+<p class="mv-md-p mv-md-quote">还有一个要收口的地方：<strong>「处理中」不能挂到天荒地老。</strong> 异步确权要设重试退避与最大重试次数，超过了转人工。不然这一单会永远停在中间态，同样是一个资损黑洞。</p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：<strong>幂等键的粒度与生成方没交代</strong>——这是这题往下追一层必然被问到的；「处理中」状态的超时收口没提。其余四条你答得很完整，尤其「不能置为失败」和「文案是行动指令」两层，很多人答不到。</p></collapse-panel></div><div class="mv-qitem" id="q-A6"><div class="mv-qhead"><span class="mv-qid">A6</span><span class="mv-qtime">第 6 轮</span><span class="mv-chip">13/25</span><span class="mv-chip warn">未分「在途假差异」与真差错</span><span class="mv-chip ghost">对账与资金一致性</span></div><div class="mv-qtext">财务月底对账，发现系统记录的自动退款总金额，和支付网关实际支出的总金额<strong>对不上</strong>。你第一步会怎么查？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：对账差异的分类学——先分清「假差异」和「真差错」。</p>
+<p class="mv-md-p"><strong>参考回答</strong>：</p>
+<p class="mv-md-p mv-md-quote">对账差额的第一步不是查数据，是<strong>先分类</strong>，因为不同成因的处理路径完全不同。</p>
+<p class="mv-md-p mv-md-quote"><strong>第一类 · 时间归属差（假差异）</strong>。我们按发起时间记账、网关按成功时间记账，跨日和跨月的单一定会差；还有「在途」——我们这边已经记了退款，网关还没结算。<strong>这类差异的特征是会被下一天抹平。</strong> 所以第一个动作是：把差额按天展开，看它是<strong>固定在某一天</strong>，还是<strong>每天都在、且量级对得上前后两天的在途量</strong>。前者是真差错，后者是口径差。</p>
+<p class="mv-md-p mv-md-quote"><strong>第二类 · 范围差</strong>。我们记的是「退款金额」，网关记的是「实际支出」——中间可能有平台补贴、运费险、优惠券分摊、手续费，这些字段算不算进去两边不一定一致。第二个动作是<strong>把两边的口径逐字段对齐</strong>：我们的退款金额由哪些字段加出来，网关账单里对应的是哪些字段，差在哪一项。</p>
+<p class="mv-md-p mv-md-quote"><strong>第三类 · 真差错</strong>：多退、少退、漏退、重复退。画像很明确——<strong>集中在少数订单上、金额不等、且不会自动抹平</strong>。</p>
+<p class="mv-md-p mv-md-quote">排查顺序我按数据可信度倒推：<strong>先确认两边取数的数据源本身是对的</strong>（我们取的是流水表还是订单表？网关那边取的是结算单还是 API？），再看时点口径，最后才逐单追。</p>
+<p class="mv-md-p mv-md-quote">机制上做两件事：<strong>① 把月度对账改成每日自动对账</strong>，差异当天暴露，不用等 30 天后再回头找——这一点你答到了；<strong>② 差异要挂账跟踪</strong>：每天的差异进一张差异台账，标状态（待查 / 已定位 / 已处理 / 确认为口径差），按天滚动，不能平不了就放着。</p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：「对齐口径」这一层只给了四个字没有展开，<strong>而这题的考点正在这里</strong>；没区分「会抹平的在途差异」和「不会抹平的真差错」；也没提差异要有人跟。</p></collapse-panel></div></collapse-panel><collapse-panel title="初筛 · 模块 E · 排期压缩与取舍 · 平均 21.0（1 题）" open><div class="mv-qitem" id="q-A7"><div class="mv-qhead"><span class="mv-qid">A7</span><span class="mv-qtime">第 7 轮</span><span class="mv-chip">21/25</span><span class="mv-chip warn">未给影子模式，未重定义验收</span><span class="mv-chip ghost">排期取舍</span></div><div class="mv-qtext">排期被压缩，只有你和另一个后端、两周后必须上线，<strong>必须砍需求</strong>。回顾前面的风控规则、状态机、防重和对账机制，你第一刀砍掉哪一块？砍掉之后怎么用外包客服或简单业务规则低成本兜底？</div><collapse-panel title="标准答案 / 口述稿（先自己答，再看）"><p class="mv-md-p"><strong>面试官真正想听</strong>：砍的判据，以及砍完之后责任怎么转移、验收标准怎么重定义。</p>
+<p class="mv-md-p"><strong>参考回答</strong>：</p>
+<p class="mv-md-p mv-md-quote">先说判据，再说砍哪块。</p>
+<p class="mv-md-p mv-md-quote"><strong>判据一条：不可逆的不砍，可逆且可后补的可以砍。</strong> 资损、合规、资金安全属于不可逆——砍了就是事故；自动化率、精度、体验属于可逆——降了只是成本上升，可以后补。</p>
+<p class="mv-md-p mv-md-quote"><strong>按这条，我砍的是「评分卡驱动的自动分级处置」，保留硬规则加默认转人工。</strong> 理由你说对了，我补一个更准确的表述：<strong>不是「砍掉评分」，是「把评分降级为影子模式」</strong>——模型照样离线跑、照样算分、照样落库，<strong>只是不参与线上决策</strong>。这样两周后上线时你手上已经有一批真实分布数据，第二阶段直接用它定阈值上线，不用从零开始。</p>
+<p class="mv-md-p mv-md-quote"><strong>保留的三块</strong>：硬规则（黑名单、证据链）、幂等与防重（超时不当失败、业务键幂等）、每日对账——<strong>这三块砍任何一块都是直接资损</strong>。</p>
+<p class="mv-md-p mv-md-quote"><strong>砍完之后有三笔账必须当场跟业务方结清：</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>① 重新定义验收标准。</strong> 砍了自动化率，上线后自动退款占比会下降、人工量会上升。<strong>「两周后什么叫上线成功」必须重新对齐</strong>，否则上线当天就会被打回。</p>
+<p class="mv-md-p mv-md-quote"><strong>② 算人工容量。</strong> 题面说拦截的转外包人工——<strong>外包是有限容量的资源</strong>。先算：2 万笔/天里，改完之后转人工的比例会从多少涨到多少，外包日处理上限是多少；不够就得再放宽阈值或者加人。<strong>这是砍需求最容易被忽略的连带成本。</strong></p>
+<p class="mv-md-p mv-md-quote"><strong>③ 把人工判断变成资产。</strong> 让客服按固定判定模板填结论（命中哪条、判断理由、证据），它既是标注数据，也是第二阶段的评测集来源；同时可以反推哪些规则的区分度最高。<strong>你说的这一点是本卷最好的一个想法。</strong></p>
+<p class="mv-md-p"><strong>你当时的缺口</strong>：<strong>影子模式（降级但不停止采集）没说出来</strong>；砍完之后要重新定义验收标准、要算外包容量，这两笔账没结。其余部分（判据、保留清单、用客服反哺评测集）答得很好。</p></collapse-panel></div></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">缺失知识模块</h2>
+    <collapse-panel title="M1 · 风控判定的双侧指标与阈值校准"><p class="mv-md-p"><strong>为什么是缺口</strong>：A1、A2 全卷只算「漏放」（资损）一侧，<strong>一次没出现「误拦」</strong>（正常客户被卡 → 客诉与流失）；A2 的分档线 60 / 30 没有任何来源</p><p class="mv-md-p"><strong>补到什么程度</strong>：每条风控判据都能同时报出漏放率与误拦率；说阈值时必须自带性质（初值 / 回测值 / 灰度值），并能说出校准流程</p><p class="mv-md-p"><strong>挂靠</strong>：[[系统设计题-澄清拆解估算与方案的四段法]]</p></collapse-panel><collapse-panel title="M2 · 指标口径定义（分子分母加时点归属）"><p class="mv-md-p"><strong>为什么是缺口</strong>：A2「近 30 天退货率」的分母未定义；A2 的「退款成功率」是结果字段却被当行为特征用；A6 我方「退款金额」与网关口径的字段未对齐</p><p class="mv-md-p"><strong>补到什么程度</strong>：任何比率都能一句话说清分子、分母、统计时点；任何对账口径能列出差异字段清单</p><p class="mv-md-p"><strong>挂靠</strong>：[[系统设计题-澄清拆解估算与方案的四段法]]</p></collapse-panel><collapse-panel title="M3 · 对账与资金一致性"><p class="mv-md-p"><strong>为什么是缺口</strong>：A6 只给「拆解 → 对齐口径 → 改每日对账」三层，其中「对齐口径」无内容；未区分「会抹平的在途差异」与「不会抹平的真差错」</p><p class="mv-md-p"><strong>补到什么程度</strong>：能按时间归属差 / 范围差 / 真差错三类说清差异，并给出差异台账的挂账与滚动跟踪机制</p><p class="mv-md-p"><strong>挂靠</strong>：[[后端必会面试题-覆盖底库]]（跨域高频题 · 幂等与对账）</p></collapse-panel><collapse-panel title="M4 · 状态机建模规范"><p class="mv-md-p"><strong>为什么是缺口</strong>：A3 把「转人工」当终点不建状态；缺拒绝路径；三个终态职责未定义；禁止跳转给枚举不给原则</p><p class="mv-md-p"><strong>补到什么程度</strong>：画任何状态机都能给出：终态闭集与各自职责、每个非终态的入出口、禁止跳转的白名单原则、中间态的超时兜底</p><p class="mv-md-p"><strong>挂靠</strong>：[[Agent运行时与工具模块卡]]（A4 长任务状态与 Checkpoint）</p></collapse-panel><collapse-panel title="M5 · 幂等键的设计（粒度与生成方）"><p class="mv-md-p"><strong>为什么是缺口</strong>：A5 只说了「使用幂等键」，没说键选什么、谁来生成——而键选错等于没做</p><p class="mv-md-p"><strong>补到什么程度</strong>：能说清幂等键的选取原则（稳定业务键、服务端生成或校验），以及它与「部分退款」「多次退款」场景的兼容性</p><p class="mv-md-p"><strong>挂靠</strong>：[[消息队列模块卡]]（Q2 重复与乱序）</p></collapse-panel><collapse-panel title="M6 · 资损类故障的处理顺序（先止血后定位）"><p class="mv-md-p"><strong>为什么是缺口</strong>：A4 直接进排查流程，没有先算影响面、没有先止损；这是资损口径问题，顺序反了</p><p class="mv-md-p"><strong>补到什么程度</strong>：遇到资金或数据不一致类问题，第一句先给「影响面盘点加止血动作」，第二句才进定位</p><p class="mv-md-p"><strong>挂靠</strong>：[[Linux与部署模块卡]]（X3 线上排查的顺序）</p></collapse-panel><collapse-panel title="M7 · 需求翻译作为独立动作"><p class="mv-md-p"><strong>为什么是缺口</strong>：A1 一句话就给方案，没做「现象 → 定义 → 边界 → 范围」的翻译；<strong>需要 AI 追问才补上</strong>（下一问就拿到了 20 分）</p><p class="mv-md-p"><strong>补到什么程度</strong>：拿到任何一句业务方原话，第一轮就先完成翻译并回报边界与容量，不等追问</p><p class="mv-md-p"><strong>挂靠</strong>：[[系统设计题-澄清拆解估算与方案的四段法]]</p></collapse-panel><collapse-panel title="M8 · 影子模式与功能降级"><p class="mv-md-p"><strong>为什么是缺口</strong>：A7 说「砍掉评分机制」，但没说「评分可以离线继续跑、只是不参与决策」；也没提砍完之后要重新定义验收标准</p><p class="mv-md-p"><strong>补到什么程度</strong>：讲砍需求时能给出「降级为影子模式」的形态，以及砍完之后对业务方要重新对齐的验收口径与容量账</p><p class="mv-md-p"><strong>挂靠</strong>：[[评测观测与治理模块卡]]（E6 灰度发布与回滚）</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">下次准备清单</h2>
+    <collapse-panel title="面试前 1 天（5 条）" open><ul class="mv-md-ul"><li><strong>把本卷四个判据框架写成 4 张口述卡</strong>：模糊诉求先翻译、给数字自带口径、资损先止血后定位、砍需求看不可逆性 —— 完成标准：不看笔记讲完，每张 30–45 秒。</li><li><strong>闭卷重答 A1 / A6 两题并录音</strong>：这两题是本卷最低分（12 与 13）。答完回听，检查是否出现「漏放 / 误拦」两个方向、是否出现「影响面 / 止血」两个动作 —— 完成标准：两题都能在 90 秒内把两侧账说出来。</li><li><strong>A3 状态机手画一遍</strong>：从空白的纸起，画全放行 / 拦截 / 有条件放行三条路径，标出终态三者的职责与「待人工处理」的入出口与超时兜底 —— 完成标准：画出的图里有拒绝路径和超时兜底，且禁止跳转写成白名单原则而不是枚举。</li><li><strong>A5 幂等键补一层</strong>：把「幂等键选什么、谁生成、与多次部分退款怎么共存」写成 60 秒答案 —— 完成标准：能当场说出为什么不能用前端生成的请求 ID。</li><li><strong>从 <code class="mv-md-code">场景设计题库-十道母题</code> 抽一题，10 分钟走四段</strong>：重点补估算段，必须给出峰值 QPS 加数据量加瓶颈层三个数 —— 完成标准：录音里能听到三个具体数字，且每个数字自带性质说明。</li></ul></collapse-panel><collapse-panel title="面试前 1 小时（4 条）"><ul class="mv-md-ul"><li>过一遍本卷第 3.1 的四个判据框架（只读不背）。</li><li>过一遍 A5 的四层防线（前端 / 状态语义 / 幂等 / 主动确权）与 A7 的三笔账（重定义验收 / 算容量 / 人工反哺评测集）。</li><li>在草稿纸上写一行提醒自己：<strong>「两侧账：漏放多少、误拦多少」</strong>。</li><li>提前确认本轮是否允许提问：如果是 AI 推演，把第一个澄清问题也想好——<strong>「我要先确认能接受的误拦上限和外包日处理容量」</strong>。</li></ul></collapse-panel><collapse-panel title="面试中（6 条）"><ul class="mv-md-ul"><li><strong>拿到模糊诉求，先翻译再动方案</strong>：第一轮就把「现象 / 判断 / 方案」拆开，并回报两侧代价与容量约束，不等追问（A1 的教训：被追问后才做，白丢 8 分）。</li><li><strong>给任何数字都自带口径</strong>：「这两个数是我拍的初值，不是校准过的」「这个比率的分母是签收完成单数」——主动交代比被追问出来强十倍。</li><li><strong>题面给的每个数字都要用上</strong>：本卷的 50–500 元、2 万笔、外包客服三个钩子对应金额维度、对账范围、下游容量，一个都不能白给。</li><li><strong>资损 / 数据不一致类问题，第一句先说影响面与止血</strong>，第二句才进排查流程。</li><li><strong>画状态机时检查三件事</strong>：终态闭集且职责写开、每个出口都建成状态（包括「转人工」）、禁止跳转用白名单原则表达。</li><li><strong>利用 AI 面试官的追问</strong>：它的追问里写着评分维度（「比如具体的数值、时间范围或判定字段」「哪些跳转是严格禁止的」）——<strong>顺着它给的维度补齐就行，不需要自己另起框架</strong>。</li></ul></collapse-panel>
+  </div>
+
+  <p class="mv-note">正本：wiki/interview/线上AI业务推演-初筛复盘报告.md　（改正本后重跑 build.py 即可刷新本页）</p>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

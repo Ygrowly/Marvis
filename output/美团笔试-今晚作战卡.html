@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="OAFjEJhcTZTAK9Q8IzvK4f">
+<head data-page-node-id="IPk1D1kDZmMhdhRgpNfjfE">
+<meta charset="UTF-8" data-page-node-id="0PMmW5xksjHkScRr1TVPSP">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="H4FRWkDeibOh5pLEBpvc9U">
+<title>美团笔试 · 今晚作战卡（已按官方通知修订）</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2328; --ink2:#4b5563; --ink3:#6b7280;
+    --line:#e5e7eb; --line2:#d1d5db;
+    --red:#c0392b; --redbg:#fdf2f1;
+    --amber:#b45309; --amberbg:#fffbeb;
+    --blue:#1d4ed8; --bluebg:#eff4ff;
+    --green:#047857; --greenbg:#ecfdf5;
+    --purple:#6d28d9; --purplebg:#f5f3ff;
+    --gray:#374151; --graybg:#f3f4f6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 60px;
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:14.5px; line-height:1.72; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto}
+  header{margin-bottom:22px}
+  h1{font-size:26px;margin:0 0 8px;letter-spacing:-.3px}
+  .sub{color:var(--ink3);font-size:13.5px}
+  .sub b{color:var(--ink2)}
+  .src{
+    margin-top:10px;padding:11px 13px;border-radius:6px;background:var(--greenbg);
+    border:1px solid #a7f3d0;font-size:12.7px;color:#065f46;line-height:1.7;
+  }
+  .src .warn{color:#7c4a03}
+  h2{
+    font-size:17px;margin:34px 0 12px;padding-left:10px;
+    border-left:4px solid var(--blue);line-height:1.3;
+  }
+  h2 .n{color:var(--ink3);font-weight:600;font-size:14px;margin-right:6px}
+  h3{font-size:14.5px;margin:18px 0 8px;color:var(--ink)}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{
+    background:#eef1f5;padding:1.5px 5px;border-radius:4px;
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12.8px;
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:16px 18px;margin:12px 0}
+  .hero{
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
+    padding:18px 20px;margin:14px 0;
+  }
+  .hero .big{font-size:15.5px;line-height:1.85}
+  .hero .big b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:var(--card)}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f3f6;font-weight:600;color:var(--ink2);font-size:13px}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11.5px;font-weight:600;line-height:1.7;white-space:nowrap}
+  .p-red{background:var(--redbg);color:var(--red)}
+  .p-amber{background:var(--amberbg);color:var(--amber)}
+  .p-blue{background:var(--bluebg);color:var(--blue)}
+  .p-green{background:var(--greenbg);color:var(--green)}
+  .p-purple{background:var(--purplebg);color:var(--purple)}
+  .p-gray{background:var(--graybg);color:var(--gray)}
+  .box{border-radius:8px;padding:13px 15px;margin:12px 0;border:1px solid;break-inside:avoid;page-break-inside:avoid}
+  .b-red{background:var(--redbg);border-color:#f5c6c0}
+  .b-amber{background:var(--amberbg);border-color:#fde68a}
+  .b-blue{background:var(--bluebg);border-color:#c7d8fd}
+  .b-green{background:var(--greenbg);border-color:#a7f3d0}
+  .b-purple{background:var(--purplebg);border-color:#ddd6fe}
+  .box .t{font-weight:700;font-size:13.8px;margin-bottom:5px}
+  pre{
+    background:#1e2228;color:#e6e9ef;border-radius:8px;padding:14px 16px;overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;
+    font-size:12.6px;line-height:1.68;margin:10px 0;white-space:pre;break-inside:avoid;page-break-inside:avoid;
+  }
+  pre .c{color:#8b95a5}
+  pre .k{color:#8ec9ff}
+  pre .s{color:#b9e39a}
+  .cmt{color:var(--ink3);font-size:12.8px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .two .card{margin:0}
+  .clock{display:flex;flex-direction:column;gap:7px}
+  .clock .row{display:flex;gap:12px;align-items:flex-start;font-size:13.5px}
+  .clock .tm{flex:0 0 108px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+  .rule{background:#1f2328;color:#fff;border-radius:9px;padding:16px 18px;margin:16px 0;break-inside:avoid;page-break-inside:avoid}
+  .rule .t{font-weight:700;font-size:14.5px;margin-bottom:6px;color:#ffd166}
+  .rule p{margin:6px 0;color:#f1f3f6;font-size:13.5px}
+  .step{counter-reset:s;list-style:none;padding-left:0}
+  .step>li{counter-increment:s;position:relative;padding-left:30px;margin:11px 0}
+  .step>li::before{
+    content:counter(s);position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;
+    background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  }
+  .ok{color:var(--green);font-weight:700}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;line-height:1.7}
+  @media (max-width:760px){.two{grid-template-columns:1fr}.clock .row{flex-direction:column;gap:2px}}
+  @media print{
+    body{background:#fff;padding:0;font-size:11.5px}
+    .card,.hero,.box,.rule,pre,tr{break-inside:avoid;page-break-inside:avoid}
+    h2{break-after:avoid;page-break-after:avoid}
+    pre{background:#f1f3f6;color:#1f2328}
+    pre .c{color:#5b6572}pre .k{color:#0b53b6}pre .s{color:#0b6b3a}
+  }
+</style>
+</head>
+<body data-page-node-id="nGNXPF6hiV3PTL7Ay7HEZA">
+<div class="wrap" data-page-node-id="VuzP9JXYGZH2PPAToaUTMP">
+
+<header data-page-node-id="tEkjgK3e0dS73S9PyO0qWl">
+  <h1 data-page-node-id="6DWcsXoZM8WqP1XpX1ryc6">美团笔试 · 今晚作战卡</h1>
+  <div class="sub" data-page-node-id="um5bZ8MbrCMJ0m2qInJcAU">2027 届秋招 · 技术岗（AI / 后端序列） · 开考 <b data-page-node-id="CbiMf4tZzzf6Kg1gJWLD0G">19:00</b> · 修订于 2026-09-22 17:15（已并入官方笔试通知）</div>
+  <div class="src" data-page-node-id="wn5MKntxk9YqjvCAKfxyGU">
+    <b data-page-node-id="v4KKWqmXJ680022m9xXXCX">✅ 本版口径变了：</b>你的笔试通知已到，从此它就是唯一权威。本卡已按通知重写，凡是通知说了的，<span class="ok" data-page-node-id="yoonqRn5xqHc6T9sQdcJpv">一律以通知为准</span>；我此前的推测凡与通知冲突的全部作废（下面用 <span class="pill p-green" data-page-node-id="RA1pKgTlq4vvXbMdQ69hjF">通知确认</span> / <span class="pill p-amber" data-page-node-id="YMwq2w4lDPJWeFD2XLIbu6">仍未知</span> 逐条标出）。
+    <br data-page-node-id="OYHkEZv7Ils4AWDG00cDud"><span class="warn" data-page-node-id="a5Vhbja7CZLnzdm0NeFzGD">题型构成与考试时长，通知里没写</span>——所以第 02 节给你一套「开考 60 秒侦察」动作，先看清卷子再决定按哪套打。
+  </div>
+</header>
+
+<h2 data-page-node-id="xqdoqRXZlRLXJ4GbICSmEA"><span class="n" data-page-node-id="CuRNQqatgNSaBlXkGAD1Rz">00</span>三十秒版</h2>
+
+<div class="hero" data-page-node-id="hzy8KrRBHobNmsIvKQj2QY">
+  <div class="big" data-page-node-id="0i2R8GjQTUrPrOJ61k9Rjh">
+    <b data-page-node-id="VoKPRDn6ESYxgem4NG9CHE">通知最要紧的一条：这本卷子按「目录」作答，提交一个目录就锁死，不能回头改。</b>这决定了你的打法——<b data-page-node-id="t4mApKTFI5b48TmtrnwlLb">不是先把会做的全做掉，而是先花 60 秒把目录看一遍，再决定提交顺序。</b>
+    <br data-page-node-id="KheldaQQirbHUfZ45ziQT6"><br data-page-node-id="HjRl7LrOT6ppWZclrWyDXZ">
+    第二条：编程题只 <b data-page-node-id="BJmqA1TQ433aH5KzVBHqEn">1 道</b>，<b data-page-node-id="YUKmGnjOfnhJxBmJO1Kp5R">语言不限</b>（列表里有 Python 3，也有 PyPy3），但<b data-page-node-id="Hl9B4uIYqWiIrDgY5S5jHJ">要自己处理输入输出</b>——ACM 模式，跟 LeetCode 那种只写函数体完全两回事。
+    <br data-page-node-id="H34E5ybgI4SfJic5bho86x"><br data-page-node-id="caQcc8lSwPFMPCjjQxEML0">
+    第三条：<b data-page-node-id="DCdGe1acTGLB1a3nPR5YFM">断网/死机后重新登录超过两分钟，会累加「跳出次数」。</b>所以开考前把网络和电源锁死，别在考场上赌运气。
+  </div>
+</div>
+
+<h2 data-page-node-id="GmWUI96n25J7rWLDTImsjf"><span class="n" data-page-node-id="ABwguZFDsO8MKY2fG8rEzi">01</span>官方通知：确认了什么、还差什么</h2>
+
+<table data-page-node-id="0GuXFzVELlagP0uG6lQlyQ">
+  <thead data-page-node-id="S10VoiNzJQVnkxX2XIjroP"><tr data-page-node-id="KLfxFPB5uDnkuCkpLH7tDF"><th style="width:16%" data-page-node-id="JlkiY1WYDUIDmwrSUcB23N">项</th><th style="width:14%" data-page-node-id="BzgYT4Pg7GvFAAgaQ1l0BB">状态</th><th data-page-node-id="PUXDcZTj3bVVtulPGWsxFg">通知原文 / 解读</th></tr></thead>
+  <tbody data-page-node-id="tRkBsGp8QrcmQa1GO42WFj">
+    <tr data-page-node-id="RvKiEjyZJFCZvqZcxZrTcu">
+      <td data-page-node-id="59rbRKFZkoFFxhBQuqwQUd"><b data-page-node-id="f88uKEKgaBeJgNR2BdW7c0">编程题</b></td>
+      <td data-page-node-id="DuCeTwE1AovZTVgExpLupP"><span class="pill p-green" data-page-node-id="BXMVwz3eT9FBqF3bXC15wQ">通知确认</span></td>
+      <td data-page-node-id="EmZYIJRE5iGbNvdM7Von69"><b data-page-node-id="SdIwEvI2us3aW1TaH0Kloh">1 道。</b>语言可选：C, C#, C++, Go, Groovy, Java, Javascript, Kotlin, Matlab, Object C, Pascal, Php, <b data-page-node-id="6p918FmkxGF64nlKFVGAGn">Pypy2, Pypy3, Python, Python 3</b>, R, Ruby, Rust, Scala, Swift, Typescript。<br data-page-node-id="TziY9V30y1JC7fBI8JnUwT"><b data-page-node-id="BQfBWK83UgyEoYNxLi20Gd">「在线作答编程，需要自己处理输入输出」→ 这就是 ACM 模式，通知已明说。</b></td>
+    </tr>
+    <tr data-page-node-id="rbDiwpTRm4MahXi9vxfUy3">
+      <td data-page-node-id="cYKqqQyo4cnnjkKELj6hHJ"><b data-page-node-id="YPBLF6tqOchg58AGHtb17I">答题流程</b></td>
+      <td data-page-node-id="9m2LbBgQkgE4eD2AsSN6H7"><span class="pill p-green" data-page-node-id="tZjyN4pH8oxjkDDi25XAiW">通知确认</span></td>
+      <td data-page-node-id="Qu3V3WKWHBeiM6UQ93Kv12"><b data-page-node-id="pfYzvWbMwg1r61yq124cPn">按目录作答</b>：可任意选择目录，<b data-page-node-id="f5AfCCOCjGFwIfH31AZn7f">完成当前目录后才能选下一个</b>；提交目录前可改，<b data-page-node-id="xMtZB1AA4Wf6hfXkyZDVxk">提交目录后不能改</b>。</td>
+    </tr>
+    <tr data-page-node-id="o3tb6YCMdEzgykYhQwt8mP">
+      <td data-page-node-id="c7DfZ6zbDQfbKFnqAcUFBH"><b data-page-node-id="30xRMqC67LUBkwBQQM83Z6">设备</b></td>
+      <td data-page-node-id="3fUDgjtvwn8oXt0juDbgnw"><span class="pill p-green" data-page-node-id="2pVyeWcTE6Cf3rQJiiKtYH">通知确认</span></td>
+      <td data-page-node-id="ea8MnVmm81Y9o1umOYwIjZ">Chrome <b data-page-node-id="RfaGurmkioByOK3nL7tTBe">最新版</b>；电脑<b data-page-node-id="JH4UDkjrQkgJb5NQCFCL0L">必须带摄像头</b>。<br data-page-node-id="hjHbbX45I1mMkq9ns0DJFq"><span class="cmt" data-page-node-id="BWJcLCf55IhhyDqIeqPZDv">→ 通知里<b data-page-node-id="x3ygt8Ipm5gdoKceMu6jED">没有提「双机位」</b>。我此前按春招场次写的「手机架第二机位」作废，别多此一举。</span></td>
+    </tr>
+    <tr data-page-node-id="WUEHcNoqC9HuWGgix6urU7">
+      <td data-page-node-id="dPM0BBP8m8CFSv1dynkWfX"><b data-page-node-id="ZxQYtfXfWDYiqAEyJy7to0">考场纪律</b></td>
+      <td data-page-node-id="zJAhsbPAn6k0AhRt5Wb9zm"><span class="pill p-green" data-page-node-id="B2jLa6VdK4zVIdYsxSJvkC">通知确认</span></td>
+      <td data-page-node-id="fgHlfuvhPfZDyoipFmyARs">关闭其他浏览器窗口、QQ、微信、Skype 等即时通信、屏保、Outlook 等弹窗软件；网速 ≥ 100KB/s。</td>
+    </tr>
+    <tr data-page-node-id="mdHpqMdRh7QYwlqLO6LyuT">
+      <td data-page-node-id="GQfYSnYzl4MtsFJ8NCioPz"><b data-page-node-id="DkCVXFf71snXwQ91TKA613">草稿纸</b></td>
+      <td data-page-node-id="nAvt9BtWUATPZva28BEMhN"><span class="pill p-green" data-page-node-id="t5pXx9H9hSuoSsWDG7CTk7">通知确认</span></td>
+      <td data-page-node-id="hXMaSbpEX8Hnw0u8oeVfu5"><b data-page-node-id="amHb2xFTqZ2Exu6PnlTGoC">允许使用，提前准备纸笔。</b>（通知还写明允许上厕所等短暂离开，但请控制时间。）</td>
+    </tr>
+    <tr data-page-node-id="pZ4bq8oQRbPRO6Nc3ryXut">
+      <td data-page-node-id="ovHTPhuwTcyB7DSJvCzSL5"><b data-page-node-id="dKhfUnWYQ8PR4ym9PmxMWr">断线处理</b></td>
+      <td data-page-node-id="wIVey3MeWR5isUKv4KBci8"><span class="pill p-green" data-page-node-id="21oOwtHzDbQqf3CmHTOvgC">通知确认</span></td>
+      <td data-page-node-id="TwfEgjCf0qF8OMtTcZO8DC">刷新页面，或关掉浏览器重新从考试地址进入。<b data-page-node-id="M61F94PdRNTrhSmrdmJH5k">重新登录超过两分钟会累加为「跳出次数」。</b></td>
+    </tr>
+    <tr data-page-node-id="FnHHQ7KwHJe5xChyG6Ftai">
+      <td data-page-node-id="EqDAA3fnWqJItS47XrvbDg"><b data-page-node-id="CZRhIvGiGLNAcXUYum8dTd">AI-Coding 面试</b></td>
+      <td data-page-node-id="okPkI8QjgIWAkO0lds4cMY"><span class="pill p-green" data-page-node-id="DvJJKgGQ4qwE3kklXQI4QD">通知确认</span></td>
+      <td data-page-node-id="VO0Hz30N5IsRQhzZa6BDms">卷子里有一道「是否愿意参加 AI-Coding 面试」，<b data-page-node-id="R8iTipfRu28XvluwxvvqBc">选什么与笔试题目的分配无关</b>。</td>
+    </tr>
+    <tr data-page-node-id="IGNz3OjtRgLrM0OmyofpXf">
+      <td data-page-node-id="pm4Rok60KzhcSHilAaDnZh"><b data-page-node-id="wNP3dYAHLHEzlmN6dF4ZGS">题型构成</b></td>
+      <td data-page-node-id="BIH1rpg98b1oTFELJUngRL"><span class="pill p-amber" data-page-node-id="Jd906EpCnzw6QOd2bo18bu">仍未知</span></td>
+      <td data-page-node-id="NfgCED8LDtkmJurLoHyrNC">通知只字未提是「选择题 + 编程题」还是含 AI Coding 环节。<b data-page-node-id="vlXMpewsJAmnesIZMLqNu9">但通知要求你回答「是否愿意参加 AI-Coding 面试」，说明美团这条线重视 AI 编程能力。</b>第 02 节给你 60 秒确认法。</td>
+    </tr>
+    <tr data-page-node-id="QrKebZyLWzbdMSENOBzIGM">
+      <td data-page-node-id="fXYIt1j1rl1VC65Yuszsbt"><b data-page-node-id="91CYluaJLBG7XBhBq2V1y9">考试时长</b></td>
+      <td data-page-node-id="wYl2DLZWyfL9eJecQlmRsq"><span class="pill p-amber" data-page-node-id="CAN0QwswLMQKE7OpEo2lB7">仍未知</span></td>
+      <td data-page-node-id="pZnXgAFthLZUR9EGqrVvXS">通知没写。<b data-page-node-id="kHC6nGVK0Na9Dc4kWtGKPw">开考第一眼看卷头的剩余时间</b>，按实际时长删减第 08 节的时间表。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 data-page-node-id="NA6BHPI1FiOyFtoel2oz1p"><span class="n" data-page-node-id="PwkO7vOn0G48FfFhBFX9kh">02</span>开考 60 秒侦察（决定你按哪套打）</h2>
+
+<div class="box b-red" data-page-node-id="reFyzmk78X27mxCUqmyd8d">
+  <div class="t" data-page-node-id="gGNAmlsSQwhjVHgKE58E6q">这三眼必须在动笔前看完，成本 60 秒，收益是整场节奏</div>
+  <ol class="step" data-page-node-id="pj42H2t1zCXiUyrseo9W7E">
+    <li data-page-node-id="kVHV1wyW3x8G0gAm91lFDu"><b data-page-node-id="Ukv6zGR2EEMh1Mq5Q3WcTW">看目录列表 + 剩余时间。</b>有几个目录？各叫什么？总时长多少？先把这两个数记住。</li>
+    <li data-page-node-id="XX3lANe9ZFQmSRm3cE8BL7"><b data-page-node-id="sDNFhS12BVhFzM6Qqc3el5">确认有没有 AI Coding。</b>有 → 它是今晚主战场（见第 04 节），且大概率是分值最大的一块；<b data-page-node-id="qjapBvYswU4mhxQyI3IOV7">没有</b> → 第 04 节整节跳过，把 80% 时间给编程题，选择题留最后 15 分钟。</li>
+    <li data-page-node-id="sHRgyMBGjgqL2C8kAB3hLv"><b data-page-node-id="lZRu9v3wL62PsH4H8CbWDb">确认「提交目录」和「AI Coding 内部评测」是不是两件事。</b>AI Coding 通常有个「运行/提交测试」按钮可反复按（分数会刷新），而<b data-page-node-id="vdSFnGtFYzXFpEY6bKmy5p">「提交目录」才是终局锁定</b>。开考就找清楚这两个按钮各在哪——<b data-page-node-id="a9rsLEy2cgDieJ7bmwbT7D">别把「运行测试」当成「提交目录」点下去</b>。<br data-page-node-id="gr55tYN0wRvbI3tfK2KOxQ"><span class="cmt" data-page-node-id="HnUCkaPq16gT7vWmafuL2n">找不到就按保守策略执行：把最没把握的目录留到最后提交。</span></li>
+  </ol>
+</div>
+
+<h2 data-page-node-id="wSeE9xRQcIf1tegdJLPF1e"><span class="n" data-page-node-id="EXWCIoEdf1YTxC8XCxAQXO">03</span>分值参照（2026-09-01 场实测，仅作参照）</h2>
+
+<p class="cmt" data-page-node-id="Xukn6O0ZeaBjGnxqGTzUhi">来源：牛客考生回忆。<b data-page-node-id="xGwTb0wlrhe4Gk8w3uLIND">这不是本场的承诺</b>，仅供你在缺信息时估计「哪块该多花时间」。本场是否是这个结构，由第 02 节确认。</p>
+
+<table data-page-node-id="eWkZQmsEnZcIYr6yJOVzWn">
+  <thead data-page-node-id="ouIhlp1aJ1mC5SDUeZHeCF">
+    <tr data-page-node-id="rrbNxpwLtsfaS29pk3z8ws"><th style="width:22%" data-page-node-id="xoxhktv4MHAdRYgCx5MfwF">部分</th><th style="width:13%" data-page-node-id="MHkElY9Rq619FAkKhQSC0z">当时分值</th><th data-page-node-id="5UGHHQHeITOoVLJOR0B8EE">实测内容与考点</th></tr>
+  </thead>
+  <tbody data-page-node-id="2INAllHRoIUCn24sIX0bgb">
+    <tr data-page-node-id="FKTeON8JuU7ZywwV9XhNww">
+      <td data-page-node-id="kCyuz2BR3ULpCFQUcrNnNv"><b data-page-node-id="DWAZ8RxrFiVpV6WnTnV8ID">AI Coding</b><br data-page-node-id="IVQo9HSPvFExAfj4kGlPP2"><span class="cmt" data-page-node-id="BAo8TE0tPyN0IzT2dkmyF9">指挥 AI 交付</span></td>
+      <td class="num" data-page-node-id="ErvQnQ5MeIwuYW5POW6liD"><span class="pill p-red" data-page-node-id="H3wuTUSAFlRyYUXsryuKjF">50 分</span></td>
+      <td data-page-node-id="YMRju5AhSjocmHY6Z7oSqt">给一份 md 需求文档 + 浏览器内 IDE + 一个对话式 AI，实现<b data-page-node-id="pe39hn6FG9Ej7UEkCkhbDp">内存态 HTTP 服务</b>，判题程序直接打你的接口跑隐藏用例。按 <b data-page-node-id="sW7bPmQAEc4B75TqwEZjmp">冒烟 / 基础 / 高级 / 复杂</b> 四档业务给分。美团已流出原题：<b data-page-node-id="blzaV00kjJSbrNFyk71uQZ">外卖订餐系统</b>。不连数据库、不接外部服务。</td>
+    </tr>
+    <tr data-page-node-id="8bEUsPRWqP3GsLXnkAhEtu">
+      <td data-page-node-id="6Jz6AMxHveUY24V5Clg2xH"><b data-page-node-id="gVsakLKOUSNnwfUlFHFImQ">选择题</b></td>
+      <td class="num" data-page-node-id="PYCEWaxADn4XctM7Hn8Ldf"><span class="pill p-blue" data-page-node-id="tjTWSrPmEe8E7gVNA2Xeja">30 分</span><br data-page-node-id="jXFwmEk2lYFP96Z5oxZZBb"><span class="cmt" data-page-node-id="4EoxUQSWpoDv3JEyNdQkBF">10 题</span></td>
+      <td data-page-node-id="yPHr3QgXc1XL65LwFGt7M2">9/5 场分布：<b data-page-node-id="wPjUdQDEHOZYPGeAnxy25d">算法数据结构 4 题</b>（递归求值、图 DFS 复杂度、二叉树遍历还原、堆调整）+ <b data-page-node-id="0LhqW9UnsaoRGdSeGSOCEC">深度学习 3 题</b> + <b data-page-node-id="7RyjZP3WmAcOkSgy77FhnV">大模型 2 题</b>（分布式训练通信、长序列注意力）+ <b data-page-node-id="FZWJOf5tVkpjZuhaRUWljs">机器学习 1 题</b>。<b data-page-node-id="JtDFo2ewdHBDbj6ESrD2rV">9/1 场考生反馈「10 题全是 agent、算法结构，没有前端后端数据库」</b>；另有人反馈混少量网络、OS 死锁。<br data-page-node-id="5RY4cg2MqbblcDuQPgcEwY"><span class="pill p-green" data-page-node-id="vZXFOLjiDD8Zh2qDh1YhTp">AI 部分是主场</span> <span class="pill p-amber" data-page-node-id="wycmyFCzIA6vdlzaNQ6CnX">数据结构会丢分</span></td>
+    </tr>
+    <tr data-page-node-id="cUqCEcinjBQA7KEEA1BtpC">
+      <td data-page-node-id="vfEskKtIlizIyefkraWeC1"><b data-page-node-id="L2J7Nn0rBE022wiCuSjv9B">编程题</b></td>
+      <td class="num" data-page-node-id="50eCKMjewzWWL9Fp439W2v"><span class="pill p-purple" data-page-node-id="Ds6aOlnr0ZVgL0C2TyI9hz">20 分</span></td>
+      <td data-page-node-id="tSkZ34PjV1CeuX8t90nBgC">已出现考点：完全平方数数论、前缀和优化递推、<b data-page-node-id="Ity8j2Ca6SWmkFxUOTLg2Q">并查集逆序处理删边</b>、前缀和 + 贡献法计数、欧拉回路、奇偶性构造。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 data-page-node-id="HGLpIxa6Ko3MYKEVXxM5Yt"><span class="n" data-page-node-id="Q0hu4y3arQ7TSCi6iuawcW">04</span>AI Coding：若本场有，这就是主战场</h2>
+
+<p class="cmt" data-page-node-id="aQJoF9TdICIKtGygsf7JyY">（第 02 节第 2 眼确认没有 AI Coding，就整节跳过。）</p>
+
+<h3 data-page-node-id="jSioukBEnY0BHV4fTtNZL7">4.1 先把两个预期摆正</h3>
+<ul data-page-node-id="1jtSVOaNCMaelDUWEuALpd">
+  <li data-page-node-id="AypCxbfEALr13He6vZsoAV">考场那个 AI <b data-page-node-id="TGdw5wyp0C4aM6ERNMd6rL">不好用</b>——第一次生成的代码跑不起来是常态，别怀疑自己。</li>
+  <li data-page-node-id="VdRpEkPxAezubBpLRBVClI"><b data-page-node-id="1AOey9K2nrdZZE8gbMMAns">公开样例全过 ≠ 高分</b>，隐藏用例专挑正常流程之外的地方。你的活不是「让 AI 一次写对」，是「在一个不太靠谱的执行者手上，把活推到能交付」。</li>
+</ul>
+
+<h3 data-page-node-id="Os8VDXzBBWGGXAoig9dI5T">4.2 开局先搭三条「公共通道」，再写任何业务</h3>
+
+<div class="box b-red" data-page-node-id="UEInwXyMhYb0w0SgUNY26t">
+  <div class="t" data-page-node-id="72vQoB8GZQqMOZOwqZCZv5">全场性价比最高的一件事 —— 前 20% 时间就干这个</div>
+  <p data-page-node-id="tRgVk4eIiQO5xI7xH0ao91">下面三条<b data-page-node-id="O7DIpiZbC1H0xpt7qP6iuI">不属于某一个接口，属于全部接口</b>。在每个接口里各写一遍，写着写着必然不一致，漏一处就是一处失分。<b data-page-node-id="yCQraoSUpmMTXpeAgUlnOl">做成统一通道，写对一次，后面每个接口自动满足。</b></p>
+</div>
+
+<table data-page-node-id="pok5dxnK0fhX0fpes7S0mU">
+  <thead data-page-node-id="E8yLi6t1KdtJrgVyuyPzKa"><tr data-page-node-id="jUvreNEm4A0wz0mTsJGdvF"><th style="width:18%" data-page-node-id="poO5nrNO67nLieCOp25Ujd">通道</th><th data-page-node-id="Vefqcop67R3ScsUObLfEwP">要解决的事</th><th style="width:32%" data-page-node-id="VGcMvA2XjillESJvDnUjsH">怎么下指令</th></tr></thead>
+  <tbody data-page-node-id="p08InhbIQtiDGoK58FBFHI">
+    <tr data-page-node-id="aXnFqPtNvS8AHVBwpzJBYZ">
+      <td data-page-node-id="rUad6ubs2lANJDhpFOD0Ac"><b data-page-node-id="wEEO2ENdaCJMhUqEab0h6w">干净拒绝</b></td>
+      <td data-page-node-id="9KN6nxVE1rXvL82Fdsg5Ft">非法请求被拒后<b data-page-node-id="X3Tclviz2snurlFK2hoiGD">不能留下任何痕迹</b>——不留半个对象、不扣一点额度、不留一条记录。批量中途失败要整批退回。</td>
+      <td data-page-node-id="nG6QGc5rjUC4jX49O1rXDP">「所有写操作先过统一校验入口，<b data-page-node-id="lDaKaecctxL73C9hx8DDRY">保证在校验通过之前不碰任何状态</b>。」</td>
+    </tr>
+    <tr data-page-node-id="vkDbuE0slUvf5PCfDlawzw">
+      <td data-page-node-id="kCr8IUC7kDmdQ5JzMSXLlY"><b data-page-node-id="GpjZCe7x5EeDuJzmr1Gseg">重放安全</b><br data-page-node-id="Mdi8WfHyjOWW0Np9338pvO"><span class="cmt" data-page-node-id="8Z6Wegc4zCNu3PwbBvDVMS">幂等</span></td>
+      <td data-page-node-id="SjiQDtEgkvuRqJWWzQMbHF">同一写操作发了两次，第二次<b data-page-node-id="SfgRd8dNhKTmd6xhaeejBt">返回第一次的结果</b>，不产生第二次效果。</td>
+      <td data-page-node-id="ch2YMbVfodsKHyAo0oDu1j">「写操作执行前先查幂等键处理过没有，处理过就直接返回上次的结果，不再执行。」</td>
+    </tr>
+    <tr data-page-node-id="1lp1rb3pTMvbrAzxQrlGQE">
+      <td data-page-node-id="GV8cO1BlfBhm0lh67MZguL"><b data-page-node-id="3DE9YW66izdlUBTJBWeiM3">逻辑时钟</b></td>
+      <td data-page-node-id="f5WsynR3fAPycC7lyYU2YR">时间是<b data-page-node-id="ns4BSYz8E1yI9qN1CsL4B7">服务自己维护的计数器</b>，不是真实时间。到期结算集中由推进时钟触发。</td>
+      <td data-page-node-id="5WmelIosG79e8RjfHR7StO">「所有到期结算集中写在时间推进处，<b data-page-node-id="FAtTUtojmUxAweTUWvmY7f">业务接口里不要各自判断过期</b>。」</td>
+    </tr>
+  </tbody>
+</table>
+
+<p data-page-node-id="Q1NgpeOhvaU8P5O0r6Q2qa"><b data-page-node-id="4OXLF7Flv20fy9eKq6EoDy">为什么第三条关键：</b>模型默认爱「先创建再校验、先扣额度再判合法，出错再回滚」——回滚漏一个分支就留下脏东西，而「干净拒绝」恰好明令禁止。<b data-page-node-id="1fAOvTLSD8vF5qm3sOkacE">所以这句一定要写进第一段指令。</b></p>
+<p class="cmt" data-page-node-id="1Tu8VZi20QOScFBL7e3uX0">另有一条高频小项：<b data-page-node-id="P1IrmDITDFFot0yMMM58UO">钱一律整数化</b>（用「分」存），取整方向题面写死，不同题还不一样，<b data-page-node-id="oeE1nszoNrEO0nn3wX9JqI">照抄，别按习惯来</b>。</p>
+
+<h3 data-page-node-id="yc3tpeFdjeDJsdJUmqvvRY">4.3 第一段指令模板（直接抄，别临场组织）</h3>
+
+<p data-page-node-id="gCxB6sUJWJOroKDsVPiJzH">它按<b data-page-node-id="qlHiqrUuRVIt9wRZkpX2YZ">有效约束的数量</b>打分，不按你说了几句。「帮我实现一下这个系统」= 把所有判断丢给模型，然后用剩下的时间给它擦屁股。</p>
+
+<pre data-page-node-id="9DDI33WUWkx7i8scy8Pmb1"><span class="c" data-page-node-id="kdLbcTXR6a0KzCxtXoDZDl">你是一个后端工程师，实现文档里的系统。</span>
+
+<span class="k" data-page-node-id="m22DLmJUSQWMLlEj82HlKs">【环境与运行方式】</span>
+<span class="c" data-page-node-id="XwV32np7EiUgVVPDLHNmKB">（把题面里关于语言、框架、入口文件、启动命令、端口、依赖、
+有没有网络的原文，原样抄过来——各家差别很大，别按习惯来）
+（题面没提到的，先问我，不要自己假定）</span>
+
+<span class="k" data-page-node-id="AnQ18eQbef3WmFNedIOAy1">【业务规则】</span>
+<span class="c" data-page-node-id="ju5MjiEClJkRQ9pHrZDcGw">（把文档里的规则原样搬过来，不要自己概括）</span>
+
+<span class="k" data-page-node-id="Ywk1AgLFQK3uYRnJUYPVDl">【接口契约】</span>
+<span class="c" data-page-node-id="CHznhtIkwp40gFZgvX87LD">（每个接口的 路径 / 方法 / 请求体 / 响应体字段名 / 状态码，逐条写死）</span>
+
+<span class="k" data-page-node-id="2kxIrcIMqoyJpqbpvCEAqd">【先搭三条公共通道，再写任何业务】</span>
+1. 统一请求校验入口：所有写操作先过它，校验不通过直接返回错误，
+   <span class="s" data-page-node-id="QBThcLXxxRQq2pJIls9BwQ">保证在校验通过之前，不碰任何状态。</span>
+2. 统一重放处理层：写操作执行前先查幂等键，处理过就返回上次结果，不再执行。
+3. 统一时间推进处理：所有到期结算集中写在这里，业务接口里不各自判过期。
+<span class="c" data-page-node-id="ilfkH1C8F5Rqg9y2k4EQFO">这三样先写完、能跑，再开始写具体业务。</span>
+
+<span class="k" data-page-node-id="jEVZvux8EeH3sB7k8Vn3Zu">【边界要求】</span>
+- 非法输入 400 / 资源不存在 404 / 鉴权失败 403 / 业务拒绝 409
+- 金额取整口径：<span class="c" data-page-node-id="z7Rje4ngostg69LNnGOZEw">（照抄题面）</span>
+- 失败的请求不能产生任何副作用
+- 同一请求重复提交不能重复生效
+- 已完成的、已取消的之后还想改，一律拒绝
+
+<span class="k" data-page-node-id="DcEzcB13PnHpcAoOrAwFSL">【验收】</span>
+写完之后你自己起服务，把每个接口打一遍，把结果贴给我。
+</pre>
+
+<div class="box b-blue" data-page-node-id="onluA9XmrFesLmu9gFrCpi">
+  <div class="t" data-page-node-id="e8JpTanWgLKMBiN0Z9hcZG">两个最容易漏、也最贵的地方</div>
+  <p data-page-node-id="rb2CJZkqoqg8TflBy7BF0A"><b data-page-node-id="svlGgLBYZyXXCVdnFqSwC5">① 「环境与运行方式」这一段最容易被跳过。</b>不同场次对入口文件、启动方式、能不能装第三方包的规定差别很大，而模型会按自己的习惯来——只要跟题面不一致，第一版必然跑不起来。原样抄进去，省掉一整轮返工。</p>
+  <p data-page-node-id="gWlhqqUzVLp7cNtW4tNV2Q"><b data-page-node-id="SBSYPuPWGHfLpj1zGZCbgE">② 响应体字段名一定要写死。</b>判题是按字段名取值的，<b data-page-node-id="tfdLSqOQZYMeERAv0Wm699">名字对不上就是 0 分，哪怕你逻辑全对</b>。</p>
+</div>
+
+<h3 data-page-node-id="UhV9Nf6LqSPLtZIumNCm1o">4.4 提交前最该做的一件事：让 AI 造用例，来打你自己的代码</h3>
+
+<p data-page-node-id="fNR3fW8Chb0jRgjPVBhBwz">隐藏用例你猜不到，但你可以让 AI 照着需求文档自己造一批刁钻用例，提交前先模拟一轮判题。<b data-page-node-id="Ra204NN77LDP8CPUIdfhGQ">这个循环走两三轮，抬分幅度通常比你再做一个功能更大。</b></p>
+
+<pre data-page-node-id="hwWFcqtrHICU91OlpSckH7"><span class="k" data-page-node-id="aD6DyZDewwPcaQ9dfNt28Q">第一段 · 造用例</span>
+读一遍需求文档，针对我当前的实现写一批<b data-page-node-id="7CruLFlBN0bDB6jxmlVjfu">可以直接运行</b>的测试用例。
+重点覆盖正常流程之外的情况：
+- 非法输入（类型不对、缺字段、超范围、空值）
+- 边界值（0、负数、最大值、空集合、单元素）
+- 状态相关（不该允许的流转、终态还想改、重复提交同一请求）
+- 数值精度（小数、取整方向、金额）
+- 文档里写了但我可能没实现的规则，逐条对照列出来
+<span class="s" data-page-node-id="Kj1sXmTyjx4AXvyukzdOLi">先不要改我的业务代码。</span>
+
+<span class="k" data-page-node-id="D8UuB9dnMSdSlOI6JKWjdq">第二段 · 把挂掉的贴回去</span>
+以下用例没通过：【贴完整的失败输出】
+逐条告诉我每条为什么挂，然后挑<b data-page-node-id="S3YHnlcFNPtNH3YQZ5F74d">改动最小</b>的方式修，
+修完把这批用例重跑一遍。
+<span class="s" data-page-node-id="YL42GGb7oZe5TAbRiEJ0Kp">已经通过的那些用例涉及的逻辑，不要动。</span>
+</pre>
+
+<div class="box b-amber" data-page-node-id="O2h2lnTlz21JuVehNGXRMF">
+  <div class="t" data-page-node-id="hAcex35G0hjGGHNZZUdJvd">这两句加粗的话不能省</div>
+  <p data-page-node-id="Cj1CKWByBKA89FdC7fNcDw"><b data-page-node-id="zB9y1e44rGCIJMgXMQ4URp">「先不要改我的业务代码」</b>——不加，它会一边造用例一边顺手改实现，你就分不清是代码本来就对、还是它刚偷偷改对的。</p>
+  <p data-page-node-id="lIgGlC9JCTA0R0LJDWRFQc"><b data-page-node-id="XyWTyzlv3NMoEnlZGr7zVU">「已经通过的不要动」</b>——不加，模型很容易修好一条、弄坏两条。</p>
+</div>
+
+<h3 data-page-node-id="QjghcXGRETh9GY5OFLWTQ8">4.5 边界八查（没时间造用例时，至少把这八条写进第一段指令）</h3>
+
+<div class="card" data-page-node-id="9FxVLwZVv14cwSYKAFNqOJ">
+  <div class="two" data-page-node-id="tS9i8lrUk40jijE8rv3qs1">
+    <div data-page-node-id="FT001cP5S1PsL80GtsB9Se">
+      <p data-page-node-id="e6ObF3Sxn0G8OWeECFpjWX"><b data-page-node-id="6Mm8hhX6y0cBqvm7o5e4xv">1. 非法输入</b><br data-page-node-id="PrQQWGvPYvAH5yHiP42mNz"><span class="cmt" data-page-node-id="1TKmzhY3CA4WEIf1UqZWDW">字段缺了、类型不对、ID 不存在 → 返回错误，不是直接崩</span></p>
+      <p data-page-node-id="qJiMEwpfSjSuVjsiDQ8utS"><b data-page-node-id="SuDNUU8KyAXJoaXj76DHnG">2. 负数与归零</b><br data-page-node-id="cG3A8gWXvvThZPdxBRkkgl"><span class="cmt" data-page-node-id="ApSDLCp14ECt4D5DkB6ote">金额算下来是负的，要不要 clamp 到 0</span></p>
+      <p data-page-node-id="LA0DQ1N4JKu5BghbWyrxb7"><b data-page-node-id="TI3jL4GAdqkyON9c9oa1KV">3. 数值精度</b><br data-page-node-id="pgE6LVUrWwRd3vYNJJngJb"><span class="cmt" data-page-node-id="MTCemCYh7mGoq4t9bKpUQP">小数保留几位、往哪个方向取整</span></p>
+      <p data-page-node-id="4CNoDBH1WYqwiI6luPqjMg"><b data-page-node-id="Aj0T1drOgg5QtOgzfVG0CA">4. 空集合</b><br data-page-node-id="NtW3EdeNnmENv8CrmUFjnB"><span class="cmt" data-page-node-id="PFBJrfm8JEoyFRnydLuYPW">空列表、空订单 → 返回空结果还是报错</span></p>
+    </div>
+    <div data-page-node-id="xdzCLKMv3J8H20CHO4Ajlj">
+      <p data-page-node-id="D8QQ8JltVgulS6H1lSqzLv"><b data-page-node-id="muq30gIIDl8SaZvUvCyaHr">5. 重复提交</b><br data-page-node-id="Xzwp1099UWVm7jP9KCxYUQ"><span class="cmt" data-page-node-id="EBjuhDRRa4LBiyLkwCssLJ">同一请求提交两次，会不会产生两笔账</span></p>
+      <p data-page-node-id="nw9HlpgqQBxhR4cHXt7Jnp"><b data-page-node-id="tqXcA9kk0UCUzWt7u7i0ge">6. 终态</b><br data-page-node-id="B4Fkz6yHIUmsuDz2e5rYup"><span class="cmt" data-page-node-id="yZz6enGBZrdhzsaJEUgkAS">已完成、已取消之后还想改 → 应被拒</span></p>
+      <p data-page-node-id="PVLT3ZBhEHSFHfe52zifHs"><b data-page-node-id="UfjUz6PQNqjk1kXElhBwLs">7. 失败不留痕</b><br data-page-node-id="fsR9pMfDYTNMecS45y71Mq"><span class="cmt" data-page-node-id="xZhKPtsNqyINwkcZBrIhdR">被拒绝的请求，不能改动任何数据</span></p>
+      <p data-page-node-id="tsCy3GIZ0jEFHQdL1YmlDl"><b data-page-node-id="tv6Sl7pgwXAaEzjvmAPGP9">8. 错误码分层</b><br data-page-node-id="8H6VPU6Eta16iLKLWwaxAa"><span class="cmt" data-page-node-id="5cM9YOyovKEpA2ekxgSgDf">不存在 404、业务拒绝 409/400、鉴权失败 403；全用 400 糊过去会成片丢分</span></p>
+    </div>
+  </div>
+</div>
+
+<h3 data-page-node-id="GEKqOojRZ3vs7jjE998g3h">4.6 指挥的三条纪律</h3>
+<ul data-page-node-id="ALLmzSdNORUBZrH1tYrzur">
+  <li data-page-node-id="AmgBDSfkfGxYJqd8mhAPkK"><b data-page-node-id="t75GPLOTniCpjITZ3ugm1y">纠错要给「能执行」的话。</b>「好像不太对，你看看」是无效的——AI 只能随便挑个地方动一下，然后回你「已修复」。有效版：<b data-page-node-id="IoAqWGn1LyYi8FE31kLm6R">第 3 条状态流转反了。PENDING 不能直接跳 PAID，应该是 PENDING → CONFIRMED → COOKING → READY → PAID，非法流转返 400。改完补一个「PENDING 直接打 PAID」的用例验证。</b><br data-page-node-id="bwTaCm8gsffPJuXyRYvL1V"><span class="cmt" data-page-node-id="zMH2WilkybDtSNM2qMUcl8">错在哪 + 正确的是什么 + 返回什么 + 改完怎么验证，一句里四样都有。</span></li>
+  <li data-page-node-id="al55O1i6mlLzIFXFneUoE4"><b data-page-node-id="ynWvIvEsPkUIEXitkQq8Aj">一轮只改一件事，改前先给护栏。</b>每轮加一句「<b data-page-node-id="2zjZIUY9NZhUIByPan6Hpg">这一轮只做某某，不要重构任何已经跑通的部分</b>」。</li>
+  <li data-page-node-id="7ZCWtraUY3MXKb5BmWSvo9"><b data-page-node-id="9aXvCmOYB4N4UAAhz6HQdo">拆任务按「能不能立刻验证」切。</b>「先把数据层写了」验不了，不该单独切；「实现下单，含参数校验、金额计算、不存在的商品返错」写完立刻能打请求，可以切。</li>
+</ul>
+
+<div class="box b-red" data-page-node-id="O9DOLK4njlcLbITblrz3t0">
+  <div class="t" data-page-node-id="XFTCsCFt0KhpvJDWYdWSsx">两条止损线</div>
+  <p data-page-node-id="cT3dZ3W4MpVn2ZcxXeTmmI"><b data-page-node-id="FaCBtyViPFqlGj2AWedGVJ">① 同一个问题三轮没解决 → 立刻新开会话，把报错重贴一遍</b>（旧对话里失败的尝试会把它越带越偏）。</p>
+  <p data-page-node-id="lor2sF9GEFsJWrdl8pU7Uo"><b data-page-node-id="AzAtHKjMUps2SnvRi2IAIO">② 提交后分数往下走 → 立刻退回上一个好的状态。</b>到后期改坏的概率并不比改好低。见好就收在这里是能力，不是怂。</p>
+</div>
+
+<h2 data-page-node-id="dejejj7Hypod6oBofWGEe8"><span class="n" data-page-node-id="jz5lsSpNL5zFTDP3iJzIBy">05</span>编程题（1 道）：语言不限，但必须自己处理输入输出</h2>
+
+<div class="box b-amber" data-page-node-id="ZtNAA4Bwe0Hm0LGn31H5No">
+  <div class="t" data-page-node-id="GEGEJAD7RxsLGiJY8BgfeR">⚠️ 通知已明确：需要自己处理输入输出 → 这就是你现在最该动手练的</div>
+  <p data-page-node-id="yAK4syVu71DpwXF08UjIJy">你平时刷 LeetCode<b data-page-node-id="bjhhHDBtDcb1awzfoeAdRC">核心代码模式</b>（只写函数体）。这里是<b data-page-node-id="uM4xPJHU5i2zDJJJ1NWVUf">ACM 模式</b>——自己读标准输入、自己打印输出。<b data-page-node-id="Pkdwr0U501KbJ7LFVy9E6n">这个差异必须在 18:15 之前用两三道题练出手感</b>，不然考场上第一题就卡在读入上。</p>
+</div>
+
+<div class="box b-green" data-page-node-id="9lnkDejGQso2gNtTQNHFa5">
+  <div class="t" data-page-node-id="CJSgFAboQafRIUl5ROSFZr">✅ 修正：我此前说的「可能只能用 C++」作废</div>
+  <p data-page-node-id="aSBixEcxVWZbjvzlTy2IPE">通知给的语言列表很全，<b data-page-node-id="Zexz8UiiFrq93mawhSDrEY">Python 3 和 PyPy3 都在里面</b>。所以你不必换语言——<b data-page-node-id="7e8AP402LDwnXlHV4jbthN">但要会挑实现</b>：</p>
+  <p data-page-node-id="ccwzLF6GuwH9X54KZEJ4BL"><b data-page-node-id="JOC5iCruKGnCZEgTSfN5Xs">如果题目输入量大（n 到 1e5 以上、一大坨数字），优先选 <code data-page-node-id="NASmfoyP5t7yIkbTF2k8wG">PyPy3</code> 而不是 Python 3。</b>PyPy 是 Python 的 JIT 实现，对<b data-page-node-id="wupDYaoWbzmb0D11vcj6DE">纯 Python 的循环密集代码通常显著更快</b>，而你的代码一个字都不用改。<span class="cmt" data-page-node-id="6MCOGWXJ6XOYG4Mn7a1N3S">（提升幅度依题而异，不是固定倍数——别当规格看。）</span></p>
+  <p data-page-node-id="zE3AmKNmLjWhXmvn1kqcrA">曾经有场次那道研发岗题，Python/Java 因读入慢超时只拿到约 20% 的分。<b data-page-node-id="xYAAvYE2PTJn5dG2bCZbcS">你现在的处境比当时好：通知给了 PyPy3 这个选项。</b>另外如果题目本身适合，C++ 仍然是最稳的保险。</p>
+</div>
+
+<div class="two" data-page-node-id="UeRi1ZGGpEhkhzTIjDsn9u">
+  <div class="card" data-page-node-id="yZA110wP7huuI7nqrvvJ7Z">
+    <h3 style="margin-top:0" data-page-node-id="teykH3eatE95nYmGsz98JY">Python / PyPy3 读入模板</h3>
+<pre data-page-node-id="Q6rgWz1Yr6dMEkN61V7ci6"><span class="k" data-page-node-id="qv7x7CW7AHvvmzyf73DqGf">import</span> sys
+data = sys.stdin.buffer.read().split()
+it = iter(data)
+n = int(next(it))
+<span class="c" data-page-node-id="ntSefVM3hGGn04qZgxfd5b"># 逐 token 取，比逐行 input() 快得多</span>
+a = [int(next(it)) <span class="k" data-page-node-id="DqaAEgVAu6k7YY9ZMXvL8G">for</span> _ <span class="k" data-page-node-id="ieFf7KlXViOLYvslCuC2tH">in</span> range(n)]
+<span class="c" data-page-node-id="d8ouSS3ACqpqSIIx8fbTew"># 输出：一行多值用空格拼</span>
+sys.stdout.write(<span class="s" data-page-node-id="MSI11TffCEbrBwZafHTpr4">' '</span>.join(map(str, res)))</pre>
+  </div>
+  <div class="card" data-page-node-id="QjHq6BE32CHEpYOQYLfcLj">
+    <h3 style="margin-top:0" data-page-node-id="7QOAVDrhNPbIudLMfMJMXb">C++ 读入模板（保险选项）</h3>
+<pre data-page-node-id="yTN04RyNSPwqEOnJIHP5Dj"><span class="k" data-page-node-id="OaOJRnOeqDnuTfLIg6fu7f">#include</span> &lt;bits/stdc++.h&gt;
+<span class="k" data-page-node-id="db7I7hGZlt31HCqenL3Mh4">using namespace</span> std;
+<span class="k" data-page-node-id="u2iWxHWqbEIGqDHhxXXA4q">int</span> main(){
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    <span class="k" data-page-node-id="dkxQ3ADYDT9i571Tchkf8u">int</span> n; cin &gt;&gt; n;
+    vector&lt;<span class="k" data-page-node-id="V8k3Q9fvFEBILQQSBLUepS">int</span>&gt; a(n);
+    <span class="k" data-page-node-id="5ADBLJoCtVTcDG7H6NlUxC">for</span>(<span class="k" data-page-node-id="CacxbsBd3vSZSBF5owHyfn">auto</span>&amp; x : a) cin &gt;&gt; x;
+    <span class="c" data-page-node-id="YKePwAar6dHpdY0lIxYT4o">// 行尾不留空格</span>
+    <span class="k" data-page-node-id="Ym7GHc8RhbPkGE6lmzBd7D">for</span>(<span class="k" data-page-node-id="YY3RjELUuq29LCHFf9NIkz">int</span> i=0;i&lt;n;i++){ <span class="k" data-page-node-id="hXckpSAvqOiRgtXRA55zm7">if</span>(i) cout&lt;&lt;<span class="s" data-page-node-id="kXIolW9QmVCI2e0kLjEX1k">' '</span>; cout&lt;&lt;a[i]; }
+    cout&lt;&lt;<span class="s" data-page-node-id="B3fTQ7DLBPzZHKPjIjtmrO">'\n'</span>;
+}</pre>
+  </div>
+</div>
+
+<h3 data-page-node-id="Sop1iZREFte8jzvEAkxM2a">高频考点（按已出现频次）</h3>
+<table data-page-node-id="W02ICnL199DDA60FiQeDO8">
+  <thead data-page-node-id="xoQUMa3bUWtVT9C9P0FFEc"><tr data-page-node-id="KnLm4fAKpoM1LLuInCrdyk"><th style="width:26%" data-page-node-id="1joEykvdwuT403P6qHdR3N">考点</th><th data-page-node-id="UoBDYBzrsVR7IbQyxoDj6N">套路要点</th></tr></thead>
+  <tbody data-page-node-id="lbqFGV6ab2mPZuuVQ5hDWa">
+    <tr data-page-node-id="b6MuXsDrGQ6Lp6JgC8OoCM"><td data-page-node-id="xIVpHB8FdLFzxujItXn9p3"><b data-page-node-id="8WBcfcVkINbl3BkTaBQABc">前缀和 / 贡献法</b></td><td data-page-node-id="MzEuQH5WietEh5gJOHXMJf">「删点后数连通块」→ 翻译成「点数 − 边数」；每条边<b data-page-node-id="KNey2ob64LOGy0Ld7hwD6J">只记在编号较小的那一端</b>，避免重复扣除。</td></tr>
+    <tr data-page-node-id="wDZXwaRXepgvpql595ta8V"><td data-page-node-id="bQpjUYYxCwF8IhKuLCcA7B"><b data-page-node-id="X1g6VW2QWaiF5kZdVhEygG">并查集 + 逆序处理</b></td><td data-page-node-id="i2JuoBt4zL4gs5qPuKMpLC">并查集只能合并不能分裂 → <b data-page-node-id="IoeATJIER7cPDwi4VpgY7Q">正向删边没法做，就把操作反过来，删边变加边</b>。这是近年区分度最大的考点。</td></tr>
+    <tr data-page-node-id="SjJarthcccoCE7x6J8aMpD"><td data-page-node-id="aPHf9yJ6FrYM9o6RyD5PjW"><b data-page-node-id="RuYTLX9DP08dP6hCKEB3L5">前缀和优化递推</b></td><td data-page-node-id="bCzGFcRatADUXsFAGBwcKS">k 阶斐波那契每项是前 k 项之和，朴素 O(nk) 超时 → 前缀和使每项 O(1)。<b data-page-node-id="vH8xfc9MEJDyydsrpf6Gzp">取模注意负数：<code data-page-node-id="6eldjVTZNRu2fKEUPvDJoB">(x % MOD + MOD) % MOD</code></b>。</td></tr>
+    <tr data-page-node-id="kerpt9wlr85LToyGJQBKP7"><td data-page-node-id="mAH509JeWp6vYMYkCl8alW"><b data-page-node-id="ftEZjYzlpwl14bkUC3AYDw">数论</b></td><td data-page-node-id="X2BxCmmEhTi2rw5JqoQ7iG">因子个数为奇数 ⇔ 完全平方数（因子成对出现，只有 d = n/d 时多一个）→ 区间计数 <code data-page-node-id="JIs0rpU8emjA0BXONMyIaT">floor(sqrt(r)) − floor(sqrt(l−1))</code>。<b data-page-node-id="rN5lQf82yWfRrjcACgesQs">整数开方要修正浮点误差，别直接用 sqrt。</b></td></tr>
+    <tr data-page-node-id="6JYjnwMeb035dF4A0H4yl6"><td data-page-node-id="3RYP5JAGzPBWGcbsHmZALd"><b data-page-node-id="kIOCLsRsy1jHxDfDIM671s">贪心 / 构造</b></td><td data-page-node-id="Tcg2jk2QGdbpSqTB3eXwRC">「相邻交换」翻译成「元素走多少格」，次序不变 → 挑一个整体旋转量，落到中位数最小化绝对值和。无解判定往往是<b data-page-node-id="0ZAiVOGndopp87EBbet7jz">奇偶性</b>，两条判据缺一条就挂。</td></tr>
+    <tr data-page-node-id="nIvwK2IUrEDUn4k8oPO2QJ"><td data-page-node-id="60toAzEpaH5SWzuaPdstCw"><b data-page-node-id="kg9anDAQS9uK5doRAqjtxW">图论</b></td><td data-page-node-id="dUIbiEcFdLjnTtTU7WSUQ5">每条边走恰好一次并回到起点 → <b data-page-node-id="jAagoyFHSZYycyxAMBoDXT">欧拉回路</b>，Hierholzer 算法。</td></tr>
+    <tr data-page-node-id="qzoLrLNHkWjgH7287seiAy"><td data-page-node-id="b0qOeKM7KxZtrMtGghm4pR"><b data-page-node-id="wcFBujLFw5CHnwVWr3StSd">堆 / 树遍历</b></td><td data-page-node-id="nExJMr9wGPk0ZJyr8nY0iV">建堆要老老实实走一遍（从最后一个非叶结点开始下沉），再按完全二叉树形态做中序遍历。</td></tr>
+  </tbody>
+</table>
+
+<h2 data-page-node-id="tvOqudRFFmGqtCJUH3NOUr"><span class="n" data-page-node-id="aIKuBRPvHiimlDh70hyfVd">06</span>选择题：把已练的卡调到手边</h2>
+
+<p data-page-node-id="wE7mYvBdN45CojuOEiIP6x">选择题不用新学。按 9/5 场分布，<b data-page-node-id="IAwtbEqznBYNrAQ6L4ieeG">AI 相关占 6/10</b>——正好全在你库里：</p>
+
+<table data-page-node-id="csFQjyR9DmEBDpXgd36CMI">
+  <thead data-page-node-id="mnfVMxq574jTD8AitHkwn2"><tr data-page-node-id="CTjShbyoPIhdZFaqL0phLi"><th style="width:30%" data-page-node-id="ywf0dFkbuW1Cn4WVmXwN3o">考点</th><th data-page-node-id="eFH42UnXF81F7N9WxSomTt">对应的你家卡</th></tr></thead>
+  <tbody data-page-node-id="LSb3LJHrGt4rYS5DQvALB3">
+    <tr data-page-node-id="F5kecFpBCALpOJilOorsbk"><td data-page-node-id="t3RYem7aCY0PLrfsb4tY0g"><b data-page-node-id="zQPScrCCWTGRC9Hnz8cHN4">大模型（2 题/场）</b></td><td data-page-node-id="JAzJywCC7YzAtk0yItVrCX">长序列注意力（<b data-page-node-id="UYHNGJVBAG27jVW0fzPjpE">FlashAttention 只优化显存与访存、不改变 O(n²) 复杂度</b>，所以它「无法直接解决」长序列建模——最容易想反的一题）、分布式训练通信优化（<b data-page-node-id="bAY0XhHomE0u42r0G4MxwA">梯度按就绪顺序分桶发起通信，与反向计算重叠</b>）。<br data-page-node-id="IaA0WrEdRElq8bsAEDgCaJ">→ <code data-page-node-id="BsJH6SASWGwjRA96wtqLcC">C1 上下文窗口预算</code>、<code data-page-node-id="d06sGHsIcXPkrvZYIHTISh">C6 成本与长上下文截断</code></td></tr>
+    <tr data-page-node-id="xGpKSlkYZYk0Fe8kiN823v"><td data-page-node-id="AYlbxNLiwmvZfEFJFIXHVR"><b data-page-node-id="YG4BIfA52waTZPlE9QuHe6">深度学习（3 题/场）</b></td><td data-page-node-id="LG2FGVk7HvGV5kSTpG82Pm">CNN（卷积核越大参数越多，<b data-page-node-id="v2ArevhV2ElQdnMqiFdJIW">更容易过拟合，不是更不容易</b>；池化是下采样，跟「把全连接换成 RNN」无关）、激活函数（单神经元二分类输出层用 <b data-page-node-id="BT7BmWx5z3j0QPwMO1c8q3">logistic/sigmoid</b>）、词向量（<b data-page-node-id="lAC1E19hshk9e1w98qN0La">word2vec 本质是降维</b>；TF-IDF / 词袋 / LSA 都不需要生成式语言模型）。</td></tr>
+    <tr data-page-node-id="p1BTj6kQWknGldfFN5YCJm"><td data-page-node-id="4zwQHvp9ilhUiUx56khvWe"><b data-page-node-id="EqCE4EvkPeTGj2VhkqeSQt">机器学习（1 题/场）</b></td><td data-page-node-id="mE36Q7rqqz1ulGAQwStIab">状态价值函数定义：从状态 s 出发、之后遵循策略 π 的<b data-page-node-id="ohXifYY1RVXGUC0eBpSYr6">累积折扣回报的期望</b>。干扰项是「对动作价值取 max」——那只在最优策略下成立。</td></tr>
+    <tr data-page-node-id="PWDAgzEEWfKMJMcdiQc4yN"><td data-page-node-id="pxidCxE9VqAy32RzQxZTeD"><b data-page-node-id="RTaDfAlYy8Ixf3UlWfAhZP">Agent</b></td><td data-page-node-id="6mAVQ2dRfoNfo8TKTvDQKh">→ <code data-page-node-id="UV7qHKrJ1HsPU7nse0dX8K">A1 计划执行循环与停止条件</code>、<code data-page-node-id="Sd2XVZAaI3dmHrFNhiEsSg">A2 工具调用与 MCP 边界</code>、<code data-page-node-id="3hZF9N0DERZkCxbptFXq4X">A3 失败恢复与幂等</code>、<code data-page-node-id="CsFrxhrdJjH7jmDujGqRrl">A5 上下文压缩与记忆</code></td></tr>
+    <tr data-page-node-id="fmeCjtKpACJWgaYjFyAUWa"><td data-page-node-id="KGcO9dD3xJGzMFciv7CCYz"><b data-page-node-id="AMoKAM4xGXKk6FlNd0DF9N">算法数据结构（4 题/场）</b></td><td data-page-node-id="iqjbjsfr5WcoIvcuZ3ABMd">递归求值（闭式解套路）、邻接矩阵下 DFS 的时间复杂度（<b data-page-node-id="CJbVu6WbtrnCQeqkZeZxFQ">O(n²)</b>，要扫整行）、二叉树前序+中序还原（<b data-page-node-id="JFtEmveFCoIDm0z3vY3omo">用前序首元素定根，在中序里切左右段，递归查集合一致</b>）、最小堆建堆后的中序遍历。</td></tr>
+    <tr data-page-node-id="gSODwpd69bxGMeAAO191Uh"><td data-page-node-id="FBZFT019pep2j24YkSzR85"><b data-page-node-id="2zDIpc67KNosva7sAiAPQ5">计算机基础</b></td><td data-page-node-id="5iasFpOD4lbrgfi5ATyVvr">网络、操作系统（<b data-page-node-id="MmVl4BYlX9U6qzEFp66Eel">死锁</b>）八股，正常难度。→ <code data-page-node-id="lit5Dqpr8RvSvnu7wdyFGq">O1 上下文切换与死锁</code>、<code data-page-node-id="l6feFHKPd2QBVXl4wXaUpt">N1 一次请求的完整路径</code></td></tr>
+  </tbody>
+</table>
+
+<div class="box b-green" data-page-node-id="WVsXn4Y67VB89d4o4vzLrl">
+  <div class="t" data-page-node-id="Bfcct81Z5LzPK9FzaL1nws">应试策略</div>
+  <p data-page-node-id="w6YCGcyHugkCR12dKKYKe1"><b data-page-node-id="Fr8hxC7ynssP8JtHJTB0Kr">好几道得动笔算</b>（建堆、二叉树还原、DFS 复杂度），光看选项排除不掉——草稿纸通知已经允许了，别舍不得，但<b data-page-node-id="cQsDnTrLhcVZMGd6nnHrr2">单题别超 2 分钟</b>。选择题分值通常不及 AI Coding，别在前者上把后者的时间花掉。</p>
+</div>
+
+<h2 data-page-node-id="lXpNG3Fn04oSrjZFwO0s2C"><span class="n" data-page-node-id="gHmn9nldJFoyYSnfU5alDD">07</span>目录制与提交纪律（本场最容易踩的坑）</h2>
+
+<div class="box b-red" data-page-node-id="ZTXzw3zBhth67mPUXfVbZJ">
+  <div class="t" data-page-node-id="AQnJWLUK5SHVHbGscFelId">通知原文：完成当前目录后才能选下一个；提交目录前可改，提交后不能改</div>
+  <p data-page-node-id="WGoUL6gQdpHvKGk0oX01Fs">这意味着<b data-page-node-id="6R2dlKgG55dsB5aSkFt7kv">你有一个不可撤销的动作</b>。三条规定照着执行：</p>
+  <ul data-page-node-id="gdRhIYMjIObQx6kSFxJHvq">
+    <li data-page-node-id="IwtRDo1V83oYmSoIOvn3G1"><b data-page-node-id="EmEKfyNXqdIGUkL8RNtvgq">提交顺序 = 由稳到险。</b>最有把握、最不容易再改出分的目录先提交掉；<b data-page-node-id="AZYZuuc5XLlpBsYmUs326c">把你还想迭代的那个（通常是 AI Coding）留到最后提交</b>，把剩余时间都给它。</li>
+    <li data-page-node-id="25kuxZwaAA2dPDfYksEsPa"><b data-page-node-id="pmYBpBMH0PT8wxtOwXpnoU">提交前逐条核一遍这个目录内的题号和答案都填了。</b>提交之后不能回头，漏填就是白丢分。<b data-page-node-id="g3CAnxeKBoGlmLJyHctyzj">尤其注意有没有翻页没翻到的题。</b></li>
+    <li data-page-node-id="Qz3SWNeahTRHkfRa92LfuJ"><b data-page-node-id="And7g5FdpGnpIEdjKQYq6g">区分「运行测试」和「提交目录」。</b>AI Coding 内部反复运行评测、刷分是安全的；<b data-page-node-id="Pwj7RXPtx1NlxSv3Nmbwfb">「提交目录」是终局</b>。第 02 节第 3 眼就是为了把这两个按钮找准。</li>
+  </ul>
+</div>
+
+<div class="box b-amber" data-page-node-id="y6PXKyvEk2RGlCG8TTBkk4">
+  <div class="t" data-page-node-id="3nDXGBN3qjbIHlGHBKHZUg">⚠️ 跳出次数：这条是你今晚最该防的意外</div>
+  <p data-page-node-id="Jg8iuEGv5twovDeqGovC94">通知写明「重新登录超过两分钟会累加为跳出次数」，而跳出次数会被记录。<b data-page-node-id="xxcgRvFsZ2hQJInlzNtXqw">所以：</b></p>
+  <ul data-page-node-id="3LR1mPiG9QkAc2mikVTlIT">
+    <li data-page-node-id="uF2wm0Kw7ZGthOENrteKAl">开考前把网络和电源锁死：优先有线或稳定 Wi-Fi，<b data-page-node-id="1SOmFr3Z9VpmxtGdBwz4ed">笔记本插上电源</b>（别在考到一半低电量降频或休眠）。</li>
+    <li data-page-node-id="tOs25jG6x2G7EBn4tWD9V1">万一断了：<b data-page-node-id="nIEnAed5jevpigFXPbR3Ec">先按刷新（F5），刷新比关浏览器重进快</b>。两分钟内回到卷子里。</li>
+    <li data-page-node-id="5Fmfcqd1YDOn36aVsqpAN1">通知允许上厕所等短暂离开——<b data-page-node-id="2qzAc6XTogkK8idReVZ7iQ">但要控制时间</b>，别让它变成一次长时间离线。</li>
+  </ul>
+</div>
+
+<h2 data-page-node-id="TtgCI3HrIyaVgCjl3L48Pv"><span class="n" data-page-node-id="y88Q1gReNc3fsdNfD9nT71">08</span>时间分配（按 90 分钟写；实际时长以卷头为准）</h2>
+
+<div class="card" data-page-node-id="ZQdGBIzreYYj7Agk1kUapq">
+  <div class="clock" data-page-node-id="sNoWIz5g8iAPzNnB6UJSfV">
+    <div class="row" data-page-node-id="FWbdPkPgJGnficjaxku8iy"><div class="tm" data-page-node-id="jvMpPj8WAb4OpAO39xyDIc">0 – 1 min</div><div data-page-node-id="k4ENtilEdC3tjypIBWZDvt"><b data-page-node-id="Fc5GGkzQFR0eSPCLUBk7yC">看目录 + 剩余时间 + 找准「提交目录」按钮在哪。</b>不做题。</div></div>
+    <div class="row" data-page-node-id="gZh0QpAKxhaqeEyF7FU2Vk"><div class="tm" data-page-node-id="K0OgNL0MBMDlp1NvzYd6rm">1 – 10 min</div><div data-page-node-id="ZzkvYcN4ZlVNpF6GnrcDGU">通读 AI Coding 的需求文档，读到底。<b data-page-node-id="LT5LH9LX9GkfKh9FX6gYod">不要上手就写代码。</b></div></div>
+    <div class="row" data-page-node-id="phEff8cGReFtFL2q0YErkU"><div class="tm" data-page-node-id="p6gZrsDNrEX6v09vt1VlHR">10 – 25 min</div><div data-page-node-id="qxdtXBgjnNClcsnwd98wv0">AI Coding <b data-page-node-id="4eLz8xiF6AgMDCnlM48O6O">搭三条公共通道</b>（校验入口 / 幂等层 / 时钟推进）+ 骨架跑起来。</div></div>
+    <div class="row" data-page-node-id="agc3SE6n6d6YTzde2KNLcR"><div class="tm" data-page-node-id="wzCJL7ES31A9A2vbjQolvf">25 – 55 min</div><div data-page-node-id="KophCDCFyDUZe8XkDzxa84">按「能立刻验证」的功能块推进主干业务。每写完一块<b data-page-node-id="pKZXwSho0h2UK9NHWEazh1">立刻打一次接口</b>，别攒到最后一起验。</div></div>
+    <div class="row" data-page-node-id="fPqpfXDIAH70tF0bslaf4g"><div class="tm" data-page-node-id="nIbW9v7A5EURlBAAhUZb5n">55 – 75 min</div><div data-page-node-id="DtNeYLEi6nqrSj0TjdZvqd">让 AI <b data-page-node-id="FHQFFkfvi0BE6ywztQh7zf">造隐藏用例打自己</b>，挂掉的连报错贴回，修完重跑，走两到三轮。</div></div>
+    <div class="row" data-page-node-id="d1kS95HQeEJpH6hTOiB1QJ"><div class="tm" data-page-node-id="t5yqUcyuz4j5UEZf82DFfX">75 – 85 min</div><div data-page-node-id="Cr9r299RfV2EGSEaejogCJ">回头做选择题。AI 相关先扫，会就选；要算的标记后置。</div></div>
+    <div class="row" data-page-node-id="faPn8QD2LDBxZUkHI9JqfE"><div class="tm" data-page-node-id="juhpcJa61w1yfptuXUIK6m">85 – 88 min</div><div data-page-node-id="InTkfGYfWAaEsbsy7SoUpK">编程题：<b data-page-node-id="gipU5ZMLQKwafJTQd7hK0t">检查读入输出格式</b>（行尾空格、多组数据、换行）后提交该目录。</div></div>
+    <div class="row" data-page-node-id="aq4fhisJwrWQF3zE1YHQku"><div class="tm" data-page-node-id="0vS0HtfYNXSqOuVtrahoPG">88 – 90 min</div><div data-page-node-id="aaxSoPIZDGB2diaHN2t7Tl"><b data-page-node-id="AVNVlF2FulAYOqMr45RXbU">把还想迭代的目录留到最后提交。</b>最后 2 分钟不做任何大改。</div></div>
+  </div>
+  <p class="cmt" data-page-node-id="PIXzGFvekPtQFBjnEfd3G7"><b data-page-node-id="hpi7zKdGbjgDbHiB5NasA5">弹性规则：</b>没有 AI Coding → 整张表作废，把 80% 时间给编程题，选择题留最后 15 分钟。<br data-page-node-id="MAVgceri4tWh76rKESOYBQ">AI Coding 题面明显写不完（多段审批流水线、全局时钟这类大工程题）→ <b data-page-node-id="bGeT8a6liAnnZJYkNmP7fN">先把主干打通再加深度</b>；题面通常会直接说「需求多，写不完是常态，怎么拆由你自己判断」——<b data-page-node-id="dWLeqFdklZOgyfZG6sgzTq">分数看取舍，不看完成度</b>。</p>
+</div>
+
+<h2 data-page-node-id="5asmjNzkWgYhrX39MCEZO9"><span class="n" data-page-node-id="GyLbGR2MWK7CABAwZdegF3">09</span>开考前 15 分钟：按通知逐条清（现在就可以做）</h2>
+<div class="card" data-page-node-id="5jwb4yvuvNWH1OU0HWuRto">
+  <ul data-page-node-id="ZtHbyQzfL3he215GCuZ84L">
+    <li data-page-node-id="VSuWyDQX0mZZ4loF4Pblwn"><b data-page-node-id="zuAUA19TOm7FmPVifKAfKT">Chrome 更新到最新版</b>（通知明确要求；顺便把考试网址提前打开一次，确认能正常加载）。</li>
+    <li data-page-node-id="wnBdSK7ISOhJ7E7UVEzJKE"><b data-page-node-id="QnNwE9NfdWkcG0GzURfmUc">确认电脑摄像头可用</b>（通知明确要求带摄像头）——提前在 Chrome 里授权相机权限。<span class="cmt" data-page-node-id="ZbqH1uFZX7F1KW29uiTcta">通知没提双机位，手机不用架。</span></li>
+    <li data-page-node-id="rZ7PTdi5DEY6rYs8NrTjPu"><b data-page-node-id="4sWfFij4hPuh8mHRFH4dAb">关掉</b>：其他浏览器窗口、QQ、微信、Skype 等即时通信、<b data-page-node-id="YOZFEpMkH9cE5dD6Gn0Z7o">屏保</b>、Outlook 等会弹窗的软件。</li>
+    <li data-page-node-id="kZoUAxMoVfLAiu5XPPxP6Z"><b data-page-node-id="KbJbBuc6LoDnVPHBIrEjJo">网络</b>自测：≥ 100KB/s；优先有线，笔记本插电源。</li>
+    <li data-page-node-id="VlGk9EeTtIb1TzrFkUHzIS"><b data-page-node-id="E3vgy1OJqDUm8Lb6EMx2es">草稿纸 + 笔</b>放手边（通知允许使用，算建堆/画树/推中位数会用上）。</li>
+    <li data-page-node-id="GDH4eusigJLpzw33mC3G2y">水放手边，不要开考前才去接。</li>
+    <li data-page-node-id="8B4TVHbgN0JC5u5zsE0U5d"><b data-page-node-id="9rJcF1Ok5ODmtgPJbPw95L">先想清楚「是否愿意参加 AI-Coding 面试」怎么答</b>（见下），开考时不用纠结。</li>
+  </ul>
+</div>
+
+<div class="box b-purple" data-page-node-id="QEk2UGjmMZXt8RPdVx4dRZ">
+  <div class="t" data-page-node-id="0Jtw2WFURJNCKktI4N9cNz">那道「是否愿意参加 AI-Coding 面试」怎么选</div>
+  <p data-page-node-id="Vmdrmitidn8wcBPchqpFc0">通知说得很清楚：<b data-page-node-id="z81cKMGgbMMrgX2CrBC5ze">选什么与笔试题目的分配无关</b>——所以这是纯展示意愿的题，不用算计「选了会不会被分到难题」。</p>
+  <p data-page-node-id="ZA1LbY1phHW8RmkcaGSmwP"><b data-page-node-id="AxJE9uEWtOBhsQtXR6nwNr">判断依据是你的真实情况，不是哪个选项更讨喜：你是真的重度在用 AI 编程工具</b>（Claude Code / Codex 到 Skills、Hooks、AGENTS.md 仓库级那一层），而且你的方向本身就是 AI 应用 / Agent 后端——<b data-page-node-id="gHkScLBUd80TtPj4pPMaFO">这条线要的正是这种能力，而这恰好是你有真实工程证据的地方。</b>选「愿意」是把强项摆到台面上。</p>
+  <p class="cmt" data-page-node-id="Vh33DiFznZvgDxdkMDs6Mr">反过来说：如果你心里对「现场被追问 AI Coding 细节」发虚，那要处理的是那份发虚，不是把选项改成不愿意——因为面试该来的还是会来。</p>
+</div>
+
+<div class="rule" data-page-node-id="by7XtR92N90uJPJQ1U9R5D">
+  <div class="t" data-page-node-id="agMHQ42LODaBX31o539jij">⚡ 19:00 之后，我零协助</div>
+  <p data-page-node-id="LLXFf5smR3odOoE4DvlROf">这场笔试一旦开始，「赛中不给任何提示」就是定死的。改写、润色、评审、给方向、给模板，一样都不给——不只是程度问题。</p>
+  <p data-page-node-id="wauOuibSZxt1wVKXpBVROs">两条理由：① 这类测评的识别机制专扫「结构齐整 + 术语密 + 没有个人粗糙面」的产出；② 更要紧的是，<b data-page-node-id="tojxLgBwoYU4Kt3BopIMEu">那是你的真实采样</b>。被我的想法覆盖掉，这场就白打了——你从来不缺资料。</p>
+  <p data-page-node-id="jY49HgOqRIBHCK9FoDo7fj"><b data-page-node-id="sBDBSGXMlbCA8CIb8Uiqv8">赛前全给，赛后全给。</b>考完把题回忆给我，我陪你逐题复盘（五维评分 + 标准答案 + 缺失模块 + 三时段清单那套）。</p>
+  <p data-page-node-id="1SK0pvmDttDYHUPQNS4MwA">今晚 19:00 到交卷，你自己打。</p>
+</div>
+
+<footer data-page-node-id="8HQOqDkq5ZKGNEUhF4AI7V">
+  <b data-page-node-id="wVJJHsgdxVFEqlm0XtyTGR">信源与置信度</b><br data-page-node-id="YhBUjLAnkzEGLcH7Yb8TV3">
+  · <b data-page-node-id="cz8gnyW1nOBtUwOSXF5XFK">高置信度（本场官方笔试通知，唯一权威）</b>：Chrome 最新版 + 摄像头要求、需关闭的软件清单、网速 ≥100KB/s、允许草稿纸、允许短暂离开、<b data-page-node-id="aUmJE8O8fONXBJTSY8GTqf">编程题 1 道且语言列表（含 PyPy3）+ 需自己处理输入输出</b>、断线刷新与<b data-page-node-id="JffJKEHCFpHLLTpEKDl2xJ">超过两分钟累加跳出次数</b>、<b data-page-node-id="FGHnesoy7VKllHWvOLgqYi">目录制且提交目录后不可修改</b>、「是否愿意参加 AI-Coding 面试」与题目分配无关。<br data-page-node-id="YElA5GOPL3UhnZeuhXJHon">
+  · <b data-page-node-id="FdjywebnDzPj8wgslICLpW">中置信度（考生回忆 + 第三方整理，非本场承诺）</b>：题型与分值结构、AI Coding 50 分且美团已考过「外卖订餐系统」、9/5 选择题考点分布、9/1 场 AI 全栈反馈、编程题考点清单。<br data-page-node-id="curajgFKBAhVf3TLcLt2mC">
+  · <b data-page-node-id="jlZXp6dhxrl4gToGTbpZRa">作废项</b>：我此前推测的「可能只能用 C++」——通知语言列表已含 Python 3 / PyPy3，作废；「双机位」——本场通知未提，作废。<br data-page-node-id="7q3o1FYUMgdGGPnGmOfVV8">
+  · <b data-page-node-id="CUV6PKrUao63u1AydlzEsY">仍未知</b>：题型构成、考试时长。→ 用第 02 节的开考 60 秒侦察解决。<br data-page-node-id="ZGY8o9AhYDgUKlfTGWIkgV">
+  · 生成于 2026-09-22 17:00，17:15 按官方通知修订。赛后把真实题型回填，下一场才有真正的一手数据。
+</footer>
+
+</div>
+</body>
+</html>

@@ -2,7 +2,7 @@
 type: topic
 topic: 评测观测与治理
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-21
 status: candidate
 human_reviewed: false
 level: A
@@ -14,7 +14,13 @@ level: A
 > **所属主线**：二 · 怎么看见"为什么"（轨迹与归因）
 > **层级**：A · 教材级（"Trace 与日志不是一回事"能从"因果链 vs 事件流"推出来；存储与采样成本都能算）
 > **关联母题**：[[母题-E1-评测集设计与pass^k]]（本卡是它的证据来源）· [[母题-E3-回归门禁与发布卡口]]（门禁与 Replay 都读 Trace）· [[母题-G5-RAG评测与幻觉率]]（三岔路归因需要 Trace 留全）· [[母题-A4-长任务状态与Checkpoint]]（Step 记录是最低要求）
-> **素材来源**：`study/07-Eval-Trace与Observability.md` 第 6 节（Trace 数据模型与最低字段）+ **Langfuse 文档 Core Concepts**（2026-09-12 联网核实：**Observations 可嵌套**、**Trace 级属性冗余到每条 observation**、Session 归组）+ **Anthropic《Demystifying evals for AI agents》**（**grade transcript vs grade outcome**）+ raw 的《LoongSuite GenAI 可观测语义规范》。**三组算式为本次新增（待你核对）**
+> **素材来源**：`study/07-Eval-Trace与Observability.md` 第 6 节（Trace 数据模型与最低字段）+ **Langfuse 文档 Core Concepts**（2026-09-12 联网核实：**Observations 可嵌套**、**Trace 级属性冗余到每条 observation**、Session 归组）+ **Anthropic《Demystifying evals for AI agents》**（**grade transcript vs grade outcome**）+ raw 的《LoongSuite GenAI 可观测语义规范》。**三组算式为本次新增。**
+>
+> **2026-09-20 复审核正（本轮）**：**三组算式本次全部复算一致**（50 × 2 KB = 100 KB；100 KB × 1 万 ≈ 1 GB/天；× 365 ≈ 365 GB；15 span → 30 KB/run → 300 MB/天 → 年 ≈ 110 GB，3.3 倍吻合；5% × 100% + 95% × 5% = 9.75%）。**两处外部事实已对一手文档核实**：① **Langfuse 数据模型页**（`langfuse.com/docs/observability/data-model`）原文——observations *can be nested to reflect the structure of your application*、*Trace-level attributes such as `user_id`, `session_id`, `tags`, and `metadata` live on every observation within the trace; the SDKs propagate them automatically*、*Langfuse stores one observations table, and each row holds the observation-level data plus a copy of the trace-level attributes*；② **Anthropic《Demystifying evals for AI agents》（2026-01-09，engineering 博客）确有此文**，原文 *Each grader evaluates some portion of either the transcript or the outcome*。**三处表述按复核结果改**：①「1 GB / 天」改为量级写法「≈ 1 GB / 天」（十进制与二进制差约 7%，不影响量级）；②第 4 节的「失败全采、成功抽样」**降级为【启发式】**——无任何官方文档规定该策略，它是通行工程实践；③第 5 题「成本是 8 倍（平方累计）」**已改精确**：8 倍是**步数比**，按 A1 的平方累计口径应为**约 55 倍**。
+>
+> **2026-09-21 拆分**：本卡原有一整节讲 Langfuse / LangSmith 的实现设计，**现已独立成 [[母题-E7-AgentOps平台与自建Trace-Eval]]**（理由是它是字节 JD 明牌的强竞争力项，需要独立的派单、闭卷与证据等级）。**本卡只留三行摘要，正文不复制。**
+
+**导读**
 
 **导读**：必懂 3 件事（① Trace 是树、日志是线 ② 指标 / 日志 / Trace 三者分工不同 ③ 采样要"失败全采、成功抽样"）· 读完约 12 分钟 · 需要先懂：[[母题-G5-RAG评测与幻觉率]]（归因链）
 
@@ -101,9 +107,9 @@ Session      = 把属于同一次用户交互的多个 trace 归组
 ### 3. 存储成本：span 粒度决定量级【推导】
 
 ```text
-假设一次 run 有 50 个 span，每个 span 记 2 KB
+假设一次 run 有 50 个 span、每个 span 记约 2 KB（**两个都是经验量级假设，不是实测值**）
   单次 run：50 × 2 KB = 100 KB
-  每天 10,000 run：100 KB × 10,000 = 1 GB / 天
+  每天 10,000 run：100 KB × 10,000 ≈ 1 GB / 天
   一年 ≈ 365 GB
 
 如果只记【关键 span】（模型调用 + 工具调用 + 检索，不记内部函数调用）：
@@ -125,7 +131,9 @@ Session      = 把属于同一次用户交互的多个 trace 归组
 
 ---
 
-### 4. 采样：失败全采，成功抽样【推导】
+### 4. 采样：失败全采，成功抽样【启发式】
+
+【性质】**先标性质**：这是**通行的工程启发式，不是任何平台的规定值**——没有一份官方文档规定采样必须这么做。它的依据是「**失败样本的信息密度远高于成功样本**」（稀缺不等于重要）。
 
 【推导】**全采存储扛不住时，直觉是"按比例采样"**——**但那会把最需要的证据丢掉**：
 
@@ -206,6 +214,21 @@ grade the transcript（轨迹） vs grade the outcome（结果）
 | "安全事件也可以采样" | **不能**。**一次就够出事**——**越权尝试、未确认的副作用必须全采**（[[母题-E5-越权与提示注入防护]]） |
 
 【取舍】读成一句话：**可观测性的目标不是"记录得多"，是"出事时能定位到具体哪一步"——所以既有"记什么粒度"的取舍，也有"留哪些样本"的取舍。**
+
+---
+
+### 7. 平台实现：见 [[母题-E7-AgentOps平台与自建Trace-Eval]]
+
+> **本卡不复制正文**。三行摘要只是给"读到这里的下一步"指路，完整教材、自测与面试输出都在 E7。
+
+【事实】**两家的数据模型是同构的**：**observation / run（可嵌套）→ trace → session / thread**，且都建在 OpenTelemetry 之上——**收敛说明这是问题的形状，不是产品口味**。
+
+【事实】**采集必须非阻塞且先落地再入库**（SDK 缓冲 → 立刻写对象存储 → 队列只放引用 → 落列存），**因此"有 Trace"必须靠 Replay 反验，不是接入的副产品**。
+
+【事实】**Trace 是易失的**（SaaS 保留 180 天、到期永久删除），**Dataset 是持久的**——**所以"坏例要尽快沉淀"是硬约束，不是流程习惯。**
+
+**到这里你应该能回答**：为什么"我们用了平台"这句话本身不构成一个答案？
+
 
 ---
 
@@ -319,7 +342,7 @@ grade the transcript（轨迹） vs grade the outcome（结果）
 **A5**：三处问题。
 
 1. **"结果对"不等于"过程对"**。它可能**用了危险的工具、绕了远路、或者对用户说了不该说的**——**这些只有轨迹判分才能发现**（Anthropic 那篇 evals 文章明确建议"**先有结果判分，再补轨迹判分**"）。
-2. **"绕远路"这类问题在成本上很真实**：**一次本该 5 步做完的任务花了 40 步**，结果可能照样正确，**但成本是 8 倍**（[[母题-A1-计划执行循环与停止条件]] 的平方累计）。
+2. **"绕远路"这类问题在成本上很真实**：**一次本该 5 步做完的任务花了 40 步**，结果可能照样正确，**步数是 8 倍**（40 ÷ 5）；而按 [[母题-A1-计划执行循环与停止条件]] 的**平方累计**口径（每步都要把历史重发一遍），**累计输入 token 会涨到约 55 倍**（n(n+1)/2 之比：40×41 ÷ 5×6 = 1640 ÷ 30 ≈ 55）。
 3. **前提是你有 Trace**。**没有 Trace 时，"它绕了远路"这件事根本不可见**——**你只能看到"最后成功了"。**
 
 【准确说法】"**结果判分是底线，轨迹判分是体检**。**先保证结果，再看过程**——**而看过程的前提是 Trace 把每一步都留下来了。**"
@@ -328,15 +351,30 @@ grade the transcript（轨迹） vs grade the outcome（结果）
 
 ## 三、面试输出（学完再看）
 
-**一句话结论**：**Trace 是树，日志是线**——**日志回答"发生了什么"，Trace 回答"谁导致了谁"**。三类信号分工不同：**指标看分布与趋势、Trace 看因果与归因、日志看细节与原文**；**跨步、跨服务的因果链，靠日志只能人工对着时间戳猜**，而 **Agent 天然多步，这个成本随步数急剧上升**。**Trace 的数据模型**是 `Request → Run → Model / Retrieval / Tool / Approval Span`，**每个 span 必须带**：**版本（model / prompt / tool / rule）、Artifact 引用、幂等键、latency、token 用量、错误码**——**少了版本就复现不出来**（和 [[母题-A4-长任务状态与Checkpoint]] 的 Step 记录是同一套字段）。**存储要控**：50 span × 2 KB × 1 万 run = **1 GB/天 = 365 GB/年**，所以**只记"有业务意义或有副作用"的 span**（15 个 → 一年约 110 GB）。**采样要按信息价值**：**失败的**全采**、成功的抽样**（失败率 5% 时 = 5% + 95%×5% = **9.75%**，**存储降到约 1/10 而归因能力完全保留**）——**"随机采样 10%"会把最需要的长尾失败采没**。最后，**判分要分结果和轨迹**：**先有结果判分（底线），再补轨迹判分（体检）**——**因为"结果对了但过程有问题"（绕远路、用了危险工具）只有轨迹能发现**。
+**一句话结论**：**Trace 是树，日志是线**——**日志回答"发生了什么"，Trace 回答"谁导致了谁"**。三类信号分工不同：**指标看分布与趋势、Trace 看因果与归因、日志看细节与原文**；**跨步、跨服务的因果链，靠日志只能人工对着时间戳猜**，而 **Agent 天然多步，这个成本随步数急剧上升**。**Trace 的数据模型**是 `Request → Run → Model / Retrieval / Tool / Approval Span`，**每个 span 必须带**：**版本（model / prompt / tool / rule）、Artifact 引用、幂等键、latency、token 用量、错误码**——**少了版本就复现不出来**（和 [[母题-A4-长任务状态与Checkpoint]] 的 Step 记录是同一套字段）。**存储要控**：50 span × 2 KB × 1 万 run = **1 GB/天 = 365 GB/年**，所以**只记"有业务意义或有副作用"的 span**（15 个 → 一年约 110 GB）。**采样要按信息价值**：**失败的**全采**、成功的抽样**（失败率 5% 时 = 5% + 95%×5% = **9.75%**，**存储降到约 1/10 而归因能力完全保留**）——**"随机采样 10%"会把最需要的长尾失败采没**。最后，**判分要分结果和轨迹**：**先有结果判分（底线），再补轨迹判分（体检）**——**因为"结果对了但过程有问题"（绕远路、用了危险工具）只有轨迹能发现**。 **而「业界是怎么把它做成产品的」单独成卡**——见 [[母题-E7-AgentOps平台与自建Trace-Eval]]：**管道四段 · 三层同构 · 先落地再入库 · Trace 易失而 Dataset 持久**（字节 JD 把它列为强竞争力要求）。
 
-**恢复关键词**：**Trace 是树、日志是线** / 三信号分工（指标=分布 · Trace=因果 · 日志=细节）/ 模型 `Request → Run → Model/Retrieval/Tool/Approval Span` / **Langfuse：Observations 可嵌套、trace 属性冗余到每行**（写换读）/ span 必需字段（**版本 · Artifact 引用 · 幂等键 · 延迟 · 错误码**）/ 存储 1 GB/天 · 365 GB/年 / 粒度判据 = 有业务意义或有副作用 / **失败全采 + 成功抽样**（5% + 95%×5% = 9.75%）/ 安全事件必须全采 / **grade outcome vs grade transcript**（先结果后轨迹）
+**恢复关键词**：**Trace 是树、日志是线** / 三信号分工（指标=分布 · Trace=因果 · 日志=细节）/ 模型 `Request → Run → Model/Retrieval/Tool/Approval Span` / **Langfuse：Observations 可嵌套、trace 属性冗余到每行**（写换读）/ span 必需字段（**版本 · Artifact 引用 · 幂等键 · 延迟 · 错误码**）/ 存储 1 GB/天 · 365 GB/年 / 粒度判据 = 有业务意义或有副作用 / **失败全采 + 成功抽样**（5% + 95%×5% = 9.75%）/ 安全事件必须全采 / **grade outcome vs grade transcript**（先结果后轨迹）/ **平台实现见 E7**（管道四段 · 先落地再入库 · Trace 易失而 Dataset 持久）
 
 **核心不变量 / 主线**：
 **可观测性的目标不是"记录得多"，是"出事时能定位到具体哪一步"。**
 所以它有两个取舍，而不是一个：**记什么粒度**（按"有业务意义"筛）、**留哪些样本**（按"信息价值"筛）——**两个都做错，记录再全也定位不了。**
 
 **完整回答骨架**：先破"日志够用"（树 vs 线）→ 三信号分工 → **Trace 数据模型与必需字段** → 存储算式与粒度判据 → **采样策略（失败全采）** → **grade outcome vs grade transcript** → 收束到"能定位到哪一步"
+
+**完整回答（口述稿）**：
+**Trace 是树，日志是线**：**日志回答"发生了什么"，Trace 回答"谁导致了谁"**。三类信号分工——**指标看分布与趋势、Trace 看因果与归因、日志看细节与原文**；跨步、跨服务的因果链靠日志只能人工对着时间戳猜，而 **Agent 天然多步，这个成本随步数急剧上升**。
+
+数据模型是 `Request → Run → Model / Retrieval / Tool / Approval Span`。每个 span 必须带：**版本（model / prompt / tool / rule）、Artifact 引用、幂等键、latency、token 用量、错误码**——**少了版本就复现不出来**（和 Agent 侧 Step 记录是同一套字段）。检索 span 还要带 query / candidates / 索引版本。
+
+存储要控：50 span × 2 KB × 1 万 run = **约 1 GB/天**。手段三条：**控制粒度**（只记有业务意义或有副作用的 span）、**按信息价值采样**（失败全采 + 成功抽样）、**分级存储**（近期全量、历史聚合或采样）。
+
+怎么用：**按三岔路定位 RAG 答错**——① 正确证据进 TopK 了吗（召回）；② 进最终 Context 了吗（重排/预算/去重）；③ 都进了还是错（生成/Prompt/引用）。**前提是 Trace 把这些都留下来了，否则只能猜。**
+
+**分层要点**：
+- **结论**：Trace 是调用树（因果），日志是事件流（细节）；span 必须带版本、Artifact 引用、幂等键。
+- **推导链**：树有父子 → 能算"这一步占多少时间/失败是谁引起" → 采集字段 → 存不下就控粒度+采样+分级 → 三岔路归因。
+- **量化**：50 span × 2 KB × 1 万 run ≈ 1 GB/天；采样策略是失败全采 + 成功抽样。
+- **边界与常见误解**：Trace 与日志互补不是替代；采集必须非阻塞、先落地再入库（短命进程要 `flush()`，OTLP 下孤儿 span 会被静默丢弃），"有 Trace"要靠 Replay 反向验证。
 
 **追问**（先说后看）
 

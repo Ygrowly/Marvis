@@ -1,0 +1,81 @@
+<svg viewBox="0 0 680 296" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>行式存储与列式存储的物理布局：同一张表的两种排布</title>
+<desc>同一张三行四列的表，行式存储把同一行的四个字段连续存放（1/BJ/24/M 挨在一起），列式存储把同一列的三个值连续存放（BJ/SH/GZ 挨在一起）。分水岭不是功能多少，而是数据在磁盘上怎么排——这决定了点查快还是扫描快。</desc>
+
+<text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">同一张表的两种物理排布</text>
+<text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">分水岭不是功能多少，而是数据在磁盘上怎么排——这决定了「点查快」还是「扫描快」</text>
+
+<text x="30" y="88" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A">行式存储</text>
+<text x="30" y="108" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">同一行的字段连续存放</text>
+
+<rect x="200" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="236" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="272" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="308" y="76" width="36" height="40" fill="#185FA5"/>
+<text x="218" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="254" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">BJ</text>
+<text x="290" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">24</text>
+<text x="326" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">M</text>
+
+<rect x="344" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="380" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="416" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="452" y="76" width="36" height="40" fill="#378ADD"/>
+<text x="362" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="398" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SH</text>
+<text x="434" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">31</text>
+<text x="470" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">F</text>
+
+<rect x="488" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="524" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="560" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="596" y="76" width="36" height="40" fill="#85B7EB"/>
+<text x="506" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="542" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">GZ</text>
+<text x="578" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">28</text>
+<text x="614" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">M</text>
+
+<text x="272" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 1</text>
+<text x="416" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 2</text>
+<text x="560" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 3</text>
+
+<text x="30" y="188" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A">列式存储</text>
+<text x="30" y="208" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">同一列的字段连续存放</text>
+
+<rect x="200" y="176" width="36" height="40" fill="#0F6E56"/>
+<rect x="236" y="176" width="36" height="40" fill="#0F6E56"/>
+<rect x="272" y="176" width="36" height="40" fill="#0F6E56"/>
+<text x="218" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="254" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="290" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">3</text>
+
+<rect x="308" y="176" width="36" height="40" fill="#1D9E75"/>
+<rect x="344" y="176" width="36" height="40" fill="#1D9E75"/>
+<rect x="380" y="176" width="36" height="40" fill="#1D9E75"/>
+<text x="326" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">BJ</text>
+<text x="362" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SH</text>
+<text x="398" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">GZ</text>
+
+<rect x="416" y="176" width="36" height="40" fill="#5DCAA5"/>
+<rect x="452" y="176" width="36" height="40" fill="#5DCAA5"/>
+<rect x="488" y="176" width="36" height="40" fill="#5DCAA5"/>
+<text x="434" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">24</text>
+<text x="470" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">31</text>
+<text x="506" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">28</text>
+
+<rect x="524" y="176" width="36" height="40" fill="#9FE1CB"/>
+<rect x="560" y="176" width="36" height="40" fill="#9FE1CB"/>
+<rect x="596" y="176" width="36" height="40" fill="#9FE1CB"/>
+<text x="542" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">M</text>
+<text x="578" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">F</text>
+<text x="614" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">M</text>
+
+<text x="254" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 1</text>
+<text x="362" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 2</text>
+<text x="470" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 3</text>
+<text x="578" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 4</text>
+
+<rect x="30" y="252" width="620" height="40" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+<text x="48" y="268" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">同样的 12 个值，物理顺序完全不同：点在查一行时行存赢（一次读完），在扫一列时列存赢（只读这一列）</text>
+<text x="48" y="284" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">而「改一行」在列存里要碰 4 个列段——这就是列存引擎的 UPDATE 普遍是异步按批的根本原因</text>
+</svg>

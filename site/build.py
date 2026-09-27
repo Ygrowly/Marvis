@@ -17,7 +17,9 @@ md 里的约定：
     图      —— ::figure 文件名.svg | 标题 | 说明（文件放 site/figures/）
 """
 import json
+import os
 import re
+from urllib.parse import quote
 import sys
 from pathlib import Path
 
@@ -32,7 +34,23 @@ OUT_DATA = SITE / "_data"
 OUT_TOPICS = SITE / "topics"
 OUT_REVIEWS = SITE / "reviews"
 OUT_MODULES = SITE / "modules"
+OUT_PROJECTS = SITE / "projects"
 FIGURES = SITE / "figures"
+
+# mermaid：双轨渲染，默认走轨二（最简单：一条 python site/build.py 就完事，不碰浏览器）。
+#   轨二（默认·浏览器）：图源码留在 <div class="mermaid">，页面加载自带的 mermaid.min.js
+#                      （取不到再走 CDN）现场渲染。改完 md 直接看，不用等构建。
+#   轨一（可选·构建期）：MARVIS_MMD_PRERENDER=1 时启用——用无头 Edge 把图渲成内联 SVG 存进
+#                      site/_build/mermaid/cache/，之后页面零依赖、离线也能看、打开更快。
+#                      预热缓存：python site/_build/mermaid/mmd.py --scan
+sys.path.insert(0, str(SITE / "_build" / "mermaid"))
+try:
+    import mmd as _mmd
+except Exception:                                        # noqa: BLE001
+    _mmd = None
+MMD_POOL = {}
+LIVE_MMD = [0]                 # 本次构建里走浏览器渲染的图块数
+MMD_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
 
 TOPIC_DIRS = ["wiki/topics"]          # 母题卡
 REVIEW_DIRS = ["wiki/interview"]      # 面试复盘（诊断页）
@@ -198,10 +216,175 @@ def plain(s):
     return s.strip()
 
 
+def mmd_svg(code_text):
+    """取 mermaid 源码对应的内联 SVG。
+
+    只有显式 MARVIS_MMD_PRERENDER=1 才走构建期渲染；其余一律交给浏览器端。
+    """
+    if not _mmd or not os.environ.get("MARVIS_MMD_PRERENDER"):
+        return None
+    if code_text in MMD_POOL:
+        return MMD_POOL[code_text]
+    svg = _mmd.get(code_text)
+    MMD_POOL[code_text] = svg
+    return svg
+
+
+def code_block_html(body, lang=""):
+    """围栏代码块 → html。
+
+    mermaid 双轨（2026-09-25）：
+      1) 构建期渲染器有缓存 → 内联 SVG（离线可读，零依赖）；
+      2) 没有缓存（新写的图 / 没跑过渲染器）→ 留 <div class="mermaid"> 源码，
+         由页面在浏览器里渲染（本地 mermaid.min.js，取不到再走 CDN）。
+    两条路都不静默丢内容：渲不出来时页面上仍是可读的图源码。
+    """
+    if lang == "mermaid":
+        svg = mmd_svg(body)
+        if svg:
+            m = re.search(r'<svg\b[^>]*\bwidth="([\d.]+)"', svg)
+            wide = bool(m) and float(m.group(1)) > 880      # 正文栏 54rem=864px
+            hint = '<p class="mv-mmd-hint">图较宽，可左右拖动看全</p>' if wide else ''
+            return hint + '<div class="mv-mmd">%s</div>' % svg
+        LIVE_MMD[0] += 1
+        return '<div class="mermaid">%s</div>' % esc(body)
+    return '<pre class="mv-md-pre">' + esc(body) + "</pre>"
+
+
+def warm_mermaid():
+    """构建前把这次会渲染到的 md 里的 mermaid 块一次性补齐（一个浏览器进程渲完全部）"""
+    if not _mmd or not os.environ.get("MARVIS_MMD_PRERENDER"):
+        return 0
+    codes = []
+    for d in sorted(set(TOPIC_DIRS + MODULE_DIRS + REVIEW_DIRS + CARD_DIRS)):
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in sorted(base.rglob("*.md")):
+            try:
+                codes += _mmd.blocks_of(p.read_text(encoding="utf-8"))
+            except Exception:                            # noqa: BLE001
+                continue
+    if not codes:
+        return 0
+    MMD_POOL.update(_mmd.ensure(codes))
+    print("  [mermaid] 图块 %d 处／去重 %d 张，已就绪"
+          % (len(codes), len(set(_mmd.key(c) for c in codes))))
+    return len(codes)
+
+
+def mmd_boot(prefix):
+    """浏览器端 mermaid 启动脚本：先取站点自带的 mermaid.min.js，取不到再走 CDN。"""
+    return """/* 由 site/build.py 生成，别手改 —— 改 build.py 里的 mmd_boot() 再重跑。
+   浏览器端 mermaid 渲染：优先站点自带的 mermaid.min.js，取不到再走 CDN。 */
+(function () {
+  var CDN = "%(_c)s";
+  /* 本脚本放在 _data/ 下，用它自己的 src 反推站点根，各层目录的页面都能拿到对的路径 */
+  var me = document.currentScript;
+  var LOCAL = ((me && me.src) ? me.src.replace(/_data\\/mmd-boot\\.js.*$/, "") : "%(_p)s")
+    + "_build/mermaid/mermaid.min.js";
+  /* mermaid 要量文字尺寸：图若躺在折叠面板（display:none）里，量出来是 0，
+     只会渲一个 16×16 的空图。渲染前把隐藏的祖先临时搬到屏幕外「显形」，渲完原样还原。 */
+  function reveal(el) {
+    var out = [], p = el.parentElement;
+    while (p && p !== document.documentElement) {
+      var cs = getComputedStyle(p);
+      if (cs.display === "none" || cs.visibility === "hidden") {
+        out.push([p, p.getAttribute("style") || ""]);
+        p.style.cssText = "display:block !important; visibility:hidden !important;" +
+          "position:absolute !important; left:-99999px !important; top:0 !important;" +
+          "width:1600px !important;";
+      }
+      p = p.parentElement;
+    }
+    return out;
+  }
+  function restore(chain) {
+    chain.forEach(function (x) {
+      if (x[1]) x[0].setAttribute("style", x[1]); else x[0].removeAttribute("style");
+    });
+  }
+  function boot() {
+    if (!window.mermaid) return;
+    window.mermaid.initialize({
+      startOnLoad: false, theme: "neutral", securityLevel: "loose",
+      fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',
+      flowchart: { useMaxWidth: false }, sequence: { useMaxWidth: false },
+      gantt: { useMaxWidth: false }, class: { useMaxWidth: false },
+      state: { useMaxWidth: false }, er: { useMaxWidth: false },
+      journey: { useMaxWidth: false }, pie: { useMaxWidth: false }
+    });
+    var nodes = [].slice.call(document.querySelectorAll(".mermaid"));
+    var chains = nodes.map(reveal);
+    /* 宽图会被容器裁掉右边——跟构建期内联那条路一样，给一句「可左右拖动」的提示 */
+    function hint() {
+      nodes.forEach(function (d) {
+        var svg = d.querySelector("svg");
+        if (!svg) return;
+        var w = parseFloat(svg.getAttribute("width")) || 0;
+        if (w <= 880) return;
+        var prev = d.previousElementSibling;
+        if (prev && prev.className === "mv-mmd-hint") return;
+        var p = document.createElement("p");
+        p.className = "mv-mmd-hint";
+        p.textContent = "图较宽，可左右拖动看全";
+        d.parentNode.insertBefore(p, d);
+      });
+    }
+    var fin = function () { chains.forEach(restore); hint(); };
+    try {
+      var r = window.mermaid.run({ querySelector: ".mermaid" });
+      if (r && r.then) r.then(fin, fin); else fin();
+    } catch (e) { fin(); console.error("[mermaid]", e); }
+  }
+  function go(url, next) {
+    var s = document.createElement("script");
+    s.src = url;
+    s.onload = function () { boot(); };
+    s.onerror = function () {
+      if (s.parentNode) s.parentNode.removeChild(s);
+      if (next) go(next, null);
+      else console.warn("[mermaid] 本地与 CDN 都没取到，图保留源码");
+    };
+    document.head.appendChild(s);
+  }
+  go(LOCAL, CDN);
+})();
+""" % {"_p": prefix, "_c": MMD_CDN}
+
+
+def inject_mermaid_runtime():
+    """给含未渲染 mermaid 块的页面挂上启动脚本（按目录深度算相对路径）"""
+    n = 0
+    boot = mmd_boot("")
+    for d in [SITE, OUT_TOPICS, OUT_MODULES, OUT_PROJECTS]:
+        if not d.exists():
+            continue
+        for p in sorted(d.glob("*.html")):
+            try:
+                s = p.read_text(encoding="utf-8")
+            except Exception:                            # noqa: BLE001
+                continue
+            if 'class="mermaid"' not in s or "</body>" not in s:
+                continue
+            depth = len(p.relative_to(SITE).parts) - 1
+            tag = '<script src="%s_data/mmd-boot.js"></script>' % ("../" * depth)
+            if tag in s:
+                continue
+            p.write_text(s.replace("</body>", tag + "</body>"), encoding="utf-8")
+            n += 1
+    if n:
+        OUT_DATA.mkdir(parents=True, exist_ok=True)
+        (OUT_DATA / "mmd-boot.js").write_text(boot, encoding="utf-8")
+        print("  [mermaid] 浏览器端渲染 %d 处图块／%d 个页面（本地 mermaid.min.js → CDN 兜底）"
+              % (LIVE_MMD[0], n))
+    return n
+
+
 def md_to_html(md, figmap=None, used=None):
     """markdown 转 html。figmap 非空时，正文里的 ::figure 行会就地渲染成图。"""
     figmap = figmap or {}
-    out, para, lst, code, in_code = [], [], [], [], False
+    out, para, lst, code, in_code, lang = [], [], [], [], False, ""
 
     def flush_para():
         if para:
@@ -250,10 +433,12 @@ def md_to_html(md, figmap=None, used=None):
             continue
         if raw.startswith("```"):
             if not in_code:
-                flush_para(); flush_list(); code, in_code = [], True
+                flush_para(); flush_list()
+                code, in_code, lang = [], True, raw[3:].strip().lower()
             else:
-                out.append('<pre class="mv-md-pre">' + esc("\n".join(code)) + "</pre>")
-                in_code = False
+                flush_para(); flush_list()
+                out.append(code_block_html("\n".join(code), lang))
+                in_code, lang = False, ""
             continue
         if in_code:
             code.append(raw)
@@ -286,11 +471,28 @@ def md_to_html(md, figmap=None, used=None):
 
     flush_para(); flush_list()
     if in_code and code:
-        out.append('<pre class="mv-md-pre">' + esc("\n".join(code)) + "</pre>")
+        out.append(code_block_html("\n".join(code), lang))
     return "\n".join(out)
 
 
 # ---------------------------------------------------------------- adapter：母题卡
+
+def answer_panel(speak, points=""):
+    """完整回答块：口述稿 + 分层要点。
+
+    字数/秒数是构建时真数出来的（去空白后计字符），秒数按 4 字/秒折算并标明是估算——
+    不写死「60 秒」：那会让不同长度的稿子都挂同一个假数字。
+    """
+    n = len(re.sub(r"\s", "", plain(speak)))
+    sec = int(round(n / 4.0))
+    inner = ('<p class="mv-note" style="margin:0 0 .625rem">实测 %d 字 · 按 4 字/秒折算约 %d 秒'
+             '（秒数是估算，字数才是实测）</p>' % (n, sec))
+    inner += md_to_html(speak)
+    if points:
+        inner += ('<p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点'
+                  '<span class="mv-topic-meta">追问深挖时用</span></p>' + md_to_html(points))
+    return ('<collapse-panel title="完整回答 · 口述稿（先自己答，再看）">%s</collapse-panel>'
+            % inner)
 
 def parse_topic(path):
     meta, body = split_front(path.read_text(encoding="utf-8"))
@@ -357,6 +559,10 @@ def parse_topic(path):
         "keywords": split_kw(grab(body, "恢复关键词")),
         "invariant": grab(body, "核心不变量 / 主线") or grab(body, "核心不变量"),
         "skeleton": grab(body, "完整回答骨架"),
+        # 2026-09-26 新增：真正能照着讲的一段答案 + 分层要点。
+        # 原来只有「一句话结论 + 骨架」，讲的时候没有可对照的完整答案。
+        "answer": grab_block(body, "完整回答（口述稿）"),
+        "points": grab_block(body, "分层要点"),
         "followups": (grab_numbered(body, "追问") or grab_numbered(body, "两层追问")
                       or to_pairs(grab_items(body, "追问链", "追问"))),
         "variants": grab_list(body, "同类变体") or grab_items(body, "类似题"),
@@ -551,6 +757,10 @@ def render_topic(t):
                     % "".join("<li>%s</li>" % inline(k) for k in t["keywords"]))
 
     panels = []
+    # 完整回答排第一：这是现在唯一能照着讲的一段话，比骨架更该先看到。
+    # 字数与秒数都按构建时实测算，标清楚是估算，不写死「60 秒」。
+    if t["answer"]:
+        panels.append(answer_panel(t["answer"], t["points"]))
     # 方言差异排第一：卡里标的是「面试安全底线」，最容易说反的一段，
     # 2026-09-13 审查发现原先根本没被解析成字段、47 张卡全丢在 md 里没上页面。
     if t["contrast"]:
@@ -1139,6 +1349,9 @@ def parse_module_card(path):
         "lines": lines_,
         "topics": topics,
         "questions": questions,
+        # 2026-09-26：「题级答案」——题单是题面，答案要能直接说出口。
+        # 原来翻转卡背面是用 q_answer() 从母题凑的（结论 + 骨架），97% 的题与同母题其它题共用一段话。
+        "qanswers": parse_qanswers(body),
         "projects": parse_projects(body),
         "bridge": bridge,
         "gate": gate,
@@ -1203,17 +1416,47 @@ def _topic_state(md, tid):
     tc = parse_topic(p)
     if not tc:
         return "none", None
-    return ("live" if tc.get("status") == "integrated" else "draft"), tc
+    # 2026-09-25：状态机退场——「能不能练」不再由 md 的 status 决定。
+    # 全库 87 张母题卡全是 candidate（AI 产出上限），按 integrated 过滤的结果是
+    # 复训牌组里只剩 9 张算法卡。新判据：这张卡有没有可供复述的骨架——
+    # 讲没讲过由进度页的本机数据说话，不由 md 的 status 说话。
+    return ("live" if (tc.get("skeleton") or tc.get("conclusion")) else "draft"), tc
 
 
-def q_answer(md, topic_field):
-    """题卡背面：从对应母题自动装出面试口径答案（不另写一遍，避免与讲解重复）"""
+def parse_qanswers(body):
+    """第 8 节「题级答案」→ {题号: 答案文字}。
+
+    格式：`### <题号> （必背|理解|了解）` 后面跟正文，直到下一个 ### 或 ##。
+    """
+    sec = section_by_title(body, "题级答案")
+    if not sec:
+        return {}
+    out = {}
+    for m in re.finditer(r"^###\s*(\d+)\b[^\n]*\n([\s\S]*?)(?=^###\s|^##\s|\Z)",
+                         sec, re.M):
+        txt = m.group(2).strip()
+        if txt:
+            out[m.group(1)] = txt
+    return out
+
+
+def q_answer(md, topic_field, no=None):
+    """题卡背面。
+
+    2026-09-26：优先用「题级答案」（md 第 8 节）。原来只有从母题凑的
+    「【母题号】一句话结论 + 展开：骨架」——题比母题细（平均 3.7 题共用一张母题），
+    97% 的题翻出来是跟别的题同一段话，而且骨架是记忆路线图、不是能说出口的答案。
+    还没写题级答案的模块退回母题口径，但把「这是顶上的」写清楚，别假装是答案。
+    """
+    qa = (md.get("qanswers") or {}).get(str(no)) if no is not None else None
+    if qa:
+        return qa
     ids = re.findall(r"[A-Z]\d+", topic_field or "")
     if not ids:
         return ("这道题目前没有母题覆盖。\n\n"
                 "这正是「覆盖度校验」要暴露的：要么给它补一个母题，"
                 "要么明确降级为「了解」并写下理由。")
-    parts = []
+    parts = ["【这道题还没写题级答案 · 下面是用母题结论顶上的】"]
     for i in ids:
         st, tc = _topic_state(md, i)
         if not tc:
@@ -1226,6 +1469,44 @@ def q_answer(md, topic_field):
         if st != "live":
             parts.append("（这道母题还是草稿，尚未通过验收）")
     return "\n\n".join(parts)
+
+
+def q_more(md, tid):
+    """翻转卡背面下半段：所属母题的完整回答（折叠）+ 单卡入口。
+
+    这一段是「深挖」，不替代题级答案——题级答案在上半段。
+    """
+    ids = re.findall(r"[A-Z]\d+", tid or "")
+    if not ids:
+        return ''
+    out = []
+    for i in ids:
+        _st, tc = _topic_state(md, i)
+        src_mod, cross = md["module"], False
+        if not tc:
+            # 跨模块引用：题单里挂的是别的模块的母题（如 Redis Q19 → 并发与锁 L3）
+            gp = TOPIC_CARD_BY_ID.get(i.upper())
+            if gp:
+                tc, src_mod, cross = parse_topic(gp), gp.parent.name, True
+        if not tc:
+            continue
+        nm = next((t["name"] for t in md["topics"] if t["id"] == i), "")
+        if not nm and tc.get("title"):
+            nm = re.sub(r"^母题\s*\S+\s*·\s*", "", tc["title"])
+        head = ('<p class="mv-fc-sub">这道题属于母题 %s%s%s · 下面挂它的完整回答（学的时候看）</p>'
+                % (esc(i), ("（%s 模块）" % esc(src_mod)) if cross else "",
+                   (" · " + esc(plain(nm))) if nm else ""))
+        if tc.get("answer"):
+            body = answer_panel(tc["answer"], tc["points"])
+        else:
+            body = ('<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>'
+                    % inline(tc["conclusion"]))
+        cp = md["cards"].get(i) or TOPIC_CARD_BY_ID.get(i.upper())
+        pg = TOPIC_PAGES.get("%s/%s" % (src_mod, cp.stem)) if cp else ""
+        link = ('<p class="mv-md-p"><a class="mv-mt-link" href="../%s">'
+                '打开单卡 %s →</a></p>' % (esc(pg), esc(i))) if pg else ''
+        out.append(head + body + link)
+    return '<div class="mv-fc-more">%s</div>' % "".join(out) if out else ''
 
 
 def parse_projects(body):
@@ -1308,8 +1589,18 @@ def render_module_index(md):
                len(arr), len(qs), pct)
         )
 
+    # 总纲题：不属于任何一条主线，放在概览页（2026-09-27）
+    gen = orphan_questions(md)
+    gsec = ""
+    if gen:
+        gsec = ('<div class="mv-section">'
+                '<h2 class="mv-section-title">本模块的题 · 总纲 '
+                '<span class="mv-topic-meta">%d 道 · 不属于某一条主线，先说后翻</span></h2>'
+                '%s</div>' % (len(gen), "".join(q_card(md, q) for q in gen)))
+
     out = MODULE_INDEX_PAGE
     for k, v in (
+        ("%%GENERAL%%", gsec),
         ("%%TITLE%%", esc(md["title"])),
         ("%%MODULE%%", esc(md["module"])),
         ("%%SUMMARY%%", esc(md["summary"]) if md["summary"]
@@ -1331,6 +1622,49 @@ def render_module_index(md):
     return out
 
 
+TOPIC_CARD_BY_ID = {}          # 母题 id -> path（跨模块兜底，2026-09-27）
+
+
+def index_topic_cards():
+    """全库母题卡按 id 建索引。
+
+    题单里会引用别的模块的母题（Redis Q19 → [[母题-L3-分布式锁与fencing-token]]），
+    模块内查不到就查全局。全库母题 id 无重名（审查已确认），所以这张表是安全的。
+    """
+    for p in sorted((ROOT / "wiki" / "topics").glob("*/母题-*.md")):
+        m = re.match(r"母题-([A-Za-z]?\d+)", p.stem)
+        if m:
+            TOPIC_CARD_BY_ID.setdefault(m.group(1).upper(), p)
+
+
+def orphan_questions(md):
+    """归属主线不是行号的题（md 里写的是「全」「前提」「——」）。
+
+    _by_line 按行号分组，这些题归不到任何主线页，2026-09-27 审查发现
+    它们一直没露面——而恰好都是总纲题（如何评测一个 Agent、设计一个生产级 RAG…）。
+    放在模块概览页，别让它们继续消失。
+    """
+    nos = {ln["no"] for ln in md["lines"]}
+    return [q for q in md["questions"] if q["line"] not in nos]
+
+
+def q_card(md, q):
+    """一道题 = 一张翻转卡：正面题面，背面题级答案 + 所属母题的完整回答。"""
+    tid = q.get("topic") or ""
+    chip = ('<span class="mv-chip ghost">%s</span>' % esc(q["pri"])) if q["pri"] else ""
+    if tid:
+        chip += '<span class="mv-chip ghost">%s</span>' % esc(tid)
+    return ('<div class="mv-qitem"><div class="mv-qhead">'
+            '<span class="mv-qid">%s</span>%s'
+            '<button class="mv-qdone" data-k="%s-q%s" type="button">未掌握</button>'
+            "</div>"
+            '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s">%s</flip-card></div>'
+            % (esc(q["no"]), chip, esc(md["module"]), esc(q["no"]),
+               attrs(md["module"]), attrs(q["no"]), attrs(md["module"]),
+               attrs(plain(q["q"])), attrs(q_answer(md, tid, q["no"])),
+               q_more(md, tid)))
+
+
 def render_module_line(md, ln, prev_ln, next_ln):
     """主线页：先出题 → 自己答 → 展开对照 → 记断点；本主线的题在页内"""
     tbl, qbl = _by_line(md["topics"]), _by_line(md["questions"])
@@ -1339,8 +1673,10 @@ def render_module_line(md, ln, prev_ln, next_ln):
     blocks = ""
     for t in arr:
         st, tc = _topic_state(md, t["id"])
-        chip = {"live": '<span class="mv-chip">已掌握</span>',
-                "draft": '<span class="mv-chip warn">草稿 · 待验收</span>'}.get(
+        # 状态机退场：不再显示「已掌握 / 草稿待验收」——那是 md 的状态，
+        # 不是你练没练过。这里只提示「这张卡能不能讲」。
+        chip = {"live": '',
+                "draft": '<span class="mv-chip warn">缺骨架</span>'}.get(
                     st, '<span class="mv-chip ghost">未提炼</span>')
         cp = md["cards"].get(t["id"])
         cpage = TOPIC_PAGES.get("%s/%s" % (md["module"], cp.stem)) if cp else ""
@@ -1375,6 +1711,9 @@ def render_module_line(md, ln, prev_ln, next_ln):
             ref.append('<figure-box num="%s-%d" title="%s" note="%s">%s</figure-box>'
                        % (t["id"], i, attrs(f["title"]), attrs(f["note"]),
                           prefix_svg_ids(f["svg"], "m%s%d" % (t["id"], i))))
+        # 完整答案排在对照讲解前面：学的时候先看这一段，再展开推导
+        if tc["answer"]:
+            ctx += answer_panel(tc["answer"], tc["points"])
         ctx += ('<collapse-panel title="对照讲解（先答完再看）">%s</collapse-panel>'
                 % "".join(ref))
 
@@ -1389,20 +1728,43 @@ def render_module_line(md, ln, prev_ln, next_ln):
 
         blocks += '<div class="mv-mt">%s%s</div>' % (head, ctx)
 
+    # 2026-09-25 新增：主线骨架节（复述用）。学的时候读「对照讲解」，
+    # 讲的时候只看这一节——凭记忆按骨架讲，讲完再展开核对。
+    skel, n_sk = "", 0
+    for t in arr:
+        st, tc = _topic_state(md, t["id"])
+        head = ('<div class="mv-mt-head"><span class="mv-mt-id">%s</span>'
+                '<span class="mv-mt-name">%s</span></div>'
+                % (esc(t["id"]), esc(plain(t["name"]))))
+        if not tc:
+            skel += ('<div class="mv-mt">%s<p class="mv-mt-empty">讲解待提炼。</p></div>' % head)
+            continue
+        body = tc["skeleton"] or tc["invariant"] or ""
+        inner = ""
+        if body:
+            n_sk += 1
+            inner += '<p class="mv-md-p"><strong>骨架</strong>：%s</p>' % inline(body)
+        else:
+            inner += '<p class="mv-note">这张卡还没写「完整回答骨架」，先补正本。</p>'
+        if tc["conclusion"]:
+            inner += ('<p class="mv-md-p"><strong>一句话结论</strong>：%s</p>'
+                      % inline(tc["conclusion"]))
+        if tc["keywords"]:
+            inner += ('<ul class="mv-kw">%s</ul>'
+                      % "".join("<li>%s</li>" % inline(k) for k in tc["keywords"]))
+        # 完整答案折叠在主线骨架旁边：讲完再展开对，不提前看答案
+        ans = answer_panel(tc["answer"], tc["points"]) if tc["answer"] else (
+            '<p class="mv-note">这张卡还没写「完整回答（口述稿）」，先补正本。</p>')
+        skel += ('<div class="mv-mt">%s<collapse-panel title="讲完再对：骨架 · 结论 · 关键词">'
+                 '%s</collapse-panel>%s</div>' % (head, inner, ans))
+
     drill = ""
     for q in qs:
         tid = q.get("topic") or ""
         chip = ('<span class="mv-chip ghost">%s</span>' % esc(q["pri"])) if q["pri"] else ""
         if tid:
             chip += '<span class="mv-chip ghost">%s</span>' % esc(tid)
-        drill += ('<div class="mv-qitem"><div class="mv-qhead">'
-                  '<span class="mv-qid">%s</span>%s'
-                  '<button class="mv-qdone" data-k="%s-q%s" type="button">未掌握</button>'
-                  "</div>"
-                  '<flip-card card-id="%s-q%s" tag="%s" q="%s" a="%s"></flip-card></div>'
-                  % (esc(q["no"]), chip, esc(md["module"]), esc(q["no"]),
-                     attrs(md["module"]), attrs(q["no"]), attrs(md["module"]),
-                     attrs(plain(q["q"])), attrs(q_answer(md, tid))))
+        drill += q_card(md, q)
     if not drill:
         drill = '<p class="mv-note">这条主线还没有挂题。</p>'
 
@@ -1425,6 +1787,9 @@ def render_module_line(md, ln, prev_ln, next_ln):
         ("%%LEAD%%", inline(line_question(ln["name"])) or "—"),
         ("%%TRADEOFF%%", inline(ln["tradeoff"]) if ln["tradeoff"] else ""),
         ("%%BLOCKS%%", blocks or '<p class="mv-note">这条主线还没有母题。</p>'),
+        ("%%SKEL%%", skel or '<p class="mv-note">这条主线还没有母题。</p>'),
+        ("%%NSK%%", str(n_sk)),
+        ("%%NT%%", str(len(arr))),
         ("%%DRILL%%", drill),
         ("%%NQ%%", str(len(qs))),
         ("%%NAV%%", nav),
@@ -1455,8 +1820,8 @@ MODULE_INDEX_PAGE = """<!DOCTYPE html>
     <span class="mv-stat-i"><b>%%NLINE%%</b> 条主线</span>
     <span class="mv-stat-i"><b>%%NTOPIC%%</b> 个母题</span>
     <span class="mv-stat-i"><b>%%NQ%%</b> 道题（<b>%%NMUST%%</b> 必背）</span>
-    <span class="mv-stat-i ok"><b>%%NLIVE%%</b> 已掌握</span>
-    <span class="mv-stat-i warn"><b>%%NDRAFT%%</b> 草稿待验收</span>
+    <span class="mv-stat-i ok"><b>%%NLIVE%%</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>%%NDRAFT%%</b> 缺骨架</span>
   </div>
 
   <div class="mv-section">
@@ -1477,6 +1842,8 @@ MODULE_INDEX_PAGE = """<!DOCTYPE html>
     <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
     %%ROWS%%
   </div>
+
+  %%GENERAL%%
 
   <div class="mv-section">
     <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
@@ -1509,11 +1876,19 @@ MODULE_LINE_PAGE = """<!DOCTYPE html>
   <p class="mv-line-lead">%%TRADEOFF%%</p>
 
   <p class="mv-note" style="margin-bottom:22px">
-    用法：每个母题<strong>先自己讲一遍</strong>（在脑子里过就行）→ 再展开「对照讲解」核对。
-    全部过关后，把正本 frontmatter 里的 <code class="mv-md-code">status: candidate</code> 改成
-    <code class="mv-md-code">integrated</code>，跑一次 <code class="mv-md-code">python site/build.py</code>，
-    它们才会进复训牌组。
+    用法两段：<strong>先学</strong>——展开下面每个母题的「对照讲解」，把这条主线的教材读完；
+    <strong>再讲</strong>——回到上面「本主线骨架」，凭记忆按骨架讲一遍，讲完再展开核对。
+    讲得出 = 这条主线过关，进 1/3/7/14 天复训；卡壳 = 记断点、明天重讲；讲不出 = 回教材重读。
   </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">本主线骨架 <span class="mv-topic-meta">%%NSK%% / %%NT%% 张有骨架 · 凭记忆讲，讲完再对</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      一条主线一次过：按母题顺序，<strong>先不看内容讲一遍</strong> → 卡住时用「恢复关键词」接上 →
+      讲完展开核对，漏掉的就是明天的断点。
+    </p>
+    %%SKEL%%
+  </div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">母题 <span class="mv-topic-meta">先自己答，再展开对照</span></h2>
@@ -1554,6 +1929,175 @@ document.querySelectorAll('.mv-qdone').forEach(function (b) {
 # ---------------------------------------------------------------- main
 
 DIRTY_ATTR = re.compile(r'\s+data-page-[a-z-]+="[^"]*"')
+
+
+PROJECT_PAGE = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%%NAME%% · 项目口述</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 今日</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">项目口述 · 90 秒骨架 → 决策链</span>
+    <h1 class="mv-topic-title">%%NAME%%</h1>
+    <p class="mv-topic-meta">%%LEAD%%</p>
+  </div>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    <strong>先讲</strong>——不看内容，按 90 秒把项目讲一遍；<strong>再对</strong>——展开下面每一块逐个核对，
+    漏掉的那句就是今天的断点。<br>
+    决策链同理：<strong>先看问题自己答</strong>，再展开标答比对自己漏了哪一层。<br>
+    正本在 md（<a href="%%OBS%%">用 Obsidian 打开</a>），本页是它的对照视图，内容由构建脚本抽取、不做改写。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="skel">90 秒骨架 <span class="mv-topic-meta">%%NSKEL%% 块 · 先讲再对</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      三档长度各有用处：<b>20 秒</b>用在「简单介绍一下项目」；<b>90 秒</b>是主场开场；
+      <b>5 分钟</b>是被追到系统层面时展开的骨架。练习的单位是这整块，不是里头的某一句。
+    </p>
+    %%SKEL%%
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">%%NCHAIN%% 问 · 先看题自答，再展开标答</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      骨架过关后才走这一节：每一问先闭卷答，答不出来的就是下次复训要带的断点。
+    </p>
+    %%CHAIN%%
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>
+"""
+
+# 项目口述：三个项目的口述稿分散在不同 md 里，这里只声明「从哪份正本的哪一节抽」，
+# 抽取键一律用二级标题里的关键词（顺序调整不会静默取空），正文不在这里维护。
+PROJECT_PITCH = [
+    {
+        "id": "energyops", "name": "EnergyOps",
+        "lead": "园区能耗智能运营平台：把脏的累计读数做成可查询、可结算的业务事实，再让 Agent 安全地操作真实系统",
+        "src": "EnergyOps/EnergyOps-快速学习掌握与面试实战.md",
+        "skel": "三版项目表达", "chain": "最高频面试题与短答",
+    },
+    {
+        "id": "shuyu", "name": "数驭穹图",
+        "lead": "NL2BI：自然语言到可信业务结论，每一步都留证据",
+        "src": "数驭穹图/16-项目表达与面试题库.md",
+        "skel": "三层项目介绍", "chain": "高频问题与回答主线",
+    },
+    {
+        "id": "rulearena", "name": "RuleArena",
+        "lead": "规则资损对抗验证：干净重放 + 独立 Oracle，证明 Agent 没把钱搞错",
+        "src": "RuleArena/01-project-mainline.md",
+        "skel": "90 秒回答骨架", "chain": "高频问题与标答",
+    },
+]
+
+
+def split_h3(md):
+    """按三级标题切成 [(标题, 正文)]；没有三级标题就整段一块。"""
+    parts = re.split(r"^###\s+(.*?)\s*$", md, flags=re.M)
+    if len(parts) == 1:
+        return [("", md.strip())]
+    out = []
+    head = parts[0].strip()
+    if head:
+        out.append(("", head))
+    for i in range(1, len(parts), 2):
+        out.append((parts[i].strip(), parts[i + 1].strip()))
+    return out
+
+
+def pitch_panels(md):
+    """一块一折叠：标题看得见、内容收起来，讲完 / 答完才展开核对。"""
+    blocks = split_h3(md)
+    # 整节没有三级标题时（RuleArena 的骨架节就是「关键词 + 标答」一整段），
+    # 按 md 自己的建议处理：关键词留在外面照着讲，标答折起来讲完再对。
+    if len(blocks) == 1 and not blocks[0][0]:
+        body = blocks[0][1]
+        m = re.search(r"^标答[：:]", body, re.M)
+        if m:
+            head, tail = body[:m.start()].strip(), body[m.start():].strip()
+            return (md_to_html(head) + "\n"
+                    + '<collapse-panel title="标答（讲完再对）">'
+                    + md_to_html(tail) + "</collapse-panel>")
+        return ('<collapse-panel title="口述稿（先讲，讲完再对）">'
+                + md_to_html(body) + "</collapse-panel>")
+    out = []
+    for title, body in blocks:
+        html = md_to_html(body)
+        if title:
+            out.append('<collapse-panel title="%s">%s</collapse-panel>'
+                       % (esc(title), html))
+        else:
+            out.append(html)
+    return "\n".join(out)
+
+
+def count_blocks(md):
+    """面板计数：有三级标题数标题，整节一块（没有三级标题）也算 1。"""
+    blocks = split_h3(md)
+    n = len([1 for t, _ in blocks if t])
+    if n == 0 and blocks and blocks[0][1].strip():
+        n = 1
+    return n
+
+
+def render_project(p, body):
+    skel = section_by_title(body, p["skel"])
+    chain = section_by_title(body, p["chain"])
+    if not skel.strip():
+        print("  !! %s：没抽到骨架节「%s」——正本节名改了？" % (p["id"], p["skel"]))
+    if not chain.strip():
+        print("  !! %s：没抽到决策链节「%s」——正本节名改了？" % (p["id"], p["chain"]))
+    n_skel = count_blocks(skel)
+    n_chain = count_blocks(chain)
+    obs = ("obsidian://open?vault=Marvis&file="
+           + quote("projects/" + p["src"].replace(".md", "")))
+    return (PROJECT_PAGE
+            .replace("%%NAME%%", esc(p["name"]))
+            .replace("%%LEAD%%", esc(p["lead"]))
+            .replace("%%OBS%%", obs)
+            .replace("%%NSKEL%%", str(n_skel))
+            .replace("%%NCHAIN%%", str(n_chain))
+            .replace("%%SKEL%%", pitch_panels(skel))
+            .replace("%%CHAIN%%", pitch_panels(chain)))
+
+
+def build_projects():
+    """生成 site/projects/{id}.html：三个项目的口述对照页（正本仍是 md）。
+
+    同时产出 _data/projects.js 给首页当入口——跟 modules.js 一个路子，
+    页面清单不在首页写死，改名/增删不会两处失同步。
+    """
+    OUT_PROJECTS.mkdir(parents=True, exist_ok=True)
+    pages = []
+    for p in PROJECT_PITCH:
+        path = ROOT / "projects" / p["src"]
+        if not path.exists():
+            print("  !! 找不到项目正本：%s" % path)
+            continue
+        body = split_front(path.read_text(encoding="utf-8"))[1]
+        (OUT_PROJECTS / ("%s.html" % p["id"])).write_text(
+            render_project(p, body), encoding="utf-8")
+        pages.append({"id": p["id"], "name": p["name"], "lead": p["lead"],
+                      "href": "projects/%s.html" % p["id"]})
+    gone = prune_dir(OUT_PROJECTS, {"%s.html" % p["id"] for p in PROJECT_PITCH})
+    if gone:
+        print("  [清理陈旧页面] projects ×%d" % len(gone))
+    (OUT_DATA / "projects.js").write_text(
+        "window.MARVIS_PROJECTS = " + json.dumps(pages, ensure_ascii=False,
+                                                 indent=2) + ";\n",
+        encoding="utf-8")
+    return [x["id"] for x in pages]
 
 
 def prune_dir(d, expected):
@@ -1683,6 +2227,7 @@ def parse_interview_manual():
 def main():
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     OUT_TOPICS.mkdir(parents=True, exist_ok=True)
+    warm_mermaid()
 
     # 有模块卡的模块名（母题页要据此回链模块概览，必须早于母题页渲染）
     for d in MODULE_DIRS:
@@ -1752,6 +2297,7 @@ def main():
             render_review(rv), encoding="utf-8")
 
     # 模块学习页
+    index_topic_cards()          # 跨模块母题兜底（Redis Q19 → 并发与锁 L3）
     modules, seen_m = [], set()
     for d in MODULE_DIRS:
         base = ROOT / d
@@ -1775,9 +2321,14 @@ def main():
                                    md["lines"][i + 1] if i + 1 < len(md["lines"]) else None),
                 encoding="utf-8")
 
-    # 复训牌组只收已验收（integrated）的母题；草稿只读不练
-    live = [t for t in topics if t.get("status") == "integrated"]
-    drafts = [t for t in topics if t.get("status") != "integrated"]
+    projects = build_projects()
+
+    # 复训牌组：2026-09-25 起不再按 md 的 integrated 过滤（状态机退场）。
+    # 判据改为「这张卡有可供复述的骨架或结论」——讲没讲过由进度页的本机数据决定。
+    def _speakable(t):
+        return bool(t.get("conclusion") or t.get("skeleton"))
+    live = [t for t in topics if _speakable(t)]
+    drafts = [t for t in topics if not _speakable(t)]
 
     decks = []
     if live:
@@ -1844,6 +2395,8 @@ def main():
     _nbp = sum(1 for v in breaks.values() if v["bp"])
     print("断点回流 %d 张卡（其中 %d 张有真断点原文）" % (len(breaks), _nbp))
 
+    inject_mermaid_runtime()
+
     n = sum(len(d["cards"]) for d in decks)
     print("母题页 %d | 牌组 %d | 可练卡片 %d" % (len(topics), len(decks), n))
     if drafts:
@@ -1863,9 +2416,15 @@ def main():
                  len(rv["missing"]), len(rv["plan"])))
     for md in modules:
         ready = sum(1 for t in md["topics"] if t["id"] in md["cards"])
-        print("  == %s（%d 主线 / %d 母题，已提炼 %d，必背题 %d）"
+        # 覆盖率：还有多少母题只有「一句话结论 + 骨架」而没有完整答案（2026-09-26）
+        ans_n = sum(1 for t in md["topics"]
+                    if (_topic_state(md, t["id"])[1] or {}).get("answer"))
+        qa = md.get("qanswers") or {}
+        qa_n = sum(1 for q in md["questions"] if q["no"] in qa)
+        print("  == %s（%d 主线 / %d 母题，已提炼 %d，必背题 %d，完整答案 %d，题级答案 %d/%d）"
               % (md["page"], len(md["lines"]), len(md["topics"]), ready,
-                 sum(1 for q in md["questions"] if "必背" in (q["pri"] or ""))))
+                 sum(1 for q in md["questions"] if "必背" in (q["pri"] or "")), ans_n,
+                 qa_n, len(md["questions"])))
 
     # 清理陈旧页面：主线/母题改名后，上一轮生成的 html 会残留成死链
     exp_topics = {"%s-%s.html" % (t["module"], t["stem"]) for t in topics}
@@ -1880,6 +2439,9 @@ def main():
         _gone = prune_dir(_d, _exp)
         if _gone:
             print("  [清理陈旧页面] %s ×%d" % (_d.name, len(_gone)))
+
+    for pid in projects:
+        print("  ## projects/%s.html（项目口述 · 骨架 + 决策链）" % pid)
 
     cleaned = cleanup_html()
     if cleaned:

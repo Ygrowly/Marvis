@@ -1,0 +1,36 @@
+<svg viewBox="0 0 680 400" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>消息的三段接力与每段的确认机制</title>
+<desc>消息只可能在发送、存储、消费三段丢失，每段各有一道确认；加严确认的代价是不可用或延迟。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">一条消息只可能在三段丢 —— 每段各有一道确认</text>
+
+<rect x="40" y="46" width="600" height="86" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="68" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">① 发送</text>
+<text x="58" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">消息还在生产者内存 / 网络里：发出去了但 Broker 没收到，或者 ack 丢了自己不知道</text>
+<text x="58" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 生产端确认：acks = 0 / 1 / all　★ all 是「所有在 ISR 里的副本」，不是「所有副本」</text>
+<text x="58" y="126" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　（Kafka 3.0 起 acks 默认已是 all —— 因为幂等生产者默认开启）</text>
+
+<line x1="340" y1="132" x2="340" y2="146" stroke="#888780" stroke-width="1" marker-end="url(#arrow)"/>
+
+<rect x="40" y="148" width="600" height="86" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="170" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">② 存储</text>
+<text x="58" y="192" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">消息在 Broker 的页缓存里：Broker 进程 / 机器挂了，还没落盘的多半没了</text>
+<text x="58" y="212" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 持久化（写盘）＋ 多副本（replication.factor = 3，min.insync.replicas ≥ 2）</text>
+<text x="58" y="228" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　 RabbitMQ 要分清：队列持久化（元数据）≠ 消息持久化（内容），两个都要设</text>
+
+<line x1="340" y1="234" x2="340" y2="248" stroke="#888780" stroke-width="1" marker-end="url(#arrow)"/>
+
+<rect x="40" y="250" width="600" height="86" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="58" y="272" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">③ 消费</text>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">已投给消费者但没处理完：消费者提前 ack 然后自己崩了 → 消息永久消失且没人报错</text>
+<text x="58" y="314" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 处理完再 ack（绝不能收到就 ack）；失败三档兜底：重试 → 重试队列 → 死信队列</text>
+<text x="58" y="330" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　 Kafka 是「提交 offset」进度条模式；RabbitMQ / RocketMQ 是逐条确认的单据签收模式</text>
+
+<rect x="40" y="348" width="600" height="40" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">不丢 = 三道确认 + 一个门槛（三个参数一起给，缺一个就有一个漏口）：</text>
+<text x="58" y="378" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">rf=3 + min.insync.replicas=2 → 坏 1 台还能写、坏 2 台拒写（用不可用换不丢）；unclean=false → 不从落后副本选主</text>
+</svg>

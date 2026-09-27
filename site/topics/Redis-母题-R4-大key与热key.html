@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 R4 · 大 key 与热 key：怎么发现、怎么拆、为什么会同时打穿三样东西</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Redis.html">← Redis 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Redis</span>
+    <h1 class="mv-topic-title">母题 R4 · 大 key 与热 key：怎么发现、怎么拆、为什么会同时打穿三样东西</h1>
+    <p class="mv-topic-meta">关联 母题-R1-Redis数据结构与选型（为什么是单线程 —— 这决定了阻塞的后果）· 母题-R2-持久化与内存淘汰（大 key 与内存/淘汰策略的相互作用）· 母题-R3-缓存一致性与三类事故（热 key 与击穿是同一族问题）· 母题-R5-缓存的边界（什么根本不该放 Redis）· 母题-L2-锁的粒度与临界区（"热键"在锁的世界里是同一个问题） ｜ 正本 wiki/topics/Redis/母题-R4-大key与热key.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 大 key 和热 key 是<strong>两个不同维度</strong>的问题：一个是体积、一个是频率 ② 它们的危害都和"<strong>单线程 + 单分片</strong>"这两个前提绑定 ③ 热 key 在集群里<strong>加节点救不了</strong>，只能打散或本地挡）· 读完约 10 分钟 · 需要先懂：[[母题-R1-Redis数据结构与选型]]（单线程）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">某天 Redis 出现周期性卡顿，<code class="mv-md-code">SLOWLOG</code> 里出现一条"命令耗时 300 ms"，但那条命令只是 <code class="mv-md-code">DEL</code>。另一次，集群扩容到 10 个分片之后，整体 QPS 上不去——监控显示<strong>只有一个分片的 CPU 打满</strong>。这两件事的根因分别是什么？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：两个维度，两种打法</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 先把两个概念分开【事实】</h4>
+<table class="mv-table"><thead><tr><th></th><th><strong>大 key</strong></th><th><strong>热 key</strong></th></tr></thead><tbody><tr><td>维度</td><td><strong>体积 / 元素个数</strong></td><td><strong>访问频率</strong></td></tr><tr><td>典型形态</td><td>一个 Hash 里有几百万元素；一个 String 有几 MB</td><td>一个 key 每秒被读几十万次</td></tr><tr><td>危险在哪</td><td><strong>一次性操作要耗很多时间/带宽</strong></td><td><strong>单点压力集中</strong></td></tr><tr><td>打穿什么</td><td><strong>内存、网络带宽、主从复制、集群迁移</strong></td><td><strong>单个分片 / 单个实例的 CPU</strong></td></tr><tr><td>救法</td><td><strong>拆开 + 分批操作</strong></td><td><strong>打散 + 本地挡</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>这两个问题经常被混着讲，但它们的解法完全不同</strong>：</p>
+<pre class="mv-md-pre">大 key  → 问题是"一次操作太大"，解法是【把大操作变小操作】
+热 key  → 问题是"所有请求都找同一个点"，解法是【让请求分散到多个点】</pre>
+<h4 class="mv-md-h mv-md-h4">1.2 两个共同前提：单线程 + 单分片【推导】</h4>
+<p class="mv-md-p">【推导】<strong>为什么这两个问题在 Redis 里特别严重</strong>，取决于两个结构性事实：</p>
+<pre class="mv-md-pre">① Redis 的【命令执行是单线程】的
+   → 一条慢命令会挡住后面所有命令（不是"这一条慢"，是"全体排队"）
+   → 所以"一条 300ms 的 DEL"= 这 300ms 内所有请求的延迟都 +300ms
+
+② 集群里【一个 key 只属于一个分片】
+   → 热 key 的压力无法被自动摊到其他分片
+   → 所以"加节点"对热 key 是无效的（自测 Q2 会算）</pre>
+<p class="mv-md-p">【推导】<strong>这两条合起来就是本卡的全部逻辑</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>大 key 的危险来自 ①（单线程被一条大命令挡住）；热 key 的危险来自 ②（单分片被打满）。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"Redis 单线程"这个前提，是理解大 key 危害的关键？</p>
+<h3 class="mv-md-h mv-md-h3">2. 大 key：把大操作拆成小操作</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 危害的四个面【事实】</h4>
+<figure-box num="大 key 与热 key 的两个维度、危害与解法" title="" note="左：单线程被一条大命令挡住；右：热 key 在集群里打不散，加节点无效"><svg viewBox="0 0 680 380" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>大 key 与热 key 的两个维度、危害与解法</title>
+<desc>大 key 的危险来自单线程被一条大命令挡住；热 key 的危险来自一个 key 只落一个分片，加节点无效。</desc>
+<defs>
+<marker id="figredis-bigkey-hotkey-svg-arrowR4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两个维度、两个前提、两种解法</text>
+
+<rect x="40" y="46" width="290" height="150" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">大 key：体积问题</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">前提：Redis 命令执行是单线程的</text>
+<text x="56" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">DEL 一个 200 万 field 的 Hash：逐个同步释放</text>
+<text x="56" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">200 万 × 100ns ≈ 200 ms 阻塞【整个实例】</text>
+<text x="56" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">另外三个面：网络带宽 · 主从复制延迟 · 迁移卡住</text>
+<text x="56" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">解法：UNLINK（后台回收）· HSCAN 分批 · 按维度拆</text>
+<text x="56" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">把一次大操作，变成很多次小操作</text>
+
+<rect x="350" y="46" width="290" height="150" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="366" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">热 key：频率问题</text>
+<text x="366" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">前提：集群里一个 key 只属于一个分片</text>
+<text x="366" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">10 分片共 10 万 QPS，某 key 独占 3 万</text>
+<text x="366" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">→ 该分片被打爆，其余 9 片还有余量</text>
+<text x="366" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">扩容到 20 分片：这个 key 还是只落一片</text>
+<text x="366" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">读热 → 本地缓存（命中 95% 则降 20 倍）/ 打散副本</text>
+<text x="366" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">写热 → 聚合 / 队列串行（打散反而涨 10 倍）</text>
+
+<rect x="40" y="212" width="600" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="234" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">怎么发现</text>
+<text x="58" y="256" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">大 key：redis-cli --bigkeys（采样估算）· MEMORY USAGE（精确）· SLOWLOG</text>
+<text x="58" y="276" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">热 key：客户端 / 代理层统计频次 · 【单分片 CPU 高而其他分片闲】这个信号 · MONITOR 代价大</text>
+
+<rect x="40" y="304" width="600" height="62" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="324" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">判断口径先分清：是「单点高」还是「全体高」——</text>
+<text x="58" y="344" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">全体高 = 容量问题（扩容有效）；单点高 = 热 key（扩容无效，要打散或本地挡）。</text>
+<text x="58" y="360" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">这也是把两个维度分开讲的原因 —— 它们的解法方向正好相反。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】<strong>大 key 不止"占内存"这一个问题</strong>：</p>
+<table class="mv-table"><thead><tr><th>面</th><th>机制</th></tr></thead><tbody><tr><td><strong>① 操作阻塞</strong></td><td><code class="mv-md-code">DEL</code> 一个几百万元素的 Hash 要<strong>同步释放所有元素</strong>——期间单线程被占住</td></tr><tr><td><strong>② 网络带宽</strong></td><td>一次 <code class="mv-md-code">GET</code> 一个 5MB 的 String → 5MB 走一遍网络（还会打满网卡）</td></tr><tr><td><strong>③ 主从复制</strong></td><td>大 key 的每次修改都要复制给从库 → <strong>复制延迟被拉长</strong>（[[母题-M14-主从复制与延迟]] 是同一问题）</td></tr><tr><td><strong>④ 集群迁移</strong></td><td>槽位迁移时按 key 搬，<strong>大 key 会让单个迁移卡住</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>第 ① 条最能说明"单线程"的代价</strong>：</p>
+<pre class="mv-md-pre">假设一个 Hash 有 200 万个 field
+  删除一个 field 约 100 ns 级（释放对象 + 更新结构）
+  逐个释放：200 万 × 100 ns ≈ 【200 ms】
+→ 这 200 ms 里，Redis 处理不了任何其他命令
+→ 而这期间到达的所有请求，延迟都至少 +200 ms</pre>
+<p class="mv-md-p"><strong>【注意：这 200 ms 不是"那一个请求慢"，而是"所有人都慢"】</strong> ——这正是 1.2 ① 的后果。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 怎么发现【事实】</h4>
+<p class="mv-md-p">【事实】<strong>三种手段，按成本从低到高</strong>：</p>
+<table class="mv-table"><thead><tr><th>手段</th><th>做什么</th><th>注意</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">redis-cli --bigkeys</code></strong></td><td>用 <code class="mv-md-code">SCAN</code> 采样扫描，报告各类型最大的 key</td><td>⚠️ <strong>它是采样估算，不是精确值</strong>；对生产有压力，低峰期跑</td></tr><tr><td><strong><code class="mv-md-code">MEMORY USAGE &lt;key&gt;</code></strong></td><td>精确看单个 key 占多少内存</td><td>需要对可疑 key 逐个查</td></tr><tr><td><strong>监控侧采样 + 慢日志</strong></td><td>定期按比例扫一批 key 统计大小分布；看 <code class="mv-md-code">SLOWLOG</code></td><td><strong>长期、低开销</strong>，适合常态化</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>判断"多大算大"没有统一阈值</strong>，要按你的集群规格来定，常见的经验线：</p>
+<pre class="mv-md-pre">String  &gt; 10 KB 就要关注（单条命令的网络与延迟成本）
+集合类  &gt; 5000 个元素就要关注（一次全量操作的耗时）
+集合类  &gt; 1 MB 基本必须拆</pre>
+<h4 class="mv-md-h mv-md-h4">2.3 怎么拆【推导】</h4>
+<p class="mv-md-p">【推导】<strong>两类处理，别混</strong>：</p>
+<table class="mv-table"><thead><tr><th>场景</th><th>做法</th><th>关键</th></tr></thead><tbody><tr><td><strong>要删一个大 key</strong></td><td><strong>用 <code class="mv-md-code">UNLINK</code> 而不是 <code class="mv-md-code">DEL</code></strong></td><td>【事实】<code class="mv-md-code">DEL</code> 是<strong>同步</strong>释放（阻塞主线程）；<strong><code class="mv-md-code">UNLINK</code> 只把 key 从键空间摘掉，真正的内存回收交给后台线程</strong></td></tr><tr><td><strong>要慢慢清一个大的集合</strong></td><td><strong><code class="mv-md-code">HSCAN</code> / <code class="mv-md-code">SSCAN</code> + 分批 <code class="mv-md-code">HDEL</code></strong></td><td>每次删一小批，让单线程有机会处理别的命令</td></tr><tr><td><strong>要长期保留这份数据</strong></td><td><strong>按业务维度拆成多个 key</strong></td><td>例如把"某设备全年数据"拆成"每天一个 key"——<strong>把大 key 变成一堆小 key，顺带让访问也分散了</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>"拆"这个动作有双重收益</strong>（这一点最能体现设计感）：</p>
+<pre class="mv-md-pre">拆之前：一个大 Hash，200 万 field
+  删除 → 200 ms 阻塞；而且这个 key 落在【一个分片】上
+
+拆成按天 365 个 key：
+  删除 → 每个 key 只有 5000 field（几毫秒）；且 365 个 key 分到不同分片
+  → 【既解决了大 key，也顺便缓解了单分片压力】</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"把大 key 按业务维度拆成小 key"比"优化删除方式"更根本？</p>
+<h3 class="mv-md-h mv-md-h3">3. 热 key：让请求分散到多个点</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 危害：单分片打满，而且加节点无效【推导】</h4>
+<p class="mv-md-p">【推导】<strong>热 key 的危害只有一个，但很硬</strong>：</p>
+<pre class="mv-md-pre">集群有 10 个分片，总容量 10 万 QPS，平均每分片 1 万
+某个 key 独占 3 万 QPS
+→ 它落到的那 1 个分片要承担 3 万 + 其它 key 的流量
+→ 【那一个分片打满】，其余 9 个还有余量
+→ 而扩容到 20 个分片？那个 key 还是只在一个分片上
+→ 【加节点对这个 key 完全无效】</pre>
+<p class="mv-md-p">【事实】<strong>这就是热 key 与"普通高负载"的本质区别</strong>：<strong>普通高负载靠水平扩展能解决，热 key 不能</strong>——因为它违背了"水平扩展假设请求能均匀分布"这个前提。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 怎么发现【事实】</h4>
+<table class="mv-table"><thead><tr><th>手段</th><th>说明</th></tr></thead><tbody><tr><td><strong>客户端埋点统计</strong></td><td>在客户端记录 key 的访问频次（最直接，但要改代码）</td></tr><tr><td><strong>代理层 / SDK 中间件统计</strong></td><td>如果有统一的数据访问层，在这里统计最自然</td></tr><tr><td><strong><code class="mv-md-code">MONITOR</code>（</strong>高成本，别在生产常开<strong>）</strong></td><td>能看到实时命令流，但<strong>会显著影响性能</strong></td></tr><tr><td><strong>采样分析</strong></td><td>按比例采样命令流，估算 top key</td></tr><tr><td><strong>监控指标的"倾斜"</strong></td><td>集群里<strong>某个分片的 QPS/CPU 显著高于其他</strong> —— 这本身就是热 key 的信号</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">3.3 怎么解（三种，按成本递增）【取舍】</h4>
+<p class="mv-md-p">【取舍】</p>
+<table class="mv-table"><thead><tr><th>解法</th><th>做法</th><th>代价</th></tr></thead><tbody><tr><td><strong>① 本地缓存（多级缓存）</strong></td><td>在应用进程内缓存这份数据（几十毫秒 TTL），<strong>请求根本不落到 Redis</strong></td><td><strong>一致性变差</strong>：各实例的值可能不同，且更新要广播或等 TTL 过期</td></tr><tr><td><strong>② 打散成多个副本 key</strong></td><td>把 <code class="mv-md-code">hot:key</code> 变成 <code class="mv-md-code">hot:key:0</code> … <code class="mv-md-code">hot:key:9</code>，<strong>读时随机取一个</strong>，把读压力摊到 10 个分片</td><td><strong>写要写 10 份</strong>（或缩短 TTL）；<strong>读到的可能不一致</strong>；key 数量变多</td></tr><tr><td><strong>③ 只读副本 / 多副本读</strong></td><td>读请求走多个副本实例</td><td>要额外的路由逻辑；主从延迟带来不一致</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>选哪个看是"读热"还是"写热"</strong>：</p>
+<pre class="mv-md-pre">读热（绝大多数情况）→ ① 本地缓存最划算：连 Redis 都不用打
+                   → ② 打散是退而求其次（不想引入本地缓存时）
+写热（同一个 key 被高频写）→ 打散【没用】（写要写 N 份，压力不减）
+                        → 只能：本地聚合（攒批） / 队列串行 / 换数据结构</pre>
+<p class="mv-md-p">【推导】<strong>"写热"这一点值得单独记住</strong>：<strong>热 key 的"打散"只对读有效</strong>，因为一次写会变成 N 次写。<strong>写热要靠"聚合"或"串行"，和 [[母题-L2-锁的粒度与临界区]] 里"热键分段救不了、要换方案"是同一个结论。</strong></p>
+<p class="mv-md-p">【事实】<strong>RuleArena 的容量文档里给 Redis 只留 256~512MB</strong>——<strong>这种小规格下，"放到 Redis 里的东西必须是有选择的"</strong>，这正是 [[母题-R5-缓存的边界]] 要回答的问题。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"热 key 打散"只对读有效，对写无效？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"删一个大 key 和删小 key 一样"</td><td>【事实】<strong>不一样</strong>。<code class="mv-md-code">DEL</code> 是<strong>同步</strong>释放——删一个 200 万元素的 Hash 会让<strong>整个实例阻塞约 200 ms</strong>。<strong>要用 <code class="mv-md-code">UNLINK</code>（异步回收）或 <code class="mv-md-code">HSCAN</code> 分批删</strong></td></tr><tr><td>"集群加节点就能解决热 key"</td><td>【推导】<strong>不能</strong>。集群里一个 key 只属于一个分片，<strong>热 key 的压力不会因为加节点而摊开</strong>——这正是热 key 与普通高负载的本质区别</td></tr><tr><td>"热 key 打散一下就行了"</td><td>【推导】<strong>只对读有效</strong>。一次写会变成 N 份写，<strong>写热打散反而更糟</strong>；写热要靠"本地聚合 / 队列串行 / 换结构"</td></tr><tr><td>"大 key 的问题就是占内存"</td><td>【事实】占内存只是其中之一。<strong>更要紧的是单线程被阻塞、网络带宽、主从复制延迟、集群迁移卡住</strong>这四样</td></tr><tr><td>"用 <code class="mv-md-code">--bigkeys</code> 扫一遍就知道所有大 key"</td><td>【事实】<strong>它是采样估算</strong>，可能漏；而且<strong>对生产有压力</strong>，应该在低峰跑。要精确得用 <code class="mv-md-code">MEMORY USAGE</code> 逐个看</td></tr><tr><td>"<code class="mv-md-code">MONITOR</code> 能直接找出热 key"</td><td>【事实】<strong>能看，但代价大</strong>——它会把每条命令都推给客户端，<strong>生产常开等于自伤</strong>。热 key 更适合在客户端/代理层统计，或用"分片倾斜"这个信号去发现</td></tr><tr><td>"本地缓存会有一致性问题，所以不能用"</td><td>【取舍】<strong>一致性可以量化</strong>：本地缓存放 50 ms TTL，就意味着"最多旧 50 ms"。<strong>对于那些本来就能容忍几秒延迟的数据，这 50 ms 根本不算问题</strong>——<strong>不要用"有一致性问题"一票否决</strong></td></tr><tr><td>"大 key 拆分之后就没问题了"</td><td>【推导】拆完要检查两件事：<strong>① 会不会把一个 key 的请求集中到多个 key 上造成新的热点 ② 跨 key 的原子操作是否还需要</strong>（拆开之后原来"一个命令搞定"的可能要多个命令 + 事务）</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R4-大key与热key-q1" tag="Redis" q="某 Redis 里有一个 Hash，包含 200 万个 field。运维执行 DEL 删它。已知逐个释放 field 的成本约 100 ns。&#10;问：① 这次 DEL 会让实例阻塞多久？② 如果当时 QPS 是 5000、每个请求平均耗时 0.2 ms，这期间会积压多少请求？③ 换成 UNLINK 会怎样？" a="``&#10;① 阻塞时间 ≈ 200 万 × 100 ns = 0.2 s = 【约 200 ms】&#10;★ 注意：这是【同步】释放所有元素的时间，单线程期间处理不了别的命令&#10;② 该 200 ms 内到达的请求量：&#10;5000 QPS × 0.2 s = 【1000 个请求】&#10;而这 1000 个请求的延迟都会【至少 +200 ms】&#10;→ 表现：一个 P99 尖刺；如果是核心接口，就是一次告警&#10;`&#10;③ 换成 UNLINK：&#10;`&#10;UNLINK 只把 key 从键空间摘掉（O(1) 级操作），&#10;真正的内存回收交给【后台线程】&#10;→ 主线程几乎不阻塞&#10;→ 这 1000 个请求不受影响&#10;`&#10;【这一步在验证什么】验证 2.3：大 key 的删除必须避开&quot;同步释放&quot;——UNLINK 就是为这个场景提供的（Redis 4.0+）。&#10;这里有一个可以加分的追问答案：*&quot;那 UNLINK` 之后内存是不是立刻降下来？&quot;* —— 不是立刻。它只是把回收挪到后台，内存会在随后的几百毫秒内逐步释放。所以监控上会看到&quot;删除成功但内存缓慢下降&quot;——这是正常现象，不是没删掉。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R4-大key与热key-q2" tag="Redis" q="集群有 10 个分片，单分片能扛 1 万 QPS。总请求 10 万 QPS，其中一个 key 独占 3 万 QPS。&#10;问：① 会发生什么？② 扩容到 20 个分片能解决吗？③ 打散成 10 个副本 key 呢？④ 如果这是&quot;写&quot;热（同一个 key 每秒被写 3 万次）呢？" a="``&#10;① 其他 9 个分片：平分剩下 7 万 → 每个约 7.8 千（接近上限但没满）&#10;热 key 所在的分片：3 万 + 分摊到的量 ≈ 3.8 万&#10;→ 单分片上限 1 万 → 【这一个分片被打爆】，其余分片闲置&#10;→ 表现：整体 QPS 上不去 + 单个分片 CPU 100%&#10;`&#10;② 扩容到 20 分片：解决不了。那个 key 还是只落在一个分片上，该分片仍然是 3.8 万 &gt; 1 万。加节点只摊薄了其他 key，没动热点。&#10;③ 打散成 10 个副本 key（读时随机取一个）：&#10;`&#10;每个副本承担 3 万 / 10 = 3000 QPS&#10;如果这 10 个副本被哈希到不同分片 → 每片只多 3000 → 【全部在容量内】&#10;→ 有效&#10;`&#10;④ 如果是写热，打散无效：&#10;`&#10;3 万 QPS 的写 → 打散成 10 份意味着【写 10 次】= 30 万次写&#10;→ 总压力反而涨了 10 倍&#10;→ 正确解法：① 本地聚合（在应用内攒批，每 N 次汇总写一次）&#10;② 队列串行（收进队列单消费者处理）&#10;③ 换结构：能累加的用 INCR 类操作；能 Hash 分片的按业务维度拆&#10;``&#10;【这一步在验证什么】验证 3.1 与 3.3：热 key 不能靠扩容解决；打散只对读有效，写热要靠聚合或串行。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R4-大key与热key-q3" tag="Redis" q="某服务在应用进程内加了一层&quot;本地缓存&quot;（TTL 50 ms）来挡一个热 key。&#10;问：① 它能把 Redis 的读压力降多少（假设本地命中率 95%）？② 代价是什么？③ 什么数据可以这样放、什么不可以？" a="``&#10;① 本地命中率 95% → Redis 只承接 5% 的请求&#10;原来 3 万 QPS 打 Redis → 现在【1500 QPS】&#10;→ 降了 【20 倍】，热 key 问题基本消失&#10;``&#10;② 代价是&quot;一致性上限&quot;：&#10;代价 · 具体&#10;读到的值最多旧 50 ms · 这是可量化的——不是&quot;有一致性问题&quot;，是&quot;旧不超过 50 ms&quot;&#10;不同实例可能读到不同的值 · 各自独立缓存，更新时刻不同&#10;更新后不会立刻生效 · 要等 TTL 过期或做广播失效（增量复杂度）&#10;内存占用分散到每个实例 · 每台机器都要留这块内存&#10;③ 判据（三问）：&#10;问题 · 能放本地缓存 · 不能放&#10;丢了能不能重建？ · 能（是派生数据） · 不能（是权威状态）&#10;旧 50 ms 能忍吗？ · 能（配置、字典、榜单、商品详情） · 不能（余额、库存、订单状态）&#10;会不会因为旧值做错事？ · 不会（只用于展示） · 不会 ← **只要它参与判断，就不能容忍旧值&#10;【这一步在验证什么】验证 3.3 与 4 的最后一条：本地缓存的代价可以量化（旧不超过 TTL），所以决策不是&quot;有没有一致性问题&quot;，而是&quot;能容忍多少延迟&quot;——这个口径同样适用于 [[母题-R5-缓存的边界]]。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R4-大key与热key-q4" tag="Redis" q="下面这段话哪里错了？&#10;&quot;Redis 集群扩容之后 QPS 上不去，就是节点不够，再加几台就好了。热 key 也能一起解决。&quot;" a="&quot;再加几台就好了&quot;和&quot;热 key 也能一起解决&quot;都错——而且后一句是方向性错误。&#10;为什么加节点解决不了热 key：&#10;``&#10;集群的分片规则是「key → slot → 节点」&#10;→ 一个 key 永远只在一个 slot 上、只落在一个节点上&#10;→ 你说这个 key 有 3 万 QPS，加多少个节点，它还是【只压在那一个节点】&#10;→ 加节点只能摊薄【其他】key 的流量&#10;`&#10;所以&quot;单分片 CPU 打满、其他分片闲置&quot;这个画面本身就是热 key 的签名——看到它就该去找热点 key，而不是点&quot;扩容&quot;。&#10;热 key 的正确动作（三档）：&#10;档 · 做法 · 适用&#10;① 本地缓存 · 进程内缓存 + 短 TTL，请求根本不落 Redis · 读热（首选）&#10;② 打散副本 · key:i` 随机取，摊到多个分片 · 读热（不想改太多代码时）&#10;③ 聚合 / 串行 · 本地攒批、队列单消费者 · 写热（打散无效）&#10;另外要补一句限定：&quot;扩容上不去&quot;也可能是别的原因——比如单条命令本身很慢（大 key 问题，不是热 key 问题）、连接数/带宽打满、客户端侧瓶颈。先看&quot;倾斜&quot;还是&quot;全体&quot;：全体高才是容量问题，单点高才是热 key——这正是本卡把两个维度分开讲的原因。&#10;准确说法：*热 key 违背了&quot;请求能均匀分布&quot;这个水平扩展的前提，所以加节点无效。要看是读热还是写热：读热用本地缓存或打散副本，写热只能用聚合或串行。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R4-大key与热key-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;delete 一个 key 很快的，DEL 和 UNLINK 只是写法不同，用哪个都一样。&quot;" a="&quot;很快&quot;和&quot;都一样&quot;都错——DEL 和 UNLINK 的区别正好在于&quot;快不快&quot;。&#10;【事实】两者的行为完全不同：&#10;DEL · UNLINK&#10;摘掉 key · 是 · 是&#10;释放内存 · 同步：在主线程里逐个释放元素 · 异步：交给后台线程回收&#10;大 key 的后果 · 阻塞整个实例（Q1 算的 200 ms） · 主线程几乎不阻塞&#10;成本 · O(元素个数) · O(1) 级删除 + 后台 O(n) 回收&#10;为什么这件事在大 key 上特别重要：Redis 命令执行是单线程的——&quot;释放 200 万个 field&quot;这段时间里，别的命令一个都执行不了。所以那 200 ms 不是&quot;删得慢&quot;，是&quot;整个实例停了 200 ms&quot;。&#10;还要纠正一个隐含误解：UNLINK 之后内存不是立刻降——因为回收发生在后台，内存会在随后一段时间内逐步释放。监控上看到&quot;删了但内存没马上掉&quot;是正常的。&#10;准确说法：*DEL 是同步释放（会阻塞单线程，大 key 上能到几百毫秒）；UNLINK 只摘 key、把内存回收交给后台线程，但内存是逐步释放的。删大 key 应该用 UNLINK，或者用 HSCAN 分批删。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">大 key 与热 key 各是什么、为什么危险、怎么发现和拆。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Redis/母题-R4-大key与热key" tag="Redis" q="大 key 与热 key 各是什么、为什么危险、怎么发现和拆。" a="大 key 与热 key 是两个维度的问题——大 key 是体积（危害来自&quot;Redis 命令执行单线程&quot;，一条大命令会把所有人一起挡住；删一个 200 万 field 的 Hash 能阻塞约 200 ms，所以要用 UNLINK 或 HSCAN 分批）；热 key 是频率（危害来自&quot;集群里一个 key 只属于一个分片&quot;，加节点完全无效，只对读有效——读热用本地缓存（命中 95% 就把 3 万 QPS 降到 1500）或打散成多个副本 key；写热只能靠本地聚合、队列串行或换结构）。发现手段分别是 --bigkeys/MEMORY USAGE（采样估算 + 逐个确认）和客户端/代理层统计 + &quot;单分片倾斜&quot;这个信号；MONITOR 能看但代价大，别在生产常开。而&quot;按业务维度拆成大堆小 key&quot;是一箭双雕的动作：既解决了大 key，也顺带分散了访问。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>大 key 与热 key 是两个维度的问题</strong>——大 key 是<strong>体积</strong>（危害来自"Redis 命令执行单线程"，一条大命令会把所有人一起挡住；删一个 200 万 field 的 Hash 能阻塞约 200 ms，<strong>所以要用 <code class="mv-md-code">UNLINK</code> 或 <code class="mv-md-code">HSCAN</code> 分批</strong>）；热 key 是<strong>频率</strong>（危害来自"集群里一个 key 只属于一个分片"，<strong>加节点完全无效</strong>，只对读有效——<strong>读热用本地缓存（命中 95% 就把 3 万 QPS 降到 1500）或打散成多个副本 key；写热只能靠本地聚合、队列串行或换结构</strong>）。<strong>发现手段分别是 <code class="mv-md-code">--bigkeys</code>/<code class="mv-md-code">MEMORY USAGE</code>（采样估算 + 逐个确认）和客户端/代理层统计 + "单分片倾斜"这个信号</strong>；<code class="mv-md-code">MONITOR</code> 能看但代价大，别在生产常开。<strong>而"按业务维度拆成大堆小 key"是一箭双雕的动作</strong>：既解决了大 key，也顺带分散了访问。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>大 key = 体积</li><li>热 key = 频率</li><li><strong>单线程 → 一条慢命令挡住全体</strong></li><li><strong>一个 key 只在一个分片 → 加节点对热 key 无效</strong></li><li><code class="mv-md-code">DEL</code> 同步阻塞 vs <strong><code class="mv-md-code">UNLINK</code> 后台回收</strong></li><li><code class="mv-md-code">HSCAN</code> 分批删</li><li><code class="mv-md-code">--bigkeys</code> 是采样估算</li><li><code class="mv-md-code">MEMORY USAGE</code> 精确</li><li>热 key 发现靠客户端统计 + <strong>分片倾斜</strong></li><li><code class="mv-md-code">MONITOR</code> 代价大</li><li><strong>读热：本地缓存 &gt; 打散副本</strong></li><li>**写热：聚合</li><li>串行（打散无效）**</li><li>按业务维度拆 key 一箭双雕</li><li>本地缓存的代价 = <strong>最多旧一个 TTL</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 38 字 · 按 4 字/秒折算约 10 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p"><strong>大 key 与热 key 是两个维度</strong>：大 key 是<strong>体积</strong>，热 key 是<strong>频率</strong>，对策完全不同。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：大 key 管体积（单线程阻塞），热 key 管频率（分片归属），对策不同。</li><li><strong>推导链</strong>：单线程 → 一条大命令挡住所有人 → UNLINK/分批；一个 key 只属一个分片 → 扩容无效 → 读热/写热分治。</li><li><strong>量化</strong>：删 200 万 field 的 Hash ≈ 阻塞 200 ms；本地缓存命中 95% 把 3 万 QPS 降到 1500；TTL 50 ms = 最多旧 50 ms。</li><li><strong>边界与常见误解</strong>：扩容治不了热 key（<code class="mv-md-code">MONITOR</code> 别生产常开）；写热打散会变成 N 份写，反而更糟；<code class="mv-md-code">UNLINK</code> 后内存是逐步释放的，监控不会立刻掉。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | Redis | 数据库（[[母题-M15-数据增长治理]]） | 消息队列（[[母题-Q3-积压与高可用]]） | |---|---|---|---| | 单个对象太大 | 大 key（阻塞单线程） | 大表 / 大事务（锁范围大、膨胀） | 单个超大消息（拆小或走对象存储） | | 访问集中 | 热 key（打不散分片） | 热点行（行锁争用） | 热点分区（单分区打满） | | 拆的维度 | 按业务维度拆 key | 分区表 / 分片 | 增加分区 / 按业务键哈希 | | 危险信号 | 单分片 CPU 高、其他闲 | 单行锁等待高 | 单分区 lag 高 |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>大 key 为什么危险？</strong></strong></p>
+<p class="mv-md-p"><strong>因为 Redis 命令执行是单线程的</strong>：一条 <code class="mv-md-code">DEL</code> 大 key 会在主线程里同步释放所有元素（200 万 field 约 200 ms），<strong>这期间所有请求的延迟都 +200 ms</strong>。另外还有网络带宽、主从复制延迟、集群迁移卡住三个面。</p>
+<p class="mv-md-p"><strong>2. <strong>删大 key 该怎么做？</strong></strong></p>
+<p class="mv-md-p"><strong><code class="mv-md-code">UNLINK</code></strong>（异步回收）或 <strong><code class="mv-md-code">HSCAN</code>/<code class="mv-md-code">SSCAN</code> + 分批删</strong>。注意 <code class="mv-md-code">UNLINK</code> 之后内存是<strong>逐步释放</strong>的，监控上不会立刻掉。</p>
+<p class="mv-md-p"><strong>3. <strong>热 key 为什么扩容没用？</strong></strong></p>
+<p class="mv-md-p"><strong>集群里一个 key 只落在一个分片</strong>，压力不会因为加节点而摊开。<strong>"单分片打满、其他分片闲置"就是热 key 的签名。</strong></p>
+<p class="mv-md-p"><strong>4. <strong>热 key 怎么解决？</strong></strong></p>
+<p class="mv-md-p"><strong>先分清读热还是写热</strong>：<strong>读热</strong>用本地缓存（首选，命中率高时直接把 Redis 的流量砍掉一个数量级）或打散成多个副本 key；<strong>写热</strong>打散无效（一次写变 N 份），要靠<strong>本地聚合 / 队列串行 / 换数据结构</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>本地缓存能用吗？有没有一致性问题？</strong></strong></p>
+<p class="mv-md-p"><strong>能，而且一致性可以量化</strong>：TTL 50 ms 就意味着"最多旧 50 ms"。<strong>判据是三问</strong>：丢了能不能重建、旧 50 ms 能不能忍、会不会因为旧值做错事。<strong>只要它参与判断（余额、库存），就不能用。</strong></p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「缓存击穿和热 key 是什么关系？」——<strong>同一个压力来源的不同表现</strong>：击穿是"单个热 key 失效瞬间全部回源"，热 key 是"单个 key 长期打满分片"。<strong>解法都指向"别让请求集中到一个点"</strong>（[[母题-R3-缓存一致性与三类事故]]）</li><li>「大 key 和数据倾斜是什么关系？」——<strong>大 key 常常就是数据倾斜的成因</strong>：按用户 ID 分片时，某个超大用户的 key 会固定落在某一片上</li><li>「热 key 和锁的热键问题是同一件事吗？」——<strong>是同一件</strong>：<strong>分段救不了热键</strong>，都要换方案（聚合/串行/本地化），见 [[母题-L2-锁的粒度与临界区]] 2.1</li><li>「Redis Cluster 的槽位迁移为什么怕大 key？」——迁移是<strong>按 key 搬</strong>的，大 key 会让单次迁移卡住，<strong>这是大 key 危害的第四个面</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena</strong>——<code class="mv-md-code">08-capacity-cost-and-facts.md</code> 给 Redis 只配 256~512MB：<strong>这个规格下"大 key"几乎没有容身之地</strong>，也意味着<strong>放进去的东西必须是有选择的</strong>（→ R5）。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先把两个维度分开（体积 vs 频率）→ 给两个共同前提（单线程、单分片）→ 大 key 的四个危害面 → 发现（三种手段与注意事项）→ 拆（<code class="mv-md-code">UNLINK</code> / 分批 / 按业务维度拆）→ 热 key 为什么加节点无效（算一遍）→ 发现（客户端统计 + 分片倾斜）→ 解（读热 vs 写热分开）→ 本地缓存的代价要量化 → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>大 key 的危险来自"单线程"（一条大命令挡住全体），热 key 的危险来自"单分片"（一个 key 打不散）。</strong> 想清楚这两个前提，就能自己推出所有解法：<strong>大 key 要把一次大操作拆成多次小操作，热 key 要把一个点变成多个点（读）或把多次写变成一次写（写）。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能算清"删大 key 会阻塞多久"并说出 <code class="mv-md-code">UNLINK</code> 与 <code class="mv-md-code">DEL</code> 的行为差别；能算清"热 key 为什么加节点无效"并区分读热与写热的解法；能说出本地缓存的代价可以被量化（TTL 就是一致性上限）；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

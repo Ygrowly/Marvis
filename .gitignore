@@ -70,3 +70,7 @@ pytest-tmp-current/
 
 .obsidian/
 .claudian/
+
+# mermaid 构建中间产物（可删，重建：python site/_build/mermaid/mmd.py --scan）
+site/_build/mermaid/cache/
+site/_build/mermaid/_tmp/

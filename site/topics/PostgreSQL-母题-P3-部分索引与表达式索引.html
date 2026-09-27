@@ -190,6 +190,7 @@ WHERE deleted_at IS NULL;</pre>
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 54 字 · 按 4 字/秒折算约 14 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p"><strong>索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小</strong>——<strong>只用得上 1% 的行，就不该为 100% 的行付维护成本</strong>。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：只给需要的那部分行建索引；谓词必须可证明蕴含，否则只能改查询。</li><li><strong>推导链</strong>：价值 = 频率 × 集合大小 → 部分索引 → 体积与 VACUUN 负担同步降 → 谓词蕴含规则 → 表达式索引。</li><li><strong>量化</strong>：本例部分索引体积约 1/100。</li><li><strong>边界与常见误解</strong>：谓词不匹配时加索引没用（PG 不敢用）；表达式索引要求查询写成同样的表达式。</li></ul></collapse-panel>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>MySQL 没有部分索引</strong>，同需求要么靠前置过滤 + 组合索引，要么靠业务层改写。<strong>被问到时正确说法是</strong>："PG 用部分索引 + 表达式索引；<strong>MySQL 里我会用 <code class="mv-md-code">(status, updated_at)</code> 的联合索引，靠最左列过滤，但索引里仍然包含终态行</strong>。"</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>PG 怎么做软删除的唯一约束？</strong></strong></p>
 <p class="mv-md-p"><strong>部分唯一索引</strong>：<code class="mv-md-code">CREATE UNIQUE INDEX ... ON users (lower(email)) WHERE deleted_at IS NULL</code>。<strong>删掉的行不参与唯一性，所以可以重新注册同一个邮箱。</strong></p>

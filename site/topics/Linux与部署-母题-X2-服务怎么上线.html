@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 X2 · 一个服务怎么上线：从镜像到能服务的进程</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Linux与部署.html">← Linux与部署 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Linux与部署</span>
+    <h1 class="mv-topic-title">母题 X2 · 一个服务怎么上线：从镜像到能服务的进程</h1>
+    <p class="mv-topic-meta">关联 母题-X1-容器是什么（进程的边界与信号）· 母题-X3-线上排查的顺序（上线后的可观测）· 母题-E6-灰度发布与回滚（发布策略，本卡只讲进程侧）· 母题-E3-回归门禁与发布卡口（质量门禁）· 母题-A4-长任务状态与Checkpoint（长任务怎么配合退出）· 母题-Q1-消息为什么会丢怎么才不丢（退出期间的"在途"消息） ｜ 正本 wiki/topics/Linux与部署/母题-X2-服务怎么上线.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 上线的关键是"<strong>退出</strong>"，不是"启动" ② <code class="mv-md-code">SIGTERM</code> 给的是"请你收工"，<code class="mv-md-code">SIGKILL</code> 是"现在就走" ③ 优雅退出的时间窗必须<strong>大于最长在途请求时间</strong>，否则会丢请求）· 读完约 9 分钟 · 需要先懂：[[母题-X1-容器是什么]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">某服务发版时，每次滚动更新都会有<strong>少量请求失败</strong>（大概千分之几）。日志里看不到异常，监控上就是"发版那两分钟错误率抬升"。为什么？另外：服务启动时数据库还没就绪，容器直接崩了，反复重启——这该怎么处理？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：上线的成败取决于"怎么退出"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 两个方向，两个难点【推导】</h4>
+<p class="mv-md-p">【推导】<strong>上线包含"起"和"停"两件事，而它们的难点完全不同</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th>启动</th><th>停止</th></tr></thead><tbody><tr><td>难点</td><td><strong>依赖没就绪</strong>（DB / Redis / 配置中心还没好）</td><td><strong>在途请求还没处理完</strong></td></tr><tr><td>代价</td><td>起不来（能发现）</td><td><strong>丢请求（难发现）</strong></td></tr><tr><td>常见错法</td><td>依赖没就绪就退出，然后被反复重启</td><td>收到停止信号就立刻退出</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>为什么"停止"更难</strong>：</p>
+<pre class="mv-md-pre">启动失败 → 进程起不来 → 【有人立刻知道】
+停止不当 → 进程优雅地退出了、日志一切正常 →
+          但【那几百个正在处理的请求被丢了】→ 只有监控上的错误率抬升
+→ 而"发版时错误率抬升"常被当成偶然，不被追责</pre>
+<p class="mv-md-p"><strong>【本卡开头的那个问题就是这一类型】</strong> ——<strong>发版时千分之几的错误，就是"收到停止信号就退出"造成的。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 信号：<code class="mv-md-code">SIGTERM</code> 与 <code class="mv-md-code">SIGKILL</code>【事实】</h4>
+<p class="mv-md-p">【事实】<strong>这两个信号的语义完全不同</strong>：</p>
+<table class="mv-table"><thead><tr><th>信号</th><th>含义</th><th>能不能被处理</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">SIGTERM</code>（15）</strong></td><td><strong>"请你收工"</strong> ——进程可以捕获它、做清理、然后自己退出</td><td>✅ 可以捕获与处理</td></tr><tr><td><strong><code class="mv-md-code">SIGKILL</code>（9）</strong></td><td><strong>"现在就走"</strong> ——内核直接终止，<strong>不能捕获、不能阻塞</strong></td><td>❌ 不可捕获、不可忽略</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>平台的停止流程几乎都是"先 15、后 9"</strong>：</p>
+<pre class="mv-md-pre">停止指令 → 发 SIGTERM → 等【一段宽限期】（grace period）→ 还没退出 → 发 SIGKILL</pre>
+<p class="mv-md-p">【事实】<strong>宽限期的默认值随平台不同</strong>（<strong>属默认值，不是规范</strong>，具体要看你自己的配置）：</p>
+<ul class="mv-md-ul"><li>容器运行时：通常是<strong>秒级到十几秒</strong>（例如 10 秒一类）</li><li>编排平台：常见默认<strong>30 秒</strong>一类，且可配</li></ul>
+<p class="mv-md-p"><strong>所以优雅退出的时间窗不是"想设多少就多少"</strong> ——<strong>它被平台设定的宽限期卡住</strong>。<strong>你的退出逻辑必须能在宽限期内完成，否则会在最后被 <code class="mv-md-code">SIGKILL</code> 打断。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么应用里的优雅退出逻辑通常要"顺便主动告诉平台：我要退了"？</p>
+<h3 class="mv-md-h mv-md-h3">2. 优雅退出的四个动作（顺序不能乱）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 四步【推导】</h4>
+<figure-box num="优雅退出的四步与时间窗" title="" note="先摘流量、再等排空、然后关依赖、最后退出；时间窗要大于最长在途请求"><svg viewBox="0 0 680 292" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>优雅退出的四步与时间窗</title>
+<desc>先摘流量、再等排空、然后关依赖、最后退出；时间窗等于摘流量生效加最长在途加清理，必须小于平台宽限期。</desc>
+<defs>
+<marker id="figgraceful-shutdown-svg-arrowX2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">优雅退出：四步顺序不能乱</text>
+
+<rect x="40" y="46" width="140" height="72" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="56" y="70" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">① 摘流量</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">从 LB / 注册中心摘掉</text>
+<text x="56" y="106" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">★ 最容易漏的一步</text>
+
+<line x1="184" y1="82" x2="200" y2="82" stroke="#888780" stroke-width="1" marker-end="url(#figgraceful-shutdown-svg-arrowX2)"/>
+
+<rect x="204" y="46" width="140" height="72" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="220" y="70" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">② 等在途完成</text>
+<text x="220" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">设一个最长等待</text>
+<text x="220" y="106" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">这才是「优雅」的本体</text>
+
+<line x1="348" y1="82" x2="364" y2="82" stroke="#888780" stroke-width="1" marker-end="url(#figgraceful-shutdown-svg-arrowX2)"/>
+
+<rect x="368" y="46" width="140" height="72" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="384" y="70" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">③ 关依赖</text>
+<text x="384" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">连接池 · 事务 · 缓冲</text>
+<text x="384" y="106" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">必须在 ② 之后</text>
+
+<line x1="512" y1="82" x2="528" y2="82" stroke="#888780" stroke-width="1" marker-end="url(#figgraceful-shutdown-svg-arrowX2)"/>
+
+<rect x="532" y="46" width="108" height="72" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="548" y="70" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">④ 主动退出</text>
+<text x="548" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">比被 SIGKILL 好</text>
+<text x="548" y="106" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">能控制退出码</text>
+
+<rect x="40" y="134" width="600" height="70" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="156" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">时间窗要算，而且必须小于平台宽限期</text>
+<text x="58" y="178" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">时间窗 &gt; 摘流量生效(约 1 s) + 最长在途请求(P99.9 800ms) + 清理(200ms) ≈ 2 s</text>
+<text x="58" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">平台流程：发 SIGTERM（可捕获）→ 等宽限期 → 发 SIGKILL（不可捕获）→ 必须留安全边界</text>
+
+<rect x="40" y="220" width="600" height="56" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="240" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">长任务（导出跑 60 s）绝不能进这个窗口：收到信号 → 写 checkpoint → 主动结束该任务</text>
+<text x="58" y="260" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">恢复时从 checkpoint 继续；已产生副作用要靠幂等键避免重复 —— 可中断 + 可恢复</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>正确顺序是"先摘流量，再等排空，然后关依赖，最后才退出"</strong>：</p>
+<table class="mv-table"><thead><tr><th>#</th><th>动作</th><th>为什么必须在这一步</th></tr></thead><tbody><tr><td><strong>① 停止接收新请求</strong></td><td>从负载均衡 / 服务注册里摘掉自己（或把就绪探针置为失败）</td><td><strong>这是最关键的一步</strong>：不做的话，你一边处理在途请求、一边还在接新请求，<strong>永远排不空</strong></td></tr><tr><td><strong>② 等在途请求处理完</strong></td><td>设一个"最长等待时间"，等到都返回或超时</td><td>这才是"优雅"的本体</td></tr><tr><td><strong>③ 关掉对外依赖</strong></td><td>关连接池、提交 / 回滚事务、flush 缓冲</td><td>在 ② 之后，因为 ② 里还要用它们</td></tr><tr><td><strong>④ 退出进程</strong></td><td>主动 <code class="mv-md-code">exit(0)</code>，不必等 <code class="mv-md-code">SIGKILL</code></td><td><strong>主动退出比被 <code class="mv-md-code">SIGKILL</code> 好</strong>：能控制退出码、能打完日志</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>① 为什么最容易漏</strong>：</p>
+<pre class="mv-md-pre">如果不在负载均衡侧摘掉自己：
+  发版时，LB 还在把新请求发给你
+  你在等"在途请求变 0"，但新请求一直在进来
+  → 永远等不到 → 宽限期到 → 【SIGKILL 杀掉一批在途请求】
+→ 这就是"发版时错误率抬升"的机制</pre>
+<h4 class="mv-md-h mv-md-h4">2.2 一个更隐蔽的点：异步任务与队列【推导】</h4>
+<p class="mv-md-p">【推导】<strong>HTTP 请求不是唯一的"在途工作"</strong>：</p>
+<pre class="mv-md-pre">消费队列的 Worker：
+  ① 停止拉取新消息
+  ② 等当前这条处理完（或者主动把没处理完的【放回队列】）
+  ③ 关闭连接
+  ④ 退出</pre>
+<p class="mv-md-p">【取舍】<strong>这里要和"至少一次投递"配合</strong>（[[母题-Q2-重复与乱序]]）：<strong>退出时"没处理完的消息"应该让它重投，而不是标记为已处理</strong>——<strong>因为重复是安全的（有幂等），丢是不可接受的</strong>。</p>
+<p class="mv-md-p">【事实】<strong>RuleArena 与 EnergyOps 都是这个思路</strong>：<strong>Worker 重启后先读权威状态再校准 Checkpoint</strong>（<code class="mv-md-code">04-idempotency-and-recovery.md</code> §9、<code class="mv-md-code">07-task-lifecycle-and-delivery.md</code>）——<strong>这说明它们的设计前提就是"进程会被随时拿走"</strong>，而不是"优雅退出一定做得到"。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"进程会被随时杀掉"是设计前提，而不是异常情况？</p>
+<h3 class="mv-md-h mv-md-h3">3. 量化：时间窗该怎么算</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 优雅退出的时间窗【推导】</h4>
+<p class="mv-md-p">【推导】<strong>时间窗的算式</strong>：</p>
+<pre class="mv-md-pre">优雅退出时间窗 &gt; 停止接线生效时间 + 最长在途请求时间 + 清理时间</pre>
+<p class="mv-md-p">【推导】<strong>代进数字算一遍</strong>（自测 Q1 完整算）：</p>
+<pre class="mv-md-pre">最长在途请求时间（P99.9）：800 ms
+停止接线生效时间（LB / 注册中心把状态同步下去）：约 1 s
+清理（关连接池、flush）：200 ms
+→ 时间窗至少 ≈ 1 + 0.8 + 0.2 = 【2 s】
+
+如果平台宽限期只有 10 s，那 2 s 足够，还能留余量；
+如果某个接口【设计上就可能跑 30 s】（比如导出），
+→ 它一定会被 SIGKILL 打断 → 【这种接口不该阻塞退出】</pre>
+<p class="mv-md-p">【取舍】<strong>结论</strong>：<strong>"长任务"不应该在退出路径上等</strong> ——它应该被设计成"<strong>可中断 + 可恢复</strong>"：</p>
+<pre class="mv-md-pre">长任务：停止接新任务 → 把当前进度写下来（checkpoint）→ 主动退出
+        → 恢复时从 checkpoint 继续（[[母题-A4-长任务状态与Checkpoint]]）</pre>
+<h4 class="mv-md-h mv-md-h4">3.2 启动：依赖没就绪怎么办【推导】</h4>
+<p class="mv-md-p">【推导】<strong>三种做法，各有代价</strong>：</p>
+<table class="mv-table"><thead><tr><th>做法</th><th>怎么做</th><th>代价</th></tr></thead><tbody><tr><td><strong>① 启动重试</strong></td><td>连不上依赖就重试，<strong>有上限与退避</strong></td><td>起得慢；重试耗尽还是会失败</td></tr><tr><td><strong>② 就绪探针（推荐）</strong></td><td><strong>进程照常启动，但"就绪"状态先为"未就绪"</strong> ——收到流量前先自检依赖</td><td><strong>要有就绪探针这个概念</strong>（不能只靠"进程活着"）</td></tr><tr><td><strong>③ 硬失败退出</strong></td><td>连不上直接退出，让平台重启</td><td><strong>会造成"重启风暴"</strong>：依赖越忙越重启，越重启越忙</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>② 为什么最好</strong>：它把"<strong>进程活着</strong>"和"<strong>能服务</strong>"分开了：</p>
+<pre class="mv-md-pre">存活（liveness）   → 进程还在、没死锁   → 失败 → 【重启】
+就绪（readiness）  → 依赖都通、能服务   → 失败 → 【暂时不接流量，不重启】
+→ 关键区分：依赖没就绪时，【不该重启】，只该"暂时不接流量"</pre>
+<p class="mv-md-p">【取舍】<strong>探针设计错的两个典型后果</strong>：</p>
+<pre class="mv-md-pre">就绪探针太严（把慢依赖也算进去）→ 依赖一抖，所有实例一起"不就绪"→ 全站不可用
+存活探针太敏感（把"暂时不健康"当"死了"）→ 频繁重启 → 雪上加霜
+→ 判据：就绪探针可以严（不接流量而已），存活探针必须【极其保守】（它会导致重启）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"依赖不可用"应该表现为"暂时不接流量"而不是"重启"？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"发版时错误率抬升是正常的"</td><td>【推导】<strong>不是正常的</strong>。千分之几的错误率抬升通常就是<strong>没有优雅退出</strong>（或没在 LB 侧摘流量）造成的——<strong>它是 bug，不是发版成本</strong></td></tr><tr><td>"收到停止信号就 <code class="mv-md-code">exit(0)</code> 就行"</td><td>【推导】<strong>会丢在途请求</strong>。正确顺序是<strong>先摘流量 → 等在途完成 → 关依赖 → 退出</strong>，且<strong>①摘流量最容易漏</strong></td></tr><tr><td>"优雅退出做得好就一定不丢请求"</td><td>【取舍】<strong>不能保证</strong>：宽限期到就 <code class="mv-md-code">SIGKILL</code>。所以<strong>长任务必须设计成"可中断 + 可恢复"</strong>，而不是指望"一定能优雅退完"</td></tr><tr><td>"进程活着就是服务可用"</td><td>【事实】<strong>要分存活与就绪</strong>：<strong>存活失败 → 重启；就绪失败 → 暂时不接流量</strong>。混在一起会在依赖抖动时造成重启风暴或全站不就绪</td></tr><tr><td>"启动时依赖没就绪，多重启几次就好了"</td><td>【取舍】<strong>可能变成重启风暴</strong>（依赖越忙越重启）。更好的做法是<strong>就绪探针 + 有上限的退避重试</strong></td></tr><tr><td>"配置写死在镜像里就行"</td><td>【取舍】要分清：<strong>镜像里放不变的东西</strong>（代码、依赖），<strong>环境相关的走环境变量 / 配置中心</strong>。<strong>配置中心引入了一个新的启动依赖</strong>——它不可用时要有兜底（本地默认值 / 上次成功的缓存）</td></tr><tr><td>"优雅退出只跟 HTTP 服务有关"</td><td>【推导】<strong>队列消费者同样要</strong>：停止拉取 → 处理完当前 / 把未完成的放回队列 → 关连接 → 退出。<strong>关键是"没处理完的要让它重投，而不是标记成功"</strong></td></tr><tr><td>"多实例滚动更新就不需要优雅退出了"</td><td>【推导】<strong>反了</strong>：<strong>滚动更新恰恰让"摘流量"成了必须做的事</strong>——多实例的每一次替换都会触发一轮"摘流量 → 排空 → 退出"，做得不对就每次发版都掉一点请求</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Linux与部署/母题-X2-服务怎么上线-q1" tag="Linux与部署" q="某服务最长在途请求 P99.9 = 800 ms；LB 摘流量生效约 1 s；清理约 200 ms；平台的宽限期是 10 s。&#10;问：① 优雅退出最少需要多久？② 留多少余量合适？③ 如果有个导出接口最长跑 60 s，怎么办？" a="``&#10;① 最少 = 摘流量生效（1 s）+ 最长在途（0.8 s）+ 清理（0.2 s）= 【2 s】&#10;② 建议留到 2–3 倍余量（4–6 s），理由：&#10;· &quot;最长在途&quot;是个统计值，会有更长的尾巴&#10;· 摘流量生效时间受注册中心推送延迟影响，会抖&#10;· 必须严格小于平台宽限期（10 s），留出安全边界&#10;→ 设 5 s 左右：既覆盖住正常情况，也不会逼近 10 s 上限&#10;`&#10;③ 导出接口（60 s）绝不能阻塞退出：&#10;`&#10;❌ 等它跑完 → 60 s &gt; 宽限期 10 s → 必然被 SIGKILL，而且还拖慢了整个发版&#10;✅ 设计成&quot;可中断 + 可恢复&quot;：&#10;收到停止信号 → 把当前进度写入 checkpoint → 主动结束该任务&#10;→ 下一次启动（或另一个实例）从 checkpoint 继续&#10;→ 这正是 [[母题-A4-长任务状态与Checkpoint]] 的形态&#10;→ 如果这个导出已经产生副作用（比如发了一个文件），&#10;恢复时要靠幂等键避免重复（[[母题-Q2-重复与乱序]]）&#10;``&#10;【这一步在验证什么】验证 2.1 与 3.1：优雅退出有一个可算的时间窗，而&quot;长任务&quot;必须在设计上就不进入这个窗口。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Linux与部署/母题-X2-服务怎么上线-q2" tag="Linux与部署" q="某服务的&quot;存活探针&quot;配置是&quot;调用 /health 接口，如果 3 秒不返回就重启容器&quot;，而 /health 里会去查一次数据库。&#10;问：① 这个配置会引发什么？② 怎么改？" a="``&#10;① 会引发「重启风暴」：&#10;数据库变慢 → /health 3 秒不返回 → 探针判定&quot;不健康&quot; → 【重启容器】&#10;→ 所有实例同时重启 → 重启后依然要查数据库 → 又超时 → 又重启&#10;→ 而且重启期间【连接池重建、缓存失效】，数据库压力更大&#10;→ 【依赖的一点点抖动，被放大成全站不可用】&#10;`&#10;② 改法（把两类探针的职责分开）：&#10;探针 · 该检查什么 · 失败后果&#10;存活（liveness） · 只检查&quot;进程自己还行不行&quot;：事件循环没死锁、主线程在转 —— 绝不查外部依赖 · 重启&#10;就绪（readiness） · 检查&quot;能不能服务&quot;：关键依赖是否可用 · 暂时不接流量（不重启）&#10;启动（startup） · 给慢启动的服务争取时间（避免存活探针在启动期就开火） · 重启&#10;【取舍】判据一句话：&quot;这件事重不重启能改善？&quot; ——&#10;`&#10;不能改善的（数据库慢、下游挂）→ 绝不放在【存活】里 → 重启只会更糟&#10;能改善的（进程死锁、内存泄漏到没法跑）→ 才放存活&#10;``&#10;【这一步在验证什么】验证 3.2：&quot;进程活着&quot;和&quot;能服务&quot;是两件事，混在一起会把外部故障放大成自身故障。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Linux与部署/母题-X2-服务怎么上线-q3" tag="Linux与部署" q="某队列消费者的代码是：&#10;``python&#10;while True:&#10;msg = queue.pop(timeout=1)&#10;handle(msg)&#10;queue.ack(msg)          # 处理完就确认&#10;`&#10;收到 SIGTERM` 时进程直接退出。问：① 会丢消息吗？② 会不会重复？③ 该怎么改？" a="``&#10;① 会丢：&#10;如果在 handle(msg) 之后、ack(msg) 之前收到 SIGTERM → 进程退出&#10;→ 消息【没被 ack】→ 按&quot;至少一次&quot;语义它会被重投&#10;→ 这反而是【安全的】——因为它没被确认&#10;真正会丢的是另一种写法：先 ack 再 handle&#10;→ ack 之后进程退出 → 消息永久丢失（[[母题-Q1-消息为什么会丢怎么才不丢]] 2.3）&#10;② 会重复（这是设计上的必然）：&#10;凡是&quot;处理完但没 ack 就崩&quot;的消息都会重投&#10;→ 所以【消费逻辑必须幂等】（[[母题-Q2-重复与乱序]]）&#10;`&#10;③ 改法（四步，与 HTTP 服务同构）：&#10;`&#10;① 收到 SIGTERM → 置标志位，【停止拉取新消息】&#10;② 等当前这条处理完 → 然后 ack（或按策略 ack）&#10;③ 如果在宽限期内跑不完 → 【主动不 ack】（让它重投），而不是硬撑&#10;④ 关闭连接 → 退出&#10;``&#10;【取舍】这里有一条很值得说的取舍：&quot;宽限期内跑不完&quot;时，不 ack 让它重投，比&quot;硬撑着跑完&quot;更安全——因为重复是幂等能吃掉的问题，而&quot;被 SIGKILL 打断在处理中间&quot;可能留下半个副作用。这就是&quot;宁可重投，不要半途而废&quot;的原则。&#10;【这一步在验证什么】验证 2.2：队列消费者的退出规则和 HTTP 服务同构，但多一条&quot;没处理完就不 ack&quot; ——这条规则让&quot;退出&quot;变成了安全动作。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Linux与部署/母题-X2-服务怎么上线-q4" tag="Linux与部署" q="下面这段话哪里错了？&#10;&quot;我们服务做了优雅退出，收到 SIGTERM 会等 30 秒让请求跑完。所以发版是绝对安全的，不会丢请求。&quot;" a="&quot;做了优雅退出&quot;和&quot;绝对安全&quot;之间差了四个坑。&#10;1. 宽限期可能比 30 秒短：平台先发 SIGTERM、等够了宽限期再发 SIGKILL——如果平台设的是 10 秒，你的 30 秒等待根本走不完，最后 20 秒的工作会被 SIGKILL 打断。所以等待时间必须小于平台宽限期。&#10;2. 没有&quot;先摘流量&quot;的话，永远等不到&quot;没有在途请求&quot;：&#10;``&#10;只在应用内等：LB 还在往你这儿发新请求&#10;→ 在途请求数不降反升 → 30 秒等完还有一堆 → SIGKILL 打断&#10;→ 必须先在 LB / 注册中心侧摘掉自己（或让就绪探针失败）&#10;`&#10;3. SIGKILL 是不可捕获的：所以&quot;等够了就不会被强杀&quot;是错觉——宽限期一到就一定被强杀，你的清理逻辑可能那一瞬间还没跑。&#10;4. 长任务和异步任务不一定走这条路径：队列消费者有自己的规则（停止拉取、不 ack 让它重投），定时任务与长导出根本不该进入退出等待——它们要设计成可中断 + 可恢复。&#10;准确说法：*优雅退出需要&quot;先摘流量 → 等在途 → 关依赖 → 退出&quot;，且等待时间要小于平台宽限期；SIGKILL` 不可捕获，所以长任务必须可中断可恢复；队列消费者要额外遵守&quot;没处理完不 ack&quot;。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Linux与部署/母题-X2-服务怎么上线-q5" tag="Linux与部署" q="下面这段话哪里错了？&#10;&quot;服务起来时连不上数据库就直接退出，让平台自动重启——反正重试几次总有一次能连上。&quot;" a="&quot;总有一次能连上&quot;是一个会把小故障放大成大故障的假设。&#10;【推导】问题在于正反馈：&#10;``&#10;数据库变慢（比如因为流量高峰）&#10;→ 所有实例连不上 / 连上超时 → 【集体退出】&#10;→ 平台重启它们 → 重启期间：&#10;连接池要重建、本地缓存要预热、可能全量加载数据&#10;→ 数据库承受【更大的瞬时压力】&#10;→ 更连不上 → 又集体退出&#10;→ 【重启风暴】：依赖越忙越重启，越重启越忙&#10;`&#10;正确做法（三步）：&#10;步 · 做法&#10;① 启动用有上限的退避重试 · 连不上就退避重试（指数退避 + 抖动），而不是立刻退出&#10;② 把&quot;能服务&quot;与&quot;进程活着&quot;分开 · 就绪探针失败 → 暂时不接流量（不重启）；存活探针只管进程自身（绝不查外部依赖）&#10;③ 给依赖故障留降级路径 · 关键依赖不可用时的行为要预先定义（fail closed 还是降级）——数驭穹图的选择是&quot;权限不确定就 fail closed&quot;（07-权限安全与生产隔离.md`）&#10;【推导】本卡开头第二个问题的答案就是这个：服务启动时数据库没就绪 → 容器反复重启 → 必须改成&quot;就绪探针 + 退避重试&quot;，让&quot;依赖不可用&quot;表现为&quot;暂时不接流量&quot;，而不是&quot;进程死掉&quot;。&#10;准确说法：*&quot;连不上就退出让平台重启&quot;会造成重启风暴——依赖越忙越重启、越重启越忙。正确做法是启动退避重试 + 就绪探针（不接流量而不是重启）+ 预先定义依赖不可用时的降级行为。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">一个服务从&quot;镜像是好的&quot;到&quot;能稳定服务&quot;，中间要过哪几关。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Linux与部署/母题-X2-服务怎么上线" tag="Linux与部署" q="一个服务从&quot;镜像是好的&quot;到&quot;能稳定服务&quot;，中间要过哪几关。" a="上线的成败取决于&quot;怎么退出&quot;，不取决于&quot;怎么启动&quot;。正确的优雅退出顺序是 ① 先摘流量（从 LB / 注册中心摘掉，或让就绪探针失败）→ ② 等在途请求处理完 → ③ 关依赖（连接池、事务、缓冲）→ ④ 主动退出，其中 ①最容易漏（漏了就会&quot;永远等不到没有在途请求&quot;，最后被 SIGKILL 打断）。时间窗可以算：摘流量生效 + 最长在途请求 + 清理 ≤ 平台宽限期（SIGTERM 之后平台会等一段，超时就 SIGKILL——不可捕获、不可协商），所以长任务必须设计成&quot;可中断 + 可恢复&quot;（写 checkpoint 后主动退出，而不是撑着跑完）。启动侧的关键是分清两类探针：存活失败 → 重启（只检查进程自己，绝不查外部依赖）；就绪失败 → 暂时不接流量（不重启）——把依赖故障放进存活探针会造成&quot;重启风暴&quot;。队列消费者额外遵守一条：没处理完就不 ack，让它重投（重复由幂等吃掉，丢是不可接受的）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">上线的成败<strong>取决于"怎么退出"，不取决于"怎么启动"</strong>。正确的优雅退出顺序是 <strong>① 先摘流量（从 LB / 注册中心摘掉，或让就绪探针失败）→ ② 等在途请求处理完 → ③ 关依赖（连接池、事务、缓冲）→ ④ 主动退出</strong>，其中 <strong>①最容易漏</strong>（漏了就会"永远等不到没有在途请求"，最后被 <code class="mv-md-code">SIGKILL</code> 打断）。<strong>时间窗可以算</strong>：<code class="mv-md-code">摘流量生效 + 最长在途请求 + 清理</code> ≤ <strong>平台宽限期</strong>（<code class="mv-md-code">SIGTERM</code> 之后平台会等一段，超时就 <code class="mv-md-code">SIGKILL</code>——<strong>不可捕获、不可协商</strong>），所以<strong>长任务必须设计成"可中断 + 可恢复"</strong>（写 checkpoint 后主动退出，而不是撑着跑完）。启动侧的关键是<strong>分清两类探针</strong>：<strong>存活失败 → 重启（只检查进程自己，绝不查外部依赖）；就绪失败 → 暂时不接流量（不重启）</strong>——<strong>把依赖故障放进存活探针会造成"重启风暴"</strong>。队列消费者额外遵守一条：<strong>没处理完就不 ack，让它重投</strong>（重复由幂等吃掉，丢是不可接受的）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>难点在"停止"不在"启动"</li><li><strong><code class="mv-md-code">SIGTERM</code> 可捕获（请你收工）、<code class="mv-md-code">SIGKILL</code> 不可捕获（现在就走）</strong></li><li>平台流程：15 → 宽限期 → 9</li><li><strong>四步：摘流量 → 排空 → 关依赖 → 退出</strong></li><li><strong>摘流量最容易漏（否则永远排不空）</strong></li><li>时间窗 = 摘流量生效 + 最长在途 + 清理 &lt; 宽限期</li><li><strong>长任务要可中断可恢复，不该进退出窗口</strong></li><li><strong>存活（进程自己，失败→重启）vs 就绪（能服务，失败→不接流量）</strong></li><li>存活探针绝不查外部依赖（否则重启风暴）</li><li>启动用退避重试而不是硬退出</li><li>队列消费者：停止拉取 → 处理完</li><li><strong>不 ack 让它重投</strong></li><li>配置中心也是一个启动依赖，要有兜底</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 491 字 · 按 4 字/秒折算约 123 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">上线的成败<strong>取决于"怎么退出"，不取决于"怎么启动"</strong>。优雅退出四步：<strong>① 先摘流量</strong>（从 LB / 注册中心摘掉，或让就绪探针失败）→ ② 等在途请求处理完 → ③ 关依赖（连接池、事务、缓冲）→ ④ 主动退出；其中 <strong>①最容易漏</strong>（漏了就会"永远等不到没有在途请求"，最后被 <code class="mv-md-code">SIGKILL</code> 打断，这是发版时错误率抬升最常见的根因）。</p>
+<p class="mv-md-p"><code class="mv-md-code">SIGTERM</code> <strong>可被捕获</strong>，平台是"<strong>先发 15、等宽限期、再发 9</strong>"，<code class="mv-md-code">SIGKILL</code> <strong>不可捕获、不可协商</strong>。时间窗要满足 <code class="mv-md-code">摘流量生效 + 最长在途请求 + 清理 ≤ 平台宽限期</code>；设错的后果：短了请求被硬打断，长了等于没做清理。所以<strong>长任务必须设计成"可中断 + 可恢复"</strong>（写 checkpoint 后主动退出，而不是撑着跑完）。</p>
+<p class="mv-md-p">探针两种：<strong>存活失败 → 重启（只检查进程自己，绝不查外部依赖）</strong>；<strong>就绪失败 → 只是不接流量（不重启）</strong>。判据是"<strong>重启这件事能不能改善现状</strong>"——把依赖故障放进存活探针会造成<strong>重启风暴</strong>。</p>
+<p class="mv-md-p">启动依赖没就绪：<strong>有上限的退避重试 + 就绪探针</strong>，不要"连不上就退出"。队列消费者额外一条：<strong>没处理完就不 ack，让它重投</strong>（重复由幂等吃掉，丢是不可接受的）。配置三种来源里，<strong>密钥永远不要进环境变量</strong>（会进进程环境、容易被打进日志）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：退出比启动重要；先摘流量是第一步；存活与就绪探针的分工看"重启能不能改善现状"。</li><li><strong>推导链</strong>：不摘流量 → 永远等在途 → 被 SIGKILL → 错误率抬升 → 时间窗算式 → 可中断可恢复 → 探针分工 → 重启风暴。</li><li><strong>量化</strong>：<code class="mv-md-code">摘流量生效 + 最长在途请求 + 清理 ≤ 平台宽限期</code>；SIGTERM=15、SIGKILL=9。</li><li><strong>边界与常见误解</strong>：宽限期超时是不可协商的；依赖故障只能放就绪探针；滚动更新让"摘流量"成为必须。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | 容器/平台（本卡） | 应用框架 | 数据库（[[母题-M12-崩溃恢复]]） | |---|---|---|---| | 优雅停止 | <code class="mv-md-code">SIGTERM</code> + 宽限期 + <code class="mv-md-code">SIGKILL</code> | 框架的 shutdown hook / lifespan 回调 | —— | | 健康状态 | 存活 / 就绪 / 启动探针 | <code class="mv-md-code">/health</code> <code class="mv-md-code">/ready</code> 端点 | —— | | "在途"怎么处理 | 排空 / 不 ack 让它重投 | 请求队列 / 连接池 | 事务提交或回滚 | | 被强杀后怎么办 | 重启 + 从外部状态重建 | 幂等 + 重试 | <strong>崩溃恢复（WAL / redo）</strong> ← 同一个思想 |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>优雅退出为什么要"先摘流量"？</strong></strong></p>
+<p class="mv-md-p"><strong>否则会永远等不到"没有在途请求"</strong>：LB 还在发新请求，在途数不降反升，直到宽限期用完被 <code class="mv-md-code">SIGKILL</code>。<strong>这是"发版时错误率抬升"最常见的根因。</strong></p>
+<p class="mv-md-p"><strong>2. <strong><code class="mv-md-code">SIGTERM</code> 和 <code class="mv-md-code">SIGKILL</code> 有什么区别？</strong></strong></p>
+<p class="mv-md-p"><code class="mv-md-code">SIGTERM</code> <strong>可被捕获</strong>（做清理后自己退出）；<code class="mv-md-code">SIGKILL</code> <strong>不可捕获、不可忽略</strong>，内核直接终止。<strong>平台是"先 15、等宽限期、再 9"</strong>。</p>
+<p class="mv-md-p"><strong>3. <strong>存活探针和就绪探针怎么分工？</strong></strong></p>
+<p class="mv-md-p"><strong>存活只管进程自身</strong>（死锁、卡死），失败<strong>重启</strong>；<strong>就绪表示"能服务"</strong>，失败<strong>只是不接流量</strong>。<strong>判断依据是"重启这件事能不能改善现状"</strong>——不能（依赖挂、下游慢）就绝不放存活。</p>
+<p class="mv-md-p"><strong>4. <strong>队列消费者怎么优雅退出？</strong></strong></p>
+<p class="mv-md-p"><strong>停止拉取 → 处理完当前这条 → ack → 关连接 → 退出</strong>；<strong>宽限期内跑不完就【不 ack】，让它重投</strong>——<strong>重复由幂等吃掉，丢是不可接受的</strong>（[[母题-Q2-重复与乱序]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>服务启动依赖服务没就绪怎么办？</strong></strong></p>
+<p class="mv-md-p"><strong>有上限的退避重试 + 就绪探针</strong>（表现为"暂时不接流量"），<strong>不要"连不上就退出"</strong>——那会造成重启风暴。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「滚动更新和优雅退出什么关系？」——<strong>滚动更新让"摘流量"成为必须</strong>：每次替换实例都会触发一轮"摘流量 → 排空 → 退出"，<strong>做错就每次发版掉一点请求</strong>（策略层面见 [[母题-E6-灰度发布与回滚]]）</li><li>「为什么长连接（SSE）服务退出更麻烦？」——<strong>长连接意味着"在途"是长期存在的</strong>：<strong>必须主动向客户端发结束事件并让客户端重连</strong>，而不是等它自己断（[[母题-N2-SSE与推送模型]]）</li><li>「配置中心挂了服务就起不来怎么办？」——<strong>配置中心也是一个启动依赖</strong>：要有本地兜底（默认值 / 上次成功的快照），<strong>否则它就成了新的单点</strong></li><li>「为什么"发版前预热"有用？」——启动期的第一批请求要付<strong>缺页、连接建立、缓存预热、JIT</strong> 的成本（[[母题-O2-虚拟内存与缺页]] 的 minor fault），<strong>预热就是把这段时间提前付掉</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>EnergyOps</strong>——<code class="mv-md-code">07-task-lifecycle-and-delivery.md</code> 的<strong>任务生命周期</strong>就是"进程会被随时拿走"的完整答案：<strong>租约 + checkpoint + 权威状态查询</strong>；<code class="mv-md-code">02</code> 的"重启后扫描最近七天缺口并低优先级回补"是<strong>启动自检</strong>的实例——<strong>它假定"上次中断一定留下了缺口"，而不是假定"优雅退出一定成功"</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先立"难点在停止"→ <code class="mv-md-code">SIGTERM</code> / <code class="mv-md-code">SIGKILL</code> 的语义与平台的宽限期 → 优雅退出四步（强调摘流量）→ 异步与队列的版本 → <strong>算时间窗</strong> → 长任务的处理方式 → 启动侧：两类探针的分工 + 退避重试 → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"进程会被随时拿走"是设计前提，不是异常情况。</strong> 所以正确的思路不是"把优雅退出做到完美"，而是<strong>让"被拿走"成为安全事件</strong>：在途请求要么完成、要么可重投；长任务要么可中断、要么可恢复；依赖不可用只影响"接不接流量"，不影响"进程是否活着"。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能默写优雅退出的四步并说出"摘流量最容易漏"；能算优雅退出的时间窗并说出它与平台宽限期的关系；能说清两类探针的分工与"重启风暴"的机制；能说清队列消费者"不 ack 让它重投"为什么更安全；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

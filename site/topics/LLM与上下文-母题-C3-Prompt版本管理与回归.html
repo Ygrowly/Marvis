@@ -229,6 +229,10 @@ n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 366 字 · 按 4 字/秒折算约 92 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">先立前提：<strong>Prompt 不是配置文件，是针对当时那个模型写的控制层</strong>——它和模型是耦合系统，模型一变，同一份 prompt 的收益和代价全变。</p>
+<p class="mv-md-p">所以改动必须走<strong>消融</strong>：逐段删除 → 跑同一套 Eval → 看指标是掉了还是变好。指标没掉就是冗余，指标变好就是拐杖。验收必须用<strong>没参与调优的 held-out 集合</strong>——真实案例是训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%。</p>
+<p class="mv-md-p">两个反直觉的实证：Anthropic 为 Claude 5 代<strong>删掉了 80%+ 的系统提示</strong>，编码评测无损失；清掉六类"拐杖"后<strong>成本降 14.6%、准确率升 5.3%（错误率腰斩）</strong>。而验证一次消融只要几美元——所以"要不要做消融"是习惯问题，不是成本问题。</p>
+<p class="mv-md-p">配套一条：模型版本、Prompt 版本、Schema 版本、知识/索引版本<strong>四者必须绑定到结果上</strong>，否则线上输出复现不出来，也就无法归因。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：Prompt 是针对当时模型的控制层，改动必须走消融 + held-out 验收。</li><li><strong>推导链</strong>：prompt 与模型耦合 → 单次观察在概率系统里没有信息量 → 样本量算式 → 消融三个判定分支 → held-out 与训练集分离 → 六类拐杖。</li><li><strong>量化</strong>：<code class="mv-md-code">SE = √(p(1−p)/n)</code>，200 条约 ±2%、分辨 2 个点需约 900 条；删 80% 系统提示无损失；清拐杖后成本 −14.6%、错误率腰斩。</li><li><strong>边界与常见误解</strong>：直接加规则有三重代价（稀释注意力 / 制造冲突 / 升级后变负担）；改 schema 会打掉 prompt cache，所以 schema 要版本化。</li></ul></collapse-panel>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">代码的回归是<strong>确定性</strong>的——同一个 commit，测试要么过要么不过，重跑结果一致。Prompt 的回归是<strong>统计性</strong>的——同一份 prompt 重跑可能不同，所以需要样本量、置信度、训练/测试分离。<strong>这是"把软件工程实践搬到 LLM 上"最容易踩空的一点：照抄了流程，但没有照抄支撑流程的统计前提。</strong>（这也是本卡按 [[母题卡模板]] 的层级判定给 <strong>B 而非 A</strong> 的原因：<strong>"为什么必须消融"能推出来</strong>，但<strong>"该删哪一条"没有唯一答案</strong>，只能靠实验测出来。）</p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>一次 prompt 改动，验证流程是什么？</strong></strong></p>
 <p class="mv-md-p">抽样快筛（便宜、抓大幅回退）→ 消融（逐段删，看哪段还在产生收益）→ 全量回归（发布门禁）→ <strong>held-out 验收</strong>。每一层的目的不同，不能互相替代。</p>

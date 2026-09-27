@@ -100,6 +100,15 @@ flip-card { display: block; perspective: 1400px; }
 .mv-fc-hint {
   margin-top: auto; padding-top: 0.875rem; font-size: 0.8125rem; color: var(--mv-muted);
 }
+/* 背面下半段：题级答案之下的「所属母题完整回答 + 单卡入口」（2026-09-26） */
+.mv-fc-more {
+  margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px dashed var(--mv-border);
+}
+.mv-fc-more .mv-fc-sub {
+  font-size: 0.8125rem; color: var(--mv-muted); margin: 0 0 0.5rem; letter-spacing: .02em;
+}
+.mv-fc-more .mv-md-p { font-size: 0.9375rem; line-height: 1.75; }
+.mv-fc-more .mv-note { font-size: 0.8125rem; }
 .mv-fc-actions {
   margin-top: auto; padding-top: 0.875rem; display: flex; gap: 0.5rem;
   transform: rotateY(0deg);
@@ -126,6 +135,32 @@ timer-ring { display: block; }
 .mv-timer-label { font-size: 0.9375rem; font-weight: 500; margin-bottom: 0.125rem; }
 .mv-timer-note { font-size: 0.8125rem; color: var(--mv-muted); margin-bottom: 0.625rem; }
 .mv-timer-actions { display: flex; gap: 0.375rem; }
+
+/* ---------- 2.5 drawer 抽屉：低频内容收纳 ---------- */
+.mv-dr { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface); margin-bottom: .625rem; }
+.mv-dr > summary {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .75rem;
+  padding: .8125rem 1.25rem; cursor: pointer; list-style: none;
+  font-size: .9375rem; font-weight: 500;
+}
+.mv-dr > summary::-webkit-details-marker { display: none; }
+.mv-dr > summary:hover { background: var(--mv-surface-2); }
+.mv-dr > summary em { font-style: normal; font-size: .8125rem; font-weight: 400; color: var(--mv-muted); font-family: var(--mv-mono); }
+.mv-dr-body { padding: .25rem 1.25rem 1.25rem; border-top: 1px solid var(--mv-border); }
+.mv-dr-body > :first-child { margin-top: .875rem; }
+
+/* 任务类型标签：平清单里区分复训 / 新学 / 项目 / 日课 / 抽检 */
+.mv-tag {
+  display: inline-block; font-size: .75rem; line-height: 1.5; margin-right: .375rem;
+  padding: 0 .4375rem; border-radius: 4px; vertical-align: 1px;
+  font-family: var(--mv-mono); white-space: nowrap;
+  color: var(--mv-muted); background: var(--mv-surface-2);
+}
+.mv-tag.t-rev   { color: var(--mv-accent);  background: var(--mv-accent-soft); }
+.mv-tag.t-new   { color: var(--mv-ok);      background: var(--mv-ok-soft); }
+.mv-tag.t-proj  { color: var(--mv-warn);    background: var(--mv-warn-soft); }
+.mv-tag.t-exam  { color: var(--mv-danger);  background: var(--mv-danger-soft); }
+.mv-tag.t-life  { color: #185FA5;         background: #E6F1FB; }
 
 /* ---------- 3. check-list 待办 ---------- */
 check-list { display: block; }
@@ -507,6 +542,30 @@ figure-box { display: block; }
   background: var(--mv-surface-2); border: 1px solid var(--mv-border);
   border-radius: var(--mv-radius-sm); padding: 1rem 1.125rem; overflow-x: auto;
   margin: 0 0 0.875rem; white-space: pre;
+}
+
+/* ---------- mermaid 图：构建期内联 SVG，页面零依赖 ---------- */
+.mv-mmd {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm);
+  background: var(--mv-surface); padding: 1rem 1.125rem; margin: 0 0 0.875rem;
+  overflow-x: auto;
+}
+.mv-mmd > svg { display: block; height: auto; max-width: none; }
+
+/* 浏览器端渲染的图：没渲之前是可读的源码，渲完 mermaid 会打上 data-processed */
+.mermaid {
+  border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm);
+  background: var(--mv-surface); padding: 1rem 1.125rem; margin: 0 0 0.875rem;
+  overflow-x: auto;
+}
+.mermaid:not([data-processed]) {
+  white-space: pre-wrap; font-family: var(--mv-mono);
+  font-size: 0.8125rem; line-height: 1.6; color: var(--mv-text-2);
+}
+.mermaid > svg { display: block; height: auto; max-width: none; }
+.mv-mmd-hint {
+  font-family: var(--mv-mono); font-size: 0.75rem; color: var(--mv-muted);
+  margin: -0.375rem 0 0.5rem;
 }
 
 /* ---------- 项目映射（模块概览页） ---------- */

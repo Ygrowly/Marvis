@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 R5 · 什么数据不该放 Redis：缓存与权威状态的边界</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Redis.html">← Redis 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Redis</span>
+    <h1 class="mv-topic-title">母题 R5 · 什么数据不该放 Redis：缓存与权威状态的边界</h1>
+    <p class="mv-topic-meta">关联 母题-R3-缓存一致性与三类事故（一致性怎么保证）· 母题-R4-大key与热key（放错了会怎么坏）· 母题-R2-持久化与内存淘汰（Redis 自己的可靠性到哪）· 母题-Q1-消息为什么会丢怎么才不丢（Outbox：一致性为什么不能靠"同事务"）· 母题-L3-分布式锁与fencing-token（权威状态在哪决定的）· 母题-M13-长事务为什么危险 ｜ 正本 wiki/topics/Redis/母题-R5-缓存的边界.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① "缓存"这个词掩盖了<strong>派生数据</strong>与<strong>权威状态</strong>两类完全不同的东西 ② 判据是三问：<strong>丢了能不能重建、旧多久能忍、会不会因为旧值做错事</strong> ③ 缓存全挂时回源压力会放大 <strong>1/(1−命中率)</strong> 倍——这是必须先算清楚的数）· 读完约 10 分钟 · 需要先懂：[[母题-R3-缓存一致性与三类事故]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">有人提议"把订单状态也放 Redis，读起来快"。这个提议对不对？另一个问题：某服务把用户余额的读取加了 Redis 缓存——上线后出现过"用户看到余额充足但下单失败"。这两件事的根因是同一个吗？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提："缓存"这个词掩盖了两类东西</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 派生数据 vs 权威状态【事实】</h4>
+<p class="mv-md-p">【推导】<strong>"要不要加缓存"这个问题问错了</strong>。正确的问法是：<strong>这份数据的"权威来源"在哪？</strong></p>
+<table class="mv-table"><thead><tr><th></th><th><strong>派生数据</strong>（可以缓存）</th><th><strong>权威状态</strong>（不该只放缓存）</th></tr></thead><tbody><tr><td>定义</td><td><strong>能从权威来源重新算/重新查出来的</strong></td><td><strong>丢了就真的没了，它就是事实本身</strong></td></tr><tr><td>例子</td><td>榜单、统计结果、列表页、配置副本、搜索结果</td><td>订单、账本、库存、余额、状态机当前状态</td></tr><tr><td>丢了怎么办</td><td><strong>重建</strong>（慢一点，但正确）</td><td><strong>不可恢复</strong>（或要人工核对）</td></tr><tr><td>缓存挂了的影响</td><td>变慢</td><td><strong>可能读错、写错</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>关键区别在"它参不参与判断"</strong>：</p>
+<pre class="mv-md-pre">只用来【展示】的数据（榜单、详情页）→ 旧一点无所谓 → 可以缓存
+用来【做决定】的数据（余额够不够、库存还有没有、状态能不能流转）
+  → 旧值会导致【错误的决定】→ 不能只靠缓存</pre>
+<h4 class="mv-md-h mv-md-h4">1.2 判据：三问【推导】</h4>
+<p class="mv-md-p">【推导】<strong>任何一份数据要不要进缓存，问三个问题就够</strong>：</p>
+<table class="mv-table"><thead><tr><th>#</th><th>问题</th><th>答"是"才适合缓存</th></tr></thead><tbody><tr><td><strong>①</strong></td><td><strong>丢了能不能重建？</strong></td><td>能（有权威来源）</td></tr><tr><td><strong>②</strong></td><td><strong>旧一段时间能忍吗？能忍多久？</strong></td><td>能，且能给出具体秒数</td></tr><tr><td><strong>③</strong></td><td><strong>会不会因为读到旧值而做错事？</strong></td><td>不会</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>三问里有任何一问不过，就不是"缓存策略该怎么调"的问题，而是"放错地方了"</strong>：</p>
+<pre class="mv-md-pre">①不过（是唯一一份）      → 它是权威状态，应该留在数据库里
+②不过（完全不能旧）      → 只能读权威来源（或接受强一致的方案）
+③不过（旧值会做错事）    → 同上 —— 这是最容易被忽略、也最危险的一问</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"余额"和"排行榜"虽然都是"用 Redis 存的数据"，但它们的性质完全不同？</p>
+<h3 class="mv-md-h mv-md-h3">2. 放错的代价：从"慢"升级成"错"</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 典型的三类放错【事实】</h4>
+<p class="mv-md-p">【推导】<strong>按"后果严重程度"排</strong>：</p>
+<table class="mv-table"><thead><tr><th>类型</th><th>例子</th><th>后果</th><th>为什么</th></tr></thead><tbody><tr><td><strong>① 权威状态只放缓存</strong></td><td>订单状态 / 账本 / 唯一一份配置</td><td><strong>数据丢失</strong></td><td>Redis 的持久化是"尽力而为"（[[母题-R2-持久化与内存淘汰]]），<strong>不能当唯一存储</strong></td></tr><tr><td><strong>② 参与判断的数据带旧值</strong></td><td>余额、库存、状态机状态</td><td><strong>业务错误</strong>（超卖、状态乱跳）</td><td>判断发生在应用层，<strong>应用层相信了一个旧值</strong></td></tr><tr><td><strong>③ 大量冷数据 / 大对象</strong></td><td>全量用户信息、整篇文档塞一个 String</td><td><strong>内存被打爆、淘汰把热数据挤出去</strong></td><td>命中率极低却占着内存（[[母题-R4-大key与热key]]）</td></tr><tr><td><strong>④ 能本地算出来的东西</strong></td><td>用 Redis 存"列表页的排序结果"，而排序本身很便宜</td><td><strong>多了一个故障点，收益接近零</strong></td><td>引入缓存的收益必须 &gt; 它带来的可用性风险</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>第 ② 类最难发现，因为它在低并发下完全正常</strong>：</p>
+<pre class="mv-md-pre">缓存里余额 = 100（TTL 60 秒）
+用户在 60 秒窗口里扣了 90（数据库余额变成 10）
+缓存还没过期 → 用户再读，看到 100 → 以为还能扣 → 下单
+→ 数据库扣款失败（余额不足）
+→ 【用户看到"我明明有钱"】</pre>
+<p class="mv-md-p"><strong>这就是"缓存不一致"从"慢"变成"错"的那一刻</strong>——<strong>同一个不一致，用在展示上是"旧了 60 秒"，用在判断上是"业务做错了"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 缓存不可用：回源放大【推导】</h4>
+<p class="mv-md-p">【推导】<strong>这是必须先算清楚的数</strong>（自测 Q1）：</p>
+<pre class="mv-md-pre">回源请求量 = 总请求 × (1 − 命中率)
+回源放大倍数 = 1 / (1 − 命中率)</pre>
+<table class="mv-table"><thead><tr><th>命中率 h</th><th>正常回源</th><th><strong>缓存全挂时回源</strong></th><th>放大倍数</th></tr></thead><tbody><tr><td>99%</td><td>1%</td><td>100%</td><td><strong>100 倍</strong></td></tr><tr><td>95%</td><td>5%</td><td>100%</td><td><strong>20 倍</strong></td></tr><tr><td>90%</td><td>10%</td><td>100%</td><td><strong>10 倍</strong></td></tr><tr><td>50%</td><td>50%</td><td>100%</td><td><strong>2 倍</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>这张表解释了"为什么缓存挂了等于数据库挂了"</strong>：</p>
+<ul class="mv-md-ul"><li><strong>命中率越高，缓存的价值越大，但它挂掉时的冲击也越大</strong></li><li>命中率 95% 的缓存挂掉 → <strong>数据库要扛原来 20 倍的流量</strong> → 大概率打穿</li><li><strong>而"打穿"的标志是：数据库因为慢查询排队，响应变慢 → 上游重试 → 流量再翻倍</strong></li></ul>
+<p class="mv-md-p">【取舍】<strong>所以"缓存挂了怎么办"必须提前设计</strong>，三档：</p>
+<table class="mv-table"><thead><tr><th>档</th><th>做法</th><th>代价</th></tr></thead><tbody><tr><td><strong>限流</strong></td><td>直接把入口流量压到数据库能扛的量（拒绝一部分请求）</td><td><strong>有损</strong>：部分用户被拒</td></tr><tr><td><strong>降级</strong></td><td>返回兜底数据（默认值 / 上一次成功的快照 / 静态页）</td><td><strong>数据可能不准</strong>，但服务活着</td></tr><tr><td><strong>本地缓存兜底</strong></td><td>实例内的本地缓存还能顶一会儿</td><td><strong>最长顶一个 TTL</strong>，且不适用于"写"</td></tr><tr><td><strong>不降级（fail open）</strong></td><td>直接放行到数据库</td><td><strong>通常就是压垮数据库的那个选项</strong></td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>EnergyOps 与 RuleArena 的做法值得对照</strong>：<strong>权威状态全部落在 PostgreSQL，Redis 只承担队列、限流与短期进度</strong>（<code class="mv-md-code">RuleArena 06</code>、<code class="mv-md-code">08</code>）——<strong>这样"Redis 挂了"的影响是"任务排队变慢"，而不是"数据读错"</strong>。<strong>这是"把缓存放在不影响正确性的位置上"最直接的示范。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"缓存挂了大不了回源"这句话在命中率高的时候特别危险？</p>
+<h3 class="mv-md-h mv-md-h3">3. 一致性这件事，先说清"上限"再谈方案</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 TTL 是"最多旧多久"，不是"不会不一致"【推导】</h4>
+<p class="mv-md-p">【推导】<strong>缓存的一致性问题分两种时机，各自的上限不同</strong>：</p>
+<table class="mv-table"><thead><tr><th>更新时机</th><th>不一致的上限</th><th>代价</th></tr></thead><tbody><tr><td><strong>只靠 TTL</strong></td><td><strong>最多旧一个 TTL</strong>（比如 60 秒）</td><td>极简单；但 60 秒内可能读到旧值</td></tr><tr><td><strong>写时失效</strong>（写完删缓存）</td><td><strong>旧到下一次读把它重建为止</strong>（通常毫秒级）</td><td>要处理"删缓存失败"（[[母题-R3-缓存一致性与三类事故]]）</td></tr><tr><td><strong>写时更新 + 双删</strong></td><td>同上，且窗口更小</td><td>复杂度上升</td></tr><tr><td><strong>不用缓存</strong></td><td><strong>0</strong>（但读压力全在数据库）</td><td>性能</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>所以一致性的选择是一个"能容忍多久"的问题，而不是"有没有问题"的问题</strong>：</p>
+<pre class="mv-md-pre">能容忍 60 秒旧值       → 只配 TTL，最简单
+能容忍几百毫秒旧值     → 写时删缓存 + TTL 兜底
+一毫秒都不能旧         → 这份数据【不该进缓存】，或者要上"强一致"的读路径</pre>
+<p class="mv-md-p">【事实】<strong>EnergyOps 里有一个必须讲清的点</strong>：<strong>"数据库提交"与"Redis 删除"无法组成一个普通的数据库事务</strong>——所以它<strong>不用"假装同一个事务"，而是用 Outbox（失效消息与业务同事务落库，再由 Worker 执行删除）</strong>（<code class="mv-md-code">02-aggregation-and-recovery.md</code>、<code class="mv-md-code">03-query-and-performance.md</code>）。<strong>这说明：缓存一致性最终是"最终一致"，不是"强一致"。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 权威状态放在哪，决定了整个架构的骨架【取舍】</h4>
+<p class="mv-md-p">【推导】<strong>RuleArena 的架构选择可以当成模板</strong>：</p>
+<pre class="mv-md-pre">PostgreSQL = 权威状态（唯一事实来源）
+Redis      = 队列、限流、短期进度（都可以丢、可以重投）
+→ 于是"Redis 挂了"是【可恢复】的：任务重投、状态从 PG 重建
+→ 而如果反过来（Redis 存权威状态），"Redis 挂了"就是【数据事故】</pre>
+<p class="mv-md-p">【取舍】<strong>一句话判据</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>能丢的东西放缓存，不能丢的东西放数据库；而"哪个组件挂了可以重来"这件事，应该在设计阶段就写下来。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"权威状态在哪"是一个架构问题，而不是一个缓存配置问题？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"有 TTL 就不怕不一致"</td><td>【推导】<strong>TTL 只给"最多旧多久"这个上限</strong>（60 秒 TTL = 最多旧 60 秒），<strong>它不保证正确性</strong>。<strong>如果这份数据参与判断，那 60 秒里的错误决定照样发生</strong></td></tr><tr><td>"缓存挂了大不了回源"</td><td>【推导】<strong>回源压力会放大 <code class="mv-md-code">1/(1−命中率)</code> 倍</strong>：命中率 95% 时全挂 → <strong>数据库要扛 20 倍流量</strong>，大概率打穿。<strong>"缓存挂了怎么办"必须提前设计限流 / 降级</strong></td></tr><tr><td>"Redis 很可靠，可以当数据库用"</td><td>【事实】<strong>不可以</strong>。它的持久化是"尽力而为"（AOF 默认每秒刷盘，最坏丢 1 秒；RDB 丢更多），<strong>定位就是缓存</strong>（[[母题-R2-持久化与内存淘汰]]）。<strong>权威状态不能只放它</strong></td></tr><tr><td>"余额可以缓存，加个 TTL 就行"</td><td>【推导】<strong>不行</strong>。余额是<strong>参与判断</strong>的数据（够不够扣），<strong>旧值会导致业务做错</strong>。这类数据要"读权威来源"，或者只缓存一个"肯定够用"的上界做快速失败（<strong>不能用来放行</strong>）</td></tr><tr><td>"什么都能缓存，只要 TTL 够短"</td><td>【推导】<strong>TTL 再短也有窗口</strong>，而"窗口内做错事"这个后果不随 TTL 变短而消失，只是概率降低。<strong>判据三问里第 ③ 问不过，就不该进缓存</strong></td></tr><tr><td>"缓存能提升性能，所以能加就加"</td><td>【取舍】<strong>加缓存同时引入</strong>：一个<strong>新的不一致来源</strong>、一个<strong>新的故障点</strong>、一份<strong>新的内存成本</strong>。<strong>收益必须大于这三样</strong>——"能本地算出来的东西"就不值得（第 2.1 的第 ④ 类）</td></tr><tr><td>"用了缓存就是最终一致，没关系"</td><td>【推导】<strong>"最终一致"必须配一个数字</strong>：最终是多久（TTL？几百毫秒？）。<strong>说不出数字，就等于没设计</strong></td></tr><tr><td>"Redis 和数据库之间用事务保证一致"</td><td>【事实】<strong>做不到</strong>——跨两个系统没有普通事务。<strong>能做到的是</strong>：Outbox / 失效消息（<strong>与业务同事务落库</strong>）→ 由 Worker 异步执行删除。<strong>EnergyOps 用的就是这个</strong></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R5-缓存的边界-q1" tag="Redis" q="某读接口 5000 QPS，缓存命中率 95%。数据库实测能扛 8000 QPS 的读。&#10;问：① 正常时数据库承受多少？② 缓存全挂时呢？③ 会发生什么？④ 该怎么设计？" a="``&#10;① 正常回源 = 5000 × (1 − 0.95) = 【250 QPS】→ 远在 8000 以内，很安全&#10;② 缓存全挂 = 全部请求回源 = 【5000 QPS】&#10;★ 看起来&quot;5000 &lt; 8000，还扛得住&quot;？—— 但要看下一条&#10;③ 会发生的连锁反应：&#10;5000 QPS 直接打数据库，而且【这些查询原本是被缓存挡住的&quot;重查询&quot;】&#10;（能被缓存挡住的往往就是慢查询：聚合、join、大范围扫描）&#10;→ 数据库变慢 → 上游超时 → 上游重试 → 请求量再翻倍&#10;→ 【8000 的上限很快被突破】→ 雪崩&#10;``&#10;【推导】这里有一个容易算漏的地方：&quot;缓存挡住的那部分请求&quot;和&quot;原来就在回源的请求&quot;性质不同——能被缓存挡住的往往是更重的查询（轻查询没必要缓存）。所以不能简单用 QPS 比较，回源的&quot;单位成本&quot;更高。&#10;④ 设计（三档，要提前做）：&#10;档 · 做法&#10;① 限流 · 入口把流量压到数据库能扛的量（比如 3000），明确拒绝一部分——&quot;有损但可控&quot;&#10;② 降级 · 返回兜底内容（默认值 / 静态页 / 上次快照），保证服务不挂&#10;③ 本地缓存兜底 · 实例内缓存能顶一个 TTL，给恢复争取时间&#10;④ 关键点 · 绝不能让&quot;缓存未命中&quot;直接等于&quot;打数据库&quot;——中间必须有闸门&#10;【这一步在验证什么】验证 2.2 的判据：缓存的价值与它的风险同源——命中率越高，挂的时候越惨，所以闸门必须提前设计。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Redis/母题-R5-缓存的边界-q2" tag="Redis" q="某服务把 100 万个 key 放进 Redis，每个约 1 KB（合计约 1 GB）。监控显示只有 1% 的 key 被访问过。&#10;问：① 有多少内存是&quot;白占&quot;的？② 这会带来什么后果？③ 怎么改？" a="``&#10;① 被访问过的：1% = 1 万 个 key ≈ 10 MB&#10;白占的：99% = 99 万 个 key ≈ 【990 MB】&#10;→ 也就是【99% 的内存没有产生任何命中】&#10;② 后果（不只是&quot;浪费&quot;）：&#10;· 【淘汰策略会把热数据挤出去】：内存有限时，那些从没被访问的 key&#10;和热 key 一起参与淘汰，可能导致【热 key 被淘汰、命中率反而下降】&#10;· 【成本】：内存是这个系统里最贵的资源之一&#10;· 【持久化与复制变慢】：数据量越大，RDB/AOF 与主从同步越重&#10;· 【启动恢复变慢】：重启后要重新加载大量无用数据&#10;`&#10;③ 改法（三步）：&#10;步 · 做法&#10;1. 先测&quot;该不该缓存&quot; · 用判据三问过一遍：这些 key 是派生数据吗？访问分布是不是长尾？长尾冷数据本来就不该缓存&#10;2. 改缓存策略 · 惰性加载：只缓存被访问过的（读时未命中再回源并写入）——别再&quot;预加载全量&quot;&#10;3. 给内存设上界 · 配 maxmemory` + 合理淘汰策略（[[母题-R2-持久化与内存淘汰]]）；Redis 的内存必须有上界（这与 [[母题-O2-虚拟内存与缺页]] 的&quot;给每个会增长的东西设上界&quot;是同一条原则）&#10;【这一步在验证什么】验证 2.1 的第 ③ 类：冷数据放缓存不只是浪费，它会通过淘汰机制伤害真正的热数据。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Redis/母题-R5-缓存的边界-q3" tag="Redis" q="某服务用 Redis 缓存&quot;用户余额&quot;，TTL 60 秒，读路径直接读缓存。&#10;问：① 这个设计的问题在哪？② 会看到什么现象？③ 如果一定要加速这个读，可以怎么做？" a="``&#10;① 问题：余额是【参与判断】的数据（够不够扣），&#10;而缓存会给出【最多旧 60 秒】的值。&#10;→ 判据三问的第 ③ 问不过（会因为旧值做错事）&#10;`&#10;② 现象（低并发下完全不出现）：&#10;`&#10;用户看到的余额 = 100（缓存）&#10;60 秒窗口内该用户已经扣了 90（库里是 10）&#10;用户读缓存 → 还是 100 → 判断&quot;够&quot; → 发起下单&#10;→ 数据库校验时发现不足 → 失败&#10;→ 用户体验：&quot;我明明看到有钱，为什么下不了单&quot;&#10;`&#10;关键点：用户没有做错任何事，是系统给了一个旧值让他做了决定。 这类 bug 在压测里通常不复现（因为压测用的是不同的用户 / 没有真实的 60 秒窗口）。&#10;③ 要加速这个读，有三条路（都不包括&quot;直接缓存余额&quot;）：&#10;路 · 做法 · 说明&#10;① 缓存&quot;判断结果&quot;而不是&quot;余额&quot; · 缓存的是&quot;该用户是否还有可用额度&quot;的带版本的判断，且写路径必须让缓存失效 · 复杂度高；本质上还是在缓存&quot;参与判断的数据&quot;，要非常小心&#10;② 把判断下沉到数据库 · 读缓存只用于展示（显示余额可以旧），扣减用条件更新（UPDATE ... WHERE balance &gt;= ?`） · 这是标准答案：展示可以旧，判断由数据库在被保护和原子的地方做（[[母题-L1-乐观锁与悲观锁]] 2.3）&#10;③ 不做缓存，优化查询本身 · 余额查询通常是主键查一行，本来就该很快；慢的话先查索引与连接池 · 先确认它真的需要缓存&#10;【这一步在验证什么】验证 1.2 的判据：&quot;用来展示&quot;和&quot;用来判断&quot;是同一条数据的两条不同路径，前者可以缓存、后者不能。 这正是本卡开头两个问题里的第二个——它的根因不是&quot;缓存没配好&quot;，而是&quot;把参与判断的数据放进了缓存&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R5-缓存的边界-q4" tag="Redis" q="下面这段话哪里错了？&#10;&quot;缓存加个 TTL 就没什么一致性问题了——反正最多脏一会儿，业务能忍。&quot;" a="&quot;最多脏一会儿&quot;这个判断本身不一定错，但&quot;所以业务能忍&quot;是未经检验的假设——而且它漏掉了两件事。&#10;① &quot;能忍多久&quot;必须是一个具体的数，而且必须按最苛刻的用途来定：&#10;``&#10;同一份数据，两条路径的容忍度完全不同：&#10;用来【展示】（列表页、详情页）→ 忍 60 秒没问题&#10;用来【判断】（够不够扣、能不能流转）→ 【一秒都不能忍】&#10;→ 所以&quot;业务能忍&quot;必须落到&quot;哪条路径 + 几秒&quot;，而不是一句感觉&#10;`&#10;② TTL 只覆盖&quot;到期会自己更新&quot;，不覆盖&quot;到期时会发生什么&quot;：&#10;`&#10;TTL 到期的那一刻 → 缓存未命中 → 【回源】&#10;如果这个 key 是热 key，且很多实例同时到期 →&#10;【同时回源】= 缓存击穿（[[母题-R3-缓存一致性与三类事故]]）&#10;→ TTL 反而制造了一个尖峰&#10;`&#10;所以 TTL 要加随机抖动（避免同一时刻集体到期）。&#10;③ 还有一件被漏掉的事：删缓存失败怎么办：&#10;`&#10;写路径&quot;写完数据库 → 删缓存&quot;里，如果【删缓存失败】，&#10;那份旧值会一直留到 TTL 到期（这就是&quot;回退到只靠 TTL&quot;的兜底）&#10;→ 所以 TTL 的真正角色是【兜底】，不是【主要机制】&#10;→ 主要机制应该是&quot;写时失效&quot;，而它自己的失败要靠 TTL 兜住&#10;→ 而&quot;删缓存&quot;这个动作本身还可能失败 —— 所以 EnergyOps 用 Outbox 来保证它最终会被执行&#10;``&#10;准确说法：*TTL 给的是&quot;最多旧多久&quot;的上限，要按最苛刻的用途定；它还要加随机抖动防集体到期；而它的角色是&quot;给写时失效兜底&quot;，不是主要机制。至于&quot;业务能忍&quot;，必须落到具体的路径与秒数上。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Redis/母题-R5-缓存的边界-q5" tag="Redis" q="下面这段话哪里错了？&#10;&quot;Redis 性能这么好，就让它当主存储吧——反正它也有持久化（RDB + AOF），数据丢不了。&quot;" a="&quot;数据丢不了&quot;是错的，而且这正是&quot;把缓存当数据库&quot;这类事故的核心。&#10;【事实】Redis 的持久化是&quot;尽力而为&quot;，不是&quot;保证不丢&quot;：&#10;方式 · 最坏会丢多少&#10;RDB · 两次快照之间的全部写入（按配置可能是几分钟）&#10;AOF（everysec，默认） · 最坏约 1 秒的写入&#10;AOF（always） · 理论上不丢，但性能代价很大（每条命令都要刷盘）&#10;而且还有几件&quot;持久化&quot;解决不了的事：&#10;``&#10;① 主从异步复制 → 主挂了、从还没同步 → 那部分数据丢（[[母题-R2-持久化与内存淘汰]]）&#10;② 内存是有限的 → 【淘汰策略会主动删数据】（这是它的设计行为，不是故障）&#10;③ 误操作（FLUSHALL / 错误覆盖）→ 会立刻复制到从库&#10;④ 持久化文件损坏 / 磁盘满 → 恢复失败&#10;`&#10;更根本的一句话：持久化解决的是&quot;进程重启后数据还在&quot;，不解决&quot;数据是唯一一份、丢了不可恢复&quot;。 而&quot;权威状态&quot;的定义恰恰就是后者。&#10;正确的分工（RuleArena 的模板）：&#10;`&#10;PostgreSQL = 权威状态（唯一事实来源，事务保证）&#10;Redis      = 队列 / 限流 / 短期进度（丢了可以重投、可以重算）&#10;→ 于是&quot;Redis 挂了&quot;= 可恢复事件&#10;→ 反过来（Redis 存唯一一份）→ &quot;Redis 挂了&quot;= 数据事故&#10;``&#10;准确说法：*Redis 的持久化能保证&quot;重启后数据大多还在&quot;，但 AOF everysec 最坏丢约 1 秒、RDB 丢更多，加上异步复制、主动淘汰、误操作，它不能承担&quot;唯一一份数据&quot;。权威状态放数据库，缓存放可重建的派生数据——&quot;哪个组件挂了可以重来&quot;要在设计阶段就写下来。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">什么数据该放缓存、什么不该，边界是怎么划出来的。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Redis/母题-R5-缓存的边界" tag="Redis" q="什么数据该放缓存、什么不该，边界是怎么划出来的。" a="判断&quot;什么数据该放缓存&quot;要问三问——丢了能不能重建、旧一段时间能忍吗（几秒）、会不会因为读到旧值做错事；任何一问不过就不是&quot;缓存策略要调&quot;，而是放错地方了。核心区分是派生数据（榜单、统计、配置副本 —— 可以缓存）与权威状态（订单、账本、余额、库存 —— 不能只放缓存）；而同一份数据的&quot;展示路径&quot;和&quot;判断路径&quot;容忍度完全不同：展示可以旧 60 秒，判断一秒都不能旧（所以余额的正确做法是&quot;显示可以走缓存、扣减用条件更新下沉到数据库&quot;）。另外两笔必须提前算的账：缓存全挂时回源压力放大 1/(1−命中率) 倍（命中率 95% 就是 20 倍，足以打穿数据库，所以限流与降级必须提前设计）；TTL 给的是&quot;最多旧多久&quot;的上限，它的角色是给&quot;写时失效&quot;兜底，不是主要机制，而且要加随机抖动防集体到期。至于 Redis 的持久化——它保证&quot;重启后数据大多还在&quot;，不保证&quot;数据是唯一一份&quot;（AOF everysec 最坏丢约 1 秒），所以权威状态必须留在数据库里（RuleArena 的 PG + Redis 分工就是这个模板）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">判断"什么数据该放缓存"要问<strong>三问</strong>——<strong>丢了能不能重建、旧一段时间能忍吗（几秒）、会不会因为读到旧值做错事</strong>；任何一问不过就不是"缓存策略要调"，而是<strong>放错地方了</strong>。核心区分是<strong>派生数据</strong>（榜单、统计、配置副本 —— 可以缓存）与<strong>权威状态</strong>（订单、账本、余额、库存 —— 不能只放缓存）；而<strong>同一份数据的"展示路径"和"判断路径"容忍度完全不同</strong>：展示可以旧 60 秒，<strong>判断一秒都不能旧</strong>（所以余额的正确做法是"显示可以走缓存、扣减用条件更新下沉到数据库"）。另外两笔必须提前算的账：<strong>缓存全挂时回源压力放大 <code class="mv-md-code">1/(1−命中率)</code> 倍</strong>（命中率 95% 就是 20 倍，足以打穿数据库，所以<strong>限流与降级必须提前设计</strong>）；<strong>TTL 给的是"最多旧多久"的上限，它的角色是给"写时失效"兜底</strong>，不是主要机制，而且<strong>要加随机抖动防集体到期</strong>。至于 Redis 的持久化——<strong>它保证"重启后数据大多还在"，不保证"数据是唯一一份"</strong>（AOF everysec 最坏丢约 1 秒），<strong>所以权威状态必须留在数据库里</strong>（RuleArena 的 PG + Redis 分工就是这个模板）。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>派生数据 vs 权威状态</li><li><strong>判据三问（能否重建 · 能忍多久 · 会不会做错事）</strong></li><li><strong>"展示路径"和"判断路径"容忍度不同</strong></li><li>余额不能直接缓存（扣减下沉到数据库用条件更新）</li><li>冷数据放缓存会通过<strong>淘汰</strong>伤害热数据</li><li>**回源放大 = 1</li><li>(1−命中率)**（95% → 20 倍）</li><li>缓存挂了要<strong>限流 + 降级 + 本地兜底</strong>，绝不能让未命中直连数据库</li><li><strong>TTL 是上位上限、写时失效是主机制、抖动防集体到期</strong></li><li>删缓存失败要靠 TTL 兜底（EnergyOps 用 Outbox 保证执行）</li><li><strong>Redis 持久化 ≠ 不丢</strong>（AOF everysec 最坏 1 秒）</li><li>权威状态在 PG、Redis 放可重投的东西</li><li>"哪个组件挂了可以重来"要写下来</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 469 字 · 按 4 字/秒折算约 117 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">判断"什么数据该放缓存"要问<strong>三问</strong>——<strong>丢了能不能重建</strong>、<strong>旧一段时间（几秒）能忍吗</strong>、<strong>会不会因为读到旧值做错事</strong>；任何一问不过，就不是"缓存策略要调"，而是<strong>放错地方了</strong>。</p>
+<p class="mv-md-p">核心区分是<strong>派生数据</strong>（榜单、统计、配置副本——可以缓存）与<strong>权威状态</strong>（订单、账本、余额、库存——不能只放缓存）。而<strong>同一份数据的"展示路径"和"判断路径"容忍度完全不同</strong>：展示可以旧 60 秒，<strong>判断一秒都不能旧</strong>（所以余额的正确做法是"显示走缓存、扣减用 <code class="mv-md-code">UPDATE ... WHERE balance &gt;= ?</code> 下沉到数据库"）。</p>
+<p class="mv-md-p">两笔必须提前算的账：<strong>缓存全挂时回源压力放大 <code class="mv-md-code">1/(1−命中率)</code> 倍</strong>（命中率 95% 就是 20 倍，足以打穿数据库，所以<strong>限流与降级必须提前设计</strong>）；<strong>TTL 给的是"最多旧多久"的上限，它的角色是给"写时失效"兜底</strong>，不是主要机制，而且<strong>要加随机抖动防集体到期</strong>。</p>
+<p class="mv-md-p">至于 Redis 当数据库：<strong>不行</strong>。AOF <code class="mv-md-code">everysec</code> 最坏丢约 1 秒、RDB 丢更多，加上异步复制、主动淘汰、误操作——<strong>持久化保证的是"重启后数据大多还在"，不是"唯一一份"</strong>。一致性要"不骗人"：说清上限多少、失败怎么办、哪些路径不能容忍。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：三问定能不能缓存；派生数据可缓存，权威状态不行；展示可旧、判断不能旧。</li><li><strong>推导链</strong>：三问 → 派生 vs 权威 → 两条路径容忍度不同 → 回源放大与 TTL 定位 → Redis 不能当唯一数据源。</li><li><strong>量化</strong>：回源放大 <code class="mv-md-code">1/(1−命中率)</code>（95% → 20 倍）；展示可旧 60 秒、判断基本 0；AOF <code class="mv-md-code">everysec</code> 最坏丢约 1 秒。</li><li><strong>边界与常见误解</strong>："余额能不能缓存"要分路径答；"Redis 挂了业务能不能继续"必须提前设计限流→降级→本地缓存兜底，不能让"未命中"直接等于"打数据库"。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | Redis / 缓存侧（本卡） | 数据库侧 | 消息队列侧（[[母题-Q1-消息为什么会丢怎么才不丢]]） | |---|---|---|---| | 唯一事实来源 | <strong>不该是它</strong> | <strong>应该是它</strong> | 也不是（消息会重投） | | 持久化的语义 | 尽力而为（AOF everysec 最坏约 1 秒） | 事务 + WAL 保证 | 至少一次 + 副本 | | "挂了"的性质 | 变慢 / 可重建 | <strong>数据事故</strong> | 任务重投 | | 一致性怎么拿到 | 最终一致（要报数字） | 事务 / 约束 | 至少一次 + 幂等 = 只生效一次 |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>余额能不能缓存？</strong></strong></p>
+<p class="mv-md-p"><strong>看路径</strong>：<strong>展示</strong>可以（旧一点无所谓）；<strong>判断</strong>不能（旧值会让用户做错决定）。<strong>标准做法是"显示走缓存、扣减用 <code class="mv-md-code">UPDATE ... WHERE balance &gt;= ?</code> 下沉到数据库"</strong>（[[母题-L1-乐观锁与悲观锁]] 2.3）。</p>
+<p class="mv-md-p"><strong>2. <strong>缓存挂了怎么办？</strong></strong></p>
+<p class="mv-md-p">先算回源放大 <strong><code class="mv-md-code">1/(1−命中率)</code></strong>（95% → 20 倍）；然后按"<strong>限流 → 降级 → 本地缓存兜底</strong>"设计闸门。<strong>绝不能让"未命中"直接等于"打数据库"。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>TTL 设多少？</strong></strong></p>
+<p class="mv-md-p"><strong>按最苛刻的用途定</strong>（展示路径可以长、判断路径基本是 0）；<strong>加随机抖动防集体到期</strong>；而且它的角色是<strong>给写时失效兜底</strong>，不是主要机制。</p>
+<p class="mv-md-p"><strong>4. <strong>Redis 能当数据库用吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不能</strong>。AOF <code class="mv-md-code">everysec</code> 最坏丢约 1 秒、RDB 丢更多，加上异步复制、主动淘汰、误操作——<strong>持久化保证的是"重启后数据大多还在"，不是"唯一一份"</strong>。</p>
+<p class="mv-md-p"><strong>5. <strong>缓存一致性怎么做到"不骗人"？</strong></strong></p>
+<p class="mv-md-p">说清三件事：<strong>① 上限是多少</strong>（TTL 几秒 / 写时失效几百毫秒）；<strong>② 失败怎么办</strong>（删缓存失败靠 TTL 兜底，用 Outbox 保证最终执行）；<strong>③ 哪些路径不能容忍</strong>（参与判断的那条走权威来源）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「本地缓存（进程内）和 Redis 缓存的边界怎么划？」——<strong>本地缓存的 TTL 更短（几十毫秒）、容量更小、不一致更明显</strong>，但<strong>连 Redis 的网络往返都省了</strong>。适合"极热 + 能容忍几十毫秒旧值"的数据（[[母题-R4-大key与热key]] 3.3）</li><li>「多级缓存怎么分层？」——常见三层：<strong>本地 → Redis → 数据库</strong>，每层<strong>容忍度递增、延迟递增</strong>；<strong>关键是要给每层都定"命中率与回源放大"的目标</strong></li><li>「配置中心算缓存还是权威状态？」——<strong>看它是不是唯一一份</strong>。配置本身往往<strong>有权威来源（Git / 数据库）</strong>，缓存是派生数据；但如果配置只存在配置中心里，<strong>它自己就必须高可用</strong>（不能当"可丢的缓存"）</li><li>「为什么 RuleArena 敢把 Redis 只给 256~512MB？」——<strong>因为放进去的是可重投的队列与短期进度</strong>（<code class="mv-md-code">08-capacity-cost-and-facts.md</code>）——<strong>规格小不是问题，放错东西才是问题</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena</strong>——<strong>本卡的核心证据</strong>：PostgreSQL 存权威状态，Redis 只做队列、限流、短期进度；<code class="mv-md-code">08-capacity-cost-and-facts.md</code> 里 Redis 只给 256~512MB。<strong>"Redis 挂了"在这里是可恢复事件。</strong></p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">把"缓存"拆成派生数据与权威状态 → 给判据三问 → 三类放错的后果（尤其"参与判断的数据带旧值"为什么会从慢变成错）→ <strong>量化回源放大 <code class="mv-md-code">1/(1−h)</code> 与降级设计</strong> → 一致性的上限（TTL vs 写时失效 vs 不用）→ 权威状态放哪决定架构骨架 → Redis 持久化 ≠ 不丢 → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>缓存能解决的问题只有"快"，不能解决"可靠"和"正确"。</strong> 所以边界只有一条：<strong>能被重建的、不参与判断的、能容忍旧值的东西，才属于缓存</strong>（能用 <code class="mv-md-code">1/(1−命中率)</code> 量化它的风险、能用 TTL 量化它的不一致）。<strong>而"权威状态在哪"是一句架构级的话——它决定了"哪个组件挂了是事故、哪个挂了只是变慢"。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能默写判据三问并区分"展示路径"与"判断路径"；能算出 <code class="mv-md-code">1/(1−命中率)</code> 并给出三档降级；能说清 TTL 的角色是兜底而非主机制、以及为什么要抖动；能说清"Redis 持久化 ≠ 不丢"并给出权威状态的分工；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

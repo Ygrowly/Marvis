@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="qZOtTd8nsY3cy8SAkKTFFl">
+<head data-page-node-id="6w9eOBPAupX09YDRd8XN24">
+<meta charset="UTF-8" data-page-node-id="LhQsASHpGAeDcdKhpnedwv">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="kb8tJArUZa37h4385EVwTL">
+<title>算法手撕 32 题 · 每日作战卡</title>
+<style>
+  :root{
+    --bg:#ffffff; --card:#f6f8fa; --line:#e3e7ec; --ink:#1c2430; --ink2:#5a6675;
+    --accent:#1f4e79; --s:#c0392b; --a:#b7791f; --b:#2c7a7b; --ok:#2f855a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 24px 60px;background:var(--bg);color:var(--ink);
+       font:15px/1.65 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.5px}
+  .sub{color:var(--ink2);font-size:13px;margin-bottom:18px}
+  h2{font-size:17px;margin:26px 0 10px;padding-left:9px;border-left:4px solid var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .box b{display:block;font-size:13px;color:var(--accent);margin-bottom:3px}
+  .box span{font-size:12.5px;color:var(--ink2)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+  th{background:var(--card);font-weight:600;font-size:12.5px;color:var(--ink2)}
+  td.c{white-space:nowrap}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;color:#fff;margin-right:6px}
+  .tag.s{background:var(--s)} .tag.a{background:var(--a)} .tag.b{background:var(--b)}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:5px;padding:2px 7px;
+       font-size:11.5px;cursor:pointer;color:var(--ink2);min-width:62px}
+  .btn[data-l="1"]{background:#fff5e6;border-color:#e0b070;color:#8a5a10}
+  .btn[data-l="2"]{background:#e9f5ee;border-color:#8fc4a4;color:var(--ok)}
+  .btn[data-l="3"]{background:#e6f0f7;border-color:#7aa6cc;color:var(--accent)}
+  tr.hit td{background:#fff6d6}
+  .note{background:#fffaf0;border:1px solid #f0dcb4;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:10px}
+  .note b{color:#8a5a10}
+  ol{margin:6px 0 0 20px;padding:0;font-size:13.5px}
+  ol li{margin:4px 0}
+  .foot{margin-top:26px;font-size:12px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px}
+  @media print{
+    body{padding:0;font-size:12px}
+    .box,.note{background:#fff !important}
+    h2{page-break-after:avoid} tr{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body data-page-node-id="nVCYXhGzcNzEMZnzC5V2dq">
+<div class="wrap" data-page-node-id="01i3mTkwyztIgZxtBbvw9m">
+
+  <h1 data-page-node-id="8Fp5JdzKi6Yla8LX2xC1Yc">算法手撕 32 题 · 每日作战卡</h1>
+  <div class="sub" data-page-node-id="60xkgrAJOboaTU7NKVWKrG">S15 面试必杀（闭卷 3 分钟）· A10 高频变体 · B7 笔试难题　|　每天 35 分钟，一天只推 1 道新题</div>
+
+  <h2 data-page-node-id="vtAmLoIycBjvGnl3Z73qcz">每天四格（35 分钟）</h2>
+  <div class="grid" data-page-node-id="p8zWxu9tyBNdAmuN2aD4QH">
+    <div class="box" data-page-node-id="k4VaBrXXftctZtupUvVdVC"><b data-page-node-id="rkIH9T84vH3c86FFZBOGUb">1 · 复现 8min</b><span data-page-node-id="foOaUPBv8CoVt4y8Rxkxb9">只看昨天 2 题的题名，闭卷写。写不出来 = 没过关</span></div>
+    <div class="box" data-page-node-id="7Zul2jTGBIUHSI7SqfhliO"><b data-page-node-id="jttW8sUyY5yAjtFCYBJUdY">2 · 新题 15min</b><span data-page-node-id="aSOGDrnRVNFemuu8k7BU6L">先说四句（模型→不变量→边界→复杂度），再写。卡住 3 分钟才准看脊柱</span></div>
+    <div class="box" data-page-node-id="nThO9ImCiMvAnDNJM8EfCb"><b data-page-node-id="l0WueW0ioXwdOEFwX3J7wX">3 · 口述 7min</b><span data-page-node-id="ITW288kNtCtsO8kB7d3HiR">对着空气讲一遍，说不顺 = 没真懂</span></div>
+    <div class="box" data-page-node-id="Ugoy2yEL6jtT83CX5lEnAB"><b data-page-node-id="6oY2JsxRe3KrVFA6S4UL9J">4 · 登记 5min</b><span data-page-node-id="xOodXrG8m4Bns8e8T66ghb">学完 5 分钟内自评打级，防遗忘</span></div>
+  </div>
+  <div class="note" data-page-node-id="v5ubCUZ2T9vbi989jTjOaw"><b data-page-node-id="a0DraiSEDcxwHCKCezjT9k">铁律：</b>一天只推 1 道新题。算法补短板的失败模式永远是「一天刷 5 道，第二天全忘」。点按钮切换状态：未练 → 看过(1) → 半闭卷(2) → 闭卷稳(3)。</div>
+
+  <h2 data-page-node-id="MDJ5aa2ORr1llWukGpNYwD">S 层 · 面试手撕必杀 15 题</h2>
+  <table data-page-node-id="kvsENiGwDECblLH7uWkLCK">
+    <thead data-page-node-id="B4MCtOsEOVwDRvluHFoRmP"><tr data-page-node-id="35KQ5vQ2X9qXDUqqpnhr7I"><th style="width:52px" data-page-node-id="TYPuufctGaE3kA7fMSejBp">状态</th><th style="width:190px" data-page-node-id="T8mppLczKHCxejUX5vWuMO">题</th><th style="width:110px" data-page-node-id="pjQP2WxVOrjTPnqR319jgL">模型</th><th data-page-node-id="DD7wybUmmXxy8tPiUJlSVs">一句话识别</th></tr></thead>
+    <tbody id="tbS" data-page-node-id="VkFFkhPfseCyByYSA3eF1K"></tbody>
+  </table>
+
+  <h2 data-page-node-id="Ofn6kTmgmlgVKDX23fOFbZ">A 层 · 高频变体 10 题</h2>
+  <table data-page-node-id="7gOIGnsEjogAQEBiIgkDV9">
+    <thead data-page-node-id="Swrb6FdvFWGUPtQVY6SOCW"><tr data-page-node-id="io8SPUVbqB1MoXay02ETSc"><th style="width:52px" data-page-node-id="AZ1By1hC9Dj5QiFeJC2ANN">状态</th><th style="width:190px" data-page-node-id="NJXVAROfPpECnVqCydOSAf">题</th><th style="width:110px" data-page-node-id="3C02HAEp2Z0HYQXec4Y6C8">模型</th><th data-page-node-id="fRNkjykfJ22yeHoQMgs0V2">一句话识别</th></tr></thead>
+    <tbody id="tbA" data-page-node-id="KRlrFetELtEXMbtF36uMdB"></tbody>
+  </table>
+
+  <h2 data-page-node-id="oUoI8ZNCDTSpy94M1lYlwF">B 层 · 笔试难题 7 题（目标：识别模型 + 能拿部分分）</h2>
+  <table data-page-node-id="3DONdqxXyAaR112FNmWoZZ">
+    <thead data-page-node-id="H9GHtsutbSu0sSBrK4MYM6"><tr data-page-node-id="vmnuxfFZQYXENbE6YbVQ1a"><th style="width:52px" data-page-node-id="8jD8qGyf4ousXicBCQUNl9">状态</th><th style="width:190px" data-page-node-id="7SxYFdSyz4AFwpAFT8n912">题</th><th style="width:110px" data-page-node-id="QwjozUHismY6tpq1O0JoIK">模型</th><th data-page-node-id="uiGt0EAgEIOJBDFTvxX5hw">为什么笔试常考</th></tr></thead>
+    <tbody id="tbB" data-page-node-id="Chk14kEFuMUwrAJ7YZXzq5"></tbody>
+  </table>
+
+  <h2 data-page-node-id="bxcUmI5jYBZrV8LARTWCLb">八大模型速查：看到什么 → 起手第一句</h2>
+  <table data-page-node-id="aMLj1l9xwGJZVToGWy6xdS">
+    <thead data-page-node-id="kkw3qZifGPhdPEBAJieO5n"><tr data-page-node-id="ybp10pCtV0q0IkrPp3pfa4"><th style="width:220px" data-page-node-id="eNQoQ8zA0qWQHODvaLhA87">看到</th><th style="width:150px" data-page-node-id="pcD6zrYpdRZqTotpnIN9SU">模型</th><th data-page-node-id="G2lJh06208iiXD1B8KDieR">起手第一句</th></tr></thead>
+    <tbody data-page-node-id="S0lP5u9yFt3r0BgzfWAopi">
+      <tr data-page-node-id="41VYsXkfB1vCglrH3zUZVE"><td data-page-node-id="znCAHh04Gr38j7Pw1FIWr7">凑一个值 / 计数 / 判重，要 O(n)</td><td data-page-node-id="gPbpwORH6FwiI9ugFXcArS">哈希表</td><td data-page-node-id="HGpG8xiwt3io7V57MuHCoh">先查后存，别把自己算进去</td></tr>
+      <tr data-page-node-id="brPsxuUjnBKqJktGhiSWJq"><td data-page-node-id="1we0Gp36ikbaLrFBUZ1Ccl">有序数组两头往中间夹</td><td data-page-node-id="t9Q6ZjYqzvoortTViJAcJE">相向双指针</td><td data-page-node-id="TpZ9Z9rDXnhHDoFLC6YxCa">谁矮动谁</td></tr>
+      <tr data-page-node-id="tCmnaJ6ky61R4WkXChkrFj"><td data-page-node-id="E2N9NiChaGgb6dmNZDdZ9B">连续子串 / 子数组 + 最长最短</td><td data-page-node-id="CB8UMszlgBGSXXyV5xbnYQ">滑动窗口</td><td data-page-node-id="0w2bagDQdM3NsWBnywdqvD">右扩到不满足，左收到满足</td></tr>
+      <tr data-page-node-id="59BYDMR5GSLwgYjThNjLM7"><td data-page-node-id="kIvcFkR38SVhRkfOg5Ka8c">链表要改指针</td><td data-page-node-id="BQOu9tbbxF5nMFbnOCQVg7">dummy 哑头 + 三指针</td><td data-page-node-id="5GpHOkOQbW6nDvrgNPwzEj">先接住 next，再改指针</td></tr>
+      <tr data-page-node-id="ofzHuToRDfJMZdfUnhwq4I"><td data-page-node-id="51VmleANXCSTpI1hVFUUtq">树要算高度 / 路径 / 是否</td><td data-page-node-id="TqeeAFiw2yqo2oBLyoWxlw">后序递归 + 返回值</td><td data-page-node-id="JPTYmuMXGEeTyX6TqVcLpm">返回什么 = 我要向父节点汇报什么</td></tr>
+      <tr data-page-node-id="Q36CdTToJyE8fIZs4erX1A"><td data-page-node-id="awq91VHYoVSKWu5tKlAdov">网格连成一片 / 最短几步</td><td data-page-node-id="hFYDChkzZPIqiEccfF1tUi">洪水填充 / 多源 BFS</td><td data-page-node-id="KSzdQDtoSWMnEejm43B6N4">沉岛标记访问，按层才算一轮</td></tr>
+      <tr data-page-node-id="zYMQ0Om92zEBF12S0aFYan"><td data-page-node-id="kGTH6pOO6BmzOXqFdHDNhm">前 K / 第 K / 每次取最优</td><td data-page-node-id="VVrxC3xNBnEhRHIrldqGNs">堆</td><td data-page-node-id="caoHvEuwk2k7oj5Ay0OwG4">堆顶是守门员，比它强才进门</td></tr>
+      <tr data-page-node-id="UlUIxY6ItO0ISyA2aZnLKI"><td data-page-node-id="coZ8ZYVh03GZGUiAnN1hI8">选不选 / 凑金额 / 两序列比对</td><td data-page-node-id="dM60YviVEPJuUQ1GMAeX0H">DP</td><td data-page-node-id="RCBHdAzgDIIUkYwE4VMYKj">先定义 dp[i] 是什么，再想最后一个决策</td></tr>
+    </tbody>
+  </table>
+
+  <h2 data-page-node-id="e0NSHaxFJLNgWpcCGQEfQF">笔试三条（和手撕分开练）</h2>
+  <ol data-page-node-id="DUJ48kSmGjFnFw0b8aMiIh">
+    <li data-page-node-id="2YfXBpDaiwTgDocfSYOJbW"><b data-page-node-id="EWf3GAvJxOfk99Fq5vXsVF">时间盒</b>：读题 3min → 建模 5min → 编码 15min → 边界自测 5min。超时先交能过示例的版本。</li>
+    <li data-page-node-id="PzsMpHDguyWGgvVC7x2FNR"><b data-page-node-id="tXB4Ey2CDB8gSmD1FtgFJ6">先拿部分分</b>：想不出最优就先写暴力版，主逻辑外用 <code data-page-node-id="5l03Ehmd2R2ATPOVO44XmL">if n &lt;= 100: return brute(n)</code> 兜住。完整暴力 &gt; 写崩的最优。</li>
+    <li data-page-node-id="Wx4Op7U6ZD076qpEj6bVFU"><b data-page-node-id="I3YAU526fdakFvjWzBfzQN">看输出格式反推考点</b>：要 <code data-page-node-id="kHIvdhQsS9XAWYG0XUTDfL">%lld</code> → 用 long；要输出方案本身 → 存前驱；要字典序最小 → 排序 + 贪心。题面输出格式是白送的提示。</li>
+  </ol>
+
+  <div class="foot" data-page-node-id="kHu4QHjaAwCBi2GTOdfq1q">
+    正本：<code data-page-node-id="1rUtsoovGfThw7qSf9rmvp">wiki/topics/算法/算法手撕-32题闭卷清单.md</code>（代码脊柱与出处在那里）· 进度存在本机浏览器 localStorage，换设备会重置。
+    已接入派单池：<code data-page-node-id="Ile3XchVnJ4IXrdDVDOFyD">site/_data/clusters.js</code> 的「手撕算法」日课（D1–D37），派单点击直接跳到本题所在行。
+  </div>
+</div>
+
+<script>
+var DATA = {
+  S: [
+    ['1. 两数之和','哈希补集','「凑一个值」+ 要 O(n)'],
+    ['3. 无重复字符最长子串','滑动窗口','连续子串 + 不重复的最长'],
+    ['206. 反转链表','链表三指针','「反转」→ prev/cur/nxt'],
+    ['21. 合并两个有序链表','dummy 头','两条有序链表合并'],
+    ['142. 环形链表 II','快慢指针','「环 / 入环点」→ Floyd'],
+    ['102. 二叉树层序遍历','BFS 分层','按层输出 → 队列按层处理'],
+    ['104+543. 深度 / 直径','后序返回值','路径长度 → 后序 + 全局 ans'],
+    ['236. 最近公共祖先','后序汇合','两点关系 → 后序返回值汇合'],
+    ['20. 有效的括号','匹配栈','嵌套配对 → 左进右比对'],
+    ['146. LRU 缓存','哈希+双向链表','O(1) 淘汰 → 定位+定序'],
+    ['215+347. 第K大 / TopK','小顶堆','「前 K / 第 K」→ 堆顶守门'],
+    ['33. 搜索旋转排序数组','变形二分','有序被旋转 → 先判哪半有序'],
+    ['200+695. 岛屿数量','洪水填充','连成一片 → 沉岛'],
+    ['56. 合并区间','排序+扫描','区间重叠 → 按起点排序线性扫'],
+    ['15. 三数之和','排序+双指针','a+b+c=0 → 固定一个退化为两数和']
+  ],
+  A: [
+    ['76. 最小覆盖子串','滑动窗口','最短覆盖 → 右扩左收 + need 计数'],
+    ['53. 最大子数组和','Kadane','连续最大和 → 前缀为负就丢'],
+    ['560. 和为 K 的子数组','前缀和+哈希','子数组和计数 → 查 pre-K 出现几次'],
+    ['25. K 个一组翻转','链表分组','每 k 个 → 先数够再翻，接回前驱'],
+    ['98. 验证 BST','递归上下界','验证 → 传 (lo,hi) 往下收紧'],
+    ['105. 前序+中序构造','分治+区间','两序列还原 → 前序定根中序切'],
+    ['46. 全排列','回溯 used','所有排列 → path+used+恢复现场'],
+    ['739. 每日温度','单调栈','下一个更大 → 递减栈，弹出即答案'],
+    ['55. 跳跃游戏','贪心','能否到达 → 只维护 farthest'],
+    ['198. 打家劫舍','一维 DP','选不选 → max(dp[i-1], dp[i-2]+v)']
+  ],
+  B: [
+    ['322. 零钱兑换','完全背包','凑数建模器，笔试高频'],
+    ['1143. 最长公共子序列','二维 DP','字符串比对类底座'],
+    ['207. 课程表','拓扑判环','依赖 / 先后 / 能否完成'],
+    ['994. 腐烂橘子','多源 BFS','同时扩散最短时间唯一模板'],
+    ['79. 单词搜索','网格回溯','回溯在网格上的标准形态'],
+    ['84. 柱状图最大矩形','单调栈','单调栈最难一档，区分度题'],
+    ['23. 合并 K 升序链表','堆·多路归并','归并思想 + 复杂度表述']
+  ]
+};
+
+var KEY = 'mv.algo32.v1';
+var LABEL = ['未练','看过','半闭卷','闭卷稳'];
+var st = {};
+try { st = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { st = {}; }
+
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+
+function render(level, tbId, tagCls){
+  var tb = document.getElementById(tbId);
+  var rows = DATA[level];
+  var html = '';
+  for (var i = 0; i < rows.length; i++){
+    var id = level + (i + 1);
+    var v = st[id] || 0;
+    html += '<tr id="' + id + '">'
+      + '<td class="c"><button class="btn" data-id="' + id + '" data-l="' + v + '">' + LABEL[v] + '</button></td>'
+      + '<td><span class="tag ' + tagCls + '">' + id + '</span>' + rows[i][0] + '</td>'
+      + '<td>' + rows[i][1] + '</td>'
+      + '<td>' + rows[i][2] + '</td>'
+      + '</tr>';
+  }
+  tb.innerHTML = html;
+}
+
+render('S','tbS','s');
+render('A','tbA','a');
+render('B','tbB','b');
+
+document.addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.btn') : null;
+  if (!b) return;
+  var id = b.getAttribute('data-id');
+  var v = ((st[id] || 0) + 1) % 4;
+  st[id] = v;
+  b.setAttribute('data-l', v);
+  b.textContent = LABEL[v];
+  save();
+});
+
+// 从派单页带锚点跳入（#S2 / #A1 / #B3）：表格是 JS 渲染的，渲染完再滚到对应行并高亮
+if (location.hash && location.hash.length > 1){
+  var hit = document.getElementById(location.hash.slice(1));
+  if (hit){
+    hit.className = 'hit';
+    hit.scrollIntoView();
+  }
+}
+
+</script>
+</body>
+</html>

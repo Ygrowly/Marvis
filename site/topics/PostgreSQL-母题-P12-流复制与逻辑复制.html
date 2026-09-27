@@ -232,6 +232,8 @@ pg_wal 可用空间 = 500 GB
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 148 字 · 按 4 字/秒折算约 37 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p"><strong>流复制（物理）复制的是"整个实例的 WAL 字节流"</strong>——备库是主库的<strong>逐字节副本</strong>：只能整实例、备库只读（但可查询）、版本必须一致。<strong>逻辑复制复制的是"逻辑变更"</strong>——可以按表、按行过滤、备端可写、可跨大版本、能做异构与多源汇聚。</p>
+<p class="mv-md-p">所以判据很简单：<strong>① 只读副本/高可用 → 流复制；② 部分表同步到别的系统 → 逻辑复制</strong>。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：物理复制整实例只读，逻辑复制按表可写可跨版本；同步/异步是 RPO vs 延迟。</li><li><strong>推导链</strong>：复制的是什么（字节流 vs 逻辑变更）→ 能力边界 → 选型判据 → 同步语义只保 RPO。</li><li><strong>量化</strong>：无（语义差异为主）。</li><li><strong>边界与常见误解</strong>：流复制备库不能写；"上了同步复制就不会读到旧数据"×。</li></ul></collapse-panel>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">MySQL 的复制靠 <strong>binlog</strong>（Server 层逻辑日志）+ 各种格式（Statement / Row / Mixed）；<strong>PG 的物理复制走 WAL、逻辑复制走 WAL 逻辑解码</strong>。<strong>关键结论</strong>：<strong>MySQL 的 binlog 天生是逻辑的，所以按表过滤、跨版本是"本来就有的能力"；PG 的物理复制天生是物理的，逻辑复制是后补的能力层。</strong> <strong>「MySQL 用 binlog、PG 用逻辑复制/WAL」这句话本身就是两套机制的对照，说的时候要清楚自己在对照什么。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>逻辑复制的目标端能写吗？</strong></strong></p>
 <p class="mv-md-p"><strong>能</strong>（它是独立的可写表），<strong>代价是冲突要自己处理</strong>（目标端本地已有数据会与回放冲突）。<strong>这也是它能做多源汇聚的原因——同时也是它最难运维的地方。</strong></p>

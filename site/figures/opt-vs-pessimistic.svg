@@ -1,0 +1,36 @@
+<svg viewBox="0 0 680 380" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>乐观锁与悲观锁把成本花在哪，以及冲突率的判据</title>
+<desc>悲观锁强制串行、不浪费工作；乐观锁允许并发、冲突时白干。期望尝试次数等于 1 除以 1 减冲突率。</desc>
+<defs>
+<marker id="arrowL1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两种锁把代价花在不同的地方 —— 判据是冲突率</text>
+
+<rect x="40" y="46" width="290" height="150" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">悲观锁：先排队，绝不白干</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价一：并发度被压成串行（吞吐上限 = 1 / 持锁时间）</text>
+<text x="56" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价二：排队本身要等（连接被占住）</text>
+<text x="56" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价三：多把锁就有死锁风险</text>
+<text x="56" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">适合：冲突率高、重试代价大、临界区短</text>
+<text x="56" y="174" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">不是「更慢」——是把不确定性换成了排队</text>
+
+<rect x="350" y="46" width="290" height="150" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="366" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">乐观锁：先干，提交时校验</text>
+<text x="366" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价一：冲突时白干（要多试几次）</text>
+<text x="366" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价二：重试可能形成风暴</text>
+<text x="366" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">代价三：只保护「同一条记录」的并发</text>
+<text x="366" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">适合：冲突率低、计算便宜、能安全重试</text>
+<text x="366" y="174" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">★ 它在数据库层仍然要拿行锁，只是只拿一条语句</text>
+
+<rect x="40" y="212" width="600" height="94" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="234" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">可算的判据：期望尝试次数 = 1 ÷ (1 − 冲突率 p)</text>
+<text x="58" y="256" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">p = 1% → 1.01 次　　p = 10% → 1.11 次　　p = 30% → 1.43 次</text>
+<text x="58" y="276" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">p = 50% → 2.00 次　　p = 70% → 3.33 次　　p = 90% → 10.0 次</text>
+<text x="58" y="296" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">→ 冲突率低（几十个百分点以内）时乐观锁划算；再高就该换悲观，或者把临界区缩到极小</text>
+
+<rect x="40" y="322" width="600" height="52" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="342" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">还有第三种做法：不用锁，用「条件更新」——把判断和写入合成一条原子语句</text>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">如 UPDATE stock SET n = n - 1 WHERE id = 1 AND n &gt;= 1：改到 0 行就代表「不够了」，不必先查再改</text>
+</svg>

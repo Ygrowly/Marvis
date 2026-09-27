@@ -224,6 +224,10 @@ Store       ≈ Long-term Memory（跨会话复用，需要治理）</pre>
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 500 字 · 按 4 字/秒折算约 125 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">长任务的状态必须<strong>分层</strong>：<strong>Thread / Run / Step / Branch / Checkpoint / Artifact / Event</strong> 七类实体。<strong>只存聊天历史恢复不了</strong>，因为里面没有"哪些写操作真的发生了"——这是头号反例。</p>
+<p class="mv-md-p">Step 级记录必须带三组字段：<strong>版本</strong>（model / prompt / tool，否则 Replay 不出来）、<strong>Artifact 引用</strong>（否则大产物塞满状态表）、<strong>幂等键</strong>（否则不知道做过没有）。</p>
+<p class="mv-md-p">Checkpoint 的核心是"<strong>记两次</strong>"：<strong>副作用前记 intent、后记 result</strong>——这两次之间夹着的"不确定窗口"，正是恢复时必须先查权威状态的原因。存的九项：目标、运行状态、当前节点、结构化中间结果、Artifact 引用、剩余预算、版本、已完成副作用与幂等键、待审批动作。时机是：进出业务节点、副作用前后、人工中断前、大型子任务完成后、上下文压缩或分支合并后——<strong>纯只读的中间步骤不必记</strong>。</p>
+<p class="mv-md-p">四个动作的区别：<strong>Resume</strong> 要把事做完（该做的副作用要真做，且先查状态跳过已完成的）；<strong>Replay</strong> 只复现轨迹（默认用记录结果或沙盒，<strong>不重做真实副作用</strong>）；<strong>Retry</strong> 仅对可重试错误且有幂等保障；<strong>Fork</strong> 继承只读事实但<strong>不继承未批准的写权限</strong>。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：状态分层七类实体；checkpoint 记两次（副作用前后）；四种恢复动作语义不同。</li><li><strong>推导链</strong>：只存聊天恢复不了 → 分层 → Step 三组字段 → 记两次夹出不确定窗口 → 恢复先查权威状态 → Resume/Replay/Retry/Fork 分野。</li><li><strong>量化</strong>：存九项；七类实体；纯只读步骤不记（重做便宜、存储贵）。</li><li><strong>边界与常见误解</strong>：框架只给机制（checkpointer/store/interrupt），<strong>不会替你决定</strong>业务权威状态在哪、幂等键怎么设计、什么算有业务意义的节点、Eval 怎么定义；Replay 与 Resume 混用会把调试变成事故重放。</li></ul></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Checkpoint 存什么？</strong></strong></p>
 <p class="mv-md-p"><strong>目标、运行状态、当前节点、结构化中间结果、Artifact 引用、剩余预算、版本、已完成副作用与幂等键、待审批动作</strong>。大结果存外部，敏感信息按权限治理。</p>
 <p class="mv-md-p"><strong>2. <strong>什么时间做 checkpoint？</strong></strong></p>

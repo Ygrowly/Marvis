@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>并发与锁模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">并发与锁模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/并发与锁/并发与锁模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>20</b> 道题（<b>13</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>3</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="并发与锁-01-要不要加锁.html"><span class="mv-line-no">一</span><span class="mv-line-name">要不要加锁</span><span class="mv-line-q">冲突率多高才值得用悲观锁；乐观锁重试失败怎么办；这两种在数据库和代码里分别长什么样</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="并发与锁-02-锁画多大.html"><span class="mv-line-no">二</span><span class="mv-line-name">锁画多大</span><span class="mv-line-q">粒度、临界区、自旋还是睡眠、读写锁什么时候退化、无锁 CAS 与 ABA</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="并发与锁-03-多台机器怎么抢同一份资源.html"><span class="mv-line-no">三</span><span class="mv-line-name">多台机器怎么抢同一份资源</span><span class="mv-line-q">分布式锁三种实现，各自的失效场景，为什么"锁"本身还要配 fencing token</span><span class="mv-line-st">母题 1 · 题 8</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"用条件更新代替加锁"的活教材</strong>——任务表用<strong>窗口业务键 + 唯一约束 + 条件抢占 + 租约版本</strong>来避免多个 Worker 抢同一个窗口（<code class="mv-md-code">02-aggregation-and-recovery.md</code>）。<strong>这不是悲观锁，是"带期望版本的条件更新"</strong>——正是 L1 说的乐观并发控制，只不过不用版本号字段，而用"租约版本"。</li><li>解决什么问题：<strong>多个 Worker 同时扫到同一个缺口窗口时，只能有一个真的干活</strong>。做法是把"抢"变成一条带条件的 UPDATE：<code class="mv-md-code">WHERE 状态 = 待处理 AND 租约版本 = 我看到的那个</code>——<strong>改到 0 行就说明别人先拿到了，我退让</strong>。<strong>一个原子 UPDATE 就完成了加锁、判断和推进三件事</strong>。</li><li>踩过的坑：<strong>租约版本只挡住了本地数据库的旧写，撤不回旧 Worker 已经发出的外部调用</strong>（<code class="mv-md-code">07-task-lifecycle-and-delivery.md</code>）——这正是 L3 的核心结论：<strong>任何"锁"都保护不了已经离开进程的副作用</strong>，那要靠幂等键与权威状态查询。</li><li>决策与取舍：<strong>并发度是"受控"出来的</strong>——受控并发 + 并发配额，而不是让所有任务自由抢。<strong>"先限制并发，再考虑锁"这个顺序</strong>就是本卡第 0 节的判据。</li><li>对应母题：【L1、L3】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>并发配额代替锁</strong>——按租户限制并发和队列、给查询设超时、扫描量、行数与取消能力（<code class="mv-md-code">07-权限安全与生产隔离.md</code>、<code class="mv-md-code">08-查询性能与成本控制.md</code>）。<strong>这里根本没有"锁"，而是"限流 + 排队"</strong>。</li><li>解决什么问题：<strong>保护源库</strong>。多个租户的查询同时打到只读副本上，靠<strong>配额</strong>把它们隔开，而不是靠锁——因为<strong>这些请求之间没有共享状态要保护，只是争资源</strong>。</li><li>踩过的坑：<strong>"无依赖子查询可以并发，但写回顺序必须确定"</strong>——同一个问题在 L2 里的形态是"<strong>并发度可以放开，但要保序的地方必须显式串起来</strong>"。</li><li>决策与取舍：<strong>"争资源"和"争状态"要分开处理</strong>——争资源用配额（限流），争状态才用锁或条件更新。<strong>把这两件事混在一起是设计里常见的错</strong>。</li><li>对应母题：【L2、L3】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"不用锁，用幂等"的主证据</strong>——<code class="mv-md-code">04-idempotency-and-recovery.md</code> §9 明确：接受队列至少一次投递与 Worker 随时崩溃，靠<strong>稳定幂等键 + 同一事务里的唯一约束</strong>保证业务副作用只生效一次；<code class="mv-md-code">08-capacity-cost-and-facts.md</code> 给 Redis 只配 256~512MB，<strong>队列与限流用 Redis，但权威状态在 PostgreSQL</strong>。</li><li>解决什么问题：<strong>多 Worker 并行跑规则审查时，同一个动作不会被两个 Worker 各执行一次</strong>。做法不是"抢锁"，而是<strong>"谁先写进唯一约束谁生效，另一个读到冲突就当自己已经做过"</strong>。<strong>这比分布式锁简单、也更强壮</strong>——因为不依赖锁服务可用。</li><li>踩过的坑：<strong>超时后不许换 key 重试</strong>（不然幂等键失效）；<strong>不能拿 ToolCallID 当幂等键</strong>（它每次调用都变）。</li><li>决策与取舍：<strong>"能幂等就不用锁"</strong>。锁要引入一个额外的可用性依赖（锁服务），幂等只依赖自己的数据库——<strong>这是 L3 最后一条追问的答案：能用幂等解决的，不要用锁。</strong></li><li>对应母题：【L1、L3】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

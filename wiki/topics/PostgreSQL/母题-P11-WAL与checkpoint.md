@@ -34,6 +34,21 @@ level: A
 
 **完整回答骨架**：为什么需要 WAL（顺序写换随机写 + 崩溃安全）→ WAL 怎么保证已提交不丢 → **off 到底丢多少（算出来）** → checkpoint 在做什么 → **整页写的代价（算出来）** → 为什么 PG 只有一套日志（不需要 undo）→ 生产怎么配
 
+**完整回答（口述稿）**：
+**WAL 是"先写日志、再改数据页"**：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；**提交时靠 `fsync` 保证这个事务的 WAL 已落盘**（`synchronous_commit = on`），所以崩溃后能用 WAL 把已提交的改动重放出来。
+
+**checkpoint 做的事是"把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推"**——它**不影响正确性，只影响崩溃后要重放多久**。
+
+**PG 不需要 undo，是因为旧版本本来就留在堆里**（见 P13），不靠日志回滚——这是它和 MySQL 最大的结构差异：MySQL 是 redo + undo + binlog 三套，PG 只有 WAL 一套。
+
+同步/异步的取舍和 MySQL 一样是 **持久性 vs 提交延迟**：`synchronous_commit=off` 更快，但掉电会丢最近一段已提交的改动。
+
+**分层要点**：
+- **结论**：WAL = 顺序写日志 + 提交时 fsync；checkpoint 只影响恢复时长；PG 没有 undo。
+- **推导链**：随机写慢 → 先写日志 → fsync 保证持久 → checkpoint 推进恢复起点 → 旧版本在堆里所以不需要 undo。
+- **量化**：`synchronous_commit` 三档语义（on/off/remote_write 等，按版本）。
+- **边界与常见误解**：checkpoint 不影响正确性；"PG 也有 redo/undo/binlog 三套"×（只有 WAL）。
+
 ---
 
 ## 一、教材

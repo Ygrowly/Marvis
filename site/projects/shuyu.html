@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数驭穹图 · 项目口述</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 今日</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">项目口述 · 90 秒骨架 → 决策链</span>
+    <h1 class="mv-topic-title">数驭穹图</h1>
+    <p class="mv-topic-meta">NL2BI：自然语言到可信业务结论，每一步都留证据</p>
+  </div>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    <strong>先讲</strong>——不看内容，按 90 秒把项目讲一遍；<strong>再对</strong>——展开下面每一块逐个核对，
+    漏掉的那句就是今天的断点。<br>
+    决策链同理：<strong>先看问题自己答</strong>，再展开标答比对自己漏了哪一层。<br>
+    正本在 md（<a href="obsidian://open?vault=Marvis&file=projects/%E6%95%B0%E9%A9%AD%E7%A9%B9%E5%9B%BE/16-%E9%A1%B9%E7%9B%AE%E8%A1%A8%E8%BE%BE%E4%B8%8E%E9%9D%A2%E8%AF%95%E9%A2%98%E5%BA%93">用 Obsidian 打开</a>），本页是它的对照视图，内容由构建脚本抽取、不做改写。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="skel">90 秒骨架 <span class="mv-topic-meta">3 块 · 先讲再对</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      三档长度各有用处：<b>20 秒</b>用在「简单介绍一下项目」；<b>90 秒</b>是主场开场；
+      <b>5 分钟</b>是被追到系统层面时展开的骨架。练习的单位是这整块，不是里头的某一句。
+    </p>
+    <collapse-panel title="20 秒版本"><p class="mv-md-p mv-md-quote">数驭穹图是一套面向中小企业业务团队的可信问数与协作分析平台。系统将企业选定数据同步到轻量湖仓，也支持受控查询只读副本；再通过意图澄清、语义检索、SemQL、SQL 安全执行和结果验证，把自然语言问题转成带证据的表格、图表和协作数据资产。</p></collapse-panel>
+<collapse-panel title="90 秒版本"><p class="mv-md-p mv-md-quote">中小企业的数据常分散在 MySQL、PostgreSQL 和在线表格中，业务人员获取指标依赖分析师，沟通慢，而且口径、权限和结果难以沉淀。数驭穹图默认把用户选定的分析数据增量同步到独立的轻量湖仓；实时性要求高时，才通过受控连接器查询只读副本或分析库，从数据面隔离生产负载。用户提问后，系统先做权限检查和歧义澄清，再进行领域路由与 Schema、指标语义检索，把需求固化成 AnalysisIntent 和 SemQL，之后生成 SQL。SQL 必须经过只读 AST、租户过滤、JOIN 基数、扫描量、超时和成本检查才能执行。结果返回后，还要做粒度、总分、完整性和业务规则验证，并绑定查询指纹、数据快照和语义版本。最终表格或图表进入 Univer：系统区保存可刷新结果，人工区承接业务标注；发布后的协作表还能成为新的可信数据源。核心价值不是替代一条 SQL，而是降低业务与分析师之间的沟通成本，同时让查询安全、口径和结果都可追溯。</p></collapse-panel>
+<collapse-panel title="5 分钟画图版本"><div class="mermaid">flowchart LR
+    A["MySQL / PostgreSQL / Univer"] --&gt; B["快照同步或受控 Live Read"]
+    B --&gt; C["目录、权限、指标与关系语义"]
+    U["用户问题"] --&gt; D["权限、澄清、领域路由"]
+    C --&gt; E["Schema Linking"]
+    D --&gt; E
+    E --&gt; F["AnalysisIntent → SemQL → SQL"]
+    F --&gt; G["安全与成本校验"]
+    G --&gt; H["执行与结果验证"]
+    H --&gt; I["Evidence 绑定"]
+    I --&gt; J["表格 / 图表 / 看板"]
+    J --&gt; K["Univer 协作与发布"]
+    K --&gt; C</div>
+<p class="mv-md-p">讲图时只抓五段：</p>
+<p class="mv-md-p">1. 数据如何安全接入； 2. 业务语言如何变成明确意图； 3. 意图如何变成受控查询； 4. 结果如何被验证和证明； 5. 分析结果如何沉淀并持续更新。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">15 问 · 先看题自答，再展开标答</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      骨架过关后才走这一节：每一问先闭卷答，答不出来的就是下次复训要带的断点。
+    </p>
+    <collapse-panel title="1. 为什么不让大模型直连客户生产库？"><p class="mv-md-p mv-md-quote">因为它同时放大安全、权限、负载和错误查询风险。默认把选定分析数据同步到独立湖仓；必须实时查询时只连接只读副本或分析库，并在执行前做权限、AST、扫描量、超时和并发控制。</p></collapse-panel>
+<collapse-panel title="2. 湖仓是只存元数据，还是存业务数据？"><p class="mv-md-p mv-md-quote">快照模式会存用户授权同步的业务数据，不只是数据字典；同时登记表、字段、血缘、更新时间和质量等元数据。用户不需要全库搬迁，只选择分析所需的数据集和字段，并通过增量同步维持更新。</p></collapse-panel>
+<collapse-panel title="3. 为什么要有语义层？"><p class="mv-md-p mv-md-quote">数据库 Schema 只描述物理结构，不知道“有效订单”“今年”“平均盈利率”等企业口径。语义层把指标公式、维度、时间、过滤条件、表关系、权限和版本绑定起来，防止模型根据字段名猜业务。</p></collapse-panel>
+<collapse-panel title="4. 为什么不是自然语言直接生成 SQL？"><p class="mv-md-p mv-md-quote">业务理解错误和 SQL 实现错误混在一起时，很难定位。先形成 AnalysisIntent，再转为与物理表解耦的 SemQL，最后编译 SQL，可以分别验证需求、业务口径和物理实现。</p></collapse-panel>
+<collapse-panel title="5. Schema 很大时如何选择表和字段？"><p class="mv-md-p mv-md-quote">先按租户、权限和业务域缩小范围，再用关键词、向量、别名、关系图和历史成功案例混合召回，最后重排。不是把全库 DDL 塞进上下文，而是只给模型当前任务所需的最小语义包。</p></collapse-panel>
+<collapse-panel title="6. 怎么防止生成危险 SQL？"><p class="mv-md-p mv-md-quote">不依赖提示词。SQL 进入确定性安全链：解析 AST、只允许查询语句、校验数据集和列权限、强制租户与时间过滤、检查 JOIN 和扫描成本、设置超时与返回上限，并在隔离执行环境中运行。</p></collapse-panel>
+<collapse-panel title="7. 怎么保证结果正确？"><p class="mv-md-p mv-md-quote">不能仅以 SQL 成功执行为准。还要验证结果 Schema、空值和单位、聚合粒度、总分一致性、JOIN 前后基数、业务规则和数据新鲜度；只有通过验证的结果才能绑定 Evidence 并生成图表。</p></collapse-panel>
+<collapse-panel title="8. Evidence 包含什么？"><p class="mv-md-p mv-md-quote">至少包括问题与澄清、AnalysisIntent、SemQL、规范化 SQL 指纹、执行 call_id、数据快照、语义版本、结果 Hash、校验状态和数据截止时间。这样可以证明图表来自哪次受控执行。</p></collapse-panel>
+<collapse-panel title="9. Univer 为什么不只是结果导出？"><p class="mv-md-p mv-md-quote">它既能作为经过字段、权限和版本发布的数据源，也能承载分析结果。系统计算区保持可刷新和不可随意改写，人工协作区记录原因、负责人和处置；发布后又可成为下一轮分析的正式数据集。</p></collapse-panel>
+<collapse-panel title="10. Agent 在这里做什么？"><p class="mv-md-p mv-md-quote">模型负责理解、澄清、规划和解释；Workflow 与 Tool 负责权限、检索、编译、执行、校验和持久化。Agent 不能绕过工具直接访问数据库，也不能把“看起来合理”当成验证通过。</p></collapse-panel>
+<collapse-panel title="11. 如何处理多轮追问？"><p class="mv-md-p mv-md-quote">保存结构化任务状态，而不是只拼接聊天记录。后续问题引用前一轮的指标、筛选、时间和证据；任何口径变化都生成新的 AnalysisIntent 和查询版本，避免隐式改写。</p></collapse-panel>
+<collapse-panel title="12. 系统失败后如何恢复？"><p class="mv-md-p mv-md-quote">每个阶段持久化状态并使用幂等 call_id。可安全重试的检索和查询允许有限重试；有副作用的发布操作必须去重。恢复时从最近有效阶段继续，而不是让模型凭对话猜测状态。</p></collapse-panel>
+<collapse-panel title="13. 如何评测？"><p class="mv-md-p mv-md-quote">不能只看 SQL 执行率。按链路分别评测意图和澄清、领域路由、Schema 召回、SemQL、SQL、安全、结果正确性、证据完整性以及最终业务任务成功率，并通过回放把失败归因到具体节点。</p></collapse-panel>
+<collapse-panel title="14. 最大的技术难点是什么？"><p class="mv-md-p mv-md-quote">第一是把企业口径变成可版本化语义资产；第二是在大 Schema 下准确找到最小相关集合；第三是让生成式模型处于确定性的权限、安全、校验和证据链控制之中。</p></collapse-panel>
+<collapse-panel title="15. 它和 BI、Text-to-SQL 有什么区别？"><p class="mv-md-p mv-md-quote">BI 擅长预定义报表，普通 Text-to-SQL 擅长一次性生成查询；数驭穹图把开放式问数、企业语义、安全执行、结果证明、在线协作和可刷新资产连成闭环。它补充分析师，而不是声称消灭所有专业分析工作。</p></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script src="../_data/mmd-boot.js"></script></body>
+</html>

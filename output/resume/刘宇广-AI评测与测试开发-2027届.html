@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>刘宇广 - AI 评测 / 测试开发</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body {
+    font-family: Arial, "Alibaba PuHuiTi 3.0", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+    color: #212529;
+    font-size: 9pt;
+    line-height: 1.22;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    width: 210mm; height: 297mm;
+    padding: 8.2pt 8.2pt 7.5pt;
+    margin: 0 auto; background: #fff; overflow: hidden;
+  }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+  /* ---------- header ---------- */
+  .hd { display: flex; align-items: flex-start; }
+  .hd .photo { width: 60pt; height: 80pt; object-fit: cover; display: block; }
+  .hd .id { flex: 0 0 160pt; padding-left: 18pt; }
+  .hd .id h1 { font-size: 22.5pt; font-weight: 700; letter-spacing: 1pt; line-height: 1.05; margin-top: 22pt; white-space: nowrap; }
+  .hd .id .role { font-size: 13.5pt; margin-top: 4pt; white-space: nowrap; }
+  .hd .right { flex: 1; }
+  .contacts { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20pt; row-gap: 5.5pt; padding-top: 28pt; }
+  .ci { display: flex; align-items: center; }
+  .ci svg { width: 10pt; height: 10pt; flex: 0 0 10pt; margin-right: 3.6pt; }
+  .ci span { font-size: 9pt; line-height: 1.1; white-space: nowrap; }
+  .lede { font-size: 9pt; line-height: 1.22; margin-top: 6pt; text-align: justify; }
+
+  /* ---------- section ---------- */
+  .sec { margin-top: 1pt; }
+  .sec-t {
+    color: #0047AB; font-size: 10.5pt; font-weight: 700;
+    border-bottom: 0.8pt solid #0047AB; padding-bottom: 4.6pt; margin-bottom: 1.6pt;
+  }
+  /* ---------- entries ---------- */
+  .ent { margin-top: 1pt; }
+  .ent:first-of-type { margin-top: 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .org { font-size: 9.75pt; font-weight: 700; }
+  .dt { font-size: 9.75pt; white-space: nowrap; padding-left: 8pt; }
+  .proj { font-size: 9pt; font-weight: 700; margin-top: 0.8pt; }
+  .proj .note { font-weight: 400; }
+  .sum { font-size: 9pt; text-align: justify; margin-top: 0.4pt; }
+  ul { list-style: none; margin-top: 0.5pt; }
+  li { position: relative; padding-left: 18pt; text-align: justify; }
+  li + li { margin-top: 0.5pt; }
+  li::before { content: ""; position: absolute; left: 7.5pt; top: 4.7pt; width: 3pt; height: 3pt; background: #212529; }
+  .skill { text-align: justify; margin-top: 1pt; }
+  .skill:first-of-type { margin-top: 1.4pt; }
+  b, strong { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hd">
+    <img class="photo" src="assets/photo.jpg" alt="">
+    <div class="id">
+      <h1>刘宇广</h1>
+      <div class="role">AI 评测 / 测试开发</div>
+    </div>
+    <div class="right">
+      <div class="contacts">
+        <div class="ci">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="13.5" rx="2"/><path d="M8.5 7V5.2A1.7 1.7 0 0 1 10.2 3.5h3.6A1.7 1.7 0 0 1 15.5 5.2V7"/></svg>
+          <span>2027 届全职秋招，可提前实习</span>
+        </div>
+        <div class="ci">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M3 6.2l9 6.3 9-6.3"/></svg>
+          <span>lyg3044@qq.com</span>
+        </div>
+        <div class="ci">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.2h3l1.8 4.6-2.1 1.5a12.5 12.5 0 0 0 5.9 5.9l1.5-2.1 4.6 1.8v3a2 2 0 0 1-2.2 2A18.5 18.5 0 0 1 4 4.9a2 2 0 0 1 2-1.7z"/></svg>
+          <span>18771478399</span>
+        </div>
+        <div class="ci">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M2.8 12h18.4M12 2.8c2.6 2.9 3.9 6 3.9 9.2s-1.3 6.3-3.9 9.2c-2.6-2.9-3.9-6-3.9-9.2S9.4 5.7 12 2.8z"/></svg>
+          <span>https://ygrowly.github.io/</span>
+        </div>
+      </div>
+      <div class="lede">给不确定的模型输出建可复现的验收标准：把「哪版更好」变成能重跑、能归因、能卡住发布的确定性证据——评测集与防污染、独立 Oracle 裁决、回归门禁与反例回流。</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">教育经历</div>
+    <div class="ent">
+      <div class="row"><div class="org">南华大学</div><div class="dt">2023/09 - 2027/06</div></div>
+      <div class="sum">数据科学与大数据技术 · 本科</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">实习经历</div>
+
+    <div class="ent">
+      <div class="row"><div class="org">KINGSOFT 金山 · AI 开发实习生</div><div class="dt">2026/05 - 至今</div></div>
+      <div class="proj">EnergyOps Agent · 园区能耗智能运营平台 <span class="note">（独立设计与实现，Mentor 把关业务方向）</span></div>
+      <div class="sum">面向园区行政与财务团队，对接第三方能耗平台约 604 台水电表累计读数，经分层建模、异常治理与受控 Agent 入口，最终产出<b>可交付财务的月度结算单</b>（带计算说明、规则版本与差异检查）。</div>
+      <ul>
+        <li>结算设<b>三道质量门</b>：事实源门→预演门（分摊守恒校验）→责任门（行政确认 + 财务核验），任一失败阻断正式账单生成，分摊守恒率 100%；<b>92 项单元 + 30 项回归测试</b>把关核心链路，通过率 98.4%</li>
+        <li>把查询、设备、规则、告警、导出与结算封装为 <b>30 个 MCP 工具</b>与 6 类 Capability Bundle，实施 <b>R0/R1/R2 操作风险分级</b>与 Before/After Tool 校验链，固定 72 条任务集（同模型同权限）完成率 83.3%→95.8%；<b>80 条越权用例</b>（跨租户 / 越权限 / 越范围）<b>拦截率 100%</b></li>
+        <li><b>误报治理「异常候选 ≠ 业务告警」三层分离</b>：自适应基线输出异常候选，历史 dry-run 准入与告警指纹去重守住通知门槛，告警量降低 43%、平均研判时间 18min→6min</li>
+        <li><b>「三账一体」核心设计</b>：独立构建 raw→interval→hourly→daily <b>四层能耗数据模型</b>，定义 7 类质量状态与可信白名单，把参差读数整理为可信用能账、异常账与结算账，可信聚合完整率 96.8%→99.7%</li>
+      </ul>
+    </div>
+
+    <div class="ent">
+      <div class="row"><div class="org">慧泽致远 · AI 应用开发实习生</div><div class="dt">2025/10 - 2026/03</div></div>
+      <div class="proj">数驭穹图 · 企业 AI 数据分析与协作平台 <span class="note">（初创团队核心开发：Data Agent 链路、安全边界与评测模块）</span></div>
+      <div class="sum">面向中小企业业务人员，统一接入数据库、飞书、协同表格等 6 类数据源，完成自然语言→可信查询→分析解释→结果沉淀；产出的是<b>有来源、有口径、可验证、可编辑共享的分析结果</b>，不是一段 SQL。</div>
+      <ul>
+        <li><b>「SQL 能执行 ≠ 业务答案正确」</b>：设计 Data Agent <b>六阶段可归因链路</b>（意图路由→Domain Schema 检索→NL2SemQL 语义解析→SQL 生成→安全校验→查询执行）与限次自愈，单条 Bad Case 定位 30min→8min，150 条评测集「可执行且口径正确」的查询占比 78%→91%（含人工复核判定）</li>
+        <li>构建 <b>5 层查询安全边界</b>（租户权限→受治理 Tool 注册→Tool Call Schema/Validator 校验→只读 SQL AST 审查→输出字段脱敏），300 条正常与对抗请求中危险语句拦截率 100%、正常查询误拦率 2.7%</li>
+        <li><b>断言式口径校验：健康度评分与一票否决</b>——核心指标缺少业务定义即暂停该域自动问数；Schema/DDL 变更自动生成差异任务并降级资产可信度，过期语义不能冒充当前口径</li>
+        <li>分析负载与客户生产库物理隔离：文件、协同表格与同步数据以 Parquet 副本交由 DuckDB 本地计算，强实时查询走只读受限连接（EXPLAIN 成本预估、慢查询熔断降级）；大结果外置为 <b>Artifact</b>，单次分析上下文 Token 18.4K→3.6K（↓80.4%）</li>
+        <li>沉淀出海电商、医美、教育 <b>3 套 Domain Pack</b>（65 个核心指标 + 120 个术语别名 + 表关联约束），结合领域路由与混合检索，Top-K <b>Schema</b> 召回率 81%→95%；分析全程绑定 call_id / query_fingerprint / result_hash <b>三重证据</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">项目经历</div>
+
+    <div class="ent">
+      <div class="row"><div class="org">RuleArena · 业务 Agent 上线前的执行门禁平台</div><div class="dt">2026/08 - 至今</div></div>
+      <div class="proj">个人项目 · 独立设计与实现</div>
+      <div class="sum">面向<b>业务 Agent 上线前的执行门禁</b>：Agent 负责做事，系统负责证明它没做错——工具返回 ACK 不等于业务成功；信任由 Agent 之外的三层给出：类型化工具契约、运行时门禁、独立 Oracle（确定性裁决，不采信 Agent 自述）。</div>
+      <ul>
+        <li>建立 <b>21 + 17 双评测集</b>（hidden 物理隔离、Runtime 不可读）与四基线归一化预算消融（<b>golden-v4 / deepseek-v4.1-flash</b>）：dev 集 Multi-strategy 5/14 高于确定性 BFS 2/14；但 hidden 集重复 3 次暴露 <b>pass@3 = 8/14 而 pass^3 = 1/14</b>——单次成绩掩盖了搜索不可复现。据此 Release Gate 如实拒绝放行（hidden 57% &lt; 75%），机制层误报 0 / 泄漏 0 / 稳定重放 42/42</li>
+        <li><b>「候选风险 ≠ 确认漏洞」</b>：Agent 提议只算候选，经 Reference Simulator 快速探索→干净 Commerce Sandbox（独立 FastAPI + PostgreSQL，幂等键、ActionReceipt、只追加事件）真实 HTTP 重放→独立 Oracle 依据资金守恒、状态生命周期与幂等不变量裁决方可确认；Agent 不能触达 Ground Truth</li>
+        <li><b>门禁实测（同一份 Agent 跑两次，15 张工单 × 3 次重复，真实 HTTP + 真实回执/快照/事件）</b>：裸跑组 6 张工单重复退款、合计多退 <b>¥1920</b>、终态正确率 60%；加运行时门禁后<b>重复退款 0 笔</b>、终态正确率 <b>100%</b>、正常工单误拦 0，且更省——少发 30 次工具调用、平均耗时低 0.3s</li>
+        <li><b>缺陷定界（工程 bug vs 效果缺陷）</b>：执行中打出并修正四个真实缺陷——工具层把沙箱「业务拒绝」（HTTP 200 + status: REJECTED）读成成功、504 未走恢复路径、同幂等键重放被当成新写入、门禁理由码泄给 Agent；修完补回归测试（6 个测试文件）后重跑出上述数字</li>
+        <li>确认违规经删除式 <b>Delta Debugging</b> 压缩为 1-minimal 反例并绑定证据链（请求序列、回执、事件、状态 Diff、违反的不变量），修复版本自动重放历史反例与正常 Case，反例沉淀为可添加进回归套件的用例；显式 FSM 编排支持 Checkpoint 恢复与 <b>ACTION_UNKNOWN</b> 超时语义</li>
+        <li>设计自然语言规则→候选 <b>RuleSpec</b>→确定性校验→歧义清单→人工确认→不可变 RuleVersion 的编译链路，仅允许优惠、退款、积分、会员领域固定原语，禁止动态表达式求值，未确认规则不得进入攻击运行</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">专业技能</div>
+    <div class="skill"><b>评测与质量工程：</b>评测集设计与防污染（hidden 物理隔离、Ground Truth 隔离）、pass^k 重复性度量、确定性 Oracle 裁决与模型自评的取舍、回归门禁与发布卡口、Bad Case 压缩与反例回流、误报 / 泄漏度量、故障定界（工程 vs 效果）、越权与提示注入对抗测试</div>
+    <div class="skill"><b>Agent 架构与工程化：</b>Function Calling、MCP 工具封装、Capability Bundle 路由、Hook 链治理（Before/After Tool）、任务状态与进度推送；Prompt Engineering、结构化输出、上下文压缩与 Artifact 外置；RAG / Schema 混合检索；操作风险分级（R0/R1/R2）、HITL 确认、证据契约校验、确定性 Oracle 裁决与发布门禁</div>
+    <div class="skill"><b>工程交付与 AI Coding：</b>Git、pytest、CI/CD、Docker Compose、Nginx；分层评测体系、归一化预算消融、Bad Case 回归集；Claude Code / Codex（Skills / Hooks / AGENTS.md 仓库级实践）；CET-6</div>
+    <div class="skill"><b>后端开发与数据工程：</b>Python、FastAPI、SQLAlchemy、Pydantic；REST / SSE、异步任务编排；PostgreSQL、MySQL、Redis、DuckDB、Parquet；数据分层建模、湖仓查询路由、指标口径治理；幂等控制、状态机约束、失败语义分级</div>
+  </div>
+
+</div>
+</body>
+</html>

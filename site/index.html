@@ -38,6 +38,9 @@
   <div class="mv-modcards" id="mv-modules"></div>
   <p class="mv-note" id="mv-reviews" style="margin-top:6px"></p>
 
+  <h2 class="mv-h2" style="margin-top:26px">项目口述 <small>90 秒骨架 → 决策链 · 先讲再对</small></h2>
+  <div class="mv-modcards" id="mv-projects"></div>
+
   <h2 class="mv-h2" style="margin-top:26px">今日复训 <small>1-3-7-14-30 · 进度存本地</small></h2>
   <review-deck title="间隔复训牌组"></review-deck>
 
@@ -77,6 +80,7 @@
 <script src="_data/decks.js"></script>
 <script src="_data/modules.js"></script>
 <script src="_data/reviews.js"></script>
+<script src="_data/projects.js"></script>
 <script src="_components/marvis.js"></script>
 <script>
   function mvOpen(id) { document.getElementById(id).hidden = false; }
@@ -108,6 +112,19 @@
         '<div class="mv-modcard-name">' + m.module + '</div>' +
         '<div class="mv-modcard-meta">' + m.lines + ' 主线 · <b>' + m.topics + '</b> 母题' +
         (m.ready ? ' · 已提炼 ' + m.ready : '') + '</div></a>';
+    }).join('');
+  })();
+
+  /* 项目口述入口：清单来自 _data/projects.js（build 产出），不在首页写死 */
+  (function () {
+    var el = document.getElementById('mv-projects');
+    var list = window.MARVIS_PROJECTS || [];
+    if (!el) return;
+    if (!list.length) { el.remove(); return; }
+    el.innerHTML = list.map(function (p) {
+      return '<a class="mv-modcard" href="' + p.href + '">' +
+        '<div class="mv-modcard-name">' + p.name + '</div>' +
+        '<div class="mv-modcard-meta">' + p.lead + '</div></a>';
     }).join('');
   })();
 </script>

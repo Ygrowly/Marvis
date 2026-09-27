@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EnergyOps · 项目口述</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 今日</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">项目口述 · 90 秒骨架 → 决策链</span>
+    <h1 class="mv-topic-title">EnergyOps</h1>
+    <p class="mv-topic-meta">园区能耗智能运营平台：把脏的累计读数做成可查询、可结算的业务事实，再让 Agent 安全地操作真实系统</p>
+  </div>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    <strong>先讲</strong>——不看内容，按 90 秒把项目讲一遍；<strong>再对</strong>——展开下面每一块逐个核对，
+    漏掉的那句就是今天的断点。<br>
+    决策链同理：<strong>先看问题自己答</strong>，再展开标答比对自己漏了哪一层。<br>
+    正本在 md（<a href="obsidian://open?vault=Marvis&file=projects/EnergyOps/EnergyOps-%E5%BF%AB%E9%80%9F%E5%AD%A6%E4%B9%A0%E6%8E%8C%E6%8F%A1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%AE%9E%E6%88%98">用 Obsidian 打开</a>），本页是它的对照视图，内容由构建脚本抽取、不做改写。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="skel">90 秒骨架 <span class="mv-topic-meta">3 块 · 先讲再对</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      三档长度各有用处：<b>20 秒</b>用在「简单介绍一下项目」；<b>90 秒</b>是主场开场；
+      <b>5 分钟</b>是被追到系统层面时展开的骨架。练习的单位是这整块，不是里头的某一句。
+    </p>
+    <collapse-panel title="2.1 20 秒版本"><p class="mv-md-p mv-md-quote">EnergyOps 是园区能耗智能运营平台。系统接入智能水电表累计读数，通过 Raw、Interval、Hourly、Daily 四层模型生成带质量和覆盖率的可信用能数据，再用于查询、异常告警和月度结算。Agent 接入 WPS Comate，通过受控工具让行政和运维人员用自然语言完成业务操作。</p></collapse-panel>
+<collapse-panel title="2.2 90 秒版本"><p class="mv-md-p mv-md-quote">原来的能耗数据主要在同方平台中，提供的是智能表累计读数和基础统计，园区缺少自己的实时查询、异常处置和费用分摊能力，月末还要人工抄表和整理账单。我的工作是把这些数据转成可查询、可处置、可结算的业务事实。</p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">数据链路先保留 Raw 原始证据，再对相邻累计读数做差分，结合倍率和七类质量状态形成 Interval。可信区间进入 Hourly 和 Daily 聚合，同时记录覆盖率和 partial，避免把缺失数据当成零。聚合结果用于趋势查询和异常规则评估，异常再进入 Alarm、通知和人工处置闭环。月末则以权威抄表、设备归属、未入住名单和分摊规则形成输入快照，通过完整性、守恒和人工确认后生成账单与年度看板。</p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">在此基础上，我们将能力封装为约 30 个 MCP 工具和 6 类业务闭环，接入 WPS Comate。Agent 只负责理解、澄清和编排，高风险写操作通过 R0/R1/R2 分级、影响预览、二次确认、幂等和审计进行控制。</p></collapse-panel>
+<collapse-panel title="2.3 5 分钟版本骨架"><p class="mv-md-p">1. 背景：累计读数不能直接等于区间用量，月末结算依赖大量人工资料； 2. 数据：Raw 保留证据，Interval 差分并分类，Hourly/Daily 聚合并传播质量； 3. 运营：数据充分性判断、异常评估、Alarm、Notification、人工处置； 4. 财务：权威抄表、规则快照、试算、质量门、财务版导出； 5. Agent：意图澄清、能力路由、风险分级、Tool、Workflow、审计； 6. 工程：晚到重算、任务幂等、停机补偿、Outbox、慢查询治理； 7. 取舍：当前规模使用 PostgreSQL + APScheduler，达到升级条件才引入消息队列和流处理。</p>
+<hr class="mv-md-hr"></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">12 问 · 先看题自答，再展开标答</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      骨架过关后才走这一节：每一问先闭卷答，答不出来的就是下次复训要带的断点。
+    </p>
+    <collapse-panel title="Q1：项目最难的三个问题是什么？"><p class="mv-md-p mv-md-quote">第一是把脏累计读数转成可信区间；第二是让晚到、并发和停机后的聚合仍可恢复；第三是让 Agent 能够操作真实业务，又不越权、不重复产生副作用。</p></collapse-panel>
+<collapse-panel title="Q2：为什么不直接使用同方平台？"><p class="mv-md-p mv-md-quote">同方解决设备接入和累计读数来源，园区仍需要自己的设备归属、质量状态、告警处置和分摊口径。如果第三方已经完整覆盖这些能力，就应优先复用，而不是重复建设。</p></collapse-panel>
+<collapse-panel title="Q3：为什么要四层模型？"><p class="mv-md-p mv-md-quote">因为原始证据、区间事实和查询聚合承担不同责任。分层会增加写入和重算成本，但能统一质量口径、加速查询，并让晚到修正可追溯。</p></collapse-panel>
+<collapse-panel title="Q4：`no_change` 为什么可以进入聚合？"><p class="mv-md-p mv-md-quote">单个零增量可能是真实没有使用，删除会把有效零变成缺失。连续不变才交给冻结检测判断设备异常。</p></collapse-panel>
+<collapse-panel title="Q5：`long_gap` 为什么不能平均分摊？"><p class="mv-md-p mv-md-quote">长间隔只知道总增量，不知道用量发生在哪个小时。平均分配会制造不存在的小时事实，因此保留区间证据并把小时窗口标成 partial。</p></collapse-panel>
+<collapse-panel title="Q6：为什么不用 Kafka/Flink？"><p class="mv-md-p mv-md-quote">当前是数百台表、分钟级采集和小时级聚合，PostgreSQL 加 APScheduler 能在窗口内完成，维护成本更低。达到万级表计、持续高峰或单机无法及时消化补数时才值得升级。</p></collapse-panel>
+<collapse-panel title="Q7：数据库唯一约束和幂等键有什么区别？"><p class="mv-md-p mv-md-quote">幂等键识别同一业务请求，唯一约束守住最终落库边界；前者是业务语义，后者是数据库最后防线。</p></collapse-panel>
+<collapse-panel title="Q8：为什么告警和通知要拆开？"><p class="mv-md-p mv-md-quote">告警是业务事件，通知是外部交付。拆开后通知失败不会改变异常事实，也能支持多渠道、重试、状态查询和审计。</p></collapse-panel>
+<collapse-panel title="Q9：Agent 为什么不能直接操作数据库？"><p class="mv-md-p mv-md-quote">直接操作数据库难以稳定执行权限、状态机、参数校验、确认、幂等和审计，模型还可能把错误结果包装成可信结论。</p></collapse-panel>
+<collapse-panel title="Q10：Checkpoint 为什么不能防止重复副作用？"><p class="mv-md-p mv-md-quote">Checkpoint 只表示本地执行到哪一步，不能证明外部短信或业务操作是否成功。恢复时必须查询业务权威状态，并结合业务幂等键决定是否继续。</p></collapse-panel>
+<collapse-panel title="Q11：为什么账单不用实时聚合直接算？"><p class="mv-md-p mv-md-quote">实时聚合允许 partial 和后续修正，财务结算要求权威输入、规则冻结、金额守恒和责任确认，因此使用月度快照，聚合只做核验。</p></collapse-panel>
+<collapse-panel title="Q12：接口返回 200 为什么仍可能是错的？"><p class="mv-md-p mv-md-quote">可能使用旧缓存、错误归属、隐藏 partial、重复 JOIN、通知状态未知或错误规则版本。验收必须检查业务不变量和最终产物，不能只看技术状态码。</p>
+<hr class="mv-md-hr"></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

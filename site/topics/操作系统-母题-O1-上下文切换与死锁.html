@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 O1 · 进程和线程差在哪，一次切换花了什么，为什么线程开多了反而更慢</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/操作系统.html">← 操作系统 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">操作系统</span>
+    <h1 class="mv-topic-title">母题 O1 · 进程和线程差在哪，一次切换花了什么，为什么线程开多了反而更慢</h1>
+    <p class="mv-topic-meta">关联 母题-N3-进程线程与协程（**执行单元怎么选** —— 本卡是它的成本依据，两边不重复）· 母题-M10-锁与死锁（数据库层死锁，本卡是同源不同层）· 母题-P17-连接模型与连接池（每连接一个线程的代价）· 母题-O2-虚拟内存与缺页（栈与地址空间怎么映射）· 母题-O3-IO模型与零拷贝（等待时线程在做什么） ｜ 正本 wiki/topics/操作系统/母题-O1-上下文切换与死锁.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 进程和线程在操作系统里的差别是<strong>共享了什么</strong> ② 一次切换的成本<strong>大头是间接的</strong>——TLB 和缓存，不是寄存器 ③ 线程的真实内存开销是<strong>虚拟栈 + 内核侧二三十 KB</strong>，不是"8MB 物理"）· 读完约 13 分钟 · 需要先懂：无（本卡是底层，不依赖其他卡）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问"进程和线程有什么区别"。你答完"是否共享地址空间"之后，他追问："那你为什么不多开线程？"——请用<strong>数字</strong>回答"线程不是越多越好"，并说清一次切换到底花了什么。</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：Linux 其实不区分"线程"和"进程"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 二者在操作系统里是什么【事实】</h4>
+<p class="mv-md-p"><strong>先各自介绍，再比较</strong>：</p>
+<p class="mv-md-p"><strong>进程（process）</strong>：操作系统<strong>分配资源的基本单位</strong>。它拥有一个<strong>独立的虚拟地址空间</strong>（页表、代码段、数据段、堆、栈、文件描述符表、信号处理器）。</p>
+<p class="mv-md-p"><strong>线程（thread）</strong>：进程内的<strong>执行单元</strong>。它<strong>共享</strong>所属进程的地址空间和大部分资源，<strong>只独占两样东西</strong>：<strong>寄存器状态</strong>和<strong>自己的栈</strong>。</p>
+<p class="mv-md-p">【事实】<strong>关键的一层事实</strong>：<strong>Linux 内核里没有"线程"这个独立概念</strong>——线程和进程<strong>都是 <code class="mv-md-code">task_struct</code></strong>（内核里叫"任务"），区别只在创建时传了哪些共享标志：</p>
+<pre class="mv-md-pre">fork()            → 不共享地址空间               → 新 task_struct 有自己的 mm_struct
+pthread_create()  → 走 clone()，带一组共享标志：
+                    CLONE_VM       共享地址空间
+                    CLONE_FS       共享文件系统信息
+                    CLONE_FILES    共享文件描述符表
+                    CLONE_SIGHAND  共享信号处理器
+                    CLONE_THREAD   属于同一个线程组（同一个"进程号"）</pre>
+<p class="mv-md-p">【推导】<strong>所以"线程是轻量级进程"这个说法在 Linux 上是字面成立的</strong>——它就是"共享得更多的进程"。<strong>从这一句话，下面所有差异都能推出来</strong>：</p>
+<table class="mv-table"><thead><tr><th>共享了什么</th><th>由此推出</th></tr></thead><tbody><tr><td><strong>地址空间共享</strong></td><td>线程间<strong>通信极便宜</strong>（直接读同一个变量）；进程间<strong>必须拷贝或走内核</strong></td></tr><tr><td><strong>地址空间共享</strong></td><td><strong>同一进程内不换页表</strong> → 切换便宜；<strong>跨进程要换页表</strong> → 切换贵（第 2 节）</td></tr><tr><td><strong>地址空间独立</strong></td><td>进程<strong>隔离最好</strong>（一个崩了不影响别的）；<strong>线程共享一切</strong>（一个线程野指针能带崩整个进程）</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">1.2 判断"开销"要用同一把尺子【推导】</h4>
+<p class="mv-md-p">【推导】这一节的标题是"线程开多了会更慢"，那就必须先说清<strong>"开销"指什么</strong>。执行单元的开销分三块，<strong>面试时能分开说就已经赢一半</strong>：</p>
+<table class="mv-table"><thead><tr><th>开销类型</th><th>是什么</th><th>什么时候发生</th></tr></thead><tbody><tr><td><strong>① 创建开销</strong></td><td>建地址空间 / 栈 / 内核对象</td><td>一次性</td></tr><tr><td><strong>② 切换开销</strong></td><td>换 CPU 上跑的东西</td><td><strong>每次被换下都发生</strong>——这是大头</td></tr><tr><td><strong>③ 内存占用</strong></td><td>栈 + 内核对象</td><td>常驻，<strong>决定你能开多少个</strong></td></tr></tbody></table>
+<p class="mv-md-p"><strong>这三块的方向不一样</strong>：① 和 ③ 决定性"能不能开"，<strong>② 决定"开了之后还快不快"</strong>。第 2、3 节分别量化 ② 和 ③。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"进程和线程的区别"这一题的真正考点是"共享了什么"而不是"谁更轻"？</p>
+<h3 class="mv-md-h mv-md-h3">2. 一次上下文切换到底做了什么（量化）</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 六步【事实】</h4>
+<figure-box num="一次上下文切换的六步与成本构成" title="" note="直接成本约 0.7~0.9μs；真正的账在间接成本：TLB 与缓存，可达几十微秒"><svg viewBox="0 0 680 392" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>一次上下文切换的六步与成本构成</title>
+<desc>直接成本只有零点几微秒，真正的账在间接成本：TLB 失效导致的页表遍历与缓存污染，让进程切换比线程切换贵近二十倍。</desc>
+<defs>
+<marker id="figos-switch-cost-svg-arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">一次上下文切换：六步里只有一步是线程与进程的差别</text>
+
+<rect x="40" y="46" width="330" height="196" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="84" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">① 触发：时间片用完 / 主动阻塞 / 被抢占</text>
+<text x="56" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">② 从用户态陷入内核态</text>
+<text x="56" y="132" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">③ 调度器挑下一个任务</text>
+<text x="56" y="156" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">④ 保存当前任务的寄存器到 task_struct</text>
+<text x="56" y="180" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">⑤ 加载下一个任务的寄存器</text>
+<text x="56" y="204" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">⑥ ★ 跨进程才做：写 CR3 + 处理 TLB 失效</text>
+<text x="56" y="226" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">⑦ 返回用户态，从上次停下处继续</text>
+
+<rect x="386" y="46" width="254" height="196" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="402" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">成本拆解（量级，非精确值）</text>
+<text x="402" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">直接成本（寄存器部分，约 200 字节）</text>
+<text x="402" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　公开测量区间：约 1–5 μs</text>
+<text x="402" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　线程比进程快约 20–30%（仅直接部分）</text>
+<text x="402" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">间接成本（换过去之后的冷启动）</text>
+<text x="402" y="170" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　TLB 不命中重走页表　约 25 ns / 页</text>
+<text x="402" y="188" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　缓存污染：L1 1ns → 内存 100ns</text>
+<text x="402" y="206" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　重载时可把总成本推到 10–50 μs</text>
+<text x="402" y="228" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">缓解：PCID 让若干地址空间翻译保留</text>
+
+<rect x="40" y="254" width="600" height="56" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">别把测量值当规定值：切换耗时随 CPU 型号、内核版本、负载变化很大，只能说量级。</text>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">结论指向一致：跨进程每次调度多付一次页表切换与 TLB 失效 —— 这才是多线程模型的理由。</text>
+
+<rect x="40" y="322" width="600" height="56" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="342" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">线程的内存账（被讲错最多的一项）：用户栈 8MB 是【虚拟预留、按需提交】，不是物理占用；</text>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">真正常驻的是内核侧二三十 KB/线程（内核栈 16KB + task_struct 数 KB），且【不计入 RSS】。</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>上下文切换（context switch）</strong>：把 CPU 上正在跑的任务换下去、换另一个上来。</p>
+<p class="mv-md-p">【事实】以 Linux 为例，完整过程六步：</p>
+<pre class="mv-md-pre">① 触发：时间片用完（定时器中断）／主动阻塞（等 IO、sleep、抢不到锁）／被更高优先级抢占
+② CPU 从用户态陷入内核态
+③ 调度器挑下一个要跑的任务
+④ 保存当前任务的 CPU 状态（寄存器、指令指针、栈指针）到它的 task_struct
+⑤ 加载下一个任务的 CPU 状态
+⑥ ★ 如果下一个任务属于【另一个进程】：写 CR3（页表基址寄存器）+ 处理 TLB 失效
+⑦ 返回用户态，新任务从它上次停下的地方继续</pre>
+<p class="mv-md-p">【推导】<strong>第 ⑥ 步是进程切换和线程切换唯一的直接差别</strong>——同进程的线程共享页表，<strong>这一步被整个跳过</strong>。<strong>记住"差别只有一步"，比背一堆"线程更轻"要有用得多。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 直接成本：微秒量级【事实】</h4>
+<p class="mv-md-p mv-md-quote">⚠️ <strong>2026-09-17 校验修正</strong>：本卡初版把直接成本写成"线程 0.73 μs / 进程 0.93 μs"，<strong>这是从一份二手测量文章里抄来的单一数据点，不能当【事实】用</strong>。多个独立来源（<code class="mv-md-code">lmbench</code> 的 <code class="mv-md-code">lat_ctx</code>、以及公开的 token 传递基准）给的是<strong>1.3–4 μs</strong>。已按下表改写，并明确标注数据的性质。</p>
+<p class="mv-md-p">【事实】<strong>先把数据的性质说清楚：上下文切换没有唯一的"标准值"</strong>——它随 CPU 型号、内核版本、是否跨核迁移、负载高低变化很大。<strong>公开测量里常见的区间是 1–5 μs</strong>：</p>
+<table class="mv-table"><thead><tr><th>测量方式</th><th>典型结果</th><th>说明</th></tr></thead><tbody><tr><td><code class="mv-md-code">lmbench</code> 的 <code class="mv-md-code">lat_ctx</code>（现代 x86 服务器）</td><td><strong>约 1.3–1.5 μs</strong></td><td>隔离得较好，接近"纯"切换成本</td></tr><tr><td>简单 token 传递（两进程/两线程用管道来回）</td><td><strong>约 3–4 μs</strong></td><td>把调度与唤醒的开销也算进去了</td></tr><tr><td>高负载 + 跨核迁移</td><td><strong>10 μs 以上</strong></td><td>含间接成本（下一节）</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>所以面试时给"量级 + 方向"比给一位小数更安全</strong>：</p>
+<ul class="mv-md-ul"><li><strong>量级</strong>：<strong>微秒级</strong>（不是纳秒级，也不是"几百纳秒"）</li><li><strong>方向</strong>：<strong>线程切换比进程切换快约 20–30%</strong>（仅直接部分）</li></ul>
+<p class="mv-md-p">【推导】<strong>两者的直接差别只有一处</strong>（第 ⑥ 步：写 CR3 + 处理 TLB 失效），<strong>所以如果只算直接成本，"进程 per request"看起来只贵两三成，根本不值得讨论——真正的故事在下一节。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.3 间接成本：这才是大头【推导】</h4>
+<p class="mv-md-p">【推导】<strong>切换真正的代价是"换过去之后的冷启动"</strong>，而它不出现在切换那一刻，而是分摊在切换之后的一段时间里：</p>
+<table class="mv-table"><thead><tr><th>间接成本</th><th>机制</th><th>量级</th></tr></thead><tbody><tr><td><strong>TLB 失效</strong></td><td>跨进程换页表 → 地址翻译缓存作废 → 后续访问要去<strong>走页表</strong></td><td><strong>约 25 ns / 页</strong>（每页重走一次）</td></tr><tr><td><strong>CPU 缓存污染</strong></td><td>L1/L2 里装的是上一个任务的<strong>数据</strong>，新任务要重新预热</td><td>取决于工作集大小；L1 约 1 ns、L3 约 30–50 ns、内存约 100 ns，<strong>这个差距就是"冷启动"的成本</strong></td></tr><tr><td><strong>分支预测器失效</strong></td><td>预测器的历史属于上一个任务的代码</td><td>难以直接量化</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>把 TLB 那一项算出来——但要注意它是一个"上限估计"，不是实测值</strong>：</p>
+<pre class="mv-md-pre">跨进程切换后，假设新任务的工作集是 2MB：
+  2MB / 4KB（一页）= 512 页
+  每页一次页表遍历 ≈ 25 ns
+  → 512 × 25ns ≈ 12.8 μs   ★ 这是"每一页都要重走一遍"的【上限】
+
+实际达不到这个上限，原因有两个：
+  ① TLB 有约 1536 个条目 → 2MB（512 页）的工作集本来就能装下
+  ② PCID / ASID 能让多数翻译【跨切换保留】
+→ 所以真实代价在"接近零"和"十几微秒"之间浮动</pre>
+<p class="mv-md-p">【事实】<strong>公开测量给出的总量级</strong>：轻载 <strong>1–5 μs</strong>；<strong>高负载、缓存被反复冲刷时可以到 10–50 μs</strong>——<strong>也就是说"间接成本常常比直接成本大一个数量级"这个判断是成立的</strong>，只是一次切换值多少微秒必须看场景。</p>
+<p class="mv-md-p">【推导】<strong>所以"进程 per request 不可行"的正确说法是</strong>：</p>
+<pre class="mv-md-pre">✔ 每请求一个进程 → 每次调度多付一次【页表切换 + TLB 失效】，
+                   在并发高、缓存争抢激烈时把切换成本推高一个数量级
+✘ 不是"贵 19 倍"这种精确倍数（那是用一个上限估计除以一个单一数据点算出来的）</pre>
+<p class="mv-md-p">【事实】<strong>这个成本有缓解手段</strong>：</p>
+<ul class="mv-md-ul"><li><strong>TLB 容量</strong>：二级 TLB 约 <strong>1536 个条目</strong>（<strong>随 CPU 型号变化</strong>），4KB 页下能覆盖约 6MB 工作集</li><li><strong>PCID / ASID</strong>：给 TLB 条目打进程号，<strong>同一 CPU 上最多保留约 6 个地址空间的翻译</strong>（这是内核的编译期常量 <code class="mv-md-code">TLB_NR_DYN_ASIDS</code>）——所以"少数几个进程轮着跑"时<strong>不会每次都全量失效</strong>；超过之后才开始互相驱逐</li></ul>
+<p class="mv-md-p">【取舍】<strong>所以"进程模型还是线程模型"的判断是</strong>：</p>
+<pre class="mv-md-pre">每请求一个进程   → 每次调度多付一次地址空间切换，且在进程数多、缓存争抢激烈时成本跳一个数量级
+每请求一个线程   → 省掉那一步，且同进程的线程【缓存常常还是热的】
+                   → 这正是"高吞吐服务端普遍是多线程而不是多进程"的量化依据</pre>
+<p class="mv-md-p"><strong>这就是"高吞吐服务端普遍是多线程而不是多进程"的真正原因</strong>（不是因为创建快，是因为<strong>每次调度的账差近 20 倍</strong>）。</p>
+<h4 class="mv-md-h mv-md-h4">2.4 调度器在做什么【事实】</h4>
+<p class="mv-md-p">【事实】调度器要解决的问题是"<strong>有限的核 vs 无限的就绪任务</strong>"，几个要点：</p>
+<ul class="mv-md-ul"><li><strong>时间片</strong>通常 <strong>1–10 ms</strong> 量级，用完就被<strong>强制换下</strong>（这叫<strong>非自愿切换</strong>）</li><li><strong>自愿切换</strong>：任务自己去等 IO / 睡 / 抢锁失败——<strong>它主动让出 CPU</strong></li><li><strong>两种切换要分开看</strong>：<code class="mv-md-code">/proc/&lt;pid&gt;/status</code> 里的 <code class="mv-md-code">voluntary_ctxt_switches</code> 和 <code class="mv-md-code">nonvoluntary_ctxt_switches</code> 分别计数，<strong>优化方向完全不同</strong>（前者多说明在等 IO，后者多说明在抢 CPU）</li><li><strong>观测手段</strong>：<code class="mv-md-code">perf stat -e context-switches,cs,migrations</code>、<code class="mv-md-code">vmstat 1</code> 的 <code class="mv-md-code">cs</code> 列</li></ul>
+<p class="mv-md-p">【事实】<strong>量级参考</strong>：典型桌面每秒 <strong>1–5 万次</strong>切换；一个 50K req/s 的 Web 服务可能到 <strong>每秒 10–50 万次</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"进程切换更贵"这个结论不能只靠"寄存器多"来解释？</p>
+<h3 class="mv-md-h mv-md-h3">3. 内存开销：线程到底吃掉多少（这是被讲错最多的一节）</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 用户栈：8MB 是"虚拟预留"，不是"物理占用"【事实】</h4>
+<p class="mv-md-p">【事实】<strong>先纠正一个几乎每份资料都写错的地方</strong>：</p>
+<table class="mv-table"><thead><tr><th>说法</th><th>真实情况</th></tr></thead><tbody><tr><td>"线程栈约 1MB"</td><td>❌ <strong>不准确</strong>。<code class="mv-md-code">pthread_create(3)</code> man-page 明确写：<strong>在 NPTL 实现下，线程创建时的默认栈大小由 <code class="mv-md-code">RLIMIT_STACK</code> 决定</strong>（只要它启动时不是 <code class="mv-md-code">unlimited</code>）。而 Linux 默认 <code class="mv-md-code">ulimit -s</code> 是 <strong>8192 KB = 8MB</strong>。<strong>x86-32 的默认才是 2MB</strong></td></tr><tr><td>"线程栈一定占那么多内存"</td><td>❌ 它是<strong>虚拟地址空间预留</strong>，<strong>只有被触碰到的页才真正分配物理内存</strong></td></tr><tr><td>"线程栈和主线程栈一样"</td><td>❌ <strong>不一样</strong>：主线程的栈在最顶部、<strong>可以按需向下增长</strong>到 <code class="mv-md-code">RLIMIT_STACK</code>；<strong>非主线程的栈是 <code class="mv-md-code">mmap()</code> 出来的、大小固定、不能增长</strong>——用完就 <code class="mv-md-code">SIGSEGV</code></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>那"8MB × 线程数"这个算法错在哪</strong>：</p>
+<pre class="mv-md-pre">开 1000 个线程：
+  虚拟地址空间：8MB × 1000 = 8 GB   ← 这个数是"预留"，不是"占用"
+  实际物理（假设每个线程只用 2 页栈）：8KB × 1000 = 8 MB</pre>
+<p class="mv-md-p">【推导】<strong>在 64 位系统上虚拟地址空间有 128TB，8GB 预留根本不算问题</strong>——所以"8MB 栈"在 64 位下<strong>不是</strong>线程数的限制因素。<strong>限制它的是下面这个。</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.2 内核侧：二三十 KB，这才是真实占用【事实】</h4>
+<p class="mv-md-p">【事实】每个任务在内核里都有一份<strong>独立</strong>的结构，这部分<strong>既不共享也不能省略</strong>：</p>
+<table class="mv-table"><thead><tr><th>项</th><th>x86-64</th><th>说明</th></tr></thead><tbody><tr><td><strong>内核栈</strong>（<code class="mv-md-code">THREAD_SIZE</code>）</td><td><strong>16 KB</strong></td><td><strong>这个数是确定的</strong>：内核源码里 <code class="mv-md-code">PAGE_SIZE &lt;&lt; 2</code>（KASAN 关闭时）→ 4KB × 4 = 16KB；x86-32 是 8KB</td></tr><tr><td><strong><code class="mv-md-code">task_struct</code> 等内核对象</strong></td><td><strong>数 KB 量级</strong></td><td>⚠️ <strong>具体值随内核版本与编译配置变化很大</strong>（公开资料里有 2KB 到十几 KB 的不同数字），所以这里只给量级</td></tr><tr><td><strong>合计（保守取用）</strong></td><td><strong>每个线程约 25 KB</strong></td><td><strong>用作估算的保守值</strong>，不是精确值</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>关键的两句话</strong>：</p>
+<p class="mv-md-p">1. 这部分是每线程独立的、不能省的——<strong>它是"线程数"真正的物理成本</strong>（量级二三十 KB，不是 8MB） 2. 它<strong>不计入进程的 RSS</strong>（<code class="mv-md-code">top</code> / <code class="mv-md-code">ps</code> 里看不到）——<strong>所以"看内存占用不高就以为线程不多"是个经典误判</strong></p>
+<h4 class="mv-md-h mv-md-h4">3.3 上限到底是谁定的【推导】</h4>
+<p class="mv-md-p">【推导】<strong>问"能开多少线程"，答案不是"内存够就行"，而是取下面几个上限里的最小值</strong>：</p>
+<table class="mv-table"><thead><tr><th>上限</th><th>默认值</th><th>算法 / 来源</th></tr></thead><tbody><tr><td><strong><code class="mv-md-code">threads-max</code></strong></td><td>视内存而定</td><td><code class="mv-md-code">mempages / (8 × THREAD_SIZE / PAGE_SIZE)</code>（内核 <code class="mv-md-code">fork_init()</code>）→ <strong>内核栈最多占 1/8 内存</strong>。16GB 机器 → <strong>131072</strong></td></tr><tr><td><strong><code class="mv-md-code">pid_max</code></strong></td><td><strong>32768</strong>（按 CPU 数上浮，上限 2²² ≈ 419 万）</td><td>每个任务占一个 pid，<code class="mv-md-code">proc(5)</code> 文档</td></tr><tr><td><strong><code class="mv-md-code">ulimit -u</code>（<code class="mv-md-code">RLIMIT_NPROC</code>）</strong></td><td>每用户不同</td><td>限制单个用户</td></tr><tr><td><strong>cgroup <code class="mv-md-code">pids.max</code> / systemd <code class="mv-md-code">TasksMax</code></strong></td><td>服务默认是全局上限的 15%</td><td><strong>容器里最常撞到的就是这一条</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>算一次就明白"内存不够"往往不是真因</strong>：</p>
+<pre class="mv-md-pre">16GB 机器：
+  内核栈上限（threads-max）= 131072 个线程 → 内核侧共 131072 × 25KB ≈ 3.2 GB
+  也就是说 16GB 里最多拿出约 1/8 给内核栈——这离"内存用光"还很远
+
+所以真实情况通常是：
+  pid_max = 32768  → 先撞它
+  或者容器的 pids.max / TasksMax → 更早撞它
+  → 报错是 "Resource temporarily unavailable"，而不是 OOM</pre>
+<p class="mv-md-p">【取舍】<strong>"线程开不出来"和"线程开出来太慢"是两件事</strong>：</p>
+<ul class="mv-md-ul"><li>开不出来（<code class="mv-md-code">EAGAIN</code>）→ 查 <code class="mv-md-code">pid_max</code> / <code class="mv-md-code">threads-max</code> / <code class="mv-md-code">pids.max</code></li><li>开出来太慢（吞吐降）→ 是 2.3 的切换成本账</li></ul>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"内存不够所以不能多开线程"这个解释通常是错的？</p>
+<h3 class="mv-md-h mv-md-h3">4. 共享的代价：从竞态到死锁</h3>
+<h4 class="mv-md-h mv-md-h4">4.1 竞态是"共享地址空间"的直接后果【推导】</h4>
+<p class="mv-md-p">【推导】<strong>线程最方便的地方就是最危险的地方</strong>：地址空间共享意味着<strong>同一个变量是同一块内存</strong>。</p>
+<pre class="mv-md-pre">static int n = 0;
+// 4 个线程各自执行 n++ 一次
+// 期望 n = 4
+// 实际可能输出 1 —— 因为 n++ 是"读-改-写"三步，不是原子操作</pre>
+<p class="mv-md-p">【推导】<strong>加锁解决了正确性，但引入两个新成本</strong>：</p>
+<table class="mv-table"><thead><tr><th>成本</th><th>表现</th></tr></thead><tbody><tr><td><strong>锁本身的开销</strong></td><td>无竞争时约几十纳秒；<strong>有竞争时要陷入内核挂起/唤醒，等于多做几次上下文切换</strong></td></tr><tr><td><strong>死锁</strong></td><td>一旦发生，<strong>相关线程永远等下去</strong>，只能重启</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">4.2 死锁的四个必要条件与破法【事实】</h4>
+<p class="mv-md-p">【事实】<strong>死锁发生必须同时满足四个条件</strong>（缺一个就不会死锁——<strong>这就是所有解法的出发点</strong>）：</p>
+<table class="mv-table"><thead><tr><th>#</th><th>条件</th><th>含义</th></tr></thead><tbody><tr><td>①</td><td><strong>互斥</strong></td><td>资源一次只能被一个执行单元占用</td></tr><tr><td>②</td><td><strong>持有并等待</strong></td><td>占着一个还在等另一个</td></tr><tr><td>③</td><td><strong>不可剥夺</strong></td><td>不能强行从别人手里抢走</td></tr><tr><td>④</td><td><strong>循环等待</strong></td><td>存在一个环：A 等 B 的资源，B 等 A 的资源</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>解法就是"破掉任意一个"</strong>，而工程上的性价比排序很明确：</p>
+<table class="mv-table"><thead><tr><th>破哪个</th><th>做法</th><th>代价 / 适用性</th></tr></thead><tbody><tr><td><strong>④ 循环等待</strong></td><td><strong>全局固定加锁顺序</strong>（比如永远先锁账户 ID 小的、再锁大的）</td><td><strong>最实用</strong>。改动小、几乎无性能代价——<strong>这是首选答案</strong></td></tr><tr><td><strong>② 持有并等待</strong></td><td>一次性申请所有需要的锁，拿不齐就不拿</td><td>改动大、资源利用率低</td></tr><tr><td><strong>③ 不可剥夺</strong></td><td>拿不到就释放已持有的锁重试，或设<strong>超时</strong></td><td>简单但会"活锁"（反复重试一直失败）</td></tr><tr><td><strong>① 互斥</strong></td><td>用无锁结构 / CAS，把"共享"变成"不共享"（比如 <code class="mv-md-code">thread_local</code>、每线程一个计数器最后汇总）</td><td>最强但最难写对</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>怎么"检测"已经有死锁</strong>：把"任务"和"资源"画成有向图，<strong>出现了环就是死锁</strong>——建行家的数据库死锁检测用的就是这个思路（[[母题-M10-锁与死锁]] 里 MySQL / PostgreSQL 的死锁检测是同源不同层）。</p>
+<h4 class="mv-md-h mv-md-h4">4.3 自旋锁还是互斥锁【取舍】</h4>
+<p class="mv-md-p">【取舍】<strong>判断依据只有一个：临界区短不短、以及能不能睡。</strong></p>
+<table class="mv-table"><thead><tr><th></th><th>自旋锁</th><th>互斥锁</th></tr></thead><tbody><tr><td>抢不到时</td><td><strong>忙等</strong>（一直占着 CPU）</td><td><strong>睡</strong>（让出 CPU，等唤醒）</td></tr><tr><td>适合</td><td><strong>临界区极短</strong>（几条指令）、<strong>多核</strong>、<strong>不能睡的场景</strong>（中断上下文）</td><td>临界区可能较长（含 IO / 可能阻塞）</td></tr><tr><td>不适合</td><td>临界区长 → <strong>白烧 CPU，还挡着别人</strong></td><td>极短临界区 → <strong>睡眠 + 唤醒比干活本身还贵</strong></td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>一句话判据：如果"等待的时间"比"切换两次的代价"还短，就该自旋；否则就该睡。</strong>（两次切换按 2.3 算约 1.5 μs 量级——所以"临界区不到 1 微秒"是自旋的合理区间。）</p>
+<h4 class="mv-md-h mv-md-h4">4.4 用户态与内核态：边界在哪，为什么贵【事实】</h4>
+<p class="mv-md-p">【事实】</p>
+<ul class="mv-md-ul"><li>x86-64 有 <strong>4 个特权级（ring 0–3），实际只用 2 个</strong>：<strong>ring 3 跑应用、ring 0 跑内核</strong>；ARM64 叫 <strong>EL0 / EL1</strong></li><li><strong>边界的执行者是硬件，不是内核</strong>：页表里的权限位决定"当前这个环能不能读这个地址"——<strong>所以"内核空间不可访问"是硬件拦的，不是软件检查的</strong></li><li><strong>一次边界跨越（系统调用进出）的成本</strong>约 <strong>100 ns 量级</strong>（有实验把"一次系统调用跨越"标在 <strong>100 ns 以内</strong>；这个数在公开资料里比较一致，但也仍是量级）</li></ul>
+<p class="mv-md-p">【推导】<strong>为什么"贵"的定义要小心</strong>：单次 100 ns 其实不贵。<strong>贵的是"次数 × 每次都要跨越"</strong>：</p>
+<pre class="mv-md-pre">100 万次系统调用 / 秒 × 105ns ≈ 0.105 个核
+→ 优化方向不是"让系统调用更快"，而是【让系统调用更少】（批量、合并、io_uring）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"减少系统调用次数"比"优化单次系统调用"更值得做？</p>
+<h3 class="mv-md-h mv-md-h3">5. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"线程栈约 1MB"</td><td>【事实】<strong>Linux 上是 8MB</strong>（由 <code class="mv-md-code">ulimit -s</code> 默认 8192KB 决定）；x86-32 才是 2MB。而且它是<strong>虚拟预留</strong>，不是物理占用</td></tr><tr><td>"10 万线程要 100GB 内存，所以开不了"</td><td>【推导】<strong>8GB × 10万 = 800GB 是虚拟地址空间</strong>，64 位下有 128TB，<strong>不是瓶颈</strong>。真实占用是内核侧 <strong>25KB/线程 ≈ 2.5GB</strong>，而<strong>先撞的通常是 <code class="mv-md-code">pid_max</code> / <code class="mv-md-code">threads-max</code> / 容器的 <code class="mv-md-code">pids.max</code></strong></td></tr><tr><td>"线程很轻，所以越多越好"</td><td>【事实】<code class="mv-md-code">task_struct</code> + 内核栈<strong>每线程约 25KB 且不计入 RSS</strong>；切换成本随线程数上升，<strong>过了拐点总吞吐下降</strong></td></tr><tr><td>"进程切换贵是因为寄存器多"</td><td>【推导】寄存器部分只有约 200 字节、几十个周期。<strong>真正的差在跨进程换页表导致的 TLB 失效与缓存污染</strong>——<strong>直接成本线程只比进程快两三成，差距体现在间接部分</strong>。⚠️ <strong>也不要给"贵 19 倍"这种精确倍数</strong>，测量值只能给区间</td></tr><tr><td>"一次上下文切换是几百纳秒"</td><td>【事实】<strong>是微秒量级</strong>。公开测量常见区间是 <strong>1–5 μs</strong>（<code class="mv-md-code">lmbench</code> 的 <code class="mv-md-code">lat_ctx</code> 约 1.3–1.5 μs；含调度唤醒的测试 3–4 μs），<strong>重载含间接成本可到 10–50 μs</strong>。<strong>"几百纳秒"通常只是寄存器保存恢复那一段</strong></td></tr><tr><td>"看 <code class="mv-md-code">top</code> 内存不高，说明没问题"</td><td>【事实】<strong>内核侧 25KB/线程不在 RSS 里</strong>，容器 cgroup 的内存与 pids 限制也不在 <code class="mv-md-code">top</code> 里。<strong>要看 <code class="mv-md-code">/proc/&lt;pid&gt;/status</code>、<code class="mv-md-code">/sys/fs/cgroup/...</code>、<code class="mv-md-code">ulimit -u</code></strong></td></tr><tr><td>"死锁只能靠重启"</td><td>【推导】<strong>四个条件破一个就够</strong>，工程上首选<strong>固定加锁顺序</strong>（破循环等待）——便宜、有效、几乎无性能代价</td></tr><tr><td>"自旋锁一定比互斥锁快"</td><td>【取舍】只有在<strong>临界区极短 + 多核</strong>时才是。临界区长了自旋就是<strong>白烧 CPU 还挡着别人</strong></td></tr><tr><td>"多线程能利用多核，所以一定更快"</td><td>【推导】要分负载：<strong>IO 密集</strong>时线程有用（等的时候别人能跑）；<strong>CPU 密集</strong>时线程数超过核数后<strong>只剩切换开销</strong>（Python 还要叠加 GIL，见 [[母题-N3-进程线程与协程]]）</td></tr><tr><td>"瓶颈就是线程不够，加线程池"</td><td>【推导】<strong>先算"每个单元的工作量 ÷ 切换成本"</strong>。如果大部分时间花在等（IO / 锁 / 下游），加线程只是<strong>让更多执行单元一起去排队</strong>——中间件连接池、下游限流会先成为新瓶颈</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="操作系统/母题-O1-上下文切换与死锁-q1" tag="操作系统" q="某服务收到用户投诉变慢。vmstat 显示该系统每秒 50 万次上下文切换，其中绝大多数是非自愿切换（时间片被抢）。&#10;问：① 按&quot;一次切换 1 μs&quot;这个量级保守估算，光切换消耗了多少 CPU？② 如果其中 20% 是跨进程切换（含间接成本，按 10 μs 算），成本怎么变？③ 这个数字说明问题出在哪？" a="``&#10;① 直接成本（按 1 μs 保守估）：500,000 × 1 μs = 0.5 s/s ≈ 【0.5 个核】&#10;→ 一个核的一半被用来&quot;换任务&quot;而不是&quot;干活&quot;&#10;② 跨进程部分：500,000 × 20% = 100,000 次&#10;按 10 μs（含 TLB 与缓存的间接成本）：&#10;100,000 × 10 μs = 1.0 s/s  ← 一个整核&#10;剩余 400,000 次同进程：0.4 s/s&#10;合计 ≈ 【1.4 个核】&#10;⚠️ 注意这个估算对&quot;单次多贵&quot;非常敏感：如果间接成本实际是 3 μs 而不是 10 μs，&#10;②的结果就从 1.4 核降到 0.7 核。【所以这类计算只能用来判断&quot;量级&quot;，不能当精确账】&#10;`&#10;③ 问题不是&quot;CPU 不够核&quot;，是&quot;执行单元太多/太小，核都在换任务&quot;：&#10;非自愿切换占绝大多数 = 大量任务在抢 CPU（不是等 IO），说明可运行任务数 &gt;&gt; 核数&#10;优化方向不是加机器，而是减少执行单元数 / 让每个单元干更多的活：&#10;把细粒度的任务批量化（一次处理一批，而不是一条一个任务）&#10;IO 等待改成异步（让线程不要占着核等）→ [[母题-N3-进程线程与协程]]&#10;检查是不是线程池 + 定时任务 + 框架内部线程叠加出了几百个线程&#10;关键判断：nonvoluntary 多 = 抢 CPU（要减并发）；voluntary` 多 = 在等（要改异步或加并发）&#10;【这一步在验证什么】验证 2.4 的判据：&quot;切换多&quot;必须分成自愿和非自愿看——两者优化方向相反。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="操作系统/母题-O1-上下文切换与死锁-q2" tag="操作系统" q="某服务开了 1000 个线程，每个线程的栈实际只用了 2 页（8KB）。&#10;问：① 用户栈占多少虚拟内存、多少物理内存？② 内核侧占多少？③ 在 16GB 的机器上，这个配置能不能再翻 10 倍？④ 如果再翻 10 倍开不出来，最可能撞到哪个限制？" a="``&#10;① 用户栈（每个线程默认按 RLIMIT_STACK = 8MB 预留）&#10;虚拟：8MB × 1000 = 8 GB    ← 预留，不是占用&#10;物理：8KB × 1000 = 8 MB    ← 只有被触碰的页才分配&#10;② 内核侧（每线程约 25KB，不能省）&#10;25KB × 1000 = 25 MB&#10;③ 翻 10 倍 = 10000 个线程：&#10;虚拟：8MB × 10000 = 80 GB   ← 64 位有 128TB 虚拟空间，【完全没问题】&#10;物理：8MB + 250MB ≈ 260 MB  ← 【离 16GB 差得很远】&#10;→ 结论：从&quot;内存&quot;角度看，翻 10 倍没问题&#10;④ 但很可能开不出来，先撞的是这三个：&#10;· pid_max：默认 32768，10000 个还没到，但如果每用户/每容器叠加就快了&#10;· ulimit -u（RLIMIT_NPROC）：单用户限制，常被设成几千&#10;· 容器的 pids.max / systemd TasksMax：服务默认只给全局上限的 15%&#10;→ 报错是 &quot;Resource temporarily unavailable&quot;（EAGAIN），不是 OOM&#10;``&#10;【这一步在验证什么】验证第 3 节的两个结论：① 用户栈的开销主要是虚拟的，几乎不构成 64 位系统的限制；② 真正的限制是内核侧 25KB 与各种&quot;任务数上限&quot;。&#10;这里的推论比答案重要：所以面试里答&quot;线程栈 1MB，开一万个就是 10GB，内存扛不住&quot;是错的——错在把虚拟预留当物理占用、也错在找错了限制源。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="操作系统/母题-O1-上下文切换与死锁-q3" tag="操作系统" q="两个线程，共享两个锁 A 和 B。代码是：&#10;``&#10;线程 1：lock(A) → lock(B) → ... → unlock(B) → unlock(A)&#10;线程 2：lock(B) → lock(A) → ... → unlock(A) → unlock(B)&#10;``&#10;问：① 死锁一定发生吗？② 如果发生，是卡在哪个时刻？③ 用&quot;破循环等待&quot;的方法怎么改？④ 改成&quot;加锁超时，超时就释放重试&quot;行不行？" a="① 不一定，但随时可能。死锁需要时序巧合——只有&quot;线程 1 拿到 A 的同时、线程 2 拿到了 B&quot;才会死锁。所以这种 bug 的特点就是&quot;压测不复现、线上偶发、一复现就卡死&quot;。&#10;② 卡在两个线程各自持有一把、又都在等对方那把的时刻：&#10;``&#10;时刻 T1：线程 1 持有 A，线程 2 持有 B&#10;时刻 T2：线程 1 执行 lock(B) —— 等线程 2 释放&#10;线程 2 执行 lock(A) —— 等线程 1 释放&#10;→ 形成环，四个条件全部满足 → 永久等待&#10;`&#10;③ 破&quot;循环等待&quot;：规定全局唯一的加锁顺序。比如&quot;永远先锁 ID 小的，再锁 ID 大的&quot;：&#10;`&#10;线程 1：lock(min(A,B)) → lock(max(A,B))&#10;线程 2：lock(min(A,B)) → lock(max(A,B))   ← 两边顺序一样，环就不存在了&#10;``&#10;这是首选方案：改动小（可能只是几行代码）、没有性能代价、彻底解决。&#10;④ 可以，但要接受副作用：超时重试属于破&quot;不可剥夺&quot;，能保证&quot;不会永久卡死&quot;，但会引入两个新问题：&#10;活锁风险：两个线程同时超时、同时释放、同时重试——可能一直撞（要用随机退避打破对称）&#10;正确性风险：如果临界区里有不可回滚的操作（已经发了外部请求、已经写了不可逆状态），超时释放后重试会造成重复副作用（这就是 [[母题-Q2-重复与乱序]] 里&quot;结果未知&quot;那一类问题）&#10;【这一步在验证什么】验证 4.2 的判据：破四条件里的哪一个，性价比差别很大——先破&quot;循环等待&quot;（免费），不到万不得已才用超时（有副作用）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="操作系统/母题-O1-上下文切换与死锁-q4" tag="操作系统" q="下面这段话哪里错了？&#10;&quot;线程很轻量，一个线程才 1MB 栈。所以一台 16GB 的机器开一万个线程没问题——才占 10GB 嘛。&quot;" a="三处都错。&#10;1. &quot;1MB 栈&quot;不是 Linux 的值。pthread_create(3) man-page 写明：在 NPTL 实现下，新线程的默认栈大小由 RLIMIT_STACK 决定（只要启动时不是 unlimited），而 Linux 默认 ulimit -s 是 8192 KB——即 8MB。1MB 是 Windows 的默认线程栈；x86-32 上 Linux 是 2MB。这个数被抄错了很多年。&#10;2. 栈是&quot;虚拟预留&quot;，不是&quot;物理占用&quot;。8MB 是地址空间预留，只有被触碰的页才分配物理内存。所以&quot;8MB × 10000 = 80GB&quot;算的是虚拟空间——而 64 位进程有 128TB 虚拟空间，80GB 完全不是问题。&#10;3. 真正的成本被漏掉了：内核侧。每个任务有独立的内核栈 16KB（x86-64 的 THREAD_SIZE，这是确定值）+ task_struct 等结构（数 KB 量级，随内核配置变化） ≈ 每个线程二三十 KB（保守按 25KB 估），且不计入 RSS：&#10;``&#10;物理占用（10000 线程）：&#10;用户栈物理：8KB × 10000 = 80 MB（按每线程用 2 页）&#10;内核侧：    25KB × 10000 = 250 MB&#10;合计约 330 MB  ← 远远不是&quot;内存扛不住&quot;&#10;`&#10;所以&quot;内存扛不住&quot;这个结论本身也是错的。 真正会先拦住的不是内存，而是任务数上限：pid_max（默认 32768）、ulimit -u、容器的 pids.max / systemd TasksMax。撞到时报的是 Resource temporarily unavailable（EAGAIN），不是 OOM——把错误类型搞错，排查方向就全歪了。&#10;准确说法：*Linux 上线程默认栈由 ulimit -s 决定（默认 8MB），但那是虚拟预留、按需提交；真正的常驻成本是内核侧二三十 KB/线程（内核栈 16KB + task_struct`，保守按 25KB 估），且不进 RSS。64 位系统上虚拟空间不是瓶颈，先撞的是 pid_max / ulimit -u / 容器 pids.max。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="操作系统/母题-O1-上下文切换与死锁-q5" tag="操作系统" q="下面这段话哪里错了？&#10;&quot;接口 QPS 上不去，肯定是线程池太小了，把线程数从 50 调到 500 就行——线程越多并发越高嘛。&quot;" a="&quot;肯定是线程池太小&quot;和&quot;线程越多并发越高&quot;两处都错。&#10;① 方向错：并发高不等于吞吐高。 线程数只有在下述条件下才有用——&#10;``&#10;线程超过核数之后，同一时刻真正在跑的只有【核数】个&#10;多出来的线程：&#10;要么在等（IO / 锁 / 下游）→ 那加线程对【CPU 密集】部分毫无帮助&#10;要么在抢（时间片）→ 那加线程让【非自愿切换】上升（Q1 的账）&#10;`&#10;② 判断必须先分清&quot;在等&quot;还是&quot;在算&quot;：&#10;现象 · 说明 · 该做什么&#10;线程 CPU 利用率低、大部分时间在 WAITING · 在等 IO / 下游 · 改异步（[[母题-N3-进程线程与协程]]）或优化下游，加线程只到能填满等待窗口为止&#10;线程 CPU 接近 100%、nonvoluntary` 切换高 · 在算 · 加线程没用（核就那么多），要去优化算法 / 加机器 / 多进程&#10;连接池、下游限流已满 · 下游是瓶颈 · 加线程只会把下游打得更死（[[母题-Q3-积压与高可用]] 的同一类错误）&#10;③ 而且调大线程池有三个额外副作用：每个线程约 25KB 内核侧开销、切换成本上升、下游被打得更狠（并发上来但每个请求更慢，P99 先崩）。&#10;准确说法：*先看线程在等还是在算。在等就改异步或优化下游，在算就加核/改算法；连接池与下游限流是前置约束——过了它们，加线程只会让整体更差。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">进程和线程在操作系统里的真实差别是什么，一次上下文切换的成本由哪几部分构成，什么条件下多开执行单元会变成负收益？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="操作系统/母题-O1-上下文切换与死锁" tag="操作系统" q="进程和线程在操作系统里的真实差别是什么，一次上下文切换的成本由哪几部分构成，什么条件下多开执行单元会变成负收益？" a="进程和线程的区别，在 Linux 上可以一句话说清——它们都是 task_struct，线程只是&quot;共享得更多的任务&quot;（clone() 带上 CLONE_VM 等标志，共享地址空间、文件表、信号处理器，只独占寄存器和栈）。这个&quot;共享了什么&quot;直接推出全部差异：共享地址空间 → 线程间通信便宜但没有隔离；独立地址空间 → 跨进程切换要写 CR3、TLB 失效。切换成本是微秒量级（公开测量 1–5 μs，重载含间接成本可到 10–50 μs），其中大头是间接的——TLB 失效与缓存污染，单看直接成本线程只比进程快约 20–30%，但因为跨进程要换地址空间，并发高时这部分会把成本推高一个数量级，这就是&quot;高吞吐服务端普遍多线程而非多进程&quot;的依据。内存侧要纠正一个流行错说法：Linux 线程默认栈是 8MB（由 ulimit -s 决定）而不是 1MB，而且是虚拟预留、按需提交；真正的常驻成本是内核侧二三十 KB/线程（16KB 内核栈 + task_struct，不计入 RSS）；先撞上的通常不是内存，而是 pid_max / ulimit -u / 容器 pids.max。共享的代价是竞态，死锁要同时满足四个条件（互斥、持有并等待、不可剥夺、循环等待），破任一个就够，工程上首选&quot;固定加锁顺序&quot;（破循环等待）。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">进程和线程的区别，在 Linux 上可以一句话说清——<strong>它们都是 <code class="mv-md-code">task_struct</code>，线程只是"共享得更多的任务"</strong>（<code class="mv-md-code">clone()</code> 带上 <code class="mv-md-code">CLONE_VM</code> 等标志，共享地址空间、文件表、信号处理器，只独占寄存器和栈）。<strong>这个"共享了什么"直接推出全部差异</strong>：共享地址空间 → 线程间通信便宜但<strong>没有隔离</strong>；独立地址空间 → <strong>跨进程切换要写 CR3、TLB 失效</strong>。切换成本是<strong>微秒量级</strong>（公开测量 1–5 μs，重载含间接成本可到 10–50 μs），<strong>其中大头是间接的</strong>——TLB 失效与缓存污染，<strong>单看直接成本线程只比进程快约 20–30%</strong>，但因为跨进程要换地址空间，<strong>并发高时这部分会把成本推高一个数量级</strong>，这就是"高吞吐服务端普遍多线程而非多进程"的依据。内存侧要纠正一个流行错说法：<strong>Linux 线程默认栈是 8MB（由 <code class="mv-md-code">ulimit -s</code> 决定）而不是 1MB，而且是虚拟预留、按需提交</strong>；真正的常驻成本是<strong>内核侧二三十 KB/线程（16KB 内核栈 + <code class="mv-md-code">task_struct</code>，不计入 RSS）</strong>；<strong>先撞上的通常不是内存，而是 <code class="mv-md-code">pid_max</code> / <code class="mv-md-code">ulimit -u</code> / 容器 <code class="mv-md-code">pids.max</code></strong>。共享的代价是竞态，<strong>死锁要同时满足四个条件（互斥、持有并等待、不可剥夺、循环等待），破任一个就够，工程上首选"固定加锁顺序"（破循环等待）</strong>。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>Linux 不区分线程与进程（都是 <code class="mv-md-code">task_struct</code>，差别在 <code class="mv-md-code">clone</code> 的共享标志）</li><li>线程独占寄存器 + 栈</li><li><strong>切换六步，第 ⑥ 步写 CR3 是唯一直接差别</strong></li><li><strong>切换是微秒量级（1–5 μs，重载 10–50 μs）</strong></li><li>线程比进程快约 20–30%（直接部分）</li><li><strong>间接成本才是大头（TLB 重走页表、缓存污染）</strong></li><li>测出来的数字只能当量级</li><li>PCID 让若干地址空间的翻译跨切换保留</li><li>时间片 1–10 ms</li><li><strong>voluntary vs nonvoluntary 优化方向相反</strong></li><li><strong>线程栈 8MB 虚拟（不是 1MB 物理）</strong></li><li>非主线程栈 mmap 出来、不能增长</li><li>**内核侧二三十 KB</li><li>线程、不进 RSS**</li><li><code class="mv-md-code">threads-max</code> = 1</li><li>8 内存</li><li><code class="mv-md-code">pid_max</code> 32768</li><li>cgroup <code class="mv-md-code">pids.max</code></li><li>死锁四条件</li><li>破循环等待（固定加锁顺序）最实用</li><li>自旋 vs 互斥看临界区长不长</li><li>系统调用约 100 ns 量级，优化方向是<strong>减少次数</strong></li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 103 字 · 按 4 字/秒折算约 26 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">进程和线程的区别在 Linux 上可以一句话说清——<strong>它们都是 <code class="mv-md-code">task_struct</code>，线程只是"共享得更多的任务"</strong>（<code class="mv-md-code">clone()</code> 带上 <code class="mv-md-code">CLONE_VM</code> 等标志，共享地址空间、文件表、信号处理器，只独占寄存器和栈）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：进程与线程都是 task_struct，差别在共享了什么；切换成本大头是间接的（TLB/缓存）。</li><li><strong>推导链</strong>：clone 标志 → 共享内容 → 通信 vs 隔离 → 切换的直接/间接成本 → 死锁四条件与破法 → 与协程的调度对照。</li><li><strong>量化</strong>：切换 1–5 μs（重载含间接成本 10–50 μs）；线程直接成本只比进程快约 20–30%。</li><li><strong>边界与常见误解</strong>："线程一定比进程快很多"×（直接成本只差 20–30%，差距在 TLB/缓存）；协程不是"更轻的线程"，是调度者不同。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | 内核层（本卡） | 语言运行时 | 数据库层 | |---|---|---|---| | 执行单元 | <code class="mv-md-code">task_struct</code>（线程/进程统一） | goroutine / 虚拟线程 / 协程 | 连接（每连接一个线程） | | 互斥 | 自旋锁 / 互斥量（futex） | <code class="mv-md-code">synchronized</code> / <code class="mv-md-code">Lock</code> / <code class="mv-md-code">asyncio.Lock</code> | 行锁 / 表锁（[[母题-M10-锁与死锁]]） | | 死锁检测 | 资源分配图找环 | —— | 等待图检测 + 主动回滚一个事务 | | 隔离 | 地址空间独立 | 进程隔离 / 沙箱 | 事务隔离级别（[[母题-M8-隔离级别与ACID]]） |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>线程切换和进程切换差在哪一步？</strong></strong></p>
+<p class="mv-md-p"><strong>只差"写 CR3 + TLB 失效"这一步</strong>（跨进程），同进程的线程<strong>整个跳过</strong>。<strong>直接成本只差两三成，但跨进程会让缓存与 TLB 冷掉</strong>，并发高时这一部分能把成本推高一个数量级——<strong>所以答案是"差在地址空间，不是差在寄存器"</strong>。⚠️ <strong>不要说"贵 19 倍"这种精确倍数</strong>，测量值只能给区间。</p>
+<p class="mv-md-p"><strong>2. <strong>为什么线程不是越多越好？</strong></strong></p>
+<p class="mv-md-p">两个原因：<strong>① 每线程内核侧约 25KB 且要占一个 pid（上限是 <code class="mv-md-code">pid_max</code> / <code class="mv-md-code">pids.max</code>）</strong>；<strong>② 超过核数后多出来的执行单元只在"等"或"抢"——抢就会推高非自愿切换，等就没有收益</strong>。要按"每个单元的工作量 ÷ 切换成本"算。</p>
+<p class="mv-md-p"><strong>3. <strong>死锁的四个条件是什么、怎么破？</strong></strong></p>
+<p class="mv-md-p">互斥 / 持有并等待 / 不可剥夺 / 循环等待，<strong>破任一个即可</strong>；<strong>首选固定加锁顺序破循环等待</strong>（免费）；超时重试（破不可剥夺）有活锁与"重复副作用"的风险。</p>
+<p class="mv-md-p"><strong>4. <strong><code class="mv-md-code">malloc</code> 之后不写会不会占内存？</strong></strong></p>
+<p class="mv-md-p"><strong>不会</strong>。<code class="mv-md-code">malloc</code> 只拿到虚拟地址空间，<strong>物理页在首次访问（缺页）时才分配</strong>——这就是 overcommit 的机制（详见 [[母题-O2-虚拟内存与缺页]]）。</p>
+<p class="mv-md-p"><strong>5. <strong>容器里被 OOM 杀了，怎么看？</strong></strong></p>
+<p class="mv-md-p">要分清<strong>两类 OOM</strong>：<strong>整机 OOM</strong>（内核挑 <code class="mv-md-code">oom_score</code> 最高的）和 <strong>cgroup OOM</strong>（撞 <code class="mv-md-code">memory.max</code>）。<strong>日志前缀不同</strong>，排查方向也不同（详见 [[母题-O2-虚拟内存与缺页]] 第 5 节）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Java 的虚拟线程 / Go 的 goroutine 和操作系统线程什么关系？」——<strong>都是"用户态调度"这一族</strong>：把"一个并发任务一个内核线程"改成"M 个内核线程上跑 N 个轻量任务"，<strong>省掉的就是本卡第 3 节的内核侧 25KB 和 2.3 的切换成本</strong></li><li>「线程池该设多大？」——按负载定：<strong>CPU 密集 ≈ 核数 + 1</strong>；<strong>IO 密集 ≈ 核数 ×（1 + 等待时间/计算时间）</strong>——<strong>后者就是 2.1 那张"时间花在哪"的账</strong>（同 [[母题-N3-进程线程与协程]]）</li><li>「为什么 Redis / Nginx 单线程/少线程还能这么快？」——<strong>IO 密集 + 事件循环</strong>（[[母题-O3-IO模型与零拷贝]]），<strong>它们要的并发不需要靠线程数换</strong></li><li>「<code class="mv-md-code">top</code> 里 <code class="mv-md-code">LOAD</code> 高但 CPU 不高是什么情况？」——<strong>大量任务处于不可中断等待</strong>（D 状态，通常在等磁盘 / NFS），<strong>这是 IO 瓶颈而不是 CPU 瓶颈</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena</strong>——<strong>"进程随时可能崩"的底层理由就是本卡的进程模型</strong>：地址空间独立（崩了不传染，这是优点）、<strong>但内存态全丢</strong>（所以状态必须落数据库）。Worker 重启后靠"读权威状态 + 校准 Checkpoint"恢复，正是"只有持久化的东西算数"这条事实；容器内存限制（Redis 只给 256~512MB）意味着<strong>会撞 cgroup OOM</strong>，要和整机 OOM 分开排查。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先给"Linux 不区分线程和进程、差别在共享了什么" → 从"共享了什么"推出三组差异（通信 / 切换 / 隔离）→ 一次切换的六步 + "第 ⑥ 步是唯一直接差别" → <strong>给切换成本的量级区间与数据性质（1–5 μs；重载 10–50 μs），说明线程与进程只差两三成、真正的差在间接成本</strong> → 说明 PCID 与 TLB 容量的边界 → 调度与自愿/非自愿切换的判据 → <strong>内存账（虚拟 8MB vs 内核二三十 KB vs 上限是谁）</strong> → 共享的代价：竞态 → 死锁四条件与破法 → 自旋 vs 互斥 → 用户态/内核态与系统调用 → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"共享了什么"决定了"付什么代价"</strong>——线程共享地址空间换来通信便宜，代价是切换要换页表（贵）和没有隔离（危险）；不共享换来隔离，代价是通信与切换都贵。<strong>而"该开几个执行单元"永远由"切换成本 ÷ 每个单元的工作量"决定，不由"越多越并发"决定。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能闭卷说清"Linux 不区分线程与进程、差别在共享了什么"；能<strong>按量级区间</strong>（1–5 μs，重载 10–50 μs）讲清切换成本，并说清"直接只差两三成、真正的差在间接成本（TLB 与缓存）"；能说清线程内存的真实构成（虚拟 8MB vs 内核二三十 KB）与上限是谁定的；能说清死锁四条件并给出"固定加锁顺序"的首选破法；<strong>且自测 5 题全对</strong>（尤其 Q4 的三处纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

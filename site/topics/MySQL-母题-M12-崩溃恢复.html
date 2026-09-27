@@ -151,6 +151,11 @@
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 415 字 · 按 4 字/秒折算约 104 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">崩溃瞬间每个事务只有三种状态：已提交、未提交、提交到一半（prepare）。恢复只回答三个问题：重做谁、回滚谁、怎么保证不重复做。</p>
+<p class="mv-md-p">答案是 redo 重放 + undo 回滚，顺序不能反。先从 check point 起顺序重放 redo：每页自带 LSN，已经落盘的页直接跳过，所以重放是幂等的——幂等的本质是「能判断出已经做过了」，而不是「只做一次」。这也是为什么系统不怕反复崩，只怕重放不幂等。</p>
+<p class="mv-md-p">然后用 undo 把未提交的事务撤销。必须先 redo 再 undo：反过来会在「已提交但数据页还没落盘」的情况下把已提交的数据弄丢——WAL 只保证日志落盘，数据页可能还在内存里，这正是要重放的原因。</p>
+<p class="mv-md-p">提交到一半的事务由 binlog 的完整性裁决：binlog 完整就提交，不完整就回滚。</p>
+<p class="mv-md-p">恢复时间长的根因通常不是磁盘慢，而是 check point 落后太多、要重放的日志多；但 check point 的推进频率同时影响正常写入性能，不能单边调。PG 没有 binlog 裁决这一套。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：redo 重放（幂等）+ undo 回滚，顺序必须先 redo 后 undo；prepare 事务由 binlog 完整性裁决。</li><li><strong>推导链</strong>：三状态表 → 日志痕迹决定动作 → redo 按页 LSN 判重放 → 再用 undo 撤销未提交 → prepare 看 binlog 完整性。</li><li><strong>量化</strong>：恢复时间 ≈ 从 check point 起要重放的日志量，由 check point 落后程度决定。</li><li><strong>边界与常见误解</strong>：恢复靠日志状态，不靠猜或开始时间；已提交的不一定已在磁盘上（WAL 只保证日志落盘）；顺序无所谓 ×（反过来会丢已提交数据）；恢复中再崩没关系（重放幂等）；恢复慢常因 check point 落后而非磁盘慢；PG 没有 binlog 裁决。</li></ul></collapse-panel>
     <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p"><strong>PG 没有 binlog、没有 prepare/commit 两阶段日志状态</strong>——它只有 WAL，恢复是"重放 WAL + 回滚未提交元组"，复制也走 WAL。<strong>"PG 也靠 binlog 裁决"这个说法一说出来就是错的。</strong></p></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>恢复要重放多久？</strong></strong></p>
 <p class="mv-md-p">取决于 <strong>check point 的位置</strong>。它越新，要重放的越少、恢复越快；但推进它需要更频繁刷脏页，<strong>代价是正常运行时更多的随机 IO</strong>。<strong>同一组参数的两面。</strong></p>

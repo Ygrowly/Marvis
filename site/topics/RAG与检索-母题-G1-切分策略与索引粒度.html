@@ -189,6 +189,9 @@
 
   <div class="mv-section" id="s-extra">
     <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 417 字 · 按 4 字/秒折算约 104 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">切块粒度是一个<strong>两头都会坏</strong>的问题：<strong>太小</strong>语义不自足（条款的例外被切走，单块意思可能是反的）；<strong>太大</strong>相关内容占比下降、相似度被稀释，<strong>关键内容排不进 Top-K</strong>（2000 字里只有 200 字相关时占比只剩 10%）。所以答案不是某个数字，而是<strong>把两个矛盾的需求拆开</strong>。</p>
+<p class="mv-md-p">两条思路：<strong>Child-Parent</strong>（<strong>小块召回保召回率 + 父块返回保上下文完整</strong>）改的是"返回什么"；<strong>Contextual Retrieval</strong>（先给每块补 <strong>50–100 token 的定位说明</strong>再做索引）改的是"索引什么"，索引只涨约 <strong>12.5%</strong>，实测把检索失败率从 <strong>5.7% 降到 2.9%（−49%）</strong>，再叠加重排是 <strong>1.88%（−67%）</strong>。两者可以叠加。</p>
+<p class="mv-md-p">切分策略必须<strong>按数据结构选</strong>：制度文档按标题层级（几百字量级）、FAQ 按问答、代码按函数边界、条款按"条件 + 例外 + 生效时间"；<strong>表格必须表头与行绑定，不能拆掉口径</strong>（拆开表头的行是无意义的数字，指标表/口径表尤其明显）。参数要用<strong>目标问题集评测</strong>来定，不能照搬经验值。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：粒度两头都会坏；小块召回 + 父块返回（Child-Parent）或补定位说明再索引（Contextual Retrieval）。</li><li><strong>推导链</strong>：太小→语义不自足；太大→相似度稀释、排不进 Top-K → 拆成"召回准"与"信息全" → 改返回 vs 改索引。</li><li><strong>量化</strong>：2000 字里 200 字相关 → 占比只剩 10%；Contextual Retrieval 索引涨约 12.5%，失败率 5.7% → 2.9%（−49%），叠重排 → 1.88%（−67%）。</li><li><strong>边界与常见误解</strong>：固定字数切块切的是字符数不是语义边界；表格拆掉表头是常见的坏切法；"多长的块最合适"没有通用答案，只能评测定。</li></ul></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Child-Parent 和 Contextual Retrieval 有什么区别？</strong></strong></p>
 <p class="mv-md-p"><strong>一个改"返回什么"，一个改"索引什么"</strong>。Child-Parent 索引小块、返回父块；Contextual Retrieval 索引的是"补了定位说明的块"。<strong>两者可以叠加</strong>，而且叠加后正好覆盖了"匹配准"和"信息全"两个需求。</p>
 <p class="mv-md-p"><strong>2. <strong>表格怎么切？</strong></strong></p>

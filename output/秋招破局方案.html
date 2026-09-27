@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>秋招破局方案 · 第一性原理 / 边际 / 逆向</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 72px;
+    background: #F7F7F5; color: #2C2C2A;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: .3px; }
+  .sub { color: #6B6B66; font-size: 13px; margin: 0 0 26px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 38px 0 14px; padding-left: 10px;
+       border-left: 3px solid #185FA5; }
+  h3 { font-size: 13.5px; font-weight: 600; margin: 20px 0 8px; color: #2C2C2A; }
+  .card { background: #fff; border: 1px solid #E3E2DD; border-radius: 12px;
+          padding: 18px 20px; margin-bottom: 14px; }
+  .key { background: #EAF3FB; border: 1px solid #BBD6EE; border-radius: 12px;
+         padding: 18px 20px; margin-bottom: 16px; }
+  .key .lbl { font-size: 12px; color: #185FA5; font-weight: 600; letter-spacing: .5px; margin-bottom: 6px; }
+  .key p { margin: 0; font-size: 15px; line-height: 1.65; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  @media (max-width: 720px) { .grid3, .grid2 { grid-template-columns: 1fr; } }
+  .stat { background: #fff; border: 1px solid #E3E2DD; border-radius: 12px; padding: 16px 18px; }
+  .stat .num { font-size: 24px; font-weight: 600; letter-spacing: -.5px; line-height: 1.2; }
+  .stat .num.up { color: #A32D2D; }
+  .stat .num.down { color: #0F6E56; }
+  .stat .cap { font-size: 12.5px; color: #6B6B66; margin-top: 4px; }
+  .stat .src { font-size: 11.5px; color: #9A9A93; margin-top: 6px; }
+  .formula { text-align: center; font-size: 17px; font-weight: 600; letter-spacing: .3px;
+             padding: 16px 12px; background: #F1EFE8; border-radius: 10px; margin: 4px 0 14px; }
+  .formula small { display: block; font-size: 12px; font-weight: 400; color: #6B6B66;
+                   letter-spacing: 0; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #EDECE7; vertical-align: top; }
+  th { font-weight: 600; color: #6B6B66; font-size: 12px; }
+  td.hi { color: #791F1F; font-weight: 500; }
+  td.gd { color: #0F6E56; font-weight: 500; }
+  td.mut { color: #9A9A93; }
+  ul.chk { list-style: none; margin: 6px 0 0; padding: 0; }
+  ul.chk li { display: flex; gap: 9px; align-items: flex-start; padding: 4px 0; }
+  ul.chk input { margin-top: 5px; accent-color: #185FA5; cursor: pointer; flex-shrink: 0; }
+  ul.chk label { cursor: pointer; font-size: 13.5px; }
+  ul.chk input:checked + label { color: #9A9A93; text-decoration: line-through; }
+  .act { background: #fff; border: 1px solid #E3E2DD; border-radius: 12px;
+         padding: 16px 18px; margin-bottom: 12px; }
+  .act.lead { border: 2px solid #185FA5; }
+  .act-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .act-head b { font-size: 14px; font-weight: 600; }
+  .act-head span { font-size: 12px; color: #6B6B66; }
+  .act-head i { font-style: normal; font-size: 11px; background: #F1EFE8; border-radius: 5px;
+                padding: 2px 7px; color: #444441; }
+  .act.lead .act-head i { background: #EAF3FB; color: #185FA5; font-weight: 500; }
+  .stop { background: #FCEBEB; border: 1px solid #F7C1C1; border-radius: 12px; padding: 16px 20px; }
+  .stop h3 { margin: 0 0 10px; font-size: 14px; color: #791F1F; }
+  .stop li { margin-bottom: 8px; font-size: 13.5px; }
+  .stop ul { margin: 0; padding-left: 20px; }
+  .rev { list-style: none; margin: 0; padding: 0; }
+  .rev li { padding: 5px 0 5px 26px; position: relative; font-size: 13px; border-bottom: 1px dashed #EDECE7; }
+  .rev li:last-child { border-bottom: none; }
+  .rev li::before { content: "✕"; position: absolute; left: 4px; color: #A32D2D; font-size: 12px; }
+  .rev li b { color: #791F1F; }
+  .note { font-size: 12.5px; color: #6B6B66; margin-top: 10px; }
+  .note.b { border-top: 1px solid #EDECE7; padding-top: 14px; margin-top: 28px; line-height: 1.8; }
+  .tag { display: inline-block; font-size: 11px; background: #F1EFE8; border-radius: 5px;
+         padding: 1px 7px; color: #444441; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>秋招破局方案</h1>
+  <p class="sub">2027 届 · 双非本科 · AI 应用 / Agent 后端 &nbsp;|&nbsp; 从第一性原理、边际、逆向三个角度推出来 &nbsp;|&nbsp; 2026-09-20</p>
+
+  <div class="key">
+    <div class="lbl">一句话结论</div>
+    <p>你的瓶颈不在知识，在<b>曝光量</b>和<b>提取率</b>。库里 91 张母题卡、<b>0 张验收</b>——知识侧已经过度供给。
+    接下来 10 周唯一该做的三件事：<b>把投递量拉上去</b>、<b>把已练过的提分</b>、<b>让手撕不触发一票否决</b>。</p>
+  </div>
+
+  <h2>一、先看清牌面</h2>
+
+  <div class="grid3">
+    <div class="stat">
+      <div class="num up">+47.3%</div>
+      <div class="cap">校招 AI 新发岗位同比</div>
+      <div class="src">AI 渗透率 26.41% → 37.56%</div>
+    </div>
+    <div class="stat">
+      <div class="num down">−73%</div>
+      <div class="cap">入门级开发岗招聘量同比</div>
+      <div class="src">同口径：通用算法岗 −41.2%</div>
+    </div>
+    <div class="stat">
+      <div class="num">0.28</div>
+      <div class="cap">FDE 人才供需比</div>
+      <div class="src">约 3.6 个岗位抢 1 个人</div>
+    </div>
+  </div>
+
+  <h3>今年卡学历变狠的三条机制（比"哪家卡"更重要）</h3>
+  <div class="card">
+    <table>
+      <thead><tr><th>机制</th><th>链条</th></tr></thead>
+      <tbody>
+        <tr><td><b>① 笔试失效</b></td><td>腾讯取消笔试、字节大部分岗位直接进面 → 投递到面试之间没有"能力证明关" → <b>简历成为唯一闸门 → 学历权重被动抬高</b></td></tr>
+        <tr><td><b>② 窗口压缩</b></td><td>美团最后一场笔试 26 届 10/11 → 27 届 9/15。场次变少 → 淘汰更干脆 → 筛子又向"最省事的维度"（学历）倾斜</td></tr>
+        <tr><td><b>③ HC 收缩</b></td><td>名额少了先砍谁？不是"最差的"，是<b>"看起来不够稳的"</b>——而简历上"稳不稳"的第一判据是学校</td></tr>
+      </tbody>
+    </table>
+    <p class="note">三条闸门同时变窄，学历这道被推上来承担了更多筛人任务。这不是某家公司提了门槛，是<b>筛选机制的结构性结果</b>——所以它也可逆：把闸门从"身份"挪回"证据"，就是你的全部操作空间。</p>
+  </div>
+
+  <h3>双非的四档市场地图（经验判断，非官方口径；同一家公司不同事业群能差一整档）</h3>
+  <div class="card">
+    <table>
+      <thead><tr><th>档</th><th>特征</th><th>代表</th><th>怎么打</th></tr></thead>
+      <tbody>
+        <tr><td class="hi">A</td><td>明确偏硕士</td><td>阿里</td><td class="mut">量力而行，不作主力</td></tr>
+        <tr><td class="hi">B</td><td>部门差异极大</td><td>腾讯主站 · 百度 · 京东科技</td><td><b>研究"部门"而不是"公司"</b>：非核心部门 / 地方岗 / 内包岗通过率高一大档</td></tr>
+        <tr><td class="gd">C</td><td>能进但排序吃亏</td><td>字节 · 美团 · 快手</td><td><b>最值得投入</b>：门是开的，要的是"把排序拉上去"的东西（对口实习 / 讲得清的项目 / 别人没有的技能点）</td></tr>
+        <tr><td class="gd">D</td><td>相对友好</td><td>小米 · 滴滴 · 网易游戏</td><td><b>保底盘，而且要早投</b>——不要"先冲大厂"把它排到最后，秋招后期 HC 收得极快</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>二、第一性原理：把「拿 offer」拆到不能再拆</h2>
+
+  <div class="formula">
+    offer 期望值 ≈ 投递量 &times; 过筛率 &times; 面试转化率
+    <small>三个因子是相乘的——任何一个接近 0，全部归零。所以先补最短的那块，别优化长板。</small>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>因子</th><th>企业实际在估什么</th><th>你能改的</th><th>当前量级</th></tr></thead>
+      <tbody>
+        <tr><td><b>投递量</b></td><td>—</td><td>纯执行力，成本最低</td><td class="hi">约 30 家（估）</td></tr>
+        <tr><td><b>过筛率</b></td><td>"这人会不会浪费我面试时间"</td><td>内推（信任转移）· 简历可验证证据 · 关键词匹配</td><td class="hi">双非盲投 ≈ 3%</td></tr>
+        <tr><td><b>面试转化率</b></td><td>"能不能干活、会不会出事"</td><td>证据密度（数字+口径+反面）· 提取流畅度</td><td>9.9 实测 14.8/25</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>四条推论</h3>
+  <div class="card">
+    <p><b>推论一 · 唯一能改的变量是证据密度。</b><br>
+    当候选人拿不出"结果证据"，企业只能读"身份标签"。学校标签你改不了 → 剩下的全部空间在<b>证据密度</b>。而你的证据分子早就有了（三项目 + 真实数据 + 完整实测复盘），缺的是两个分母：<b>分布面</b>（投多少家）和<b>提取流畅度</b>（现场调不调得出来）。</p>
+    <p><b>推论二 · 你最强的资产是一个负结果。</b><br>
+    RuleArena「LLM 发现率没超过 BFS + 如实降级 + 门禁拒绝」不是短板，是你<b>唯一无法被伪造的资产</b>。应届生项目里 95% 的成功率面试官默认是假的；一个敢报负结果的候选人，可信度会溢出到简历上所有其他数字。<b>放 C 位，每场面试主动交代。</b></p>
+    <p><b>推论三 · 命功是吞吐量上限，不是养生建议。</b><br>
+    上面所有动作都要求"每天稳定动"。你的记录里瓶颈一直是精力与启动 → 第一性原理层面，破局的<b>第一个动作不是学什么，是保住 23:00 / 23:30 那条线</b>。</p>
+    <p><b>推论四 · 市场正在从"看身份"滑回"看证据"，但窗口在简历和面试，不在第六个模块。</b><br>
+    笔试失效 + 简历权重上升 + 简历算分里 AI 经验/项目/开源已高于 985/211 —— 对你是好消息。<b>但它奖励的是"能拿出来的东西"，不是"库里有的东西"。</b></p>
+  </div>
+
+  <h2>三、边际思维：下一小时投给谁</h2>
+
+  <div class="key">
+    <div class="lbl">最硬的一条边际事实</div>
+    <p>投递的边际收益<b>随时间下降</b>（岗位招满即下架、10 月面试场次低于去年），而"练"的边际成本<b>随时间不变</b>。<br>
+    → 所以正确顺序不是"准备好了再投"，是<b>并行，且投递不占学习时间</b>（每天固定 30 分钟，体力活一次性做完）。</p>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>同样 1 小时的投入</th><th>边际收益</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>找内推（10 min/家）</td><td class="hi">★★★★★</td><td>改的是<b>乘数</b>不是加数，成本近乎为零</td></tr>
+        <tr><td>扩大投递面（30 min/天）</td><td class="hi">★★★★★</td><td>过筛是概率游戏，基数直接决定期望值；10 月后递减</td></tr>
+        <tr><td>手撕：从 8 分到过关</td><td class="hi">★★★★★</td><td>不是加分项，是<b>终止条件</b>（见第四节第 6 条）</td></tr>
+        <tr><td>八股：10–12 → 16–18</td><td class="hi">★★★★☆</td><td>有材料没练 = 杠杆最大的一段，且每场面试都复用</td></tr>
+        <tr><td>场景设计：走完四段法</td><td class="hi">★★★★☆</td><td>目标岗位必考；方法文档已就位，缺的只是计时演练</td></tr>
+        <tr><td>数字口径卡（2 小时）</td><td class="hi">★★★★☆</td><td>保护简历上每一个百分比，成本最低、收益最确定</td></tr>
+        <tr><td>一页纸作战卡</td><td>★★★★☆</td><td>提升"提取率"，终身复用</td></tr>
+        <tr><td>项目题 21 → 23 分</td><td>★★☆☆☆</td><td>边际递减，而且你已经在最强的区</td></tr>
+        <tr><td>再建第 92 张母题卡</td><td class="gd">☆☆☆☆☆</td><td>内容侧已清零，新增卡不改变任何"被问到的概率"</td></tr>
+        <tr><td>新做一个项目</td><td class="gd">★☆☆☆☆</td><td>&gt;2 周沉没成本，而你不缺项目，缺提取</td></tr>
+      </tbody>
+    </table>
+    <p class="note">被忽略的两条杠杆：<b>① 简历的边际 = 倍数。</b>现在改任何一行，收益等于"这一轮投出去的所有公司"的收益；70 家 &times; 提高 5% 过筛率 = 3.5 个额外面试。<b>② 口径的边际最确定。</b>9.9 被追穿的不是"没有数字"，是"数字没有口径"（控制变量 / ground truth / 样本量）——补一张口径卡，直接给简历上每个百分比上了保险。</p>
+  </div>
+
+  <h2>四、逆向思维：怎么保证拿到 0 offer</h2>
+  <p class="sub" style="margin-bottom:12px">把方案反过来问一遍最省事。下面每一条都是"如果我想害你，我会让你做什么"。</p>
+
+  <div class="card">
+    <ul class="rev">
+      <li>只投 A 档（阿里 / 字节 / 百度研究院），全部简历挂</li>
+      <li>等"准备好了"再投，10 月才开始 —— 撞上 HC 收紧 + 岗位下架</li>
+      <li>继续建卡、改简历、优化网站 —— <b>有进度感、零产出</b></li>
+      <li>熬夜，第二天上午废掉，一周只动两天</li>
+      <li>面试不录音不复盘，让 14.8 分重复 20 次</li>
+      <li><b>手撕不练 —— 第一道算法题就挂，前面所有准备归零</b></li>
+      <li>把 RuleArena 的负结果藏起来 —— 失去唯一的可信度资产</li>
+      <li>只走官网盲投，不找内推 —— 死在机筛</li>
+      <li>单赛道不留保底 —— 11 月情绪崩盘</li>
+      <li>挂 20 份简历后复盘到凌晨（自罚）—— 第二天欠账 → 破窗</li>
+    </ul>
+    <p class="note">反过来写，就是方案。其中两条必须单独记住 ↓</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card" style="margin-bottom:0">
+      <h3 style="margin-top:0">第 6 条 · 手撕的优先级要重定义</h3>
+      <p style="font-size:13.5px;margin:0">手撕不能用"分数"衡量，要用<b>"一票否决"</b>衡量：<br>
+      八股 12 分 → 面试官减分，但面试继续；<br>
+      手撕 8 分 → <b>面试直接结束</b>，你 19–21 分的项目表达一分都用不上。</p>
+      <p class="note" style="margin-bottom:0">→ 手撕排在八股<b>之前</b>。每天 1 题，关掉 AI 补全，限时 10 分钟。</p>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h3 style="margin-top:0">第 8 条 · C 档最难受的不是被拒</h3>
+      <p style="font-size:13.5px;margin:0">是"面完好几轮，最后在综合排序被刷掉"。破法不是"表现得更好"，是<b>投招不满人的坑</b>：B 档研究部门、D 档早投、<b>明牌写了 985/211/硕士的岗位直接跳过</b>。</p>
+      <p class="note" style="margin-bottom:0">跳过不是认输，是算账：投递次数和精力都是有限资源。</p>
+    </div>
+  </div>
+
+  <h2>五、结构性套利：三个错配同时存在</h2>
+
+  <div class="card">
+    <p><b>① 方向错配 —— 你不缺方向。</b>AI 岗位在扩（校招 AI 岗 +47.3%），传统开发岗在缩（入门级 −73%）。你已经在 AI 里面了，问题不是"要不要转"，是<b>曝光量太小</b>。</p>
+    <p><b>② 岗位错配（最大的一条）。</b>FDE / AI 交付：国内岗位量同比 <b>+1522.73%</b>，供需比 <b>0.28</b>，平均年薪 40.8 万；欧美岗位量 +729%（Indeed）。而 FDE 的时间分配是 <b>47% 客户沟通 / 31% 代码 / 22% 内部协调</b>——<b>它不考刷题、不看论文，考的是能不能进现场把东西跑起来。</b>这恰好是你 19–21 分能力的直接映射，也是学历折价最低的赛道。</p>
+    <p><b>③ 评价错配。</b>笔试失效 → 简历权重上升；简历算分里 AI 经验/项目/开源的权重已高于 985/211。"真实用户 + 真实数据 + 负结果诚实"这个组合，在双非本科里是稀缺的。</p>
+    <p class="note" style="margin-bottom:0"><b>由此得到的唯一调整：</b>把主线从"投大厂 AI 应用岗"改成<b>"以 FDE / AI 交付 / 垂直行业 AI 为主力，大厂 AI 应用岗为冲"</b>——方向和你 9-19 作战板一致，但力度要改：FDE 从 25% 提到 <b>40%</b>，A 档从"冲"降到"顺手投"，省下的精力全换成<b>投递量 + 内推 + 练</b>。</p>
+  </div>
+
+  <h2>六、方案（四个动作，前两个不占学习时间）</h2>
+  <div class="key">
+    <div class="lbl">排序判据 · 2026-09-24 自省补入</div>
+    <p><b>招聘流程是带队列的流水线：投递 → 1~2 周延迟 → 测评 / 笔试 / AI 面 → 面试。</b>企业流程不会等你「准备好」。准备项（教材、复述、算法、模面）和投递<b>不是先后关系，是并行关系</b>：投递今天就开始，测评与笔试的到来本身就是 deadline，用它倒逼复习节奏。</p>
+    <p class="note" style="margin-bottom:0"><b>判据（经验判断，非规定值）：一件事「有用」不构成现在就做的理由</b>——时间与精力有限，做它就等于不做别的，先问它是不是当前关键路径上那 20%（二八是经验判断，不是规格书）。通用版见 <code>wiki/thinking/行动规则.md</code> A-7「机会成本门」。<br>
+    旧排法（错在哪）＝教材看完 → 复述 → 算法 → 测评/笔试 → 内推 → <b>才投递</b>：把支撑项挡在关键路径前面，等于让流水线空转。<br>
+    今天就动的三件：① 30 min 投递（台账 S/A 层）② 内推今天就开口，不等「准备好」（内推同样有延迟）③ 教材改「看过的部分先闭卷复述」，复述不出 = 明天的复训。</p>
+  </div>
+
+  <div class="act lead">
+    <div class="act-head"><b>动作 1 · 投递制度化</b><i>每天 30 min · 不占学习时间</i><span>最高优先</span></div>
+    <ul class="chk">
+      <li><input type="checkbox" id="k1"><label for="k1">定三层结构：D 档保底 15 家（早投）· B 档非核心部门 25 家（主力）· A 档 10 家（顺手）</label></li>
+      <li><input type="checkbox" id="k2"><label for="k2">每投一家必找内推人（2026 届刚入职的学长学姐响应率最高）</label></li>
+      <li><input type="checkbox" id="k3"><label for="k3">明牌卡学历（985/211/双一流/仅硕士）的岗位直接跳过</label></li>
+      <li><input type="checkbox" id="k4"><label for="k4">目标：9/30 前 40 家，10/20 前 70 家</label></li>
+    </ul>
+  </div>
+
+  <div class="act">
+    <div class="act-head"><b>动作 2 · 数字口径卡</b><i>一次 2 小时 · 终身复用</i></div>
+    <ul class="chk">
+      <li><input type="checkbox" id="k5"><label for="k5">三项目每个对外数字标注：判定基准 / 是否控制变量 / 自建评测集还是生产 P99 / 样本量</label></li>
+      <li><input type="checkbox" id="k6"><label for="k6">标准：20 秒内说清口径，被追问不松口</label></li>
+    </ul>
+  </div>
+
+  <div class="act">
+    <div class="act-head"><b>动作 3 · 三个提分动作</b><i>每次面试都复用</i></div>
+    <ul class="chk">
+      <li><input type="checkbox" id="k7"><label for="k7"><b>手撕：每天 1 题</b>，关 AI 补全，限时 10 min（最高优先——它是一票否决）</label></li>
+      <li><input type="checkbox" id="k8"><label for="k8">八股：只练已有材料的最高频 20 题，<b>不新建卡</b></label></li>
+      <li><input type="checkbox" id="k9"><label for="k9">场景设计：抽 1 题，10 分钟走完四段（澄清 2 / 拆解 3 / 估算 2 / 方案 3），对"十个扣分点"自评</label></li>
+    </ul>
+  </div>
+
+  <div class="act">
+    <div class="act-head"><b>动作 4 · 一页纸作战卡</b><i>面试前 2 小时</i></div>
+    <ul class="chk">
+      <li><input type="checkbox" id="k10"><label for="k10">正面：90 秒自我介绍 5 关键词 + 三项目各 3 个数字带口径 + RuleArena 负结果的主动交代</label></li>
+      <li><input type="checkbox" id="k11"><label for="k11">反面：10 条八股恢复关键词 + 5 兜底句 + 3 反问</label></li>
+      <li><input type="checkbox" id="k12"><label for="k12">铁律：面试前 24 小时禁止新建文档</label></li>
+    </ul>
+  </div>
+
+  <h2>七、止损线（把"十月转实习"换成可观测的触发）</h2>
+  <div class="stop">
+    <h3>两个触发条件，看数字不看感觉</h3>
+    <ul>
+      <li><b>10/15 前面试场次 &lt; 3</b> → 问题在<b>过筛</b>，不在面试能力。改投递策略（降档、拓内推、放大投递量），<b>不要</b>继续改简历措辞。</li>
+      <li><b>面试场次 ≥ 5 但 0 offer</b> → 问题在<b>转化</b>。全部精力压到动作 3，并把每次面试做一次五维评分横向对比，找被反复刷掉的那一维。</li>
+      <li><b>9 月结束仍是 0 offer</b> → 启动"AI 实习转正"这条线（百度 offer 来源里实习转正已超 50%，转正时学历权重明显下降）。它和秋招<b>并行</b>，不是替代。</li>
+    </ul>
+  </div>
+
+  <h2>八、命功 = 产能上限</h2>
+  <div class="card">
+    <p style="margin:0">上面所有排序都建立在"每天稳定动"这个前提上。<b>23:00 手机放客厅充电 / 23:30 前上床 / 隔天跑 30 min</b> 不是养生建议，是这 10 周产能的前提条件。这条不达标，前面全部是废纸。</p>
+    <p class="note">短视频 / 游戏 / 小说不是罪，是电池漏电——不用自责，但给它一条约束：<b>每天 30 min 投递块放在精力最好的时段，做完再玩。</b></p>
+    <p class="note" style="margin-bottom:0">掉了一天直接跳下一天，不补课、不自罚。<b>never miss twice。</b></p>
+  </div>
+
+  <h2>九、反直觉的四句（写给自己）</h2>
+  <div class="card">
+    <p><b>1. 你现在最该做的不是"学"，是"投"和"练"。</b><span class="tag">91 张卡 / 0 张验收 = 知识侧过度供给</span></p>
+    <p><b>2. 不要为了"稳妥"去做新项目。</b><span class="tag">你缺提取率，不缺素材</span>9.9 早就诊断过：有资料没练输出的八股只有 10–12 分。</p>
+    <p><b>3. 你最强的资产是一个负结果。</b><span class="tag">RuleArena LLM 未超 BFS</span>在人人写"提升 300%"的市场里，诚实是稀缺能力。主动交代，别藏。</p>
+    <p style="margin-bottom:0"><b>4. 「有用」不是理由，「在关键路径上」才是。</b><span class="tag">2026-09-24 自省</span>教材有用、算法有用、刷题都有用——正因如此才要先问一句「现在做它，代价是不做哪件事」。努力会形成沼泽，而且不赔时间。</p>
+  </div>
+
+  <p class="note b">
+    <b>数据来源与时点（2026-09-20 检索）。</b>按"数字的性质"分两类，别把经验值当规格书：<br>
+    · <b>平台报告 / 媒体口径</b>（可能随统计范围变化，只当方向与量级）：AI 新发岗 +47.3%、AI 渗透率 37.56%、AI 应用开发占 AI 岗 53.9% / 60.97%、FDE 岗位量 +1522.73% 与供需比 0.28、平均年薪 40.8 万、入门级开发岗 −73%、通用算法岗 −41.2%、实习转正占 offer &gt;50%、2027 届毕业生约 1300 万 —— 来源：脉脉高聘《Agent 重置职场》、前程无忧《2027 届校招 AI 人才市场洞察》、猎聘《2026 FDE 人才供需趋势洞察报告》、麦可思《2026 年中国本科生就业报告》、Indeed FDE 岗位数（643 → 5,330）。<br>
+    · <b>经验判断，非任何一家公司官方口径</b>：双非四档分类、笔试时间线对比、过筛率 ≈ 3% 的量级。<br>
+    · 使用方式：<b>拿它排投递优先级，不要拿它否定自己。</b>同一家公司不同事业群能差一整档。
+  </p>
+
+</div>
+<script>
+  document.querySelectorAll('ul.chk input[type=checkbox]').forEach(function (box) {
+    var key = 'qb-break-' + box.id;
+    if (localStorage.getItem(key) === '1') box.checked = true;
+    box.addEventListener('change', function () {
+      localStorage.setItem(key, box.checked ? '1' : '0');
+    });
+  });
+</script>
+</body>
+</html>

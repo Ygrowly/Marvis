@@ -50,6 +50,8 @@
 
   // ---------- 1. flip-card 翻转卡 ----------
   // <flip-card q="问题" a="答案" tag="MySQL" gradable></flip-card>
+  // 可选子元素 <div class="mv-fc-more">…</div>：背面下半段（2026-09-26 加，
+  // 用来挂「所属母题的完整回答 + 单卡入口」，内容由构建脚本生成，原样插入不转义）
   class FlipCard extends HTMLElement {
     connectedCallback() {
       if (this._built) return; this._built = true;
@@ -57,6 +59,8 @@
       var a = this.getAttribute('a') || '';
       var tag = this.getAttribute('tag') || '';
       var gradable = this.hasAttribute('gradable');
+      var moreEl = this.querySelector('.mv-fc-more');
+      var more = moreEl ? moreEl.outerHTML : '';
       this.innerHTML =
         '<div class="mv-fc">' +
           '<div class="mv-face mv-face-front">' +
@@ -67,6 +71,7 @@
           '<div class="mv-face mv-face-back">' +
             (tag ? '<div class="mv-fc-tag">' + esc(tag) + ' · 答案</div>' : '') +
             '<p class="mv-fc-a">' + esc(a) + '</p>' +
+            more +
             (gradable
               ? '<div class="mv-fc-actions">' +
                   '<button class="mv-btn mv-btn-bad" data-g="0">忘了</button>' +
@@ -77,6 +82,9 @@
         '</div>';
       var fc = this.querySelector('.mv-fc');
       fc.addEventListener('click', function () { fc.classList.toggle('is-flip'); });
+      // 下半段有自己的交互（折叠、链接），别让点击冒泡去翻面
+      var m2 = this.querySelector('.mv-fc-more');
+      if (m2) m2.addEventListener('click', function (e) { e.stopPropagation(); });
       if (gradable) {
         var self = this;
         this.querySelectorAll('.mv-fc-actions button').forEach(function (b) {

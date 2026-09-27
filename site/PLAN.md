@@ -78,7 +78,7 @@ md 工作台（唯一可写）
 
 | 方案 | 决定 |
 |---|---|
-| mermaid.js / d3 / three.js | ❌ 离线失效或体积过大 |
+| mermaid.js / d3 / three.js | ❌ **页面里跑**：离线失效或体积过大 → ✅ 但 mermaid 只在**浏览器端**渲（`_data/mmd-boot.js` + 站点自带 mermaid.min.js，2026-09-25 定）：md 里照常写，build 不碰浏览器；想离线/加速再开 `MARVIS_MMD_PRERENDER=1` 预渲染成内联 SVG |
 | **独立 `.svg` 文件 + md 里一行引用** | ✅ 采用 |
 | **CSS @keyframes 动画（原生）** | ✅ 采用 |
 

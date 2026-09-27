@@ -1,0 +1,38 @@
+<svg viewBox="0 0 680 392" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>一次上下文切换的六步与成本构成</title>
+<desc>直接成本只有零点几微秒，真正的账在间接成本：TLB 失效导致的页表遍历与缓存污染，让进程切换比线程切换贵近二十倍。</desc>
+<defs>
+<marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">一次上下文切换：六步里只有一步是线程与进程的差别</text>
+
+<rect x="40" y="46" width="330" height="196" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="84" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">① 触发：时间片用完 / 主动阻塞 / 被抢占</text>
+<text x="56" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">② 从用户态陷入内核态</text>
+<text x="56" y="132" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">③ 调度器挑下一个任务</text>
+<text x="56" y="156" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">④ 保存当前任务的寄存器到 task_struct</text>
+<text x="56" y="180" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">⑤ 加载下一个任务的寄存器</text>
+<text x="56" y="204" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">⑥ ★ 跨进程才做：写 CR3 + 处理 TLB 失效</text>
+<text x="56" y="226" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">⑦ 返回用户态，从上次停下处继续</text>
+
+<rect x="386" y="46" width="254" height="196" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="402" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">成本拆解（量级，非精确值）</text>
+<text x="402" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">直接成本（寄存器部分，约 200 字节）</text>
+<text x="402" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　公开测量区间：约 1–5 μs</text>
+<text x="402" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　线程比进程快约 20–30%（仅直接部分）</text>
+<text x="402" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">间接成本（换过去之后的冷启动）</text>
+<text x="402" y="170" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　TLB 不命中重走页表　约 25 ns / 页</text>
+<text x="402" y="188" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　缓存污染：L1 1ns → 内存 100ns</text>
+<text x="402" y="206" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　重载时可把总成本推到 10–50 μs</text>
+<text x="402" y="228" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">缓解：PCID 让若干地址空间翻译保留</text>
+
+<rect x="40" y="254" width="600" height="56" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="274" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">别把测量值当规定值：切换耗时随 CPU 型号、内核版本、负载变化很大，只能说量级。</text>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">结论指向一致：跨进程每次调度多付一次页表切换与 TLB 失效 —— 这才是多线程模型的理由。</text>
+
+<rect x="40" y="322" width="600" height="56" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="342" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">线程的内存账（被讲错最多的一项）：用户栈 8MB 是【虚拟预留、按需提交】，不是物理占用；</text>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">真正常驻的是内核侧二三十 KB/线程（内核栈 16KB + task_struct 数 KB），且【不计入 RSS】。</text>
+</svg>

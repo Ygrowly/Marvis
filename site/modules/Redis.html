@@ -17,11 +17,11 @@
   </div>
 
   <div class="mv-stat">
-    <span class="mv-stat-i"><b>3</b> 条主线</span>
-    <span class="mv-stat-i"><b>3</b> 个母题</span>
-    <span class="mv-stat-i"><b>20</b> 道题（<b>9</b> 必背）</span>
-    <span class="mv-stat-i ok"><b>0</b> 已掌握</span>
-    <span class="mv-stat-i warn"><b>3</b> 草稿待验收</span>
+    <span class="mv-stat-i"><b>4</b> 条主线</span>
+    <span class="mv-stat-i"><b>5</b> 个母题</span>
+    <span class="mv-stat-i"><b>24</b> 道题（<b>14</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>5</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
   </div>
 
   <div class="mv-section">
@@ -40,8 +40,11 @@
 
   <div class="mv-section">
     <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
-    <a class="mv-line-row" href="Redis-01-它为什么快、五种结构各解决什么问题.html"><span class="mv-line-no">一</span><span class="mv-line-name">它为什么快、五种结构各解决什么问题</span><span class="mv-line-q">同一个需求该用哪个结构，底层凭什么撑住</span><span class="mv-line-st">母题 1 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-02-数据怎么不丢.html"><span class="mv-line-no">二</span><span class="mv-line-name">数据怎么不丢</span><span class="mv-line-q">断电、宕机、内存满了分别怎么办</span><span class="mv-line-st">母题 1 · 题 4</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-03-缓存怎么用不出事故.html"><span class="mv-line-no">三</span><span class="mv-line-name">缓存怎么用不出事故</span><span class="mv-line-q">和 DB 的一致性、三类经典事故、热点与冷启动</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+    <a class="mv-line-row" href="Redis-01-它为什么快、五种结构各解决什么问题.html"><span class="mv-line-no">一</span><span class="mv-line-name">它为什么快、五种结构各解决什么问题</span><span class="mv-line-q">同一个需求该用哪个结构，底层凭什么撑住</span><span class="mv-line-st">母题 1 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-02-数据怎么不丢.html"><span class="mv-line-no">二</span><span class="mv-line-name">数据怎么不丢</span><span class="mv-line-q">断电、宕机、内存满了分别怎么办</span><span class="mv-line-st">母题 1 · 题 4</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-03-缓存怎么用不出事故.html"><span class="mv-line-no">三</span><span class="mv-line-name">缓存怎么用不出事故</span><span class="mv-line-q">和 DB 的一致性、三类经典事故、热点与冷启动</span><span class="mv-line-st">母题 1 · 题 5</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="Redis-04-生产里怎么不出大事.html"><span class="mv-line-no">四</span><span class="mv-line-name">生产里怎么不出大事</span><span class="mv-line-q">大 key / 热 key 怎么发现与拆、什么数据根本不该放 Redis（2026-09-17 补）</span><span class="mv-line-st">母题 2 · 题 5</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
   </div>
+
+  <div class="mv-section"><h2 class="mv-section-title">本模块的题 · 总纲 <span class="mv-topic-meta">1 道 · 不属于某一条主线，先说后翻</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">19</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">**[[母题-L3-分布式锁与fencing-token]]**</span><button class="mv-qdone" data-k="Redis-q19" type="button">未掌握</button></div><flip-card card-id="Redis-q19" tag="Redis" q="Redis 做分布式锁有什么坑" a="三个坑：① **主从异步复制会丢锁**——主库加了锁还没同步就宕机，切主后另一个客户端又能加上；② **释放锁不能裸 `DEL`**——你过期后别人拿到了锁，你这时 `DEL` 删的是别人的，等于一次删锁动作制造了双重执行，**必须校验值**（GET 比对 + DEL，用 Lua 保证原子）；③ **TTL 没有安全值**——业务因 GC 停顿 / 时钟漂移 / 网络分区还没跑完，锁就过期了，出现两个持有者。&#10;&#10;真正的解法是把安全性搬到**资源侧**：**fencing token**（发锁时给单调递增号，写入由存储校验&quot;只接受更大的号&quot;）。但更该先问：**我要的是&quot;不同时跑&quot;还是&quot;不重复执行&quot;？** 后者用**幂等键 + 唯一约束**就够了——更便宜、不引入新依赖，RuleArena 连锁都没用。"><div class="mv-fc-more"><p class="mv-fc-sub">这道题属于母题 L3（并发与锁 模块） · 分布式锁：三种实现、三大失效场景与 fencing token · 下面挂它的完整回答（学的时候看）</p><collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 316 字 · 按 4 字/秒折算约 79 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">单机 mutex 的共享状态只在进程内可见；<strong>跨机器互斥要把锁状态放到一个共享的地方</strong>。三种实现各有代价：<strong>Redis</strong>（<code class="mv-md-code">SET ... NX PX</code> 一条原子命令 + 释放要校验值；<strong>弱点是主从异步复制，切换会丢锁</strong>）、<strong>数据库</strong>（唯一约束 / 带条件更新，<strong>不引入新组件但把锁争用压在数据库上</strong>）、<strong>ZooKeeper / etcd</strong>（临时顺序节点 / 租约 + 单调 revision，<strong>语义最干净但要维护一套强一致系统</strong>）。</p>
+<p class="mv-md-p">它们的<strong>共同弱点来自同一个根因：锁服务的判断（按时间）与客户端的事实（是不是还在跑）会脱节</strong>——GC 停顿、时钟漂移、网络分区都会产生"两个持有者"，而 <strong>TTL 没有安全值</strong>（短了双持有者、长了可用性差，且"最长停顿"无上界）。看门狗续期只是缓解，不是根治（续期本身也会停）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：三种实现各有代价；共同弱点是时间判断与客户端事实脱节，根治靠 fencing token；先问"互斥还是不重复"。</li><li><strong>推导链</strong>：共享状态 → 三种实现 → 时间 vs 事实脱节（GC/时钟/分区）→ TTL 无安全值 → 安全性搬到资源侧 → 幂等可能比锁更划算。</li><li><strong>量化</strong>：没有安全的 TTL 值（"最长停顿"无上界）。</li><li><strong>边界与常见误解</strong>："加锁时间设长就安全"×；"Redis 锁万无一失"×（主从切换丢锁）；幂等常常比锁更便宜，RuleArena 就是例子。</li></ul></collapse-panel><p class="mv-md-p"><a class="mv-mt-link" href="../topics/并发与锁-母题-L3-分布式锁与fencing-token.html">打开单卡 L3 →</a></p></div></flip-card></div></div>
 
   <div class="mv-section">
     <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>

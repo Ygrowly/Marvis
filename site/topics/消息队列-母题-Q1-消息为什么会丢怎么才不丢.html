@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 Q1 · 消息为什么会丢，要它不丢三段各要做对什么</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/消息队列.html">← 消息队列 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">消息队列</span>
+    <h1 class="mv-topic-title">母题 Q1 · 消息为什么会丢，要它不丢三段各要做对什么</h1>
+    <p class="mv-topic-meta">关联 母题-Q2-重复与乱序（同一枚硬币的另一面：加严确认必然带来重复）· 母题-Q3-积压与高可用（Broker 自己挂了怎么办）· 母题-M11-三日志与两阶段提交（"本地事务 + 落盘"在数据库侧的对应）· 母题-A3-失败恢复与幂等（上层幂等语义） ｜ 正本 wiki/topics/消息队列/母题-Q1-消息为什么会丢怎么才不丢.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 只有"发送 / 存储 / 消费"三段，每段各有一道确认 ② 确认加严的代价是"可用性"和"延迟" ③ <code class="mv-md-code">acks=all</code> 是"所有<strong>在 ISR 里</strong>的副本"，不是"所有副本"）· 读完约 12 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">线上有用户反馈"发了消息但下游没收到"。消息可能在哪几段丢？要它不丢，生产端、Broker、消费端分别要做对什么？把确认机制加到最严会付出什么代价？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：MQ 先在回答"为什么值得引入"，再回答"怎么不丢"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 引入 MQ 换到什么【权衡】</h4>
+<p class="mv-md-p">引入消息队列是为了三件事：</p>
+<table class="mv-table"><thead><tr><th>作用</th><th>在解决什么</th><th>例子</th></tr></thead><tbody><tr><td><strong>解耦</strong></td><td>上游不必知道下游有几个、是谁</td><td>下单成功后要通知库存 / 积分 / 短信，新增一个下游不用改订单代码</td></tr><tr><td><strong>异步</strong></td><td>把"用户必须等"的部分缩到最小</td><td>主流程 50ms 返回，发短信加积分在后台做</td></tr><tr><td><strong>削峰</strong></td><td>把瞬时洪峰摊平到下游的处理能力上</td><td>秒杀 10 万请求先进队列，后端按每秒 2000 匀速消费</td></tr></tbody></table>
+<p class="mv-md-p"><strong>但它立刻带来三笔代价</strong>（这三笔必须主动说，否则面试官会认为你只看了好处）：</p>
+<p class="mv-md-p">1. <strong>可用性下降</strong>：原来 A 直接调 B，现在中间多一个组件，<strong>MQ 挂了整条链路就断了</strong>——所以不得不做高可用集群 2. <strong>复杂度上升</strong>：一个方法调用变成消息之后，发重了、丢了、消费失败了、顺序乱了，全都变成你要处理的问题 3. <strong>一致性变难</strong>：本地事务成功了但消息没发出去（或反之），两个系统就脱节了</p>
+<p class="mv-md-p mv-md-quote">【取舍】<strong>所以"要不要上 MQ"不是技术偏好，是算账</strong>。<code class="mv-md-code">projects/EnergyOps</code> 就是一本活教材：当前规模（约 604 台设备）<strong>明确不上 MQ</strong>，用 PostgreSQL 任务表 + APScheduler 就够，只在表计到万级、单机跑不完窗口时才考虑引入。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 本卡真正的核心前提：跨进程通信没有"恰好一次"</h4>
+<p class="mv-md-p">【事实】所有主流 MQ 都只承诺 <strong>至少一次（at-least-once）</strong> 投递。原因很硬：</p>
+<pre class="mv-md-pre">进程可能在任何一条指令后崩溃，而"处理消息"和"记录处理进度"是两次独立操作
+→ 崩溃点落在两次操作之间时，两件事必有一件没做成
+  崩在"记录进度"之前 → 消息会被重投（重复）
+  崩在"处理消息"之前但进度已记 → 消息不会再来（丢失）</pre>
+<p class="mv-md-p"><strong>要同时杜绝两者，就得让"处理"和"记录进度"变成一个原子操作——那需要 MQ 和你的业务数据库做分布式事务，代价高到没人愿意付。</strong></p>
+<p class="mv-md-p">【取舍】于是业界的一致选择是：<strong>框架保证"至少一次、宁重勿丢"，把去重的责任交给业务层</strong>（这正是 [[母题-Q2-重复与乱序]] 的全部内容）。<strong>所以本卡"不丢"的目标是"已确认的消息绝不丢"，而不是"绝不重复"。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"加个 MQ 就保证不丢不重"这个说法从根上就不成立？</p>
+<h3 class="mv-md-h mv-md-h3">2. 三段接力：一条消息的一生</h3>
+<figure-box num="消息的三段接力与每段的确认机制" title="" note="发送 / 存储 / 消费各有一道确认与一个&quot;不确认会怎样&quot;；右侧是对应可调项"><svg viewBox="0 0 680 400" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>消息的三段接力与每段的确认机制</title>
+<desc>消息只可能在发送、存储、消费三段丢失，每段各有一道确认；加严确认的代价是不可用或延迟。</desc>
+<defs>
+<marker id="figmq-delivery-chain-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">一条消息只可能在三段丢 —— 每段各有一道确认</text>
+
+<rect x="40" y="46" width="600" height="86" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="68" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">① 发送</text>
+<text x="58" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">消息还在生产者内存 / 网络里：发出去了但 Broker 没收到，或者 ack 丢了自己不知道</text>
+<text x="58" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 生产端确认：acks = 0 / 1 / all　★ all 是「所有在 ISR 里的副本」，不是「所有副本」</text>
+<text x="58" y="126" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　（Kafka 3.0 起 acks 默认已是 all —— 因为幂等生产者默认开启）</text>
+
+<line x1="340" y1="132" x2="340" y2="146" stroke="#888780" stroke-width="1" marker-end="url(#figmq-delivery-chain-svg-arrow)"/>
+
+<rect x="40" y="148" width="600" height="86" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="170" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">② 存储</text>
+<text x="58" y="192" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">消息在 Broker 的页缓存里：Broker 进程 / 机器挂了，还没落盘的多半没了</text>
+<text x="58" y="212" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 持久化（写盘）＋ 多副本（replication.factor = 3，min.insync.replicas ≥ 2）</text>
+<text x="58" y="228" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　 RabbitMQ 要分清：队列持久化（元数据）≠ 消息持久化（内容），两个都要设</text>
+
+<line x1="340" y1="234" x2="340" y2="248" stroke="#888780" stroke-width="1" marker-end="url(#figmq-delivery-chain-svg-arrow)"/>
+
+<rect x="40" y="250" width="600" height="86" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="58" y="272" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">③ 消费</text>
+<text x="58" y="294" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">已投给消费者但没处理完：消费者提前 ack 然后自己崩了 → 消息永久消失且没人报错</text>
+<text x="58" y="314" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">兜住 → 处理完再 ack（绝不能收到就 ack）；失败三档兜底：重试 → 重试队列 → 死信队列</text>
+<text x="58" y="330" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">　　　 Kafka 是「提交 offset」进度条模式；RabbitMQ / RocketMQ 是逐条确认的单据签收模式</text>
+
+<rect x="40" y="348" width="600" height="40" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="362" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">不丢 = 三道确认 + 一个门槛（三个参数一起给，缺一个就有一个漏口）：</text>
+<text x="58" y="378" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">rf=3 + min.insync.replicas=2 → 坏 1 台还能写、坏 2 台拒写（用不可用换不丢）；unclean=false → 不从落后副本选主</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>"消息会丢"只能发生在三个位置，没有第四个</strong>：</p>
+<table class="mv-table"><thead><tr><th>段</th><th>消息在哪</th><th>会怎么丢</th><th>靠什么兜住</th></tr></thead><tbody><tr><td><strong>① 发送</strong></td><td>还在生产者内存/网络里</td><td>发出去了但 Broker 没收到，生产者以为成功</td><td><strong>生产端确认</strong>（Broker 回 ack 才算成功）</td></tr><tr><td><strong>② 存储</strong></td><td>在 Broker 的页缓存里</td><td>Broker 进程/机器挂了，内存里的消息没了</td><td><strong>持久化 + 多副本</strong></td></tr><tr><td><strong>③ 消费</strong></td><td>已投给消费者但没处理完</td><td>消费者提前确认，然后自己崩了</td><td><strong>消费端确认</strong>（处理完再 ack）</td></tr></tbody></table>
+<p class="mv-md-p"><strong>记法：三段各有一道确认（生产确认 / 副本确认 / 消费确认），少一道就有一个漏口。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.1 第一段：发送——"Broker 说收到了才算收到"【事实】</h4>
+<p class="mv-md-p"><strong>确认（ack）</strong> 指的是 Broker 在什么条件下告诉生产者"这条我收下了"。以 Kafka 的 <code class="mv-md-code">acks</code> 为例，三个档位是递进的：</p>
+<table class="mv-table"><thead><tr><th>档位</th><th>Broker 何时回 ack</th><th>什么时候会丢</th></tr></thead><tbody><tr><td><code class="mv-md-code">acks=0</code></td><td><strong>不回</strong>，发出去就当成功</td><td>Broker 没收到/挂了，你完全不知道</td></tr><tr><td><code class="mv-md-code">acks=1</code></td><td><strong>Leader 写进自己的本地日志</strong>就回</td><td>Leader 刚回完 ack 就宕机，而 Follower 还没同步</td></tr><tr><td><code class="mv-md-code">acks=all</code>（=−1）</td><td><strong>所有在 ISR 里的副本都收到了</strong>才回</td><td>只要 ISR 里还剩一个活着，就不丢</td></tr></tbody></table>
+<p class="mv-md-p">【纠错】<strong>这里有一个流传极广的错说法</strong>：<code class="mv-md-code">acks=all</code> 常被讲成"所有副本都收到"。<strong>官方 Design 文档明确写的是"当前所有 in-sync replica 都收到"</strong>——如果一个 Topic 配了 2 副本、其中 1 个已经挂了（ISR 只剩 1 个），<strong><code class="mv-md-code">acks=all</code> 的写依然会成功</strong>，这时如果剩下的那个再挂，这条消息就丢了。</p>
+<p class="mv-md-p"><strong>所以 <code class="mv-md-code">acks=all</code> 单独用是不够的</strong>，它必须配一个"最少几个副本才算数"的门槛——这就是 <code class="mv-md-code">min.insync.replicas</code> 的用途（下一节量化）。</p>
+<p class="mv-md-p">【事实】还有一个反直觉的点：<strong>Kafka 3.0 起 <code class="mv-md-code">acks</code> 的默认值已经是 <code class="mv-md-code">all</code></strong>（因为幂等生产者默认开启，而幂等要求 <code class="mv-md-code">acks=all</code>）；老版本默认是 <code class="mv-md-code">1</code>。所以"默认 acks=1、要改成 all"这个说法<strong>在现在的 Kafka 上已经过期了</strong>，但很多资料还在讲。</p>
+<h4 class="mv-md-h mv-md-h4">2.2 第二段：存储——有两种"落盘"，别混为一谈【事实】</h4>
+<p class="mv-md-p">Broker 侧要扛住的是"进程/机器挂了，内存里的消息没了"。两个手段：</p>
+<p class="mv-md-p"><strong>（a）持久化</strong>：把消息写到磁盘，重启后能从磁盘恢复。代价是写磁盘比写内存慢，所以是否开启、什么时候刷盘，是可配的取舍。</p>
+<p class="mv-md-p"><strong>（b）多副本</strong>：同一条消息存在多台 Broker 上，一台挂了还有别的。上面的 <code class="mv-md-code">acks</code> / <code class="mv-md-code">min.insync.replicas</code> / <code class="mv-md-code">replication.factor</code> 全是在调这一项。</p>
+<p class="mv-md-p"><strong>RabbitMQ 的持久化要特别注意：它是两个开关，不是一个。</strong> 这是高频追问点：</p>
+<table class="mv-table"><thead><tr><th>开关</th><th>存的是什么</th><th>不设会怎样</th></tr></thead><tbody><tr><td><strong>队列持久化</strong>（<code class="mv-md-code">durable=true</code>）</td><td>队列的<strong>元数据</strong>（名字、绑定、参数）</td><td>重启后<strong>队列整个消失</strong>，消息想恢复也没有容器装</td></tr><tr><td><strong>消息持久化</strong>（<code class="mv-md-code">deliveryMode=persistent</code>）</td><td>队列里<strong>每条消息的内容</strong></td><td>重启后<strong>队列还在但里面是空的</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>两者必须同时设置</strong>：一个是"容器"，一个是"内容"。但即使都设了也不是 100% 安全——消息先写进操作系统的页缓存，再由内核异步刷盘，<strong>这个窗口里断电仍然会丢</strong>。要做到极致可靠，得配合发布者确认（publisher confirm），即 <strong>Broker 确认已经真正落盘/复制成功后才回 ack 给生产者</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 第三段：消费——ack 的时机是唯一要紧的事【推导】</h4>
+<p class="mv-md-p"><strong>核心原则一句话：处理完业务逻辑之后才 ack，绝不能收到就 ack。</strong></p>
+<p class="mv-md-p">理由用反证最清楚：收到就 ack，等于告诉 Broker"这条我负责了"，而你的业务代码还没跑。<strong>这时候你崩了，Broker 认为消息已经处理完毕，不会重投——消息就永久丢了</strong>，而且<strong>没有任何地方会报警</strong>，因为从系统视角看一切正常。</p>
+<p class="mv-md-p">【事实】各家的 ack 形态不同，但语义相同：</p>
+<ul class="mv-md-ul"><li><strong>Kafka</strong>：提交 offset（"我已经消费到第 N 条了"）。消费者自己拉、自己记进度。</li><li><strong>RabbitMQ / RocketMQ</strong>：单据签收。消费者对<strong>每条消息</strong>明确回"成功"或"稍后重试"（<code class="mv-md-code">CONSUME_SUCCESS</code> / <code class="mv-md-code">RECONSUME_LATER</code>），返回失败的消息自动进重试队列。</li></ul>
+<p class="mv-md-p"><strong>消费反复失败怎么办</strong>——这是"不丢"的最后一道兜底，三档递进：</p>
+<pre class="mv-md-pre">第一次失败 → 等一会儿重试（可能是临时网络抖动）
+重试若干次仍失败 → 进重试队列（RocketMQ 并发消费默认最多 16 次，随后进死信队列）
+再失败 → 进死信队列，人工/告警兜底（绝不静默丢弃）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：如果只让你改一处代码来防丢消息，你改哪里？为什么？</p>
+<h3 class="mv-md-h mv-md-h3">3. 量化：把确认加严到哪一档算出来</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 先定义两个量【事实】</h4>
+<ul class="mv-md-ul"><li><strong><code class="mv-md-code">replication.factor</code>（副本数）</strong>：一个分区一共存几份</li><li><strong><code class="mv-md-code">min.insync.replicas</code>（最小同步副本数）</strong>：<strong>只有当 ISR 里的副本数 ≥ 这个值时，<code class="mv-md-code">acks=all</code> 的写才被接受</strong>；低于这个值时，Broker 直接拒绝写入并报 <code class="mv-md-code">NotEnoughReplicas</code></li></ul>
+<p class="mv-md-p"><strong>注意 <code class="mv-md-code">min.insync.replicas</code> 只在 <code class="mv-md-code">acks=all</code> 时生效</strong>（官方原话：*this setting only takes effect if the producer uses acks=all*）。配了 <code class="mv-md-code">acks=1</code> 就是白配——这是第二个高频错点。</p>
+<h4 class="mv-md-h mv-md-h4">3.2 主线判据：能同时坏几台【推导】</h4>
+<p class="mv-md-p">设 <code class="mv-md-code">replication.factor = 3</code>、<code class="mv-md-code">min.insync.replicas = 2</code>（生产上的常见组合），问：<strong>同时坏几台机器还能写，坏到什么程度开始拒绝写？</strong></p>
+<pre class="mv-md-pre">① 坏 1 台：ISR 从 3 降到 2
+   2 ≥ min.insync.replicas(2) → 写入正常接受
+   而且 ISR 里的副本数据是全的 → 不丢
+
+② 坏 2 台：ISR 从 2 降到 1
+   1 &lt; min.insync.replicas(2) → 写入被拒绝（NotEnoughReplicas）
+   ★ 拒绝写入 = 用"不可用"换"不丢数据"</pre>
+<p class="mv-md-p">【推导】<strong>这两条就是 <code class="mv-md-code">min.insync.replicas</code> 的全部意义</strong>：</p>
+<ul class="mv-md-ul"><li>它设成 <strong>1</strong>（默认值）→ 单副本也能写，可用性最高，但<strong>副本挂到只剩一个时仍在接受写，那一个再挂就丢数据</strong></li><li>它设成 <strong>2</strong> → 少一台就拒绝写，<strong>牺牲可用性换"已确认的消息绝不丢"</strong></li></ul>
+<h4 class="mv-md-h mv-md-h4">3.3 为什么必须 <code class="mv-md-code">replication.factor &gt; min.insync.replicas</code>【推导】</h4>
+<p class="mv-md-p">假设两者<strong>相等</strong>（都是 3）：</p>
+<pre class="mv-md-pre">坏 1 台 → ISR = 2 &lt; 3 → 立刻拒绝写入</pre>
+<p class="mv-md-p"><strong>也就是说只要有一台机器故障，整个分区就写不进去了</strong>——这不是高可用，是"零容忍"。所以配置上的关系必须是：</p>
+<pre class="mv-md-pre">replication.factor &gt; min.insync.replicas   （推荐 replication.factor = min.insync.replicas + 1）</pre>
+<h4 class="mv-md-h mv-md-h4">3.4 那"坏了就拒绝写"算不算丢数据？【推导】</h4>
+<p class="mv-md-p"><strong>不算，但要分清两件事：</strong></p>
+<table class="mv-table"><thead><tr><th>现象</th><th>性质</th><th>后果</th></tr></thead><tbody><tr><td>写入被拒绝（<code class="mv-md-code">NotEnoughReplicas</code>）</td><td><strong>可用性损失</strong></td><td>消息根本没发出去，生产者收到异常，<strong>可以重发</strong>——数据没丢</td></tr><tr><td>消息 ack 之后随 Leader 一起消失</td><td><strong>数据丢失</strong></td><td>不可挽回</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>"不丢"的定义是：生产者收到成功 ack 的消息，永远不会消失。</strong> 所以线上看到"MQ 写入报错"，<strong>第一反应应该是"它在保护数据"，而不是"MQ 坏了"</strong>——这个判断方向反了，排查就会走歪。</p>
+<h4 class="mv-md-h mv-md-h4">3.5 加上选举策略：不干净的选主才是最后一道漏口【事实】</h4>
+<p class="mv-md-p">Leader 挂了要从副本里选新 Leader。Kafka 的策略由 <code class="mv-md-code">unclean.leader.election.enable</code> 控制：</p>
+<ul class="mv-md-ul"><li><strong><code class="mv-md-code">false</code>（0.11.0 之后是默认值）</strong>：<strong>只从 ISR 里选</strong>。ISR 里的副本数据是全的 → 选了也不丢；代价是如果 ISR 全挂光，这个分区<strong>一直不可用，直到原来的 Leader 回来</strong></li><li><strong><code class="mv-md-code">true</code></strong>：允许把<strong>不在 ISR 里</strong>的副本选成 Leader。好处是立刻恢复服务，<strong>代价是没同步上的那部分消息永久消失</strong></li></ul>
+<p class="mv-md-p">【取舍】<strong>这就是经典的"可用性 vs 一致性"二选一</strong>，官方 Design 文档把它讲得很直白：*If, on the other hand, a non-in-sync replica comes back to life and we allow it to become leader, then its log becomes the source of truth even though it is not guaranteed to have every committed message.*</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：<code class="mv-md-code">acks=all</code> + <code class="mv-md-code">min.insync.replicas=2</code> + <code class="mv-md-code">unclean.leader.election.enable=false</code> 这三件事分别在挡什么？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"<code class="mv-md-code">acks=all</code> 是所有副本都收到"</td><td>【事实】<strong>是所有在 ISR 里的副本</strong>。ISR 只剩一个时 <code class="mv-md-code">acks=all</code> 照样成功（官方 Design 原文），所以必须配 <code class="mv-md-code">min.insync.replicas</code></td></tr><tr><td>"acks 默认是 1"</td><td>【事实】那是旧版本。<strong>Kafka 3.0 起默认已是 <code class="mv-md-code">all</code></strong>（因为幂等生产者默认开启，而幂等要求 <code class="mv-md-code">acks=all</code>）</td></tr><tr><td>"配了 <code class="mv-md-code">min.insync.replicas</code> 就安全了"</td><td>【事实】<strong>它只在 <code class="mv-md-code">acks=all</code> 时生效</strong>。配了 <code class="mv-md-code">acks=1</code> 的话它一点作用都没有</td></tr><tr><td>"持久化配了就一定不丢"</td><td>【推导】持久化有"写进页缓存 → 异步刷盘"的窗口，<strong>这窗口里断电仍会丢</strong>；PB 级可靠性要靠复制确认（publisher confirm / acks=all），而不是靠"开了持久化"</td></tr><tr><td>"消费者收到消息就该立刻 ack，免得重复"</td><td>【推导】<strong>这是主动制造丢消息</strong>。提前 ack 后进程崩溃 → 消息永久消失且无人报警。<strong>正确顺序永远是"处理成功 → 再 ack"</strong></td></tr><tr><td>"消息丢了加个重试就行"</td><td>【取舍】重试只解决<strong>第三段</strong>（消费失败）。发送段和存储段的丢消息，重试根本触及不到——<strong>先定位在哪一段丢，再谈手段</strong></td></tr><tr><td>"MQ 报写入失败就是 MQ 出问题了"</td><td>【推导】大概率是<strong>它在用不可用换不丢数据</strong>（ISR 不足）。判断方向反了，会把"保护机制生效"误诊为"故障"</td></tr><tr><td>"上 MQ 一定比数据库任务表可靠"</td><td>【取舍】错，方向反了。<strong>引入 MQ 立刻要付三笔代价（可用性 / 复杂度 / 一致性）</strong>，收益在吞吐与解耦。EnergyOps 明确不上 MQ 就是这个账</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢-q1" tag="消息队列" q="某 Topic 配 replication.factor = 3、min.insync.replicas = 2、生产者 acks = all、unclean.leader.election.enable = false。&#10;问：① 同时坏几台 Broker 还能继续写入？② 坏几台会出现&quot;已 ack 的消息丢失&quot;？③ 如果把 min.insync.replicas 改成 1，上面两个答案怎么变？" a="场景 · ISR 大小 · 能否写入 · 会不会丢已确认消息&#10;坏 0 台 · 3 · ✅ · 不会&#10;坏 1 台 · 2 · ✅（2 ≥ 2） · 不会（ISR 内数据是全的）&#10;坏 2 台 · 1 · ❌ 拒绝写（1 &lt; 2） · 不会（要么拒写，要么从 ISR 选主）&#10;坏 3 台 · 0 · ❌ · 不会，但分区一直不可用，直到原 Leader 回来&#10;① 最多坏 1 台还能写&#10;② 坏到 2 台及以后都不会丢——因为 min.insync.replicas 挡住了&quot;副本不足时的写入&quot;，而 unclean=false 挡住了&quot;从落后副本选主&quot;。这两个参数一起构成了&quot;不丢&quot;的完整闭环&#10;③ 改成 1 之后：坏 2 台仍能写（ISR=1 ≥ 1），这时最后一个副本再挂，已经 ack 的消息就丢了。也就是可用性变好、不丢的保证没了——这正是 min.insync.replicas 默认值是 1 但生产上不推荐用默认值的原因&#10;【这一步在验证什么】验证&quot;不丢&quot;是两个参数合起来实现的，不是 acks=all 一个参数的事。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢-q2" tag="消息队列" q="消费者用 enable.auto.commit=true（默认），auto.commit.interval.ms=5000。某次 poll() 拉到 100 条（offset 100–199），处理每条要 50ms。&#10;问：① 如果消费者在第 60 条处理到一半时进程崩溃，最多丢多少条？为什么？② 换成&quot;处理完整批再手动提交&quot;，崩溃时的表现是什么？" a="① 首先算这批要处理多久：100 × 50ms = 5000ms，刚好等于自动提交间隔。&#10;自动提交是定时器，跟你的处理进度完全无关。它每 5 秒把&quot;最后一次 poll() 返回的位置&quot;提交上去（即 offset 200）。所以在第 5 秒那一瞬间：&#10;``&#10;已提交：offset 200（= 100~199 全部&quot;已处理&quot;）&#10;实际处理到：第 60 条&#10;崩溃 → 重启从 offset 200 开始拉&#10;→ 第 61~100 条（40 条）永远不会被处理，且没有任何人知道&#10;``&#10;丢 40 条，而且是最危险的那种丢：静默丢失，监控上 lag 还是 0。&#10;② 换成手动提交后，崩溃时 offset 还停在 100，重启会把 100–199 重新拉一遍 → 不丢，但会重复。&#10;【这一步在验证什么】验证 1.2 的结论：auto-commit 的语义是&quot;模糊的&quot;——它既可能丢（提交跑在处理前面），也可能重（提交落后于处理），取决于崩溃点。要确定语义，就得把提交时机和业务处理绑死；而一旦绑死到&quot;处理后再提交&quot;，语义就变成至少一次——重复是&quot;不丢&quot;的代价，这是绕不过去的交换（[[母题-Q2-重复与乱序]]）。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢-q3" tag="消息队列" q="Broker 里同时坏掉 2 台（replication.factor = 3、min.insync.replicas = 2）。生产者的写请求会发生什么？会不会有消息被静默丢弃？运维此时应该做什么？" a="``&#10;坏 2 台 → ISR 从 3 降到 1&#10;1 &lt; min.insync.replicas(2)&#10;→ Broker 对 acks=all 的写请求返回 NotEnoughReplicas 异常&#10;→ 生产者收到异常，消息【没有被接受】&#10;`&#10;不会有消息被静默丢弃。 这是关键：NotEnoughReplicas 是一个明确的错误返回，不是静默失败——生产者能感知，可以进重试、进本地缓冲区、或明确失败上报。&#10;运维此时的动作顺序：&#10;1. 先判断这是保护还是故障：拒绝写说明配置在正确地保护数据（3.4 节），不要急着把 min.insync.replicas 改成 1 来&quot;恢复写入&quot;——那等于把&quot;不可用&quot;换成&quot;可能丢数据&quot;，是把数据安全问题降级成可用性问题&#10;2. 恢复副本：把挂掉的 Broker 拉回来，等 ISR 恢复&#10;3. 如果短时间恢复不了且业务不能停：这才需要显式决策——是接受 acks=1（丢数据的风险）还是继续不可用。这是一个必须由人签字的决定，不能由运维顺手改掉&#10;【这一步在验证什么】验证 3.4 的判据：&quot;不可用&quot;和&quot;丢数据&quot;是两种性质不同的故障，修复动作完全不同。 把前者当后者处理（改小 min.insync.replicas`）会把小事故变成大事故。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢-q4" tag="消息队列" q="下面这段话哪里错了？&#10;&quot;消息不丢很简单：把 acks 设成 all 就行了，这样所有副本都收到才确认，绝对丢不了。默认 acks 是 1，记得改成 all。&quot;" a="三处都错。&#10;1. &quot;所有副本都收到&quot;错了。acks=all 的含义是所有在 ISR（同步副本集合）里的副本都收到。官方 Design 文档说得很清楚：*By default, when acks=all, acknowledgement happens as soon as all the current in-sync replicas have received the message*，而且明确举了反例——一个 2 副本的 Topic 挂掉 1 个（ISR 只剩 1 个）时，acks=all 的写依然成功，而这些写在那个副本也挂掉时会丢。&#10;2. &quot;设成 all 就绝对丢不了&quot;错了。acks=all 单独用挡不住&quot;ISR 缩到 1 时仍然接受写&quot;。要补上门槛必须再配 min.insync.replicas ≥ 2（它只在 acks=all 下生效）——这样 ISR &lt; 2 时直接拒绝写，把&quot;可能丢&quot;变成&quot;明确不可用&quot;。&#10;3. &quot;默认 acks 是 1&quot;过期了。Kafka 3.0 起 acks 默认值就是 all——因为幂等生产者默认开启，而幂等要求 acks=all。老资料讲默认 1 是没错的，但现在照抄会显得没跟进版本。&#10;准确说法：*不丢要三个参数一起给——acks=all（等 ISR 全部确认）+ min.insync.replicas≥2（ISR 不足就拒写）+ unclean.leader.election.enable=false（不从落后副本选主）。它们分别挡的是&quot;Leader 单点&quot;、&quot;ISR 缩水后继续写&quot;、&quot;选到数据不全的新 Leader&quot;这三个不同的漏口。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢-q5" tag="消息队列" q="下面这段话哪里错了？&#10;&quot;下游收到的消息有重复，这是 MQ 的 bug，换成 Kafka（或换个队列）就好了。&quot;" a="&quot;这是 bug&quot;和&quot;换个 MQ 就好了&quot;两处都错。&#10;&quot;重复&quot;不是缺陷，是所有 MQ 的必然结果。 原因是结构性的（第 1.2 节）：&#10;``&#10;&quot;处理消息&quot;和&quot;记录处理进度&quot;是两次独立操作，中间崩溃必有一件事没做成：&#10;进度先记了 → 不重投 → 丢了（Q2 算的 40 条）&#10;业务先做完 → 进度没记 → 重投 → 重复&#10;`&#10;要同时杜绝两者，需要 MQ 和业务数据库做分布式事务——代价高到没人付。所以所有主流 MQ 的一致选择都是：框架保证至少一次（宁重勿丢），去重交给业务层。换任何一个 MQ 都不改变这个前提。&#10;正确的处理方向是两条，不是一条：&#10;方向 · 做什么&#10;把重复变成无害（首选） · 业务层做幂等：用稳定的业务幂等键（订单号 / 业务主键，不是消息 ID、不是 ToolCallID）在数据库唯一约束或 Redis 里查重&#10;减少重复的量（辅助） · 调提交时机、缩小批次，让重复窗口变小——但这只是降低概率，不是消除&#10;RuleArena 就是这么做的：系统接受 Redis/ARQ 队列的至少一次投递和 Worker 随时崩溃，靠&quot;稳定幂等键 + 唯一约束 + 权威状态查询&quot;保证业务副作用只生效一次（projects/RuleArena/04-idempotency-and-recovery.md` §9）。它连 key 都不能拿 ToolCallID——那东西每次调用都变，重试时对不上。&#10;准确说法：*重复消费是&quot;至少一次投递&quot;的必然代价，不是 bug。正确的问法不是&quot;怎么让它不重&quot;，而是&quot;重了会怎样、我的幂等键是什么&quot;。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">一条消息从生产到生效，中间哪几段可能丢、每段靠什么兜住，加严到哪一档最划算？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢" tag="消息队列" q="一条消息从生产到生效，中间哪几段可能丢、每段靠什么兜住，加严到哪一档最划算？" a="消息只可能在三段丢——发送、存储、消费，每段各有一道确认：生产端等 Broker 确认（acks）、Broker 端持久化 + 多副本、消费端处理完再 ack。不丢不是一个参数能搞定的，要三个一起给：acks=all（等 ISR 全部确认）+ min.insync.replicas≥2（ISR 不足就拒绝写，把&quot;可能丢&quot;换成&quot;明确不可用&quot;）+ unclean.leader.election.enable=false（不从落后副本选主）。而且必须接受一个前提：跨进程通信没有&quot;恰好一次&quot;，框架只保证至少一次——所以&quot;不丢&quot;的准确定义是&quot;生产者收到成功 ack 的消息永不消失&quot;，重复是它的代价，由业务幂等吃掉。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">消息只可能在<strong>三段</strong>丢——发送、存储、消费，<strong>每段各有一道确认</strong>：生产端等 Broker 确认（<code class="mv-md-code">acks</code>）、Broker 端持久化 + 多副本、消费端<strong>处理完再 ack</strong>。不丢不是一个参数能搞定的，要三个一起给：<strong><code class="mv-md-code">acks=all</code>（等 ISR 全部确认）+ <code class="mv-md-code">min.insync.replicas≥2</code>（ISR 不足就拒绝写，把"可能丢"换成"明确不可用"）+ <code class="mv-md-code">unclean.leader.election.enable=false</code>（不从落后副本选主）</strong>。而且必须接受一个前提：<strong>跨进程通信没有"恰好一次"，框架只保证至少一次</strong>——所以"不丢"的准确定义是"<strong>生产者收到成功 ack 的消息永不消失</strong>"，重复是它的代价，由业务幂等吃掉。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li>三段接力</li><li>每段一道确认</li><li>`acks=0</li><li>1</li><li>all`</li><li><strong>all = 所有 ISR 副本</strong>（不是所有副本）</li><li><code class="mv-md-code">min.insync.replicas</code> 只在 acks=all 时生效</li><li><code class="mv-md-code">replication.factor &gt; min.insync.replicas</code></li><li><code class="mv-md-code">unclean=false</code> 只从 ISR 选主</li><li>持久化 vs 多副本是两个手段</li><li>RabbitMQ 队列持久化 ≠ 消息持久化</li><li><strong>处理完再 ack</strong></li><li>重试→重试队列→死信队列</li><li><strong>至少一次 + 幂等 = 恰好一次的效果</strong></li><li>拒写是保护不是故障</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 515 字 · 按 4 字/秒折算约 129 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">消息只可能在<strong>三段</strong>丢——发送、存储、消费，<strong>每段各有一道确认</strong>：生产端等 Broker 确认（<code class="mv-md-code">acks</code>）、Broker 端持久化 + 多副本、消费端<strong>处理完再 ack</strong>。</p>
+<p class="mv-md-p">不丢不是一个参数能搞定的，要<strong>三个一起给</strong>：<strong><code class="mv-md-code">acks=all</code>（等 ISR 全部确认）+ <code class="mv-md-code">min.insync.replicas ≥ 2</code>（ISR 不足就拒绝写，把"可能丢"换成"明确不可用"）+ 禁止从落后副本选主</strong>。因为 <strong><code class="mv-md-code">acks=all</code> 单独不保证不丢</strong>——它指的是 ISR 里的副本，ISR 缩到 1 时照样接受写。</p>
+<p class="mv-md-p">两个必须说清的语义：① <strong>"不丢"的准确定义是"生产者收到成功 ack 的消息永不消失"</strong>，不是"消息一定被处理一次"——<strong>跨进程通信没有"恰好一次"，框架只保证至少一次</strong>，重复是它的代价，由业务幂等吃掉；② <strong>不能"收到消息就 ack"</strong>，那是主动制造丢消息：提前 ack 后崩溃，Broker 认为已处理完不会再投，消息永久消失且无任何报警。</p>
+<p class="mv-md-p">消费失败三档兜底：<strong>重试（限次 + 退避）→ 重试队列（RocketMQ 并发消费默认 16 次）→ 死信队列</strong>；死信队列的意义是"<strong>绝不静默丢弃</strong>"。本地事务和发消息的一致性本质是"两个系统没法放进一个本地事务"，三条路线：<strong>事务消息 / 本地消息表 / Outbox</strong>（EnergyOps 用的是 Outbox）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：三段各一道确认；不丢要三个参数一起给；框架只保证至少一次。</li><li><strong>推导链</strong>：三段 → 各段确认 → acks=all 的漏洞（ISR 缩到 1）→ 用 min.insync.replicas 闭环 → 重复的代价交给幂等 → 失败三档兜底 → Outbox 解决跨系统事务。</li><li><strong>量化</strong>：<code class="mv-md-code">acks</code> 三档（0/1/all）；<code class="mv-md-code">min.insync.replicas ≥ 2</code>；RocketMQ 默认重试 16 次。</li><li><strong>边界与常见误解</strong>："acks=all 就保证不丢"×；"收到就 ack"会永久丢消息且无报警；持久化开着不等于不会丢（还有异步复制与误操作）。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | Kafka | RabbitMQ | RocketMQ | |---|---|---|---| | 生产端确认 | <code class="mv-md-code">acks=0/1/all</code>（基于副本） | publisher confirm | 同步/异步刷盘、同步/异步复制 | | 消费端确认 | <strong>提交 offset</strong>（进度条模式） | 逐条 ack | 逐条返回 <code class="mv-md-code">CONSUME_SUCCESS</code> / <code class="mv-md-code">RECONSUME_LATER</code>（单据签收模式） | | 副本集合 | <strong>ISR</strong> | （4.0 起）quorum queue 的多数派 | Broker 级主从 / DLedger | | 重试兜底 | 原生没有单条重试，要业务自己写 | 死信队列（DLX） | 重试队列 → 死信队列（最多 16 次） |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">acks=all</code> 就保证不丢了吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不保证</strong>。它是"所有 <strong>ISR 里</strong>的副本"，ISR 缩到 1 时照样接受写。<strong>必须配 <code class="mv-md-code">min.insync.replicas≥2</code> 才闭环</strong>（这也是 <code class="mv-md-code">min.insync.replicas</code> 默认 1 却不推荐用默认值的原因）。</p>
+<p class="mv-md-p"><strong>2. <strong>本地事务和发消息怎么保持一致？</strong></strong></p>
+<p class="mv-md-p">本质是"两个系统没法放进一个本地事务"。三条路线：<strong>事务消息</strong>（RocketMQ 半消息 + Broker 回查）、<strong>本地消息表</strong>、<strong>Outbox</strong>（业务表与待发消息同事务落库，再由 Worker 投递）。<strong>EnergyOps 用的就是 Outbox</strong>（Alarm 与 Notification Outbox 同事务）；RuleArena 明确"当前不提前引入 Kafka/Outbox"，升级条件是出现真实的跨服务事件投递需求。</p>
+<p class="mv-md-p"><strong>3. <strong>消费失败反复重试还是失败怎么办？</strong></strong></p>
+<p class="mv-md-p">三档兜底：重试 → 重试队列（RocketMQ 并发消费默认 16 次）→ <strong>死信队列</strong>。<strong>死信队列的意义是"绝不静默丢弃"</strong>，最后一定有人/有告警能看到。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么不能"收到消息就 ack"？</strong></strong></p>
+<p class="mv-md-p">那就是<strong>主动制造丢消息</strong>：提前 ack 后崩溃，Broker 认为已处理完不会再投，<strong>消息永久消失且无任何报警</strong>。正确顺序永远是"处理成功 → ack"。</p>
+<p class="mv-md-p"><strong>5. <strong>消息发送超时了能不能直接重试？</strong></strong></p>
+<p class="mv-md-p"><strong>不能直接重试</strong>。超时表示<strong>结果未知</strong>，不代表失败——下游可能已经收到了。正确动作是<strong>用同一幂等键重试</strong>或<strong>先查外部权威状态</strong>（这条在 EnergyOps 里是原话：超时标记 <code class="mv-md-code">result_unknown</code>，先查或用同键重试）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「Push 还是 Pull？」——Kafka 选 <strong>Pull</strong>（消费者自己控制节奏、能批量、能重放），RabbitMQ 默认 <strong>Push</strong>（低延迟）；<strong>判断依据是"消费速率该由谁控制"</strong></li><li>「Kafka 为什么快？」——顺序写 + 批量 + 压缩 + <strong>零拷贝（sendfile）</strong>；零拷贝的内核原理见 [[母题-O3-IO模型与零拷贝]]（<strong>同一个知识点在不同模块出现，是本卡与 OS 模块的交叉点</strong>）</li><li>「生产者要按顺序、又要不丢，怎么配？」——<code class="mv-md-code">acks=all</code> + <code class="mv-md-code">enable.idempotence=true</code>（3.0 起默认开）+ <code class="mv-md-code">max.in.flight.requests.per.connection ≤ 5</code>；<strong>细节与"顺序"一并归 [[母题-Q2-重复与乱序]]</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>RuleArena</strong>——Redis/ARQ 的至少一次投递 + 稳定幂等键 + 权威状态查询，是"消费段"结论的真实落地；<strong>EnergyOps</strong>——Alarm 与 Notification Outbox 同事务，是"发送段"结论在没有 MQ 时的替代路线；<strong>数驭穹图</strong>——查询超预算转异步时，<strong>"任务入队成功但执行丢失"是必须先回答的问题</strong>，答案同样落在"发送段的确认"上。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先讲 MQ 换到什么和三笔代价（顺带说明"什么时候不该上"）→ 给出核心前提"没有恰好一次，只有至少一次" → 三段接力表（每段丢法 + 兜法）→ 逐段展开（acks 三档 / 持久化与多副本 / ack 时机）→ 量化"能坏几台"（ISR 算术 + 两个参数的分工）→ 选举策略的可用性 vs 一致性 → 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>"不丢"是"三道确认 + 一个门槛"的组合，而不是某一项配置的功劳。</strong> 三道确认各自挡住一个位置（网络、磁盘/机器、消费者进程），门槛（<code class="mv-md-code">min.insync.replicas</code> + <code class="mv-md-code">unclean=false</code>）挡住的是"副本已经不全了还在假装正常"。<strong>这三者的共同方向是：宁可明确拒绝服务，也不假装成功。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能闭卷讲清"三段 + 每段一道确认"；能用 ISR 算术算出"能坏几台"并说清 <code class="mv-md-code">min.insync.replicas</code> 与 <code class="mv-md-code">unclean</code> 各自挡什么；能说清"没有恰好一次，只有至少一次"这个前提；<strong>且自测 5 题全对</strong>（尤其 Q4 的三处纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

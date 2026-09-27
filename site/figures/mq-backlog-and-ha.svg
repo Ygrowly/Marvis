@@ -1,0 +1,29 @@
+<svg viewBox="0 0 680 396" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>积压的减法与高可用的三板斧</title>
+<desc>上：净消解速率等于有效消费减生产，而消费能力上限等于分区数乘单消费者速率；下：多副本、自动选主、路由感知三层递进。</desc>
+<defs>
+<marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">积压是一个减法，而消费能力有天花板</text>
+
+<rect x="40" y="46" width="600" height="150" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">净消解速率 ＝ 有效消费速率 − 生产速率（要 &gt; 0 才会降）</text>
+<text x="58" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">有效消费速率 ＝ min( 消费者数 , 分区数 ) × 单消费者速率　← 天花板在 min 里</text>
+<text x="58" y="114" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">例：积压 1000 万条，生产 2000 条/秒，单消费者 500 条/秒，分区 10 个，消费者 20 个</text>
+<text x="58" y="134" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">　　有效消费 ＝ 10 × 500 ＝ 5000 条/秒（另 10 个消费者分不到分区，全空闲）</text>
+<text x="58" y="154" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">　　净消解 ＝ 5000 − 2000 ＝ 3000 条/秒　→　清空 ＝ 1000 万 ÷ 3000 ≈ 3333 秒 ≈ 55 分钟</text>
+<text x="58" y="176" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">分区 10 → 40、消费者 → 40：净消解 18000 条/秒 → 清空约 9 分钟（代价：数据迁移、Key 分布会变）</text>
+
+<rect x="40" y="208" width="600" height="88" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="58" y="230" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">高可用三板斧 —— 递进关系，缺一层都等于没有</text>
+<text x="58" y="252" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">① 数据有备份：多副本（Kafka Partition 副本 / quorum queue / Broker 主从）</text>
+<text x="58" y="270" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">② 挂了能自动切：选举 + 故障转移（controller / DLedger / Raft）</text>
+<text x="58" y="288" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">③ 客户端知道切到哪了：路由感知（KRaft 元数据 / NameServer）</text>
+
+<rect x="40" y="308" width="600" height="74" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="328" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">但「MQ 永不挂」是伪目标 —— 兜底是让「MQ 不可用」成为被设计过的状态：</text>
+<text x="58" y="346" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">降级（非核心丢弃）· 本地缓冲 / Outbox（EnergyOps）· 幂等补发 · 可观测（lag 与 ISR 缩小）</text>
+<text x="58" y="366" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">RuleArena：PostgreSQL 存权威状态，队列可丢可重投 —— 业务正确性不落在队列上</text>
+</svg>

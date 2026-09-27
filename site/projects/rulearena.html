@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RuleArena · 项目口述</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 今日</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">项目口述 · 90 秒骨架 → 决策链</span>
+    <h1 class="mv-topic-title">RuleArena</h1>
+    <p class="mv-topic-meta">规则资损对抗验证：干净重放 + 独立 Oracle，证明 Agent 没把钱搞错</p>
+  </div>
+
+  <p class="mv-note" style="margin-bottom:22px">
+    <strong>先讲</strong>——不看内容，按 90 秒把项目讲一遍；<strong>再对</strong>——展开下面每一块逐个核对，
+    漏掉的那句就是今天的断点。<br>
+    决策链同理：<strong>先看问题自己答</strong>，再展开标答比对自己漏了哪一层。<br>
+    正本在 md（<a href="obsidian://open?vault=Marvis&file=projects/RuleArena/01-project-mainline">用 Obsidian 打开</a>），本页是它的对照视图，内容由构建脚本抽取、不做改写。
+  </p>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="skel">90 秒骨架 <span class="mv-topic-meta">1 块 · 先讲再对</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      三档长度各有用处：<b>20 秒</b>用在「简单介绍一下项目」；<b>90 秒</b>是主场开场；
+      <b>5 分钟</b>是被追到系统层面时展开的骨架。练习的单位是这整块，不是里头的某一句。
+    </p>
+    <p class="mv-md-p">关键词：</p>
+<pre class="mv-md-pre">Agent 动钱但没人能证明它没做错
+→ 单元测试只覆盖已知 / LLM 只给猜测 / 故障注入不管资金
+→ 工具契约（闭集原语）
+→ 运行时门禁（前置拦 / 重试幂等 / 后置重读权威状态）
+→ Sandbox HTTP 重放
+→ 独立 Oracle
+→ 失败证据 + 1-minimal 反例
+→ 回归套件 + 双集消融（21 + 17）</pre>
+<collapse-panel title="标答（讲完再对）"><p class="mv-md-p">标答：</p>
+<p class="mv-md-p mv-md-quote">做 Agent 应用的人都会遇到一个问题：Agent 调了工具，但它不知道业务上到底成功没有——工具返回超时不代表失败，回 ACK 也不代表成功；而 Agent 自己说做完了，没人能验。我的项目就是解决这个。一条工单进来，Agent 读诉求、查订单、调工具处理；中间是运行时门禁：调用前做边界检查，重试时用幂等键和回执查询判断上次到底成没成，返回后重读权威状态而不信 ACK；最后独立 Oracle 从账本、快照、事件重算业务不变量——退款不能超过实付、积分要守恒、权益不能残留。评测是同一份 Agent 跑两次，一次裸跑、一次加门禁，比的是终态正确率和意外资损笔数。搜索能力那边我用 21 个开发集 + 17 个隐藏集做了四基线消融：历史上限已经超过确定性 BFS，但三次重复暴露 <code class="mv-md-code">pass^3</code> 只有 7%——<strong>搜索不可复现，这恰恰是为什么必须有独立的运行时门禁</strong>，门禁也因此如实拒绝放行。</p>
+<p class="mv-md-p">半开卷复述时只看上面的关键词，不逐字背诵。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">6 问 · 先看题自答，再展开标答</span></h2>
+    <p class="mv-note" style="margin-bottom:14px">
+      骨架过关后才走这一节：每一问先闭卷答，答不出来的就是下次复训要带的断点。
+    </p>
+    <collapse-panel title="Q1：为什么不让 LLM 直接审查规则？"><p class="mv-md-p">因为 LLM 能提出风险，但不能证明系统能执行该路径，也无法稳定判断资金和状态是否违规。RuleArena 让模型负责搜索，让真实 API 和确定性 Oracle 提供证明。</p></collapse-panel>
+<collapse-panel title="Q2：它和自动生成测试用例有什么区别？"><p class="mv-md-p">普通生成器输出测试文本或代码，RuleArena 维护可执行状态、动作空间、真实 API Replay、Oracle 和修复回归。重点不是生成多少用例，而是找到并确认一个此前未知的反例。</p></collapse-panel>
+<collapse-panel title="Q3：为什么不用生产系统？"><p class="mv-md-p">生产环境有真实副作用、隐私和风控风险，无法自由探索。MVP 使用独立 Sandbox 获得可控 Ground Truth；后续通过 TargetAdapter 接入开源系统或企业 Staging，而不是直接写生产。</p></collapse-panel>
+<collapse-panel title="Q4：为什么选择电商售后这个业务世界？"><p class="mv-md-p">不是「因为电商好做」，是<strong>因为它是「Agent 动钱」最典型、最容易讲清损失的地方</strong>：动作有限且可枚举、状态可查询、不变量可计算、损失可换算成金额。<strong>这三条正是外部接入的硬门槛</strong>——动作空间不可枚举、权威状态算不出守恒的系统，接进来也裁决不了。</p>
+<p class="mv-md-p">换句话说：<strong>电商售后不是项目的题材，是「可被证明」的最小业务世界。</strong> 换领域（SaaS 套餐退款、游戏付费道具、支付补偿）只要能满足同样的三条，机制整体可迁移。</p></collapse-panel>
+<collapse-panel title="Q5：系统能证明规则安全吗？"><p class="mv-md-p">不能。只能声明在固定版本、Scenario、seed 和预算内发现或未发现违规。搜索空间有边界，Agent 和测试集也有覆盖限制。</p></collapse-panel>
+<collapse-panel title="Q6：最有价值的输出是什么？"><p class="mv-md-p">经过干净 API 重放、Oracle 确认、连续复现并最小化的 Counterexample，以及修复后的回归结果。</p>
+<hr class="mv-md-hr"></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

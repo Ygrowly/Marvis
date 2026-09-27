@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="lEYJEreBJYFHQ4tlFvjl8E">
+<head data-page-node-id="QWS45GOG7728CZ9fXRJfxw">
+<meta charset="UTF-8" data-page-node-id="W7QRcQUxH6cOKHsCvP2DVN">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="UTzB8AP3zi2eDoFFt23u3C">
+<title>秋招投递台账 · 2027 届</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 72px;
+    background: #F7F7F5; color: #2C2C2A;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: #6B6B66; font-size: 13px; margin: 0 0 24px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 34px 0 12px; padding-left: 10px;
+       border-left: 3px solid #185FA5; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+  .card { background: #fff; border: 1px solid #E3E2DD; border-radius: 12px;
+          padding: 16px 18px; margin-bottom: 12px; }
+
+  .stat { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+  @media (max-width: 720px) { .stat { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  .stat div { background: #fff; border: 1px solid #E3E2DD; border-radius: 10px; padding: 12px 14px; }
+  .stat .k { font-size: 12px; color: #6B6B66; }
+  .stat .v { font-size: 22px; font-weight: 600; line-height: 1.25; }
+  .stat .v.blue { color: #185FA5; } .stat .v.red { color: #A32D2D; }
+  .stat .v.green { color: #1D9E75; } .stat .v.amber { color: #BA7517; }
+
+  .bar { height: 8px; background: #EDECE7; border-radius: 99px; overflow: hidden; margin: 4px 0 10px; }
+  .bar > i { display: block; height: 100%; background: #185FA5; width: 0; transition: width .25s; }
+
+  .rules { background: #FCEBEB; border: 1px solid #F7C1C1; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; }
+  .rules h3 { color: #791F1F; }
+  .rules ol { margin: 0; padding-left: 20px; }
+  .rules li { font-size: 13.5px; margin-bottom: 5px; }
+
+  .cal { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cal th, .cal td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #EDECE7; vertical-align: top; }
+  .cal th { font-size: 12px; color: #6B6B66; font-weight: 600; }
+  .cal td.d { white-space: nowrap; font-weight: 600; color: #A32D2D; width: 118px; }
+  .cal td.d.soft { color: #BA7517; }
+
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; }
+  .tools button, .tools label.f {
+    font: inherit; font-size: 13px; background: #fff; color: #2C2C2A;
+    border: 1px solid #D3D1C7; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  }
+  .tools button:hover, .tools label.f:hover { border-color: #185FA5; color: #185FA5; }
+  .tools .tip { font-size: 12.5px; color: #6B6B66; margin-left: auto; }
+
+  table.list { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+  table.list th { text-align: left; font-size: 12px; color: #6B6B66; font-weight: 600;
+                  padding: 8px 8px; border-bottom: 1px solid #E3E2DD; }
+  table.list td { padding: 7px 8px; border-bottom: 1px solid #F1EFE8; vertical-align: top; }
+  table.list tr.done td { background: #F7FAF8; }
+  table.list tr.hl td { background: #FFF8E8; box-shadow: inset 3px 0 0 #BA7517; }
+  col.c1 { width: 34px; } col.c2 { width: 186px; } col.c3 { width: 296px; }
+  col.c4 { width: 82px; } col.c5 { width: 168px; } col.c6 { width: 104px; }
+  .co { font-weight: 600; }
+  .ent { font-size: 11.5px; color: #8A8A83; display: block; margin-top: 1px; word-break: break-all; }
+  a.ent { color: #185FA5; text-decoration: none; width: fit-content;
+          border-bottom: 1px solid #B9D2EA; }
+  a.ent:hover { color: #0F4478; border-bottom-color: #0F4478; }
+  a.ent.search { color: #8A6A1F; border-bottom: 1px dashed #D9C08A; }
+  a.ent.search:hover { color: #6B4E0A; border-bottom-color: #6B4E0A; }
+  .tag { display: inline-block; font-size: 11.5px; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
+  .tag.ok { background: #E1F5EE; color: #0F6E56; }
+  .tag.mid { background: #FAEEDA; color: #854F0B; }
+  .tag.no { background: #FCEBEB; color: #791F1F; }
+  .tag.skip { background: #EDECE7; color: #6B6B66; }
+  .tag.ev { background: #E8F0F8; color: #185FA5; margin-right: 6px; }
+  .win { color: #444441; }
+  .win.urgent { color: #A32D2D; font-weight: 600; }
+  .grp { background: #F1EFE8; }
+  .grp td { padding: 9px 8px; font-weight: 600; font-size: 13px; color: #412402; border-bottom: 1px solid #E3E2DD; }
+  .grp td span { font-weight: 400; color: #6B6B66; font-size: 12.5px; }
+  input[type=checkbox] { accent-color: #185FA5; cursor: pointer; width: 15px; height: 15px; margin: 2px 0 0; }
+  select { font: inherit; font-size: 12.5px; border: 1px solid #D3D1C7; border-radius: 6px;
+           padding: 3px 4px; background: #fff; color: #2C2C2A; cursor: pointer; width: 100%; }
+  .note { font-size: 12.5px; color: #6B6B66; margin: 10px 0 0; }
+  .src { font-size: 12px; color: #8A8A83; line-height: 1.7; }
+</style>
+</head>
+<body data-page-node-id="m9NC0YE7o87YfELXbmcBWy">
+<div class="wrap" data-page-node-id="Cmr1DekKkACeawYtJA4V5M">
+
+  <h1 data-page-node-id="9rbc7y6NNFLpE2Fk2ilN5y">秋招投递台账</h1>
+  <p class="sub" data-page-node-id="ePyAmVC0kGbOrpvSuv6mph">2027 届 · AI 应用 / Agent 后端 / FDE / AI 评测 · 建表于 2026-09-20 · 勾选与状态自动保存在本机</p>
+
+  <div class="stat" data-page-node-id="aWkBc7SOqikaOOfYcFbDwa">
+    <div data-page-node-id="1WRzzAAXHMlnQPanCSRrAK"><div class="k" data-page-node-id="OeaKWE1jl3JW2ipcsv7b5G">已投 / 目标</div><div class="v blue" data-page-node-id="6dOcrlErsx0em3JGF85Di0"><span id="nDone" data-page-node-id="I3iu4rjhKza0p5FCXYvGl0">0</span> <span style="font-size:14px;color:#6B6B66;font-weight:400;" data-page-node-id="TOvogfFZYaQlT7Dh9kUZaj">/ <span id="nTarget" data-page-node-id="6ZOyW6geCXGvxHlbCI7zy6">0</span></span></div></div>
+    <div data-page-node-id="zzgkES07xmnfKsxDs74Hqq"><div class="k" data-page-node-id="aJlsBBPzXTIz6GhG1F13uL">已约面 / 笔试</div><div class="v amber" id="nInt" data-page-node-id="JjtJsOt5c11zSKXzEnoJNd">0</div></div>
+    <div data-page-node-id="xRhxTCLEmjJrdu5U9By0on"><div class="k" data-page-node-id="Tlx48AmIxKVEmL7Fw5PkJ5">已挂</div><div class="v red" id="nFail" data-page-node-id="hztKGQgDdYz5mLKawwlRTA">0</div></div>
+    <div data-page-node-id="tMJ5gFPFSRnrm0s0JIYNis"><div class="k" data-page-node-id="TcIZdKKgaMTKvPljaAY2MP">总标的</div><div class="v green" id="nAll" data-page-node-id="O9PyMtOj9ztVyKudbaHmC0">0</div></div>
+    <div data-page-node-id="4DatJLjmjhHst3fNcS9jeh"><div class="k" data-page-node-id="1yVLF3EEdAsAxl6p8J8Mpz">其中 AI 评测岗</div><div class="v blue" id="nEval" data-page-node-id="wPOTyT0e1B95tk6gJla8Si">0</div></div>
+  </div>
+  <div class="bar" data-page-node-id="V535xh94yX2Jcy0COS3VC2"><i id="bar" data-page-node-id="DEmhOwA2UNjWHRIe9Bwgjv"></i></div>
+
+  <h2 data-page-node-id="z6y0Cgn6MDwrNGNaV8y9vd">怎么用（每天 30 分钟，不占学习时间）</h2>
+  <div class="card" data-page-node-id="yJX110iPvo4wpMRJ6AI0VU">
+    <ol style="margin:0;padding-left:20px;font-size:13.5px;" data-page-node-id="NkFuYL4HVDhYxmOjMOV6oq">
+      <li data-page-node-id="gGkxz2mKAe9AI9jsx8vDbb"><b data-page-node-id="RtAU4LQssIXlDS5Y5DGLzZ">先看上面的「窗口日历」</b>——有红色日期的先投，那是硬截止，过了就没了。</li>
+      <li data-page-node-id="oe2XF5H7aPIFvJcAKYJi2m"><b data-page-node-id="i1vDbuwdS6rjEoLvFHzrvI">点「今日抽 5 家」</b>，系统从还没投的里面按优先级抽 5 家（黄色高亮）。</li>
+      <li data-page-node-id="SzqtnjvhpXvQO0O1IKpJhW"><b data-page-node-id="4zNwCwFqKu5BHrEibOHfcS">每家先找内推</b>（10 分钟）：牛客 / 脉脉 搜「公司名 + 内推」，或找 2026 届刚入职的学长学姐——响应率最高。找不到就直投，别卡住。</li>
+      <li data-page-node-id="bCKDOyEsCg3kf8jnRxHZF0"><b data-page-node-id="cFwlVgxT5JEd97tZnz3IAd">按标的调整简历侧重</b>：投 FDE / 交付 → 突出「交付、沟通、真实用户、负结果诚实」；投评测 → 突出「指标体系、口径、Bad Case」；投应用 / Agent → 突出「RAG、工具调用、评测闭环」。</li>
+      <li data-page-node-id="KvGJyx3dnmI29G7akHDwir"><b data-page-node-id="ke8ydJIwkKzDyJQnjp9uRK">投完立刻勾选并把状态改成「已投」</b>，当天收手，不看第二遍。</li>
+    </ol>
+    <p class="note" data-page-node-id="eVLoSdzaCruItcj8pP5SpP">投递是体力活。一次性做完就收手——不要用一整天泡在招聘网站上。</p>
+  </div>
+
+  <h2 data-page-node-id="HwveEczeiK0z9ZM3jqfgV2">窗口日历（先投这些，硬截止）</h2>
+  <div class="card" data-page-node-id="oE5OiZVrVlOXPtN0Bf5ZwC">
+    <table class="cal" data-page-node-id="J4Q3XYT6zT2yCCgsX8WynK">
+      <thead data-page-node-id="EhFnhZNJIMySaFvGXacrV6"><tr data-page-node-id="bIcELFBdMDDqcnXFLNFtVt"><th data-page-node-id="iR2CpZ0uk9VeE2ZI5Lx8jG">截止 / 节点</th><th data-page-node-id="5YtkF4HbEqHlnxtQIiy4En">对象</th><th data-page-node-id="0gIkJcRW05U6y6OYrmLKZo">说明</th></tr></thead>
+      <tbody data-page-node-id="qFJ08lVtCf3h8dcqAbCF6Y">
+        <tr data-page-node-id="CZGiAZVU9CslWvaoHD3ze7"><td class="d" data-page-node-id="bCLvyeshpt1rSlGQOEq7cw">10-07</td><td data-page-node-id="GOEIznDlQTTZYC1DxOvIvs">工商银行 · 科技菁英</td><td data-page-node-id="j0iTzsVciyJGiJQqFNvi7x">五大行报名集中在 10/7–10/9，9 月底必须投完</td></tr>
+        <tr data-page-node-id="o3GMD4GhgFtfpYFmJ0TCC6"><td class="d" data-page-node-id="Q7VjI7MzQb3m1bPupZHFso">10-08</td><td data-page-node-id="Hs4DFEMLHnkWHjDTAtVGSN">农业银行 · 菁穗培训生（智慧银行岗）</td><td data-page-node-id="gktxlTUbTyJBSFTiJxCycZ">本科可投；人工智能 / 大数据复合背景优先</td></tr>
+        <tr data-page-node-id="ROPTAXqHssWmoGNI1t4m72"><td class="d" data-page-node-id="vfQ4FQ9Lk8FN8EGnkkQfuC">10-08</td><td data-page-node-id="yvSFnjU6RA7JBLu9DZfudl">建设银行 · 科技类专项人才</td><td data-page-node-id="iBwoFiOjEpkdQVcyDSYGLJ">明确写「人工智能、数据挖掘」方向</td></tr>
+        <tr data-page-node-id="suwebfwY9R3UWXYGtUY3fJ"><td class="d" data-page-node-id="8xu2bU8CUSAElNRasm1m8M">10-09</td><td data-page-node-id="g1TJ0Pw0THS7KzwHBPhRPi">中国银行软件中心 · 信息科技岗</td><td data-page-node-id="y5diz3zLTdT5hk7oWjxFGG"><b data-page-node-id="YjtvWjDMO6YCP2mGXAsOF1">招 180 人，本科可报</b>；中行每人最多投 5 个岗，平行志愿</td></tr>
+        <tr data-page-node-id="zhFsTeOI4XRQXyX9uWI5TX"><td class="d" data-page-node-id="7kJRdMSKHLEvvLOwhd78qU">10-09</td><td data-page-node-id="xfbCDYYgnuYBj99YmdAhel">邮储银行 · 科技岗</td><td data-page-node-id="F3HHqCz9Ma80X5EpyhMUmd">—</td></tr>
+        <tr data-page-node-id="ui8yD3EBUZZeqH8RYUVbMG"><td class="d" data-page-node-id="OvNW0GYQYOURqEsOQfvZ58">10 月中旬</td><td data-page-node-id="hDK1eAJuTFRltKVybJihhl">英特尔中国 · AI / Agentic 方向</td><td data-page-node-id="pFBIrHssy3b4P2HodwXjJJ">本科可投，招满即止（不同来源写 10/16 与 10/19，按最早的算）</td></tr>
+        <tr data-page-node-id="TK0LgAWATq3XbsEB8Jjn0C"><td class="d" data-page-node-id="dBLn96DIiugkkB0YQ8tpHd">10 月中下旬</td><td data-page-node-id="KHQc8uU63rtUoWEUcu8ZhH">腾讯 · 全部 AI 岗</td><td data-page-node-id="3ySOFTvu2laFdi8rFYH9l7">官方口径：大部分岗集中在 8–10 月完成面试与录用 → <b data-page-node-id="yHsF9Y0zETlijV9NZM1olR">越早投越好</b></td></tr>
+        <tr data-page-node-id="gRqFxde52E0KcBCvX3QGHJ"><td class="d soft" data-page-node-id="7KK1E7pfZxHcaZflZzHsaO">11-30</td><td data-page-node-id="5dDOOddgRwwgjuHPUzAPDV">京东 · 2027 校招</td><td data-page-node-id="gxY3JyQsTFwhXS2Kvs40Az">窗口较宽，但 HC 招满即止</td></tr>
+        <tr data-page-node-id="bF5u2F884n3EZmDNv6zgIu"><td class="d soft" data-page-node-id="1kPq9THozRLy8EYOFmb3Bn">12-31</td><td data-page-node-id="fYC9OHTCkavYn1ywZCZwz6">小米 · 2027 全球校招</td><td data-page-node-id="gITFFbCpVYWh2SAkSQH1OA">AI 相关岗位需求同比 <b data-page-node-id="1im4aOgLtGzNLDDyDsUtTM">+50%</b>，学历友好，当保底盘要早投</td></tr>
+        <tr data-page-node-id="gsPWe1MDuFvxA4k3t4S6Jz"><td class="d soft" data-page-node-id="rjuoZroGeqjZgN8S1ChZaH">2027-02-05</td><td data-page-node-id="vkY1OEXzUlKVSm2Xe5YG7H">瓴羊（阿里全资）· 含 FDE</td><td data-page-node-id="qaA8dDthuEBh9f8jspaMx0">本科可投；<b data-page-node-id="tAivSPAnCFNqoY1ucUW5Sb">全表学历折价最低的标的之一</b></td></tr>
+        <tr data-page-node-id="lxlehFrwGGBX7ZA3VQ8w30"><td class="d soft" data-page-node-id="xZF8Vka3wjXaHWqCEDJLsu">2027-05-31</td><td data-page-node-id="f6VepmzwDjVzRzURlGnUfC">字节跳动 · 全部校招</td><td data-page-node-id="jfRjOetBYuSbcJsKG4pZzD">全年滚动、多次机会；另有 ByteIntern 实习转正通道</td></tr>
+        <tr data-page-node-id="LHoM0kl8oaosQFNfkEiM7L"><td class="d soft" data-page-node-id="ObHNBNjhSjo3ACgPaWBRWy">滚动</td><td data-page-node-id="1LmpP8l76jSwJ6i9FKEq1u">表内其余全部</td><td data-page-node-id="SOAqPEkgC7G4cVqgQPJSTj"><b data-page-node-id="BFhlsmtcu2nVPKP8QMCHjd">「招满即止」是今年主旋律</b>——岗位开一两周就关。所以投递的边际收益随时间下降，今天就投</td></tr>
+      </tbody>
+    </table>
+    <p class="note" data-page-node-id="4ElOzMBFgyuffJjbBVnMHw">日期取自 2026-09-20 的公开招聘公告与媒体转载，可能被企业调整。投之前扫一眼官网确认。</p>
+  </div>
+
+  <h2 data-page-node-id="4NzHpnJ0BdeymmvtLPMn7R">不谈判的六条</h2>
+  <div class="rules" data-page-node-id="D1iyANDgaINcPngHm3VLHH">
+    <ol data-page-node-id="3p8WEg0a0BA8Hl5Ld8FiDt">
+      <li data-page-node-id="sDsb8K5Txv8D2SyLB0mPt0"><b data-page-node-id="vxQu3CrYR4Vz1cKctIHy2G">明牌写了 985/211/双一流、或写明只招硕士的岗位，直接跳过。</b>不是认输，是算账——投递次数和精力是有限资源。</li>
+      <li data-page-node-id="4nZ5U7G0kCbJtvnDARZLqV"><b data-page-node-id="7OawRdcZtqNWZeTMrAyVGr">投「部门」不投「公司」。</b>同一家公司不同事业群能差一整档；非核心部门、地方岗、内包岗的通过率明显高一档。</li>
+      <li data-page-node-id="b9ZTudZUCPV09w8CgXDigv"><b data-page-node-id="dWRMflKdUZkQqSyqolAlzt">先投保底（C/D 层）再投冲刺。</b>别因为「想先冲一冲大厂」把保底排到最后，秋招后期 HC 收得极快。</li>
+      <li data-page-node-id="Xkf6oZ6QCZ1fEGt6bvCPjc"><b data-page-node-id="xKFFrN0e3krVJVjvUGG8C3">投递和练并行，投递不占学习时间。</b>每天固定 30 分钟，做完收手。</li>
+      <li data-page-node-id="dZ5HzMpN5cEpUkJaHbYpBg"><b data-page-node-id="6Ag1H8FuLEGnCaCJ0fxh7X">挂 20 份简历之后不复盘到凌晨。</b>那不是学习，是自罚。</li>
+      <li data-page-node-id="LVFPva0LWX4oSyxqDLrP4S"><b data-page-node-id="jyVZOAB4MrXEMchAOxTBHv">掉了一天直接跳下一天，不补课、不自罚。</b>never miss twice。</li>
+    </ol>
+  </div>
+
+  <h2 data-page-node-id="rGYlAS0yxcQSv04mguTc3T">AI 评测 / 测试岗：投前先看两件事</h2>
+  <div class="card" data-page-node-id="QGcOrkrfzvjzI2RpDLX15R">
+    <p style="margin:0 0 8px;font-size:13.5px;" data-page-node-id="IPXk3BydOLFFcGCCEwGs0L"><b data-page-node-id="RGcWa2CnNjInCBAns6sB8r">规则一：AI 评测分两条序列，只看 JD 的「职位类别」就能分开。投错序列等于白投。</b></p>
+    <ul style="margin:0 0 14px;padding-left:20px;font-size:13.5px;" data-page-node-id="ZRQXEAAzN1nGnwwXjq9xer">
+      <li data-page-node-id="eF3p1gONZgyVntfufHVvUc"><b data-page-node-id="yVf6TxXEoQkQpqg23k83Ko">测试 / 质量序列</b>（字节的「研发 - 测试」、腾讯「测试开发」、百度「测试开发」）→ <b data-page-node-id="mGUhhGDseeSue7lJltH9Xi">本科可投</b>。内容正好是「评测集 / LLM-as-a-Judge / Bad Case / 评测平台」。</li>
+      <li data-page-node-id="kE5XRqFOUMUmfA0R9EEETZ"><b data-page-node-id="Rfr2rCq1rdaNxGEFji1yEl">算法评测序列</b>（多家挂「大模型算法评测工程师」）→ <b data-page-node-id="3kvBAZ3Y1Hn1VRAU6deQZJ">要硕士</b>，且考算法与模型训练部署。</li>
+    </ul>
+    <p style="margin:0 0 8px;font-size:13.5px;" data-page-node-id="NoJI46nDrEDxCRZnz3Xu1n"><b data-page-node-id="fIYYH58GqGrqgpLzeIjBMI">规则二：「AI 测试开发」分两类，第二类不要投。</b></p>
+    <ul style="margin:0 0 14px;padding-left:20px;font-size:13.5px;" data-page-node-id="DTEBXeJNirhJbExgJeBXO4">
+      <li data-page-node-id="rI7B7myrDflvSDdI1f2mMt"><b data-page-node-id="OESfKllBlCOZyz05s4X0DC">应用 / 效果评测类</b> → 适合你。RuleArena 的双评测集 + 独立 Oracle + 发布门禁 + Bad Case 回流，是这条 JD 的逐条对应物。</li>
+      <li data-page-node-id="bUv8u5tXUQCVbMNXEfpfwA"><b data-page-node-id="Ej2oNy05opB9ICh3WyEaQj">算力 / Infra 性能类</b> → <b data-page-node-id="jW2yvZwmXVMhpLlstWMRWo">跳过</b>。识别特征：JD 里出现 CUDA / GPU 内存层次 / Warp 调度 / Megatron / DeepSpeed / vLLM / 千卡集群。标题可能只写「测试开发」，别只看标题。</li>
+    </ul>
+    <p class="note" style="margin:0;" data-page-node-id="bM6qrMJRLotwX96TfNTcBw"><b data-page-node-id="PJvvDKP86D3hiOC0eV6Blq">不要用社招 JD 判断校招门槛。</b>腾讯侧搜得到的 AI 评测 JD 多写「3–5 年经验」，那是社招；校招该投的是 <code data-page-node-id="GxGRIQJ7QBYySTJQjeGTDA">join.qq.com</code> 技术类里的「测试开发」。看到年限要求直接关掉，换校招页。</p>
+  </div>
+
+  <h2 data-page-node-id="06a6PJHxvDmwwo0hC15cTc">投递标的</h2>
+  <div class="tools" data-page-node-id="rdpJoR9txPQ68VD1xCoGPH">
+    <button id="btnPick" data-page-node-id="98DFkGhBVqrYpV1mrweQvH">今日抽 5 家</button>
+    <button id="btnUndone" data-page-node-id="hHGi7ZoUfpjkAXeWAru5Ju">只看未投</button>
+    <button id="btnEval" data-page-node-id="YHtWRLBCaiHRSPqDfkKWsG">只看 AI 评测 / 测试</button>
+    <button id="btnAll" data-page-node-id="wA55ZACABfTtujhlJ6zlq4">看全部</button>
+    <button id="btnCsv" data-page-node-id="ma4N19EqlmcCA8Kwk3cDI3">导出 CSV</button>
+    <button id="btnJson" data-page-node-id="GjUrVdhXCuaG2z8kYu27Mt">导出进度</button>
+    <label class="f" data-page-node-id="UzaJpxZOpOeW46wUlekHxe">导入进度<input type="file" id="fileJson" accept=".json" style="display:none;" data-page-node-id="hrwdNwJA3ESoWvPJWLghLO"></label>
+    <button id="btnReset" data-page-node-id="bh7J7XhAOQXTU6iAEhDO4q">清空进度</button>
+    <span class="tip" id="tip" data-page-node-id="NhDpQmfjEnGzt9zbUZCw0a"></span>
+  </div>
+
+  <table class="list" data-page-node-id="2SCbVbyFBqGn9wC6TWDuAO">
+    <colgroup data-page-node-id="vjjZ6r6Dkvb2jtyc9kGTVQ"><col class="c1" data-page-node-id="V6qj5tQsgRMIjzQgv0JBzA"><col class="c2" data-page-node-id="brumowJGFNFYv0UJwr3WYB"><col class="c3" data-page-node-id="0HAor8JzNCANMBXbyG2Riy"><col class="c4" data-page-node-id="DEpsjeO6RuGctAbGNPk4Ph"><col class="c5" data-page-node-id="3zcbRYeSyDAYyPjdbejrUy"><col class="c6" data-page-node-id="ocjomhmhWt1xXI6HI7HjKX"></colgroup>
+    <thead data-page-node-id="IvZxeZJfi2NPeV5tG7bDhu">
+      <tr data-page-node-id="NAXCRuxES1XGK31VQZcucO"><th data-page-node-id="mnjC1YG5eWEF2HgO17OVk9"></th><th data-page-node-id="E48kEpwidhS1QGJZYm4VSf">公司 / 入口</th><th data-page-node-id="KdIY0fR1gQLTkq7y4lqHEr">部门 · 岗位方向</th><th data-page-node-id="u5HyrSFq35PTGNV3souaC1">门槛</th><th data-page-node-id="GlOwFVYPmmYAjDa0BsXzBw">窗口</th><th data-page-node-id="6PdXBF8gAefSwl8GtdjBqO">状态</th></tr>
+    </thead>
+    <tbody id="tb" data-page-node-id="YXKzkVqhFNSHOMLJm9MioF"></tbody>
+  </table>
+  <p class="note" data-page-node-id="RX0ZAQoetsj9JROFj5AIgo">「门槛」是经验判断，非企业官方口径：<b data-page-node-id="H6Ivgo5RWsWI8arYf9L6ii">本科可投</b>＝有本科录取的公开记录或无学历限制；<b data-page-node-id="xBAWwMLJO6o59wBds80DvP">偏硕士</b>＝公开岗位以硕博为主、本科可试但难；<b data-page-node-id="dGCXJi402mAaqjarcKYjxp">明牌卡</b>＝公告里明确写了硕士或重点院校；<b data-page-node-id="j3g8Oo8AiFfBsnLgCHRRZQ">Infra 跳过</b>＝岗位真实要求算力／基础设施能力（CUDA / GPU / 集群），不是学历问题，投了也会在技术面挂——标出来是为了省你的投递次数。<br data-page-node-id="RFo5R2FEmFfaXKupWS47Ge">「入口」列现在每条都能点：<b>★ 域名</b> 是 2026-09-20 核到的官方校招入口，直接新标签页打开；<b>⌕ 搜索官网</b> 是没核到固定入口的公司，点开直接搜「公司名 + 2027 校招」，顺便确认今年域名有没有变。合计线上内联的官方入口共 <b>105</b> 条。</p>
+
+  <h2 data-page-node-id="sFW52tzB01Ok5k1OIpfSDm">数据说明</h2>
+  <div class="card src" data-page-node-id="4czMFgcRST9BE9tEZtI2p0">
+    <p style="margin:0 0 8px;" data-page-node-id="Lpk4j0XNH5F9bMvsYnRlZo"><b data-page-node-id="FzWZgHLm27tMdge7ANWnMM">标的来源（2026-09-20 检索，均为公开信息）：</b>各企业 2027 届校招官方公告与媒体转载（劳动报 / 中新经纬 / 京报网 / 中国劳动保障报）、银行招聘公告（中国银行软件中心、浦银金融科技、平安银行）、垂直招聘站校招条目（英特尔中国、瓴羊、万兴科技）。</p>
+    <p style="margin:0 0 8px;" data-page-node-id="gmSC3ayPogLHx7cg8oKtZK"><b data-page-node-id="idBdQW0vHziwxNflFO2Z3G">数字的性质（两类，别混用）：</b></p>
+    <p style="margin:0 0 8px;" data-page-node-id="cF0IujyQ5iGz5Cp2bCmkbD">① <b data-page-node-id="yKcAQd3h5lnE4VJ3I6bYmG">规定值</b>——报名截止日、招聘人数、毕业时间口径、岗位名、官网入口。这类对公告核实过，可以当事实用；但企业会随时调整，投前扫一眼官网。</p>
+    <p style="margin:0 0 8px;" data-page-node-id="lZG0i7nVNeJp6m1j2ecNAU">② <b data-page-node-id="FkMzXRDEjINo6eGSsoRO4z">经验值</b>——「门槛」三档、双非过筛率约 3%、各赛道竞争密度。这些来自公开讨论与往届投递反馈的概率统计，<b data-page-node-id="2D8netu3DI689WaIxDrUnk">不是任何一家公司的官方口径</b>，只用来排投递优先级，不能用来判断「这家公司一定不要我」。</p>
+    <p style="margin:0;" data-page-node-id="ovJBLFpmADRCsNqrURq8u4">用例只有两个：<b data-page-node-id="d2yLmc4G6Z2eLZW2pGANz5">帮你排投递顺序、帮你决定简历往哪个方向改</b>。它不是让你据此放弃任何一家公司的理由。</p>
+  </div>
+
+</div>
+
+<script>
+var GROUPS = [
+  { id:'S', name:'S 层 · FDE / AI 交付 / 解决方案', desc:'学历与刷题折价最低的赛道，与「项目表达 + 系统设计 + 交付」直接映射。主战场，优先级最高。' },
+  { id:'A', name:'A 层 · 大厂 AI 应用 / Agent', desc:'冲刺。多为「能进但排序吃亏」，靠内推 + 对口项目把排序拉上去。' },
+  { id:'B', name:'B 层 · 中厂 / AI 独角兽 / 垂类', desc:'主力。学历门槛真的低，且新增岗位多。' },
+  { id:'C', name:'C 层 · 保底（金融科技 / 运营商 / 央企 / 工业）', desc:'拿来稳军心，同时继续打上面几层。窗口早、截止硬，先投。' },
+  { id:'D', name:'D 层 · 外企 / 出海', desc:'英语是硬通货，学历权重比国内大厂低。' }
+];
+
+var DATA = [
+['S','瓴羊（阿里全资子公司）','FDE 前沿部署工程师 · AI应用算法工程师 · 大模型应用算法','ok','网申中 · 至 2027-02-05','阿里巴巴集团招聘官网'],
+['S','火山引擎（字节）','AI 交付 · 解决方案架构 · 大模型应用落地','ok','滚动 · 招满即止','字节跳动招聘官网'],
+['S','阿里云','AI 交付 · 解决方案架构师','mid','滚动','阿里巴巴集团招聘官网'],
+['S','腾讯云 · 腾讯云智研发','AI 交付 · 解决方案（内包 / 地方岗，友好度高）','ok','8–10 月集中面试录用','腾讯校招官网'],
+['S','飞书（字节）','AI 应用交付 · 技术客户成功','ok','滚动','字节跳动招聘官网'],
+['S','钉钉（阿里）','AI 应用交付 · 企业智能体落地','mid','滚动','阿里巴巴集团招聘官网'],
+['S','百度智能云','AI 解决方案 · 交付工程','ok','全年开放','百度校招官网'],
+['S','华为云 · 华为（非 2012 实验室 / 海思）','AI 应用 · 解决方案 · 交付','ok','8 月中旬启动','华为招聘官网'],
+['S','科大讯飞','行业 AI 交付 · 解决方案 · 项目交付（非算法向）','ok','滚动','科大讯飞校招官网'],
+['S','英特尔中国','Agentic AI Customer Co-Val · AI Software Application Developer','ok','至 10 月中旬 ★','chinacampus.jobs.intel.cn'],
+['S','明略科技','企业级 AI 交付 · 知识图谱应用','ok','滚动','官网校招'],
+['S','第四范式','AI 平台交付 · 解决方案','mid','滚动','官网校招'],
+['S','金蝶 / 用友','企业 AI 应用实施（ERP / OA + Agent）','ok','滚动','官网校招'],
+['S','涂鸦智能 / 声网','AI 应用（IoT / 实时互动场景交付）','ok','滚动','官网校招'],
+['S','商汤 / 云从 / 旷视','AI 应用交付（非算法岗）','ok','滚动','官网校招'],
+['S','中科曙光','智算解决方案 · AI 集群交付 · AI 框架优化','ok','滚动','官网校招'],
+
+['A','字节跳动','扣子 Coze · 豆包 AI 应用 · AI Agent 开发 · AI 全栈','ok','至 2027-05-31（滚动）★','jobs.bytedance.com'],
+['A','字节跳动','ByteIntern 实习（7000+ 名额 · 转正率 >50%）','ok','全年滚动 ★','jobs.bytedance.com'],
+['A','腾讯','AI 应用工程师 · Agent 开发工程师 · AI 全栈','ok','8–10 月完成面试录用 ★','join.qq.com'],
+['A','腾讯','腾讯云 AI 应用（非核心事业部 · 地方岗）','ok','滚动','join.qq.com'],
+['A','阿里巴巴','淘天 · 千问办公 · 阿里国际 · AI 应用研发','mid','滚动 ★','talent.alibaba.com'],
+['A','百度','智能体 · AI 应用 · AI 测试与评测（避开文心研究院）','ok','全年开放 ★','talent.baidu.com'],
+['A','美团','AI 原生岗（十余种）· AI 应用 · 智能商业分析师','ok','滚动','美团校招官网'],
+['A','快手','AI 应用 · 可灵 AI · 视频理解 · 生成式检索','ok','至 2027-10','快手校招官网'],
+['A','小红书','AI 应用研发 · AI 与全栈 · 多媒体技术','ok','滚动','小红书校招官网'],
+['A','蚂蚁集团','AI 应用 · 金融科技产品 · AI 安全 · 可信 AI','mid','已启动','蚂蚁招聘官网'],
+['A','京东','AI 应用 · 数字人 · 智能客服 · 京东科技','ok','至 2026-11-30','京东校招官网'],
+['A','哔哩哔哩','AIGC 内容工具 · AI 产品 · 审核研发','ok','滚动','B站校招官网'],
+['A','滴滴','AI 应用 · 智能客服 Agent · 出行场景 AI','ok','滚动','滴滴校招官网'],
+['A','拼多多','大模型人才专项（偏算法研究）','no','滚动','拼多多校招官网'],
+
+['B','月之暗面 Kimi','AI 应用研发 · Agent · 产品','mid','已开 2027 校招 ★','moonshot.cn/careers'],
+['B','智谱 AI','企业智能体 · 行业应用 · 解决方案','mid','已开 2027 校招 ★','zhipuai.cn/careers'],
+['B','MiniMax','AI 应用开发 · Agent · 测试 / 数据','mid','已确认 2027 校招 ★','minimaxi.com/careers'],
+['B','DeepSeek','服务端开发 · Agent 弹性算力研发（无纯研究岗）','ok','滚动 ★','talent.deepseek.com'],
+['B','阶跃星辰','AI 应用 · 多模态应用','mid','滚动','官网校招'],
+['B','百川智能','AI 应用 · 医疗行业 AI','mid','滚动','官网校招'],
+['B','零一万物','AI 应用 · 企业交付','ok','滚动','官网校招'],
+['B','面壁智能','Agent 应用 · 端侧模型应用','mid','滚动','官网校招'],
+['B','网易（伏羲 / 有道 AI / 雷火 / 互娱）','AI 应用 · 游戏 AI 工具链 · 教育 AI','ok','滚动 ★','campus.163.com'],
+['B','vivo','Agent 技术工程师（蓝心小 V）· 端侧 AI','ok','已启动','vivo 校招官网'],
+['B','OPPO','端侧 AI · AI 应用 · 系统软件','ok','已启动','OPPO 校招官网'],
+['B','荣耀','Agent · 端侧 AI · 模型部署（部分岗加考 AI Coding）','ok','至 2027-09','荣耀校招官网'],
+['B','小米','AI 应用 · 端侧 AI · 智能座舱 · AIoT','ok','至 2026-12-31','hr.xiaomi.com'],
+['B','联想','AI 专项（AI PC · 端侧 AI · Agent）','ok','已启动','联想校招官网'],
+['B','得物','AI 应用 · 智能体','ok','滚动','得物校招官网'],
+['B','携程 / 去哪儿','旅游 AI Agent · AI 应用','ok','滚动','官网校招'],
+['B','贝壳','AI 应用 · 智能体','ok','滚动','官网校招'],
+['B','58 同城','AI 应用 · 分类信息场景','ok','滚动','官网校招'],
+['B','知乎 / 微博','AI 应用 · 内容理解与生成','ok','滚动','官网校招'],
+['B','SHEIN / Shopee','AI 应用 · 搜广推 · 购物 Agent','ok','9 月滚动','官网校招'],
+['B','同花顺','金融大模型 · 评测 / 数据（AIME 核心项目偏硕士）','mid','滚动','同花顺校招官网'],
+['B','好未来','教育 AI 产品 · 教育大模型评测 · 学习数据分析','ok','滚动','官网校招'],
+['B','联影医疗 / 迈瑞','医疗 AI 应用软件 · 影像平台 · 临床产品','ok','滚动','官网校招'],
+['B','海康威视 / 大华','AI 应用 · 端侧部署 · 边缘 AI','ok','滚动','官网校招'],
+['B','万兴科技','AI Agent 应用开发（80–150W，公告写硕士）','no','2026-09-18 发布 ★','wondersharecampus.zhiye.com'],
+['B','星环科技 / 九章云极 / Kyligence','数据 + AI 平台交付','ok','滚动','官网校招'],
+['B','乐鑫 / 虹软 / 汇顶','端侧 AI · 软件工程','ok','滚动','官网校招'],
+['B','中兴通讯','AI 应用 · 软件（非核心研发 / 交付向）','ok','滚动','中兴校招官网'],
+['B','深信服','AI 应用 · 安全产品（实施 / 开发）','ok','提前批已开 ★','深信服校招官网'],
+['B','大疆','端侧部署 · 软件工程（避开视觉算法岗）','ok','已启动','大疆校招官网'],
+
+['C','中国银行软件中心','信息科技岗（招 180 人）· 风控模型开发','ok','至 2026-10-09 ★','campus.chinahr.com/pages/2027-boc'],
+['C','工商银行','科技菁英（研发经理 / 产品经理方向）','ok','至 2026-10-07 ★','工行校招官网'],
+['C','农业银行','菁穗培训生 · 智慧银行岗','ok','至 2026-10-08 ★','农行校招官网'],
+['C','建设银行','科技类专项人才（人工智能 / 数据挖掘方向）','ok','至 2026-10-08 ★','建行校招官网'],
+['C','邮储银行','科技岗','ok','至 2026-10-09 ★','邮储校招官网'],
+['C','浦银金融科技（浦发银行）','AI 治理岗（本科可投）· 数据工程 · AI 产品','ok','9 月网申 ★','浦发校招官网'],
+['C','平安银行','科技类（Agent Infra / AI 应用研发等，多为硕士）','mid','滚动 ★','campus.pingan.com/pab'],
+['C','招银网络科技（招商银行）','软件开发 · AI 应用','ok','滚动','招银网络校招官网'],
+['C','兴业数金 / 交通银行金融科技','AI 应用 · 数据平台','ok','滚动','官网校招'],
+['C','中国移动 卓望数码','AI 应用开发（24 人 · 本科 · 有安家补贴）','ok','至 10 月 ★','卓望校招官网'],
+['C','中国移动 咪咕 / 苏研 / 云能力中心','AI 应用 · 平台研发','ok','滚动','中国移动校招官网'],
+['C','中国电信 天翼云 / 研究院','AI 应用 · 平台研发','mid','滚动','中国电信校招官网'],
+['C','中国联通 联通数科','AI 应用 · 数据平台','ok','滚动','联通校招官网'],
+['C','国家电网 信产集团 / 南瑞','AI 应用 · 电力数字化','ok','10 月批','国网校招官网'],
+['C','南方电网 数字集团','AI 应用 · 数字化','ok','10 月批','南网校招官网'],
+['C','中电金信 / 奇安信（中国电子）','AI 应用 · 安全','ok','滚动','官网校招'],
+['C','中电科 / 航天科工 下属软件所','AI 应用 · 软件','mid','滚动','各所官网'],
+['C','宁德时代 / 海尔智家','工业 AI · 智能制造 · 数字化','ok','滚动','官网校招'],
+['C','蔚来 / 理想 / 小鹏','智能座舱 Agent · 车载 AI 应用','ok','滚动','官网校招'],
+['C','网易游戏（互娱 / 雷火）','游戏工具链 · 游戏 AI','ok','已启动 ★','campus.163.com'],
+['C','米哈游 / 莉莉丝 / 三七互娱','游戏 AI · 工具链 · 内容生产','ok','滚动','官网校招'],
+
+['D','微软 STCA（苏州 / 北京）','AI 应用 · Copilot 相关工程岗','mid','滚动','微软校招官网'],
+['D','NVIDIA 中国','AI 软件 · 推理部署 · 加速库','mid','滚动','NVIDIA 校招官网'],
+['D','AMD / 高通中国','AI 软件 · 驱动与框架','mid','滚动','官网校招'],
+['D','SAP 中国','AI 应用 · 企业智能','ok','滚动','SAP 校招官网'],
+['D','施耐德 / 西门子 / 博世','工业 AI · 数字化','ok','滚动','官网校招'],
+['D','汇丰科技 / 摩根大通中国','金融科技 · AI 应用','ok','滚动','官网校招'],
+['D','Thoughtworks / Accenture / Infosys / Cognizant','AI 交付 · 技术咨询','ok','滚动','官网校招'],
+['D','Grab / SEA / 字节 TikTok','出海 AI 应用','ok','滚动','官网校招'],
+/* ==== 2026-09-20 追加：AI 评测 / 测试序列（第 7 位 'eval' 标记 + 第 8 位备注）====
+   只能在数组末尾追加。行 id = 't' + 下标，插在中间会让浏览器里已存的投递进度整体错位。
+   依据：字节 jobs.bytedance.com 校招职位页、腾讯 join.qq.com「测试开发」、百度 / 美团 / 快手 2027 校招公告。
+   全部为 2027 届校园招聘条目；腾讯侧能搜到的「3–5 年经验」JD 是社招，已排除。 */
+['A','字节跳动','测开 · 中国交易与广告（Agent 链路）','ok','滚动 ★','jobs.bytedance.com','eval','JD 原话「评测标准 / 评测集 / 评估器 / 发布门禁 / 负面案例回流」——与你的 RuleArena 几乎逐条对应，评测方向优先级最高'],
+['A','字节跳动','Agent 评测工程师 · 抖音研发中台','ok','滚动 ★','jobs.bytedance.com','eval','效果评测 + LLM Judge 基建 + 归因；序列为「研发 - 测试」，本科及以上可投'],
+['A','字节跳动','Agent 开发工程师（评测技术）· 抖音','ok','滚动 ★','jobs.bytedance.com','eval','序列是「研发 - 后端」而不是测试——评测 + 后端双对口，是这批里最不像测试岗的一条'],
+['A','字节跳动','AI 应用产品测试开发工程师 · Data AML','ok','滚动 ★','jobs.bytedance.com','eval','考数据结构 / OS / 计网 + 一门语言，对你是基本课题，不是算法题'],
+['A','字节跳动','AI 测试开发工程师 · 抖音研发中台','mid','滚动 ★','jobs.bytedance.com','eval','要 ML/DL/NLP 基础 + 评测模型训练部署 → 偏算法，当冲刺不当主力'],
+['A','字节跳动','大模型测试开发工程师 · 火山引擎（上海）','mid','滚动 ★','jobs.bytedance.com','eval','要 MySQL/Redis、Hadoop/Spark/Flink、Docker/K8s → 偏基建，投前逐条核'],
+['A','腾讯','测试开发（CDG / CSIG / IEG / TEG / WXG）','ok','8–10 月 ★','join.qq.com','eval','本科及以上明确可投；五个事业群都在招，且支持远程面试 → 一次投递覆盖多个方向'],
+['A','腾讯','测试与质量管理（大模型质量保障）','ok','滚动 ★','join.qq.com','eval','JD 明写「关注 AI 系统（如大模型应用）的独特质量挑战，沉淀 AI 产品质量保障方法论」「了解大模型评测、Prompt 测试」'],
+['A','百度','测试开发 · AI 方向','ok','至 2027-09-08 ★','talent.baidu.com','eval','本科及以上；但百度大模型测开实习 JD 写「985/211/双一流优先」——真实减分项，投前有心理准备。单轮最多投 3 个岗'],
+['A','美团','北斗计划 · 测试开发 / AI 全栈','ok','全年滚动 ★','zhaopin.meituan.com','eval','研发类含测试开发；正式批新增 AI 全栈工程师、AI 产品 Builder'],
+['A','快手','测试开发（技术线）','ok','至 2027-10 ★','campus.kuaishou.com','eval','所有岗位开放「AI 应用经验」上传入口、不限专业背景；部分技术岗设 AI Coding 考察——你练 AI Coding 顺手兼顾'],
+['A','小红书','测试开发','skip','滚动','小红书校招官网','eval','标题通用，实为算力方向：CUDA kernel / GPU 内存层次 / Warp 调度 / Megatron / DeepSpeed / 千卡集群 → 跳过'],
+['A','阿里巴巴','AI 软件测试开发工程师','skip','滚动 ★','talent.alibaba.com','eval','GPU 驱动 CUDA / AI 编译器 MLIR / 高性能算子库 / vLLM 定制后端 → 基建属性，跳过'],
+['A','网易','雷火 / 伏羲 · AI 测试','mid','滚动 ★','campus.163.com','eval','未核到 2027 具体 JD；投前在官网搜「测试」并核对「职位类别」序列再投'],
+['B','小米','自动化测试架构开发工程师（南京）','ok','滚动','hr.xiaomi.com','eval','要「从零搭建 Agent Harness」+ ReAct / Tool Use / Memory / Planning + MCP / LangGraph + 精通 Python → 全表与你的 Agent 背景最贴的一条'],
+['B','小米','AI 软件测试开发工程师（AI 算法效果评测）','mid','至 2026-12-31','hr.xiaomi.com','eval','前四条本科可投；但要求「对 AIGC 评估有成体系方法论」并能复现 CVPR/NeurIPS 顶会论文 → 偏硕'],
+['B','MiniMax','测试 / 数据（含评测方向）','mid','已确认 2027 校招 ★','minimaxi.com/careers','eval','大模型公司里少见的校招测开；门槛看具体 JD，投前核序列'],
+['B','同花顺','金融大模型评测 / 数据','mid','滚动','同花顺校招官网','eval','评测方向直接对口金融场景；但 AIME 核心项目偏硕士'],
+['B','好未来','教育大模型评测 · 学习数据分析','ok','滚动','官网校招','eval','教育大模型评测是实岗（不是挂名），本科可投'],
+];
+
+
+/* 投递入口：与 DATA 下标一一对应（同上，只能在末尾追加，否则和已存进度错位）。
+   2026-09-20 逐家联网核实。★ = 核到的官方校招入口；
+   以 https://www.baidu.com/s?wd= 开头的 = 没核到固定入口，页面里显示成「搜索官网」。 */
+var LINKS = [
+  'https://talent.alibaba.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://talent.alibaba.com/campus',
+  'https://join.qq.com',
+  'https://jobs.bytedance.com/campus',
+  'https://talent.alibaba.com/campus',
+  'https://talent.baidu.com/jobs/campus',
+  'https://career.huawei.com/cn/campus-recruitment.html',
+  'https://campus.iflytek.com',
+  'https://chinacampus.jobs.intel.cn',
+  'https://mininglamp.zhiye.com/Campus',
+  'https://www.4paradigm.com/about/recruit.html',
+  'https://career.yonyou.com/',
+  'https://job.tuya.com/',
+  'https://hr.sensetime.com',
+  'https://go.sugon.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://join.qq.com',
+  'https://join.qq.com',
+  'https://talent.alibaba.com/campus',
+  'https://talent.baidu.com/jobs/campus',
+  'https://zhaopin.meituan.com/web/campus',
+  'https://campus.kuaishou.com',
+  'https://job.xiaohongshu.com/campus',
+  'https://talent.antgroup.com',
+  'https://campus.jd.com',
+  'https://jobs.bilibili.com/campus',
+  'https://campus.didiglobal.com',
+  'https://careers.pddglobalhr.com/campus',
+  'https://www.moonshot.cn/careers',
+  'https://zhipuai.cn/careers',
+  'https://www.minimaxi.com/careers',
+  'https://talent.deepseek.com',
+  'https://www.baidu.com/s?wd=%E9%98%B6%E8%B7%83%E6%98%9F%E8%BE%B0%202027%20%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%20%E5%AE%98%E7%BD%91',
+  'https://careers.baichuan-inc.com/',
+  'https://www.baidu.com/s?wd=%E9%9B%B6%E4%B8%80%E4%B8%87%E7%89%A9%202027%20%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%20%E5%AE%98%E7%BD%91',
+  'https://www.baidu.com/s?wd=%E9%9D%A2%E5%A3%81%E6%99%BA%E8%83%BD%202027%20%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%20%E5%AE%98%E7%BD%91',
+  'https://campus.163.com',
+  'https://hr-campus.vivo.com',
+  'https://careers.oppo.com',
+  'https://career.honor.com',
+  'https://hr.xiaomi.com/campus',
+  'https://talent.lenovo.com.cn',
+  'https://campus.dewu.com',
+  'https://campus.ctrip.com',
+  'https://campus.ke.com',
+  'https://campus.58.com',
+  'https://career.sina.com.cn',
+  'https://careers.shein.cn/Students-&-Graduates',
+  'https://campus.10jqka.com.cn',
+  'https://job.100tal.com',
+  'https://www.united-imaging.com/cn/join-us/joinus_school',
+  'https://campushr.hikvision.com',
+  'https://wondersharecampus.zhiye.com',
+  'https://cn.kyligence.io/careers-zh/',
+  'https://www.espressif.com/zh-hans/join-us/job-search',
+  'https://job.zte.com.cn',
+  'https://hr.sangfor.com',
+  'https://careers.dji.com',
+  'https://campus.chinahr.com/pages/2027-boc',
+  'https://job.icbc.com.cn',
+  'https://career.abchina.com.cn',
+  'https://job.ccb.com',
+  'https://psbc2027.zhaopin.com',
+  'https://job.spdb.com.cn',
+  'https://campus.pingan.com/pab',
+  'https://cmbnt.cmbchina.com',
+  'https://job.bankcomm.com',
+  'https://job.10086.cn',
+  'https://job.10086.cn',
+  'https://job.chinatelecom.com.cn',
+  'https://zglt.zhaopin.com',
+  'https://zhaopin.sgcc.com.cn',
+  'https://zhaopin.csg.cn',
+  'https://campus.qianxin.com',
+  'https://ai-hr.cetc.com.cn',
+  'https://talent.catl.com',
+  'https://campus.nio.com',
+  'https://campus.163.com',
+  'https://campus.mihoyo.com',
+  'https://careers.microsoft.com',
+  'https://app.mokahr.com/campus-recruitment/nvidia/47111',
+  'https://www.amd.com/zh-cn/corporate/careers/student-programs.html',
+  'https://jobs.sap.com',
+  'http://www.schneidercampus.com',
+  'https://about.hsbc.com.cn/zh-cn/careers/technology',
+  'https://join.thoughtworks.cn/recruitment',
+  'https://careers.tiktok.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://jobs.bytedance.com/campus',
+  'https://join.qq.com',
+  'https://join.qq.com',
+  'https://talent.baidu.com/jobs/campus',
+  'https://zhaopin.meituan.com/web/campus',
+  'https://campus.kuaishou.com',
+  'https://job.xiaohongshu.com/campus',
+  'https://talent.alibaba.com/campus',
+  'https://campus.163.com',
+  'https://hr.xiaomi.com/campus',
+  'https://hr.xiaomi.com/campus',
+  'https://www.minimaxi.com/careers',
+  'https://campus.10jqka.com.cn',
+  'https://job.100tal.com',
+];
+
+var LABELS = { ok:'本科可投', mid:'偏硕士', no:'明牌卡', skip:'Infra 跳过' };
+var STATUS = ['未投','已投','笔试','面试','已挂','offer'];
+var KEY = 'mv.apply.v1';
+var mode = 'all';   // 当前筛选：all | undone | eval —— 重渲染后保持不变
+
+var store = {};
+try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { store = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+DATA.forEach(function (r, i) { r.id = 't' + i; });
+
+function urgentCell(txt) {
+  return /10-0[789]|10 月中旬/.test(txt);
+}
+
+function dom(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
+
+/* 入口链接：官方入口显示 ★ 域名，没核到固定入口的显示 ⌕ 搜索官网 */
+function entryLink(r) {
+  var u = LINKS[+r.id.slice(1)] || '';
+  if (!u) return '<span class="ent">' + r[5] + '</span>';
+  var tip = r[5] + (u.indexOf('baidu.com/s?wd=') > -1 ? ' —— 未核到固定官方入口，点击搜索' : '');
+  if (u.indexOf('baidu.com/s?wd=') > -1) {
+    return '<a class="ent search" href="' + u + '" target="_blank" rel="noopener" title="' + tip + '">⌕ 搜索官网 ↗</a>';
+  }
+  return '<a class="ent" href="' + u + '" target="_blank" rel="noopener" title="' + tip + '">★ ' + dom(u) + ' ↗</a>';
+}
+
+function render() {
+  var tb = document.getElementById('tb');
+  var html = '';
+  GROUPS.forEach(function (g) {
+    var rows = DATA.filter(function (r) { return r[0] === g.id; });
+    if (!rows.length) return;
+    html += '<tr class="grp"><td></td><td colspan="5">' + g.name +
+            ' <span>（' + rows.length + ' 家）' + g.desc + '</span></td></tr>';
+    rows.forEach(function (r) {
+      var st = store[r.id] || {};
+      var status = st.s || '未投';
+      var done = status !== '未投' || st.d === 1;
+      var ent = r[5];
+      var isUrl = /\.(com|cn|org|net)/.test(ent) || /^\w+\.[\w.]+$/.test(ent);
+      html += '<tr data-id="' + r.id + '" class="' + (done ? 'done' : '') + '">' +
+        '<td><input type="checkbox" data-id="' + r.id + '"' + (done ? ' checked' : '') + '></td>' +
+        '<td><span class="co">' + r[1] + '</span>' + entryLink(r) + '</td>' +
+        '<td>' + (r[6] === 'eval' ? '<span class="tag ev">AI 评测</span> ' : '') + r[2] +
+          (r[7] ? '<span class="ent">' + r[7] + '</span>' : '') + '</td>' +
+        '<td><span class="tag ' + r[3] + '">' + LABELS[r[3]] + '</span></td>' +
+        '<td class="win ' + (urgentCell(r[4]) ? 'urgent' : '') + '">' + r[4] + '</td>' +
+        '<td><select data-id="' + r.id + '">' +
+          STATUS.map(function (s) { return '<option' + (s === status ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select></td></tr>';
+    });
+  });
+  tb.innerHTML = html;
+  bind();
+  stats();
+  showOnly(mode);
+}
+
+function bind() {
+  document.querySelectorAll('#tb input[type=checkbox]').forEach(function (b) {
+    b.addEventListener('change', function () {
+      var id = b.getAttribute('data-id');
+      store[id] = store[id] || {};
+      if (b.checked) {
+        store[id].d = 1;
+        if (!store[id].s || store[id].s === '未投') store[id].s = '已投';
+      } else {
+        delete store[id].d;
+        store[id].s = '未投';
+      }
+      save();
+      render();
+    });
+  });
+  document.querySelectorAll('#tb select').forEach(function (s) {
+    s.addEventListener('change', function () {
+      var id = s.getAttribute('data-id');
+      store[id] = store[id] || {};
+      store[id].s = s.value;
+      if (s.value === '未投') delete store[id].d; else store[id].d = 1;
+      save();
+      render();
+    });
+  });
+}
+
+function stats() {
+  var done = 0, intv = 0, fail = 0;
+  DATA.forEach(function (r) {
+    var st = store[r.id] || {};
+    var s = st.s || '未投';
+    if (s !== '未投' || st.d === 1) done++;
+    if (s === '笔试' || s === '面试') intv++;
+    if (s === '已挂') fail++;
+  });
+  document.getElementById('nDone').textContent = done;
+  document.getElementById('nInt').textContent = intv;
+  document.getElementById('nFail').textContent = fail;
+  document.getElementById('nAll').textContent = DATA.length;
+  document.getElementById('nTarget').textContent = DATA.length;
+  document.getElementById('nEval').textContent = DATA.filter(function (r) { return r[6] === 'eval'; }).length;
+  document.getElementById('bar').style.width = Math.min(100, Math.round(done / DATA.length * 100)) + '%';
+}
+
+function tip(msg) {
+  var el = document.getElementById('tip');
+  el.textContent = msg;
+  el.style.color = '#185FA5';
+  setTimeout(function () { el.textContent = ''; }, 3200);
+}
+
+document.getElementById('btnPick').addEventListener('click', function () {
+  document.querySelectorAll('#tb tr').forEach(function (tr) { tr.classList.remove('hl'); });
+  var pool = [];
+  DATA.forEach(function (r, i) {
+    var st = store[r.id] || {};
+    if ((st.s || '未投') === '未投' && st.d !== 1) pool.push(r);
+  });
+  if (!pool.length) { tip('全部投完了 —— 该去练手撕和八股了。'); return; }
+  pool.sort(function (a, b) { return a[0].localeCompare(b[0]); });
+  var n = Math.min(5, pool.length);
+  var picked = pool.slice(0, n);
+  picked.forEach(function (r) {
+    var tr = document.querySelector('#tb tr[data-id="' + r.id + '"]');
+    if (tr) tr.classList.add('hl');
+  });
+  var first = document.querySelector('#tb tr[data-id="' + picked[0].id + '"]');
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  tip('已高亮 ' + n + ' 家：' + picked.map(function (r) { return r[1]; }).join('、'));
+});
+
+function showOnly(m) {
+  mode = m || 'all';
+  document.querySelectorAll('#tb tr[data-id]').forEach(function (tr) {
+    var id = tr.getAttribute('data-id');
+    var st = store[id] || {};
+    var done = (st.s || '未投') !== '未投' || st.d === 1;
+    var row = DATA[+id.slice(1)] || {};
+    var keep = mode === 'all'
+      || (mode === 'undone' && !done)
+      || (mode === 'eval' && row[6] === 'eval');
+    tr.style.display = keep ? '' : 'none';
+  });
+  // 分组标题：本组没有可见行就一起藏掉，避免「只看未投」后面挂一串空标题
+  document.querySelectorAll('#tb tr.grp').forEach(function (tr) {
+    var any = false, n = tr.nextElementSibling;
+    while (n && !n.classList.contains('grp')) {
+      if (n.style.display !== 'none') { any = true; break; }
+      n = n.nextElementSibling;
+    }
+    tr.style.display = any ? '' : 'none';
+  });
+}
+document.getElementById('btnUndone').addEventListener('click', function () { showOnly('undone'); tip('已隐藏已投的。'); });
+document.getElementById('btnAll').addEventListener('click', function () { showOnly('all'); tip('已显示全部。'); });
+document.getElementById('btnEval').addEventListener('click', function () { showOnly('eval'); tip('只看 AI 评测 / 测试岗 —— 投前先读上面「两件事」。'); });
+
+document.getElementById('btnCsv').addEventListener('click', function () {
+  var out = ['层,公司,部门/岗位方向,门槛,窗口,入口,维度,状态,投递链接'];
+  DATA.forEach(function (r) {
+    var st = store[r.id] || {};
+    var line = [r[0], r[1], r[2], LABELS[r[3]], r[4], r[5], r[6] === 'eval' ? 'AI 评测/测试' : '', st.s || '未投', LINKS[+r.id.slice(1)] || ''];
+    out.push(line.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','));
+  });
+  var blob = new Blob(['\ufeff' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '秋招投递台账.csv';
+  a.click();
+});
+
+document.getElementById('btnJson').addEventListener('click', function () {
+  var blob = new Blob([JSON.stringify({ v: 1, date: new Date().toISOString().slice(0, 10), data: store }, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '秋招投递进度.json';
+  a.click();
+});
+
+document.getElementById('fileJson').addEventListener('change', function (e) {
+  var f = e.target.files[0];
+  if (!f) return;
+  var fr = new FileReader();
+  fr.onload = function () {
+    try {
+      var obj = JSON.parse(fr.result);
+      store = obj.data || obj || {};
+      save();
+      render();
+      tip('已导入进度。');
+    } catch (err) { tip('导入失败：文件格式不对。'); }
+  };
+  fr.readAsText(f);
+});
+
+document.getElementById('btnReset').addEventListener('click', function () {
+  if (!confirm('清空全部投递进度？这一步不可撤销。')) return;
+  store = {};
+  save();
+  render();
+  tip('已清空。never miss twice，明天重新开始。');
+});
+
+render();
+</script>
+</body>
+</html>

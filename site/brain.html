@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的宫殿 · 第二大脑全景</title>
+<link rel="stylesheet" href="_components/marvis.css">
+<style>
+  #stage { position: relative; width: 100%; height: 520px; border-radius: 12px; overflow: hidden;
+    background: #fbfaf7; border: 1px solid rgba(0,0,0,.08); margin: 14px 0 10px; cursor: grab; }
+  #stage.dragging { cursor: grabbing; }
+  #cv { display: block; width: 100%; height: 100%; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; font-size: 11px; line-height: 1.2; padding: 2px 6px; border-radius: 6px;
+    background: rgba(255,255,255,.86); border: 1px solid rgba(0,0,0,.10); white-space: nowrap;
+    transform: translate(-50%,-50%); color: #2C2C2A; pointer-events: auto; cursor: pointer; }
+  .lbl.hot { background: #fff; border-color: rgba(0,0,0,.35); font-weight: 500; }
+  .lbl b { display: block; font-weight: 500; }
+  .lbl i { font-style: normal; color: #5F5E5A; font-size: 10px; }
+  .hall-lbl { font-size: 12px; font-weight: 500; background: rgba(255,255,255,.94); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #5F5E5A; margin: 0 0 12px; }
+  .legend span.k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  #panel { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; padding: 14px 16px; background: #fff; margin-top: 10px; }
+  #panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+  #panel .meta { font-size: 12px; color: #5F5E5A; margin-bottom: 8px; }
+  #panel ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  #panel li { margin: 3px 0; }
+  .bars { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+  .bar { flex: 1 1 150px; border: 1px solid rgba(0,0,0,.10); border-radius: 10px; padding: 8px 10px; background: #fff; }
+  .bar small { display: block; color: #5F5E5A; font-size: 11px; }
+  .bar strong { font-size: 18px; font-weight: 500; }
+  .track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); margin-top: 6px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: #1D9E75; }
+  .fallback { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 10px; margin-top: 10px; }
+  .fb-hall { border: 1px solid rgba(0,0,0,.12); border-radius: 10px; padding: 10px 12px; background: #fff; }
+  .fb-hall h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
+  .fb-hall a { display: block; font-size: 12px; margin: 2px 0; color: #185FA5; text-decoration: none; }
+</style>
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h1 class="mv-h1" style="margin:0">我的宫殿</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
+      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
+    </div>
+  </div>
+  <p class="mv-sub" style="margin-bottom:6px">
+    四个厅，一根柱子一件事。<b>柱子越高 = 掌握度越高；实心 = 已经长在身上，半透明 = 内容建了但还没练。</b>
+    拖拽旋转，滚轮缩放，点柱子看明细。
+  </p>
+
+  <div class="legend">
+    <span><span class="k" style="background:#378ADD"></span>技术地基</span>
+    <span><span class="k" style="background:#BA7517"></span>项目</span>
+    <span><span class="k" style="background:#7F77DD"></span>思想准则</span>
+    <span><span class="k" style="background:#639922"></span>求职战场</span>
+    <span><span class="k" style="background:#B4B2A9;opacity:.45"></span>未练（半透明）</span>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="labels"></div>
+  </div>
+
+  <div class="bars" id="bars"></div>
+
+  <div id="panel">
+    <h3>点任意一根柱子</h3>
+    <div class="meta">这里会显示它的明细、掌握度和下钻入口。</div>
+  </div>
+
+  <p class="mv-note" style="margin-top:18px">
+    掌握度只由闭卷自评推进（进度页的等级），这里不手写。思想准则与求职两厅目前<b>半透明</b>——
+    它们的正本写完了，但还没接进派单，所以没有复训数据。这就是「读了就忘」的那一环。
+  </p>
+
+</div>
+
+<script src="_build/three/three.min.js"></script>
+<script src="_data/clusters.js"></script>
+<script src="_data/projects.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'mv.progress.v1', MASTER = 1;
+  var S = null;
+  try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { S = null; }
+  function lvOf(k) { return (S && S.lv && S.lv[k] && S.lv[k].l) || 0; }
+
+  // ── 四个厅 ────────────────────────────────────────────────
+  var HALLS = {
+    tech:  { name: '技术地基', color: 0x378ADD, soft: 0xB5D4F4, at: [-11, -8] },
+    proj:  { name: '项目',     color: 0xBA7517, soft: 0xFAC775, at: [11, -8] },
+    rule:  { name: '思想准则', color: 0x7F77DD, soft: 0xCECBF6, at: [-11, 8] },
+    apply: { name: '求职战场', color: 0x639922, soft: 0xC0DD97, at: [11, 8] }
+  };
+
+  var nodes = [];
+
+  // 1) 技术地基：从 clusters.js 派生
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+    if (c.zone !== '一档' && c.zone !== '二档') return;
+    var tot = c.topics.length, got = 0;
+    c.topics.forEach(function (t) { if (lvOf(c.id + '/' + t.id) >= MASTER) got++; });
+    nodes.push({
+      hall: 'tech', id: c.id, name: c.name, zone: c.zone,
+      ratio: tot ? got / tot : 0, got: got, tot: tot,
+      desc: c.zone + ' · ' + got + '/' + tot + ' 条主线已到「会了」',
+      lines: c.topics.map(function (t) {
+        return { n: t.id + ' · ' + t.name, href: t.href, ok: lvOf(c.id + '/' + t.id) >= MASTER };
+      })
+    });
+  });
+
+  // 2) 项目：从 projects.js 派生，掌握度取 pitch 簇
+  var pitch = (window.MARVIS_CLUSTERS || []).filter(function (c) { return c.id === 'pitch'; })[0];
+  (window.MARVIS_PROJECTS || []).forEach(function (p) {
+    var lines = [], got = 0, tot = 0;
+    if (pitch) pitch.topics.forEach(function (t) {
+      if (t.proj !== p.name) return;
+      tot++;
+      var ok = lvOf('pitch/' + t.id) >= MASTER;
+      if (ok) got++;
+      lines.push({ n: t.name, href: t.href, ok: ok });
+    });
+    nodes.push({
+      hall: 'proj', id: p.id, name: p.name, ratio: tot ? got / tot : 0,
+      got: got, tot: tot, desc: p.lead, href: p.href, lines: lines
+    });
+  });
+
+  // 3) 思想准则（手写数据源，正本在 wiki/thinking/）
+  function ob(p) { return 'obsidian://open?vault=Marvis&file=' + encodeURIComponent(p); }
+  [
+    { n: '机会成本门 A-7', d: '「有用」不是现在做的理由；问它是不是关键路径上的 20%', f: 'wiki/thinking/行动规则' },
+    { n: '有限计划会 A-1', d: '开工前给自我1一次正式排程，≤10 分钟，散会即散会', f: 'wiki/thinking/行动规则' },
+    { n: '决策门 A-2', d: '先判单向门还是双向门；双向门第一个足够好的方案直接执行', f: 'wiki/thinking/行动规则' },
+    { n: '信息价值截止线 A-3', d: '多想一分钟前问：新信息会改变我的动作吗', f: 'wiki/thinking/行动规则' },
+    { n: '丑版本配额 A-5', d: '30 分钟内必须产出一个丑版本，合格标准是「存在且可被拷打」', f: 'wiki/thinking/行动规则' },
+    { n: '我不负责清单 D', d: '我只负责投递质量、面试准备、每周闭环；不负责市场时机和 HR 速度', f: 'wiki/thinking/行动规则' },
+    { n: '逆境：算自己的账', d: '逆境里算判决值，不算对方喊的价', f: 'wiki/thinking/0713再就业男团-逆境准则' },
+    { n: '逆境：情绪 0 分也照做', d: '保底那件照做（复训 1 + 命功 1），不等状态', f: 'wiki/thinking/0713再就业男团-逆境准则' },
+    { n: '命功是电池', d: '睡眠饮食运动是产能上限；心气不足先查命功', f: 'wiki/thinking/性命双修执行案' },
+    { n: 'never miss twice', d: '漏一天不补课不自罚，第二天接上；唯一纪律是别连着断两天', f: 'wiki/thinking/行动规则' }
+  ].forEach(function (r, i) {
+    nodes.push({
+      hall: 'rule', id: 'r' + i, name: r.n, ratio: 0, untrained: true,
+      desc: r.d, href: ob(r.f)
+    });
+  });
+
+  // 4) 求职战场
+  [
+    { n: '秋招破局方案', d: 'offer = 投递量 × 过筛率 × 转化率；两条止损线', f: '../output/秋招破局方案.html', h: true },
+    { n: '投递台账 108 家', d: '五层分组 S16/A28/B35/C21/D8 + 窗口日历', f: '../output/秋招投递台账.html', h: true },
+    { n: '简历族（母版+3 方向）', d: '事实不变、表达自由；改母版再派生', f: '../output/resume/刘宇广-AI应用开发-2027届.html', h: true },
+    { n: '面试复盘报告', d: '乐元素 / 线上 AI 业务推演的实测评分与缺失模块', f: 'reviews/', h: true },
+    { n: '网申开放题作答', d: '逐条最优版本，纯文本可直接粘', f: '../output/网申开放题作答-刘宇广.md', h: false }
+  ].forEach(function (r, i) {
+    nodes.push({
+      hall: 'apply', id: 'a' + i, name: r.n, ratio: 0, untrained: true,
+      desc: r.d, href: r.h ? r.f : ob(r.f)
+    });
+  });
+
+  // ── 统计条 ────────────────────────────────────────────────
+  var bars = document.getElementById('bars');
+  Object.keys(HALLS).forEach(function (k) {
+    var list = nodes.filter(function (n) { return n.hall === k; });
+    var m = list.filter(function (n) { return !n.untrained; });
+    var pct = 0;
+    if (m.length) {
+      var g = 0, t = 0;
+      m.forEach(function (n) { g += n.got; t += n.tot; });
+      pct = t ? Math.round(g / t * 100) : 0;
+    }
+    var un = list.filter(function (n) { return n.untrained; }).length;
+    var d = document.createElement('div');
+    d.className = 'bar';
+    d.innerHTML = '<small>' + HALLS[k].name + (un ? ' · ' + un + ' 项未接入派单' : '') + '</small>' +
+      '<strong>' + (m.length ? pct + '%' : '—') + '</strong>' +
+      '<div class="track"><i style="width:' + (m.length ? pct : 0) + '%;background:#' +
+      HALLS[k].color.toString(16).padStart(6, '0') + '"></i></div>';
+    bars.appendChild(d);
+  });
+
+  // ── 无 three.js 时降级成 2D 地图 ──────────────────────────
+  if (typeof THREE === 'undefined') {
+    var st = document.getElementById('stage');
+    st.style.height = 'auto';
+    st.innerHTML = '';
+    var fb = document.createElement('div');
+    fb.className = 'fallback';
+    Object.keys(HALLS).forEach(function (k) {
+      var h = document.createElement('div');
+      h.className = 'fb-hall';
+      h.innerHTML = '<h4>' + HALLS[k].name + '</h4>';
+      nodes.filter(function (n) { return n.hall === k; }).forEach(function (n) {
+        var a = document.createElement('a');
+        a.textContent = (n.untrained ? '○ ' : (n.ratio > 0 ? '● ' : '◌ ')) + n.name;
+        if (n.href) { a.href = n.href; } else { a.href = 'progress.html'; }
+        h.appendChild(a);
+      });
+      fb.appendChild(h);
+    });
+    st.appendChild(fb);
+    return;
+  }
+
+  // ── 3D 场景 ───────────────────────────────────────────────
+  var stage = document.getElementById('stage');
+  var canvas = document.getElementById('cv');
+  var labelBox = document.getElementById('labels');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfbfaf7);
+  var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.72));
+  var dir = new THREE.DirectionalLight(0xffffff, 0.55);
+  dir.position.set(12, 24, 14);
+  scene.add(dir);
+
+  var HALL_W = 15, HALL_D = 11;
+  var meshes = [];
+
+  // 地面
+  var ground = new THREE.Mesh(
+    new THREE.BoxGeometry(46, 0.4, 30),
+    new THREE.MeshLambertMaterial({ color: 0xf1efe8 })
+  );
+  ground.position.y = -0.2;
+  scene.add(ground);
+
+  // 每个厅：地板 + 柱子
+  Object.keys(HALLS).forEach(function (k) {
+    var H = HALLS[k];
+    var list = nodes.filter(function (n) { return n.hall === k; });
+    var floor = new THREE.Mesh(
+      new THREE.BoxGeometry(HALL_W, 0.3, HALL_D),
+      new THREE.MeshLambertMaterial({ color: 0xe8e6de })
+    );
+    floor.position.set(H.at[0], 0, H.at[1]);
+    scene.add(floor);
+
+    // 厅内网格排布
+    var cols = Math.ceil(Math.sqrt(list.length));
+    list.forEach(function (n, i) {
+      var col = i % cols, row = Math.floor(i / cols);
+      var rows = Math.ceil(list.length / cols);
+      var sx = HALL_W / (cols + 1), sz = HALL_D / (rows + 1);
+      var x = H.at[0] - HALL_W / 2 + sx * (col + 1);
+      var z = H.at[1] - HALL_D / 2 + sz * (row + 1);
+      var h = 0.5 + (n.untrained ? 0.9 : n.ratio * 3.2);
+      var solid = !n.untrained && n.ratio > 0;
+      var mat = new THREE.MeshLambertMaterial({
+        color: solid ? H.color : H.soft,
+        transparent: !solid, opacity: solid ? 1 : 0.5
+      });
+      var m = new THREE.Mesh(new THREE.BoxGeometry(1.5, h, 1.5), mat);
+      m.position.set(x, h / 2, z);
+      scene.add(m);
+      n.mesh = m; n.h = h;
+      meshes.push(m);
+
+      var lb = document.createElement('div');
+      lb.className = 'lbl';
+      lb.innerHTML = '<b>' + n.name + '</b>' +
+        (n.untrained ? '<i>未接入派单</i>' : '<i>' + n.got + '/' + n.tot + '</i>');
+      lb.addEventListener('click', function (e) { e.stopPropagation(); select(n); });
+      labelBox.appendChild(lb);
+      n.label = lb;
+    });
+
+    var hl = document.createElement('div');
+    hl.className = 'lbl hall-lbl';
+    hl.textContent = H.name;
+    labelBox.appendChild(hl);
+    H.label = hl;
+    H.anchor = new THREE.Vector3(H.at[0], 0.4, H.at[1] + HALL_D / 2 + 0.9);
+  });
+
+  // 中央：我
+  var core = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.6, 2.8, 0.5, 40),
+    new THREE.MeshLambertMaterial({ color: 0xd3d1c7 })
+  );
+  core.position.y = 0.25;
+  scene.add(core);
+  var coreTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.9, 1.1, 2.2, 24),
+    new THREE.MeshLambertMaterial({ color: 0x5F5E5A })
+  );
+  coreTop.position.y = 1.4;
+  scene.add(coreTop);
+
+  var picked = null;
+
+  function select(n) {
+    picked = n;
+    var p = document.getElementById('panel');
+    var html = '<h3>' + n.name + '</h3><div class="meta">' + (n.desc || '') + '</div>';
+    if (n.untrained) {
+      html += '<div class="meta" style="color:#993C1D">这一项有正本，但没接进派单，所以没有复训数据。</div>';
+    } else if (n.tot) {
+      html += '<div class="meta">掌握度 ' + Math.round(n.ratio * 100) + '%（' + n.got + '/' + n.tot + '）</div>';
+    }
+    if (n.lines && n.lines.length) {
+      html += '<ul>' + n.lines.map(function (l) {
+        return '<li>' + (l.ok ? '● ' : '◌ ') +
+          '<a href="' + l.href + '" style="color:#185FA5;text-decoration:none">' + l.n + '</a></li>';
+      }).join('') + '</ul>';
+    }
+    if (n.href) {
+      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + n.href +
+        '" style="text-decoration:none">打开</a></div>';
+    }
+    p.innerHTML = html;
+    nodes.forEach(function (x) { x.label.classList.toggle('hot', x === n); });
+  }
+
+  // ── 相机控制（自写，避免额外依赖） ────────────────────────
+  var theta = 0.62, phi = 0.92, dist = 46;
+  var drag = false, px = 0, py = 0;
+  stage.addEventListener('mousedown', function (e) {
+    drag = true; px = e.clientX; py = e.clientY; stage.classList.add('dragging');
+  });
+  window.addEventListener('mouseup', function () { drag = false; stage.classList.remove('dragging'); });
+  window.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    theta -= (e.clientX - px) * 0.006;
+    phi -= (e.clientY - py) * 0.005;
+    phi = Math.max(0.18, Math.min(1.35, phi));
+    px = e.clientX; py = e.clientY;
+  });
+  stage.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    dist = Math.max(20, Math.min(90, dist + e.deltaY * 0.03));
+  }, { passive: false });
+
+  var ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  stage.addEventListener('click', function (e) {
+    var r = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(mouse, camera);
+    var hit = ray.intersectObjects(meshes, false)[0];
+    if (!hit) return;
+    var n = nodes.filter(function (x) { return x.mesh === hit.object; })[0];
+    if (n) select(n);
+  });
+
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var v = new THREE.Vector3();
+  function place(lb, vec) {
+    v.copy(vec).project(camera);
+    var w = stage.clientWidth, h = stage.clientHeight;
+    var x = (v.x * 0.5 + 0.5) * w, y = (-v.y * 0.5 + 0.5) * h;
+    lb.style.left = x + 'px';
+    lb.style.top = y + 'px';
+    lb.style.display = (v.z > 1) ? 'none' : 'block';
+  }
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    camera.position.set(
+      dist * Math.sin(phi) * Math.sin(theta),
+      dist * Math.cos(phi),
+      dist * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+    nodes.forEach(function (n) {
+      v.copy(n.mesh.position); v.y += n.h / 2 + 0.45;
+      place(n.label, v);
+    });
+    Object.keys(HALLS).forEach(function (k) { place(HALLS[k].label, HALLS[k].anchor); });
+  })();
+
+  window.MARVIS_BRAIN_NODES = nodes;
+})();
+</script>
+</body>
+</html>

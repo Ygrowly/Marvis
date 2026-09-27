@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数据存储选型模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">数据存储选型模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/数据存储选型/数据存储选型模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>4</b> 条主线</span>
+    <span class="mv-stat-i"><b>4</b> 个母题</span>
+    <span class="mv-stat-i"><b>30</b> 道题（<b>12</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>4</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="数据存储选型-01-分野.html"><span class="mv-line-no">一</span><span class="mv-line-name">分野</span><span class="mv-line-q">OLTP 与 OLAP 为什么是两类东西，凭什么它们不能合成一个</span><span class="mv-line-st">母题 1 · 题 8</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="数据存储选型-02-扩展.html"><span class="mv-line-no">二</span><span class="mv-line-name">扩展</span><span class="mv-line-q">单机扛不住以后，加机器为什么不是免费的，三条路各买到什么</span><span class="mv-line-st">母题 1 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="数据存储选型-03-边界.html"><span class="mv-line-no">三</span><span class="mv-line-name">边界</span><span class="mv-line-q">什么需求不该用关系库解决，多引入一个引擎要付什么账</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="数据存储选型-04-语义.html"><span class="mv-line-no">四</span><span class="mv-line-name">语义</span><span class="mv-line-q">数据仓库存的是事实，那"事实的含义"存在哪——NL2SQL 与 Agent 依赖的是什么</span><span class="mv-line-st">母题 1 · 题 6</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/03-query-and-performance.md</code>、<code class="mv-md-code">02-aggregation-and-recovery.md</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"受控并发 + 低优先级回补"是本模块在应用层的一次选型</strong>——不引入 MQ、不引入分析引擎，用<strong>调度 + 批量 + 幂等</strong>把负载压在单库能承受的范围里。</li><li>解决什么问题：<strong>能耗数据是"写多、按时间窗聚合读"的形态</strong>——这本来偏向时序/分析类存储，但<strong>当前规模下"加一套引擎"的代价大于收益</strong>，所以选择"用现有库 + 受控并发"顶住。</li><li>踩过的坑：<strong>Checkpoint 被当成"业务完成证明"</strong>——恢复线索不等于完成证明（对应 S1 的"数据同步有窗口"同一类问题：<strong>两边不一致时，以哪边为准</strong>）。</li><li>决策与取舍：<strong>"达到升级条件才引入"</strong>——这是本模块第 0 节那条判据（先算账，再换引擎）的现场版。</li><li>对应母题：【S1、S3】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/02-数据接入与轻量湖仓.md</code>、<code class="mv-md-code">03-数据目录与语义资产.md</code>、<code class="mv-md-code">14-系统架构部署与故障处理.md</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>这是本模块最完整的实例，三条线都命中</strong>：</li></ul></div><div class="mv-pj-item"><b>S1 分野</b><p class="mv-md-p"><strong>PostgreSQL 管控制面（租户、权限、目录、任务——典型 OLTP），Parquet + 对象存储存分析数据，DuckDB Worker 做隔离分析（列存 + 进程内）</strong>。<code class="mv-md-code">02</code> 写得很直白：*"PostgreSQL 只保存目录、Schema、同步状态和版本，DuckDB 负责分析执行"*。<strong>这就是"两种负载交给两种引擎"的标准做法。</strong></p></div><div class="mv-pj-item"><b>S2 扩展</b><p class="mv-md-p"><strong>快照（<code class="mv-md-code">SNAPSHOT</code>）与实时（<code class="mv-md-code">LIVE_READ</code>）双模式</strong>——实时模式<strong>优先只读副本或分析库</strong>，且*"若客户只有生产主库，默认不开放复杂即席查询"*。<strong>这就是"不许分析负载打到生产主库"这条硬规矩。</strong></p></div><div class="mv-pj-item"><b>S4 语义</b><p class="mv-md-p"><code class="mv-md-code">03</code> 的三层知识（技术元数据 / 业务语义 / 公共规则）与"<strong>模型只能映射和使用，不能自行创造</strong>"——<strong>这是 S4 的项目正本</strong>。</p>
+<ul class="mv-md-ul"><li>解决什么问题：<strong>同一份数据，控制面要强一致（权限不能错），数据面要扫描快（分析不能慢）</strong>——一个引擎同时满足两者的代价，比分成两层更高。</li><li>踩过的坑：<strong>扫描量、超时、行数、并发都必须有上界</strong>（<code class="mv-md-code">07</code>、<code class="mv-md-code">08</code>）——<strong>"单个请求没有上界"是这类事故的共同根因</strong>（同 [[母题-X1-容器是什么]] 的结论）。</li><li>决策与取舍：<strong>不做全量复制</strong>（成本与合规），<strong>只同步"选定数据集"</strong>；<code class="mv-md-code">02</code> 的钢人比较写明：*"完全直连无需同步、数据最新，适合已经有成熟分析库的企业；全量复制查询自由，但成本和合规压力大。"*</li><li>对应母题：【S1、S2、S4】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/06-architecture-and-scenarios.md</code>、<code class="mv-md-code">08-capacity-cost-and-facts.md</code>、<code class="mv-md-code">04-idempotency-and-recovery.md</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>"权威状态放关系库，易失状态与队列放 Redis"的经典二分</strong>——PostgreSQL 存 <code class="mv-md-code">AttackRun</code> 与 <code class="mv-md-code">Receipt</code>，Redis/ARQ 负责队列、限流与短期进度。</li><li>解决什么问题：<strong>崩溃后能重建</strong>——*"起来先读 AttackRun 和最后一个 Receipt，再校准 Checkpoint"*。<strong>这直接回答 S3 的第一问：Redis 能替代数据库吗？不能，因为它的权威性不在这里。</strong></li><li>踩过的坑：<strong>Redis 只配 256~512MB</strong>（<code class="mv-md-code">08</code>）——一个"进程随时可能被拿走"的存储，<strong>不能承载不可再生的状态</strong>（同 [[母题-X1-容器是什么]] 2.2）。</li><li>决策与取舍：<strong>K8s、RabbitMQ、通用 DAG 都进了"主动删除"清单</strong>（<code class="mv-md-code">06</code> §秒级删除清单）——<strong>明确不做的比做的更能说明取舍</strong>；这正是 S3 要练的"多引入一个引擎要付什么账"。</li><li>对应母题：【S3】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 X3 · 线上变慢了从哪开始查：四类症状的定位顺序</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/Linux与部署.html">← Linux与部署 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">Linux与部署</span>
+    <h1 class="mv-topic-title">母题 X3 · 线上变慢了从哪开始查：四类症状的定位顺序</h1>
+    <p class="mv-topic-meta">关联 母题-X1-容器是什么（**CPU 不高却被限流**）· 母题-X2-服务怎么上线（上线后的可观测）· 母题-O1-上下文切换与死锁（load 与不可中断等待）· 母题-O2-虚拟内存与缺页（内存够不够怎么判断）· 母题-O3-IO模型与零拷贝（IO 等待）· 母题-N1-一次请求的完整路径（**分层归因**）· 母题-M7-慢查询与SQL优化手段（查到数据库那一层之后） ｜ 正本 wiki/topics/Linux与部署/母题-X3-线上排查的顺序.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① <strong>顺序比命令重要</strong>：先归因到"哪一层、是全部还是个别" ② 两个二分问题（压力还是能力 / 在等还是在算）能把原因分成四块 ③ 三个最容易误判的信号：<code class="mv-md-code">load</code> 高、CPU 不高、<code class="mv-md-code">free</code> 满）· 读完约 9 分钟 · 需要先懂：[[母题-X1-容器是什么]]</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">凌晨告警"接口 P99 从 200ms 涨到 3s"。你打开监控，看到一个"CPU 利用率 45%、内存正常、磁盘正常"的画面。请说出你的排查顺序——以及你会先排除什么、为什么。</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：排查的能力体现在"顺序"，不在"记得多少命令"</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 为什么顺序比工具重要【推导】</h4>
+<figure-box num="线上变慢的排查顺序：先分类，再看数" title="" note="两个二分问题把原因分成四块；三个最容易误判的信号"><svg viewBox="0 0 680 356" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>线上变慢的排查顺序：先分类，再看数</title>
+<desc>先用症状把范围缩到一类资源，再用压力与能力把原因分成两半；负载高但 CPU 不高是等 IO 的签名。</desc>
+<defs>
+<marker id="figtriage-order-svg-arrowX3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">排查 = 先缩范围，再看数；顺序比命令重要</text>
+
+<rect x="40" y="46" width="600" height="66" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">第 0 步：先归因到「一层」，别一头钻进某个指标</text>
+<text x="58" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">是全部接口慢，还是某个接口慢？是所有实例慢，还是单实例慢？——这两个问题能把范围缩掉八成的可能性</text>
+
+<rect x="40" y="126" width="290" height="130" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="56" y="148" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两个二分问题，把原因分成四块</text>
+<text x="56" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">① 是「压力」还是「能力」？</text>
+<text x="56" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">　 压力 = 来得太多；能力 = 干得太慢</text>
+<text x="56" y="214" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">② 是「在等」还是「在算」？</text>
+<text x="56" y="232" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">　 在等 → 改异步/优化下游；在算 → 加核/改算法</text>
+
+<rect x="350" y="126" width="290" height="130" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="366" y="148" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">四类症状的第一眼</text>
+<text x="366" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">CPU 高 → 在算：看谁在烧（perf / 火焰图）</text>
+<text x="366" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">内存紧 → 看 RSS 与 PSI，区分泄漏/上界</text>
+<text x="366" y="208" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">磁盘 → 先看 %util 与 await，再看空间</text>
+<text x="366" y="226" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">网络 → 连接数 · 重传 · 带宽 · 下游延迟</text>
+
+<rect x="40" y="270" width="600" height="72" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="292" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">三个最容易误判的信号</text>
+<text x="58" y="312" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">① load 高但 CPU 不高 → 大量任务在不可中断等待（多为磁盘 IO），不是 CPU 不够</text>
+<text x="58" y="330" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">② CPU 利用率不高但延迟抖动 → 可能是被 cgroup 限流（看 cpu.stat 的 throttled）</text>
+<text x="58" y="346" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">③ free 显示内存用满 → 先看 available，页缓存是可回收的</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>"把所有命令敲一遍，看哪个数字大"这个做法有两个硬伤</strong>：</p>
+<pre class="mv-md-pre">① 成本：一次完整巡检要几分钟，而线上故障的分秒都在计费
+② 误导：总会有【某个数字看起来偏高】——它可能只是噪声，
+        而不是根因；一旦你顺着它查下去，就会离真因越来越远</pre>
+<p class="mv-md-p">【推导】<strong>正确的做法是"用两个是的/否问题，把可能性先砍掉一大半"</strong>：</p>
+<pre class="mv-md-pre">问题一：是【全部接口】慢，还是【某个接口】慢？
+        全部 → 看共用的东西（DB、缓存、网络、宿主机）
+        个别 → 看这个接口自己的代码与它独用的依赖
+        ★ 这一个问题就能把范围缩掉八成
+
+问题二：是【所有实例】慢，还是【个别实例】慢？
+        所有 → 共性资源 / 上游 / 流量
+        个别 → 这台机器 / 这个容器 / 这一次部署</pre>
+<p class="mv-md-p">【取舍】<strong>这两个问题加起来只有四个组合，但每一个组合都指明了下一步</strong>——<strong>这就是"顺序"的价值：它让你在信息最少的时候，做出最有信息量的动作。</strong></p>
+<h4 class="mv-md-h mv-md-h4">1.2 两个二分：压力 / 能力，在等 / 在算【推导】</h4>
+<p class="mv-md-p">【推导】<strong>第二个二分问题决定"加资源有没有用"</strong>：</p>
+<table class="mv-table"><thead><tr><th></th><th><strong>压力</strong></th><th><strong>能力</strong></th></tr></thead><tbody><tr><td>含义</td><td><strong>活来得太多</strong></td><td><strong>每件活干得太慢</strong></td></tr><tr><td>判断</td><td>QPS 涨了 / 并发涨了</td><td>QPS 没变，但耗时变长</td></tr><tr><td>对策</td><td>限流、扩容、排队</td><td><strong>优化</strong>（算法 / 查询 / 下游）</td></tr><tr><td>加机器有用吗</td><td><strong>有用</strong>（有上限）</td><td><strong>常常没用</strong>（瓶颈在单次耗时上）</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>第三个二分问题决定"该优化什么"</strong>（同一个算式在三个模块里出现过）：</p>
+<pre class="mv-md-pre">在等（IO / 锁 / 下游）→ 改异步、优化下游、缩小临界区
+在算（CPU 密集）      → 加核、改算法、拆到进程池
+判据：CPU 占用 / 总耗时
+  占比低（如 2%）→ 基本都在等 → 加核没用
+  占比高（如 80%）→ 基本都在算 → 改异步没用
+（这一算式在 [[母题-O3-IO模型与零拷贝]] 1.1、[[母题-O1-上下文切换与死锁]] 5 反复出现）</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"先问两个是非题"比"先跑一遍巡检命令"更省时间？</p>
+<h3 class="mv-md-h mv-md-h3">2. 四类症状：每一类先看什么</h3>
+<h4 class="mv-md-h mv-md-h4">2.1 CPU【事实】</h4>
+<p class="mv-md-p">【事实】<strong>先区分三种完全不同的情况</strong>：</p>
+<table class="mv-table"><thead><tr><th>现象</th><th>含义</th><th>下一步</th></tr></thead><tbody><tr><td><strong>使用率高 + 有用的工作在推进</strong></td><td><strong>能力问题</strong>（真的在算）</td><td>找热点：火焰图 / <code class="mv-md-code">perf</code>，或看哪个线程在烧</td></tr><tr><td><strong>使用率高 + 吞吐没有提高</strong></td><td><strong>可能是空转</strong>（自旋、忙等、重试风暴）</td><td>看是否在重试、锁竞争（[[母题-L2-锁的粒度与临界区]]）</td></tr><tr><td><strong>使用率不高 + 延迟抖动</strong></td><td><strong>可能被限流</strong>（容器）或在等 IO</td><td><strong>看 <code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code> / <code class="mv-md-code">throttled_usec</code></strong>（[[母题-X1-容器是什么]] 3.2）</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong><code class="mv-md-code">load average</code> 是这里最大的坑</strong>：</p>
+<pre class="mv-md-pre">load ≈ 可运行的任务数 + 【不可中断等待】的任务数
+→ load 高有两种完全不同的解释：
+   ① 很多任务在抢 CPU（可运行）   → 真的 CPU 不够
+   ② 很多任务卡在磁盘 IO（不可中断等待）→ 【CPU 可能很闲】
+→ 判据：load 高 + CPU 低 = 在等 IO（这是最经典的误判）</pre>
+<h4 class="mv-md-h mv-md-h4">2.2 内存【事实】</h4>
+<p class="mv-md-p">【事实】<strong>三步，顺序不能反</strong>：</p>
+<pre class="mv-md-pre">① 看 available，不看 used        —— used 里很多是可回收的页缓存（[[母题-O2-虚拟内存与缺页]] 3.2）
+② 看容器自己的额度               —— free 是宿主机的视图（[[母题-X1-容器是什么]] 2.1）
+③ 区分三种"涨"                   —— 泄漏 / 页缓存 / 无上界结构（[[母题-O2-虚拟内存与缺页]] 5.5）</pre>
+<p class="mv-md-p">【推导】<strong>加一个更早的信号</strong>：<strong><code class="mv-md-code">/proc/pressure/memory</code>（PSI）</strong> ——<strong>它在 OOM 之前就会升高</strong>，<strong>比"等 OOM 日志"早</strong>（[[母题-O2-虚拟内存与缺页]] 3.2）。</p>
+<h4 class="mv-md-h mv-md-h4">2.3 磁盘【事实】</h4>
+<p class="mv-md-p">【事实】<strong>先分清"空间"和"性能"两件事</strong>：</p>
+<table class="mv-table"><thead><tr><th>问题</th><th>先看</th></tr></thead><tbody><tr><td><strong>空间满</strong></td><td>从根目录逐层 <code class="mv-md-code">du</code> 排序，或按文件大小找；<strong>注意"已删除但被进程占用的文件"</strong>（<code class="mv-md-code">df</code> 满而 <code class="mv-md-code">du</code> 对不上，就是它）</td></tr><tr><td><strong>性能差</strong></td><td><strong><code class="mv-md-code">%util</code>（设备忙的程度）与 <code class="mv-md-code">await</code>（平均等待）</strong>；「<code class="mv-md-code">%util</code> 高 + <code class="mv-md-code">await</code> 高」= 设备真的到顶了；「<code class="mv-md-code">%util</code> 不高但 <code class="mv-md-code">await</code> 高」= 排队在别处（如队列深度、文件系统层）</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>一个高频误判</strong>：<strong>空间满 ≠ 性能差</strong>，<strong>性能差 ≠ 空间满</strong>——<strong>两个问题的定位工具、处理动作完全不同</strong>，<strong>第一句就要分清。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.4 网络【事实】</h4>
+<p class="mv-md-p">【事实】<strong>四个方向</strong>：</p>
+<table class="mv-table"><thead><tr><th>方向</th><th>看什么</th><th>典型现象</th></tr></thead><tbody><tr><td><strong>连接</strong></td><td>连接数、<code class="mv-md-code">TIME_WAIT</code> / <code class="mv-md-code">CLOSE_WAIT</code> 的数量</td><td>连接池打满 / 端口耗尽（[[母题-N1-一次请求的完整路径]]）</td></tr><tr><td><strong>丢包与重传</strong></td><td>重传率</td><td>延迟抖动、吞吐上不去</td></tr><tr><td><strong>带宽</strong></td><td>网卡吞吐</td><td>大 key / 大结果集把网卡打满（[[母题-R4-大key与热key]]）</td></tr><tr><td><strong>对端延迟</strong></td><td>下游的响应时间</td><td><strong>这才是"网络慢"最常见的原因</strong>——不是网络，是<strong>下游慢</strong></td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>最后一条最值得记住</strong>：<strong>大多数"网络问题"其实是"下游问题"</strong>——<strong>因为在调用方看来，两者的表现都是"等待"</strong>。所以<strong>排查时必须把"链路耗时"和"对端处理耗时"分开</strong>，否则会一直修自己不慢的那一段。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"网络慢"这个结论通常需要再往下拆一步？</p>
+<h3 class="mv-md-h mv-md-h3">3. 量化与判据</h3>
+<h4 class="mv-md-h mv-md-h4">3.1 压力还是能力：用一个比值判断【推导】</h4>
+<p class="mv-md-p">【推导】<strong>同一个指标看趋势，两个指标看关系</strong>：</p>
+<pre class="mv-md-pre">判定"压力"：QPS / 并发数【上升】了，而单次耗时基本不变
+            → 活多了 → 限流 / 扩容（有效）
+
+判定"能力"：QPS 没变，但单次耗时【上升】了
+            → 每件活变慢 → 优化（扩容常常无效）</pre>
+<p class="mv-md-p">【推导】<strong>再加一条"资源与吞吐的关系"</strong>：</p>
+<pre class="mv-md-pre">加资源能提高吞吐 → 说明瓶颈在这个资源上（压力型）
+加资源吞吐不动   → 瓶颈在别处（能力型 / 或别的资源）
+→ 这条也叫"看有没有饱和信号"：接近饱和的资源才可能是瓶颈</pre>
+<h4 class="mv-md-h mv-md-h4">3.2 等 IO 还是等 CPU：交叉判定【推导】</h4>
+<p class="mv-md-p">【推导】<strong>单看一个指标不够，要看两个的关系</strong>：</p>
+<pre class="mv-md-pre">CPU 高 + load 高 + 磁盘忙 → 在算，且可能是 CPU 或磁盘
+CPU 低 + load 高          → 【在等 IO】（签名）
+CPU 低 + load 也低        → 在等【外部】（锁 / 下游 / 连接池）</pre>
+<p class="mv-md-p">【推导】<strong>第三种最容易被忽略</strong>：<strong>自己什么都不忙，但很慢</strong>——<strong>那一定是在等一个不在本机上的东西</strong>。<strong>这就是分层归因的价值</strong>（[[母题-N1-一次请求的完整路径]] 的"先分清卡在哪一层"）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"本机指标一切正常"这件事本身就是一条重要线索？</p>
+<h3 class="mv-md-h mv-md-h3">4. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"load 高就是 CPU 不够"</td><td>【推导】<strong>两个原因</strong>：可运行任务在抢 CPU，<strong>或</strong>大量任务卡在<strong>不可中断等待</strong>（多为磁盘 IO）。<strong><code class="mv-md-code">load</code> 高 + CPU 低就是在等 IO 的签名</strong></td></tr><tr><td>"CPU 利用率不高就说明没压力"</td><td>【推导】<strong>在容器里尤其错</strong>：配额是"每周期的时间预算"，<strong>用完之后即使核空闲也用不了</strong>——看 <code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code> / <code class="mv-md-code">throttled_usec</code>（[[母题-X1-容器是什么]] 3.2）</td></tr><tr><td>"<code class="mv-md-code">free</code> 显示内存用满就是要爆了"</td><td>【事实】<strong>先看 <code class="mv-md-code">available</code></strong>：<code class="mv-md-code">used</code> 里很大一部分是<strong>可回收的页缓存</strong>。"用满"本身不是问题，<strong>"回收不动"才是</strong>（[[母题-O2-虚拟内存与缺页]]）</td></tr><tr><td>"磁盘告警就是空间要满了"</td><td>【事实】<strong>空间与性能是两件事</strong>：空间用 <code class="mv-md-code">du</code>/<code class="mv-md-code">df</code>（注意"已删除但被占用的文件"），<strong>性能看 <code class="mv-md-code">%util</code> 与 <code class="mv-md-code">await</code></strong>。<strong>第一句就要分清问的是哪一个</strong></td></tr><tr><td>"接口慢就是网络问题"</td><td>【推导】<strong>大多数"网络慢"其实是下游慢</strong>——调用方看来都是等待。<strong>必须把链路耗时与对端处理耗时分开</strong>，否则会一直修自己不慢的那一段</td></tr><tr><td>"所有指标都正常，那一定是代码有 bug"</td><td>【取舍】<strong>也可能是"在等一个不在本机上的东西"</strong>（锁、连接池、下游、队列）。<strong>"本机一切正常"是一条指向"外部依赖"的线索，不是"没问题"的结论</strong></td></tr><tr><td>"先跑一遍完整巡检，把所有指标都看一眼"</td><td>【推导】<strong>先缩范围再看数</strong>：一次巡检几分钟，而且<strong>总会有某个数字偏高</strong>，顺着噪声查会离真因更远。<strong>顺序：全部/个别 → 压力/能力 → 在等/在算，然后才落指标</strong></td></tr><tr><td>"排查一个人的活，靠经验"</td><td>【取舍】<strong>经验体现在"知道先排除什么"</strong>：比如"全部接口都慢 → 先看共用依赖"，"个别实例慢 → 先看这台机器和这次部署"。<strong>这些是可以写下来的规则</strong></td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="Linux与部署/母题-X3-线上排查的顺序-q1" tag="Linux与部署" q="监控画面：CPU 利用率 45%、load average = 48（机器 8 核）、内存 available 充足、磁盘空间充足。&#10;问：① 最可能的原因是什么？② 下一步看什么？③ 为什么&quot;CPU 只有 45%&quot;这一条不能让你放心？" a="``&#10;① load = 48 而机器只有 8 核 → 负载是核数的 6 倍&#10;但 CPU 利用率只有 45% → 说明【大量任务不是在用 CPU，而是在等】&#10;最可能：大量任务处于【不可中断等待】（通常是在等磁盘 IO）&#10;② 下一步（按顺序）：&#10;· 看 IO 压力：iostat 的 %util 与 await；或看 PSI 的 IO 压力&#10;（/proc/pressure/io）&#10;· 看这些等待是谁在等：是数据库（可能在本机也可能在别处）&#10;还是日志 / 临时文件 / 对象存储&#10;· 如果这台机器上跑着数据库 → 看它的慢查询与刷盘行为&#10;（[[母题-M7-慢查询与SQL优化手段]]）&#10;`&#10;③ 因为在容器与高并发场景下，&quot;CPU 利用率&quot;本身就可能误导：&#10;`&#10;· 在容器里：配额用完后即使核空闲也不能用（[[母题-X1-容器是什么]]）&#10;· 在等 IO 时：任务不在 CPU 上，利用率自然不高，但【它就是慢】&#10;· load 高 + CPU 低 这个组合本身就是&quot;在等&quot;的签名&#10;→ 结论：CPU 利用率回答的是&quot;用了多少&quot;，而&quot;慢&quot;的原因是&quot;在等&quot;。&#10;用&quot;用了多少&quot;去解释&quot;为什么慢&quot;，方向就错了。&#10;`&#10;【这一步在验证什么】验证 2.1 与 3.2：load` 与 CPU 的交叉判定，是排查里信息量最大的一个组合。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="Linux与部署/母题-X3-线上排查的顺序-q2" tag="Linux与部署" q="某接口调用链：&#10;``&#10;本服务处理（不含调用）：30 ms&#10;├─ 调用服务 B：120 ms     ← B 自己处理 100 ms，网络 20 ms&#10;└─ 查询数据库：350 ms&#10;总耗时：约 500 ms&#10;``&#10;P99 告警要求压到 200 ms 以下。问：① 该优化哪一段？② 如果只优化&quot;网络&quot;能到多少？③ 该项目里&quot;网关超时与应用超时设成一样&quot;为什么会妨碍这次排查？" a="``&#10;① 按耗时排序，瓶颈很清楚：&#10;数据库 350 ms（70%）＞ 服务 B 120 ms（24%）＞ 本服务 30 ms（6%）&#10;→ 【先优化数据库那 350 ms】&#10;→ 这一步就是&quot;分层归因&quot;：不分层的话，可能有人会去优化那 30 ms 的代码&#10;② 只优化网络（20 ms）：&#10;500 → 480 ms，【离 200 ms 的目标差得远】&#10;→ 典型错误：在最小的一块上使劲&#10;`&#10;③ 超时设成一样会妨碍排查（这一点在 [[母题-N1-一次请求的完整路径]] 已记，这里是它在本卡的形态）：&#10;`&#10;网关超时 = 应用超时 → 两边几乎同时放弃&#10;→ 日志里看不出【是谁先超时的】&#10;→ 无法判断&quot;是应用处理慢&quot;还是&quot;网关等不及&quot;&#10;→ 正确做法：外层比内层略长，让内层先超时并留下自己的错误&#10;（这样错误里带着&quot;内层的原因&quot;，归因才有依据）&#10;``&#10;【这一步在验证什么】验证 2.4 与 3.2：&quot;慢&quot;要按耗时排序去优化；而&quot;能归因&quot;是排查的前提——超时层级设计错了，日志里就没有归因信息。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算/判读</span></div><flip-card card-id="Linux与部署/母题-X3-线上排查的顺序-q3" tag="Linux与部署" q="某服务 df 显示磁盘 100% 满，但 du 从根目录加起来只有 60%。&#10;问：① 差额那部分去哪了？② 怎么确认？③ 该怎么处理？" a="``&#10;① 差额最可能是【已删除但被进程占用的文件】：&#10;进程打开了文件 → 文件被删除 → 【目录项没了，但进程还持有文件描述符】&#10;→ du 看不到它（不在目录树里了）&#10;→ df 仍然算着它（磁盘块没释放）&#10;→ 于是 df 满、du 不满&#10;`&#10;② 确认方法：找&quot;持有已删除文件的进程&quot;——&#10;`&#10;按 /proc/&lt;pid&gt;/fd 里的链接状态找&quot;deleted&quot;的文件&#10;（常用做法：lsof +L1 一类，或遍历 /proc/*/fd 找指向已删除文件的链接）&#10;→ 排名靠前的通常就是&quot;没关日志文件 / 没关临时文件&quot;的那个进程&#10;`&#10;③ 处理（按风险从低到高）：&#10;顺序 · 动作 · 说明&#10;1 · 先确认这个文件是谁、有多大 · 别急着动手——它可能是正在写的日志，也可能是关键数据&#10;2 · 能重启就重启那个进程（或让它正常关闭文件） · 释放描述符即释放空间，最干净&#10;3 · 如果它是日志，改配置（轮转 + 上限） · 根因是&quot;日志没有上限&quot; ← 见下&#10;4 · 应急：清空文件内容（而不是删文件） · 只对能安全清空的日志类文件用；对业务文件绝不能用&#10;【推导】根因几乎总是同一句话：&quot;某个会增长的东西没有上界&quot; ——&#10;`&#10;日志没轮转 → 一直写 → 占满&#10;临时文件不清理 → 占满&#10;队列 / 缓存落盘不设上限 → 占满&#10;→ 与 [[母题-O2-虚拟内存与缺页]] 5.5 的结论完全一致：&#10;【给每个会增长的东西设上界】是资源治理里唯一通用的手段&#10;``&#10;【这一步在验证什么】验证 2.3：&quot;空间&quot;和&quot;性能&quot;是两件事；而空间问题的根因，通常又是&quot;没有上界&quot;。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Linux与部署/母题-X3-线上排查的顺序-q4" tag="Linux与部署" q="下面这段话哪里错了？&#10;&quot;接口变慢了，我先看了监控：CPU 45%、内存正常、磁盘正常、网络正常。所以本机资源都没问题，肯定是代码有 bug，我先把代码 review 一遍。&quot;" a="&quot;本机资源都正常 ⇒ 一定是代码 bug&quot;这个推理跳过了最重要的一步。&#10;【推导】慢的原因有三类，只排除了其中一类：&#10;类别 · 例子 · 本机指标会怎样&#10;① 本机资源不够 · CPU 打满、内存紧、磁盘满 · 指标异常 ← 他排除了这一类&#10;② 在等外部 · 下游慢、数据库慢、锁 / 连接池排队、队列积压 · 指标&quot;一切正常&quot; ← 这一类完全没排除&#10;③ 真的在算 · 算法退化、N+1 查询、序列化大对象 · 可能指标正常&#10;&quot;本机一切正常&quot;本身就是一条线索：说明它在等一个不在本机上的东西（3.2）。而代码 review 是成本最高、命中率最低的动作（几百行代码里找一个性能问题）。&#10;正确顺序：&#10;``&#10;① 先问两个是非题：全部接口还是个别接口？所有实例还是个别实例？&#10;② 再看&quot;在等还是在算&quot;（CPU 占用 ÷ 总耗时）&#10;③ 若判定&quot;在等&quot; → 【看调用链各段的耗时】&#10;（下游 / 数据库 / 锁 / 队列，这一步就能定位到段）&#10;④ 只有确认&quot;在算&quot;且&quot;没找到外部原因&quot;时，才去看代码&#10;`&#10;【取舍】并且要给&quot;在等&quot;这一类别更明确的检查项（极易被&quot;本机正常&quot;掩盖）：&#10;`&#10;· 数据库慢查询 / 锁等待时长&#10;· 下游接口的 P99&#10;· 连接池的 active / idle / 等待队列长度&#10;· 队列的 lag（[[母题-Q3-积压与高可用]]）&#10;``&#10;准确说法：*&quot;本机资源正常&quot;只排除了一类原因，它反而在提示&quot;在等外部&quot;。正确顺序是先用两个是非题缩范围，再按调用链分段比耗时，最后才看代码。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="Linux与部署/母题-X3-线上排查的顺序-q5" tag="Linux与部署" q="下面这段话哪里错了？&#10;&quot;这次慢是网络问题，我看了，跨机房调用延迟很高。所以让运维把网络优化一下就好了。&quot;" a="&quot;网络问题&quot;这个结论很可能把&quot;下游慢&quot;误诊成了&quot;链路慢&quot;——而两者的处置完全不同。&#10;【事实】调用方看到的&quot;等待&quot;包含两段，必须分开：&#10;``&#10;调用总耗时 = 【链路耗时】（网络往返 + 排队）+ 【对端处理耗时】&#10;→ 两者在调用方看来都是&quot;等&quot;，但责任方完全不同&#10;`&#10;怎么分辨：&#10;现象 · 更像&#10;对端有&quot;处理耗时&quot;的日志/埋点，且它很大 · 对端慢（网络只是背锅）&#10;对端处理很快，但调用方测出来很慢 · 链路问题（丢包、重传、带宽、排队）&#10;两者都正常但偶发变慢 · 看重传率与尾部延迟（偶发通常指向丢包）&#10;【推导】为什么&quot;网络慢&quot;这个结论常常是错的：&#10;`&#10;· 跨机房调用延迟高是【设计上就存在】的固定成本（几十毫秒量级），&#10;它不解释&quot;从 200ms 涨到 3s&quot;这种量级的变化&#10;· 真正会突然变慢的，通常是【对端】：&#10;数据库慢了、下游依赖慢了、对端实例数少了&#10;· 而&quot;网络&quot;这个解释最省事、最不需要证据，所以最容易被当成结论&#10;``&#10;【取舍】正确的动作：先去对端看它的处理耗时（有没有埋点、有没有 Trace，见 [[母题-E2-Trace与可观测性]]）——如果对端说&quot;我处理只用了 10ms&quot;，那才轮到怀疑链路。先归因，再优化；顺序反了就是让运维白干。&#10;准确说法：*调用方的&quot;等待&quot;包含链路与对端两段，要先分开再归因。跨机房的固定延迟不解释量级变化；突然变慢更常来自对端。定位要落到分段耗时上，而不是先给结论。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">线上变慢应该按什么顺序查，哪些指标最容易把人带错方向。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="Linux与部署/母题-X3-线上排查的顺序" tag="Linux与部署" q="线上变慢应该按什么顺序查，哪些指标最容易把人带错方向。" a="排查的能力体现在顺序上，不在记得多少命令——先用两个是非题把范围缩掉八成：① 是全部接口慢还是个别人慢？② 是所有实例慢还是个别实例慢？；再用两个二分问题定方向：是&quot;压力&quot;（活来得太多 → 限流扩容有效）还是&quot;能力&quot;（每件活变慢 → 要优化）、是&quot;在等&quot;还是&quot;在算&quot;（CPU 占用 ÷ 总耗时，低就是等）。四类症状各有第一眼：CPU 要分清&quot;在算 / 空转 / 被容器限流&quot;（后者看 cpu.stat 的 nr_throttled）；内存先看 available 不看 used、再看容器自己的 cgroup 额度、最后分清泄漏 / 页缓存 / 无上界；磁盘要先分清&quot;空间&quot;还是&quot;性能&quot;（空间用 du/df，注意&quot;已删除但被占用的文件&quot;；性能看 %util 与 await）；网络要记住大多数&quot;网络慢&quot;其实是下游慢——必须把链路耗时与对端处理耗时分开。三个最容易误判的信号：load 高 + CPU 低（在等 IO）、CPU 不高但延迟抖（被限流）、free 显示满（页缓存可回收）。而&quot;本机一切正常&quot;是一条指向&quot;我在等外部&quot;的线索，不是&quot;代码有 bug&quot;的结论。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion">排查的能力<strong>体现在顺序上，不在记得多少命令</strong>——先用两个是非题把范围缩掉八成：<strong>① 是全部接口慢还是个别人慢？② 是所有实例慢还是个别实例慢？</strong>；再用两个二分问题定方向：<strong>是"压力"（活来得太多 → 限流扩容有效）还是"能力"（每件活变慢 → 要优化）</strong>、<strong>是"在等"还是"在算"（CPU 占用 ÷ 总耗时，低就是等）</strong>。四类症状各有第一眼：<strong>CPU</strong> 要分清"在算 / 空转 / <strong>被容器限流</strong>"（后者看 <code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code>）；<strong>内存</strong>先看 <code class="mv-md-code">available</code> 不看 <code class="mv-md-code">used</code>、再看容器自己的 cgroup 额度、最后分清泄漏 / 页缓存 / 无上界；<strong>磁盘</strong>要<strong>先分清"空间"还是"性能"</strong>（空间用 <code class="mv-md-code">du</code>/<code class="mv-md-code">df</code>，注意"已删除但被占用的文件"；性能看 <code class="mv-md-code">%util</code> 与 <code class="mv-md-code">await</code>）；<strong>网络</strong>要记住<strong>大多数"网络慢"其实是下游慢</strong>——必须把链路耗时与对端处理耗时分开。<strong>三个最容易误判的信号</strong>：<code class="mv-md-code">load</code> 高 + CPU 低（在等 IO）、CPU 不高但延迟抖（被限流）、<code class="mv-md-code">free</code> 显示满（页缓存可回收）。<strong>而"本机一切正常"是一条指向"我在等外部"的线索，不是"代码有 bug"的结论。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>顺序比命令重要</strong></li><li>两个是非题（全部/个别接口 · 所有/个别实例）</li><li>二分：压力 vs 能力</li><li>二分：在等 vs 在算（CPU 占比）</li><li><strong>load 高 + CPU 低 = 在等 IO</strong></li><li><strong>CPU 不高但延迟抖 = 可能被限流（cpu.stat）</strong></li><li>内存先看 <code class="mv-md-code">available</code>、容器看 cgroup</li><li>PSI 比 OOM 日志早</li><li><strong>磁盘：空间 vs 性能先分清</strong></li><li><code class="mv-md-code">df</code> 满 <code class="mv-md-code">du</code> 不满 = 已删除但被占用</li><li><strong>"网络慢"大多是下游慢</strong>：分开链路耗时与对端耗时</li><li>本机正常 → 在等外部</li><li>根因常是"某处没有上界"</li><li>先归因再优化</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 452 字 · 按 4 字/秒折算约 113 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">排查的能力<strong>体现在顺序上，不在记得多少命令</strong>。先用<strong>两个是非题</strong>把范围缩掉八成：<strong>① 全部接口慢还是个别慢？② 所有实例慢还是个别实例慢？</strong>；再用<strong>两个二分</strong>定方向：<strong>是"压力"（活太多 → 限流扩容有效）还是"能力"（每件活变慢 → 要优化）</strong>、<strong>是"在等"还是"在算"</strong>（看 CPU 占用 ÷ 总耗时，低就是等）。</p>
+<p class="mv-md-p">四类症状各有第一眼：<strong>CPU</strong> 要分清在算 / 空转 / <strong>被容器限流</strong>（看 <code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code>）；<strong>内存</strong>先看 <code class="mv-md-code">available</code> 不看 <code class="mv-md-code">used</code>、再看容器自己的 cgroup 额度、最后分清泄漏 / 页缓存 / 无上界；<strong>磁盘</strong>要先分清"<strong>空间</strong>"还是"<strong>性能</strong>"（空间用 <code class="mv-md-code">df</code>/<code class="mv-md-code">du</code>，注意"已删除但仍被占用"的文件 —— <code class="mv-md-code">df</code> 满但 <code class="mv-md-code">du</code> 对不上时用 <code class="mv-md-code">lsof +L1</code> 找；性能看 <code class="mv-md-code">%util</code> 与 <code class="mv-md-code">await</code>）；<strong>网络</strong>要记住<strong>大多数"网络慢"其实是下游慢</strong>，必须把链路耗时与对端处理耗时分开。</p>
+<p class="mv-md-p">三个最容易误判的信号：<strong><code class="mv-md-code">load</code> 高但 CPU 不高 = 在等 IO</strong>（下一步看 IO 压力，不是加 CPU）；<strong>CPU 利用率不高但延迟抖动 = 可能已被限流</strong>；<strong>接口慢但本机指标全正常 = 指向外部依赖</strong>（按调用链分段比耗时）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：顺序优先——两个是非题 → 两个二分 → 四类症状分头看；先聚合后单机。</li><li><strong>推导链</strong>：缩范围 → 定压力/能力与在等/在算 → 分类看资源 → 三个易误判信号的正确读法 → PSI 补 load 的盲区。</li><li><strong>量化</strong>：CPU 占用 ÷ 总耗时定"在等还是算"；<code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code> / <code class="mv-md-code">throttled_usec</code> 看限流。</li><li><strong>边界与常见误解</strong>：TIME_WAIT 多出现在主动关闭方、本身不是故障（治法是长连接/连接池，不是调参数）；connection 打满要先看是否上游变慢（<code class="mv-md-code">L = λW</code>），不是先调大上限。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 现象 | 宿主/容器层（本卡） | 应用层 | 数据层 | |---|---|---|---| | "在等" | load 高但 CPU 低、IO <code class="mv-md-code">%util</code> 高 | 线程 WAITING、连接池排队 | 锁等待、慢查询 | | "被按住" | cgroup <code class="mv-md-code">cpu.max</code> 限流（throttled） | 线程池 / 并发配额满 | 连接数上限 | | "没有上界" | 磁盘满、<code class="mv-md-code">pids.max</code> 撞顶 | 队列无上限、缓存无淘汰 | 表无限膨胀（[[母题-M15-数据增长治理]]） | | 归因工具 | <code class="mv-md-code">perf</code> / <code class="mv-md-code">iostat</code> / PSI | Trace / 分段耗时 | <code class="mv-md-code">EXPLAIN</code> / 慢日志 |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong><code class="mv-md-code">load</code> 高但 CPU 不高说明什么？</strong></strong></p>
+<p class="mv-md-p"><strong>大量任务处于不可中断等待</strong>（通常是磁盘 IO）。<strong>这就是"在等"的签名</strong>——下一步看 IO 压力（<code class="mv-md-code">%util</code> / <code class="mv-md-code">await</code> / IO PSI），而不是加 CPU。</p>
+<p class="mv-md-p"><strong>2. <strong>CPU 利用率不高，为什么还可能是 CPU 的问题？</strong></strong></p>
+<p class="mv-md-p"><strong>容器配额是"每周期的时间预算"</strong>，用完就不给——<strong>看 <code class="mv-md-code">cpu.stat</code> 的 <code class="mv-md-code">nr_throttled</code> / <code class="mv-md-code">throttled_usec</code></strong>（[[母题-X1-容器是什么]] 3.2）。</p>
+<p class="mv-md-p"><strong>3. <strong>怎么区分 IO 瓶颈和 CPU 瓶颈？</strong></strong></p>
+<p class="mv-md-p">看 <strong>CPU 占用 ÷ 总耗时</strong>：占比低就是"在等"（IO / 锁 / 下游）；再交叉 <code class="mv-md-code">load</code> 与磁盘指标定位到具体是哪一种"等"。</p>
+<p class="mv-md-p"><strong>4. <strong>接口慢但本机指标全正常，怎么查？</strong></strong></p>
+<p class="mv-md-p"><strong>它指向"外部依赖"</strong>：按调用链分段比耗时（下游、数据库、连接池、队列），<strong>先归因再优化</strong>。<strong>别忘了检查超时层级是否设成了"内外一样"</strong>——那会让日志失去归因信息。</p>
+<p class="mv-md-p"><strong>5. <strong>"网络慢"该怎么验证？</strong></strong></p>
+<p class="mv-md-p"><strong>把链路耗时和对端处理耗时分开</strong>：对端有埋点就看它的处理时间；<strong>跨机房的固定延迟不解释量级变化</strong>，突然变慢通常是<strong>对端</strong>的问题。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「怎么知道扩容有没有用？」——<strong>看瓶颈有没有饱和</strong>：加资源后吞吐上去了 → 瓶颈在这；<strong>不动 → 瓶颈在别处</strong>。这也是"压力还是能力"的实践版</li><li>「日志刷得太多会不会导致变慢？」——<strong>会</strong>：同步写日志会阻塞（[[母题-O1-上下文切换与死锁]] 4.3 的"阻塞会拖垮整条链路"），而且日志文件本身就是"没设上界的东西"（Q3）</li><li>「为什么要有 Trace？」——<strong>因为"本机正常但慢"这一类问题，只能靠跨段耗时来定位</strong>（[[母题-E2-Trace与可观测性]]）；排查顺序的最后一步就是"追一条完整链路看时间花在哪一段"</li><li>「项目和排查有关的一个教训是什么？」——<strong>EnergyOps 的 <code class="mv-md-code">00-project-map.md</code> 里有"故障 → 后端归属"的对照表</strong>：<strong>把"这类现象该去哪个模块查"提前写下来</strong>——这就是把"顺序"沉淀成资产</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>数驭穹图</strong>——<code class="mv-md-code">08-查询性能与成本控制.md</code> 的"<strong>结果层优先 → 强制分区 → JOIN 基数校验 → EXPLAIN 成本门禁 → 超时与扫描量限制</strong>"<strong>排列顺序本身就是一套排查顺序</strong>：先做最便宜的判断，再逐层加深。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先立"顺序比命令重要" → 两个是非题缩范围 → 两个二分定方向（压力/能力、在等/在算）→ 四类症状的第一眼（CPU / 内存 / 磁盘 / 网络）→ 三个最易误判的信号 → 用耗时排序定位到段（分层归因）→ 边界与误解</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>排查的本质是"用最少的动作，把可能性砍成两半"，而不是"把所有指标看一遍"。</strong> 每一次二分（全部/个别、压力/能力、在等/在算）都把范围砍掉一半；<strong>而"本机指标一切正常"从来不是结论，它是一条指向"外部依赖"的线索。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能背出"两个是非题 + 两个二分"的排查顺序；能用 <code class="mv-md-code">load</code> 与 CPU 的交叉判定定位"在等 IO"；能说清容器限流的迷惑性与证据位置；能说清磁盘"空间 vs 性能"要分开、以及 <code class="mv-md-code">df</code>/<code class="mv-md-code">du</code> 不一致的原因；能说清"网络慢大多是下游慢"；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

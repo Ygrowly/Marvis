@@ -1,0 +1,38 @@
+<svg viewBox="0 0 680 380" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>大 key 与热 key 的两个维度、危害与解法</title>
+<desc>大 key 的危险来自单线程被一条大命令挡住；热 key 的危险来自一个 key 只落一个分片，加节点无效。</desc>
+<defs>
+<marker id="arrowR4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">两个维度、两个前提、两种解法</text>
+
+<rect x="40" y="46" width="290" height="150" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">大 key：体积问题</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">前提：Redis 命令执行是单线程的</text>
+<text x="56" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">DEL 一个 200 万 field 的 Hash：逐个同步释放</text>
+<text x="56" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">200 万 × 100ns ≈ 200 ms 阻塞【整个实例】</text>
+<text x="56" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">另外三个面：网络带宽 · 主从复制延迟 · 迁移卡住</text>
+<text x="56" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">解法：UNLINK（后台回收）· HSCAN 分批 · 按维度拆</text>
+<text x="56" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">把一次大操作，变成很多次小操作</text>
+
+<rect x="350" y="46" width="290" height="150" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="366" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">热 key：频率问题</text>
+<text x="366" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">前提：集群里一个 key 只属于一个分片</text>
+<text x="366" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">10 分片共 10 万 QPS，某 key 独占 3 万</text>
+<text x="366" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">→ 该分片被打爆，其余 9 片还有余量</text>
+<text x="366" y="150" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">扩容到 20 分片：这个 key 还是只落一片</text>
+<text x="366" y="172" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">读热 → 本地缓存（命中 95% 则降 20 倍）/ 打散副本</text>
+<text x="366" y="190" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">写热 → 聚合 / 队列串行（打散反而涨 10 倍）</text>
+
+<rect x="40" y="212" width="600" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="234" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">怎么发现</text>
+<text x="58" y="256" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">大 key：redis-cli --bigkeys（采样估算）· MEMORY USAGE（精确）· SLOWLOG</text>
+<text x="58" y="276" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">热 key：客户端 / 代理层统计频次 · 【单分片 CPU 高而其他分片闲】这个信号 · MONITOR 代价大</text>
+
+<rect x="40" y="304" width="600" height="62" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="324" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">判断口径先分清：是「单点高」还是「全体高」——</text>
+<text x="58" y="344" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">全体高 = 容量问题（扩容有效）；单点高 = 热 key（扩容无效，要打散或本地挡）。</text>
+<text x="58" y="360" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">这也是把两个维度分开讲的原因 —— 它们的解法方向正好相反。</text>
+</svg>

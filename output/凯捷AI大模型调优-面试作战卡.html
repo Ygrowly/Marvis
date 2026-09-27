@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="d9af0HFgzmkkIw0FkSRyuH">
+<head data-page-node-id="rhNWOSp8fQeGvESWp07ArK">
+<meta charset="UTF-8" data-page-node-id="paBgLHuwMv7B7Wy2EW4bOH">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="oWzF9IKWL1epQLgeL4n1kh">
+<title>凯捷「AI大模型调优」· 面试作战卡</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2328; --ink2:#4b5563; --ink3:#6b7280;
+    --line:#e5e7eb; --line2:#d1d5db;
+    --red:#c0392b; --redbg:#fdf2f1;
+    --amber:#b45309; --amberbg:#fffbeb;
+    --blue:#1d4ed8; --bluebg:#eff4ff;
+    --green:#047857; --greenbg:#ecfdf5;
+    --purple:#6d28d9; --purplebg:#f5f3ff;
+    --gray:#374151; --graybg:#f3f4f6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 60px;
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:14.5px; line-height:1.72; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto}
+  header{margin-bottom:22px}
+  h1{font-size:26px;margin:0 0 8px;letter-spacing:-.3px}
+  .sub{color:var(--ink3);font-size:13.5px}
+  .sub b{color:var(--ink2)}
+  .src{
+    margin-top:10px;padding:11px 13px;border-radius:6px;background:var(--bluebg);
+    border:1px solid #bfdbfe;font-size:12.7px;color:#1e3a8a;line-height:1.7;
+  }
+  .src .warn{color:#7c4a03}
+  h2{
+    font-size:17px;margin:34px 0 12px;padding-left:10px;
+    border-left:4px solid var(--blue);line-height:1.3;
+  }
+  h2 .n{color:var(--ink3);font-weight:600;font-size:14px;margin-right:6px}
+  h3{font-size:14.5px;margin:18px 0 8px;color:var(--ink)}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{
+    background:#eef1f5;padding:1.5px 5px;border-radius:4px;
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12.8px;
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:16px 18px;margin:12px 0}
+  .hero{
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
+    padding:18px 20px;margin:14px 0;
+  }
+  .hero .big{font-size:15.5px;line-height:1.85}
+  .hero .big b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:var(--card)}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f3f6;font-weight:600;color:var(--ink2);font-size:13px}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11.5px;font-weight:600;line-height:1.7;white-space:nowrap}
+  .p-red{background:var(--redbg);color:var(--red);border:1px solid #f3c9c4}
+  .p-amber{background:var(--amberbg);color:var(--amber);border:1px solid #f5d9a8}
+  .p-blue{background:var(--bluebg);color:var(--blue);border:1px solid #c3d5fb}
+  .p-green{background:var(--greenbg);color:var(--green);border:1px solid #a7e8c8}
+  .p-gray{background:var(--graybg);color:var(--gray);border:1px solid #dcdfe4}
+  .p-purple{background:var(--purplebg);color:var(--purple);border:1px solid #d5c8f9}
+  .say{
+    background:var(--greenbg);border-left:3px solid var(--green);
+    padding:10px 13px;border-radius:0 6px 6px 0;margin:9px 0;font-size:13.8px;color:#064e3b;
+  }
+  .say b{color:#065f46}
+  .no{
+    background:var(--redbg);border-left:3px solid var(--red);
+    padding:10px 13px;border-radius:0 6px 6px 0;margin:9px 0;font-size:13.8px;color:#7f1d1d;
+  }
+  .no b{color:#991b1b}
+  .warnbox{
+    background:var(--amberbg);border-left:3px solid var(--amber);
+    padding:10px 13px;border-radius:0 6px 6px 0;margin:9px 0;font-size:13.6px;color:#78350f;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .mi{
+    background:var(--graybg);border-radius:7px;padding:11px 13px;
+  }
+  .mi .k{font-size:12px;color:var(--ink3);letter-spacing:.2px}
+  .mi .v{font-size:19px;font-weight:600;margin-top:2px;color:var(--ink)}
+  .mi .v small{font-size:12.5px;font-weight:400;color:var(--ink3)}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.4px;line-height:1.75}
+  .chk{list-style:none;padding-left:0}
+  .chk li{padding-left:24px;position:relative}
+  .chk li::before{
+    content:"";position:absolute;left:2px;top:8px;width:11px;height:11px;
+    border:1.5px solid var(--line2);border-radius:3px;
+  }
+  .tick{color:var(--green);font-weight:700}
+  .cross{color:var(--red);font-weight:700}
+  @media print{
+    body{background:#fff;padding:0;font-size:11.5pt}
+    .card,.hero,table,tr,.mi,.say,.no,.warnbox{break-inside:avoid;page-break-inside:avoid}
+    h2{break-after:avoid;page-break-after:avoid}
+  }
+</style>
+</head>
+<body data-page-node-id="mlQySH3dpLgSX2Pg8FfyEB">
+<div class="wrap" data-page-node-id="BB3g3XIV5gl9As0GEcGiAD">
+
+<header data-page-node-id="RPIlRbdH26dXLmDNrliqu9">
+  <h1 data-page-node-id="JE0zAvujrkHBjkXz5kb7ZE">凯捷「AI 大模型调优」· 面试作战卡</h1>
+  <div class="sub" data-page-node-id="xqbdZgwFAiUfofwqdyg6ih">
+    对口时间：<b data-page-node-id="F7RxUX8wmhI4itQx4KAHfZ">2026-09-23（明天）下午 15:00</b> · 形式：<b data-page-node-id="n9otN2RTfAYYoED0MRq5p2">视频 / 电话</b> ·
+    定位：<b data-page-node-id="LCAZyXQfrsOjbMfxqCrzCC">保底 offer（练手 + 兜底）</b><br data-page-node-id="CIzrCEL13SQ3GCP8OqFCQt">
+    岗位：凯捷咨询（中国）· AI 大模型调优 · 上海 · 7-9K·13薪 · 2027 届本科 · BOSS 直聘 HR「沈女士」
+  </div>
+  <div class="src" data-page-node-id="UEnoj76CzzosQWzRmAogEN">
+    <b data-page-node-id="AGOCTQvmdh4Q9SURg3k6QI">本卡口径来源与性质说明：</b>JD 原文取自本人 BOSS 截图（一手）；凯捷官方 2027 校招岗位表与薪资结构来自本机 2026-09-22 联网检索（<span class="warn" data-page-node-id="92anNINLqD7lY3JCvxNBDP">公众号 / 就业网转载，属二手转述</span>）；「JD 实为数据开发岗换标题」这一判断有官方岗位表原文比对支撑（见第 01 节）。<br data-page-node-id="f9nHPS0iI478fFcuxIC4Mp">
+    <b data-page-node-id="UnlEMZb5vUvLfBgqLtBuDc">凡标【判断】的是我的推断、不是企业官方口径；标【经验值】的没有一手出处。</b>本卡只服务这一次面试，赛后请把真实题型回填（第 08 节）。
+  </div>
+</header>
+
+<h2 data-page-node-id="tnNozJidbzCPC6cY4xjRMS"><span class="n" data-page-node-id="XoPoPjABlVsv9EaoruLdyf">01</span>先认清：这不是一个 AI 岗（最要紧的一节）</h2>
+
+<div class="hero" data-page-node-id="n6KdbSYlgR1SOA9IkfZ15h">
+  <div class="big" data-page-node-id="G1AAcCzCZlNsoHTZ7ztRJw">
+    这张 JD 的<b data-page-node-id="THGWes0mopQbFFgMUKYKq9">岗位职责四条里，三条是数据仓库 / BI 的那一套</b>，AI 只占一条 12 个字的短语。
+    我把凯捷官方 2027 校招岗位表拉出来比对过——<b data-page-node-id="bZTdzDvYWwvpJBu7GQODoP">它的职责原文是「数据开发工程师（大连）」岗的逐字复制</b>，
+    而真正的「AI 开发工程师」「AIGC 开发工程师」写的是别的内容。
+  </div>
+</div>
+
+<table data-page-node-id="z0aydL8F5ZGuTRzxzfqFlB">
+  <tr data-page-node-id="pZZTkLf23AnFhNBcpYQ3YU">
+    <th style="width:26%" data-page-node-id="MxRvTwQW5Ejuf5GjHOYskm">JD 里的那条职责</th>
+    <th style="width:37%" data-page-node-id="c8OqqfhaiKJcPRIoQphC1E">实际要做的事</th>
+    <th style="width:37%" data-page-node-id="pWgV57jNZc94iWJWtK8dNr">你库里有没有垫着</th>
+  </tr>
+  <tr data-page-node-id="vpbLvgKdZbEsUQTMD64kKr">
+    <td data-page-node-id="IPkrYmq3gGNWRlTeTw4DY8">大模型的调优、微调、模型评估、安全</td>
+    <td data-page-node-id="4EpbplH8hT89hfOtwItK4R">模型侧的实验、评测、防护 —— 唯一与 AI 有关的一条</td>
+    <td data-page-node-id="t1vyQs8ZK5AafTftTGeh0d"><span class="tick" data-page-node-id="8T1C33wKXFMyQuGmniykBL">部分有</span>：评测观测与治理 E1–E7（含 AgentOps 平台）、LLM 与上下文模块；<b data-page-node-id="t3HLFkYwTztAWIFAU2DHVP">但「微调」没有实操</b></td>
+  </tr>
+  <tr data-page-node-id="pbY5o6xfOuDUmBRBUkdu3P">
+    <td data-page-node-id="nxWTyMkdLeyx7pbdHuP4fA">协助大数据平台、ETL 程序搭建</td>
+    <td data-page-node-id="4eOPPgY5edomCeyyDa38AK">Hadoop / Spark / Hive / Storm / Kafka / Control-M —— 离线数仓的日常</td>
+    <td data-page-node-id="hDcmTfOjmlfdvgBDF1WTHo"><span class="cross" data-page-node-id="P3JGXbY4Gumw8RcTkdlkyB">空档</span>：库里只有零散提及，<b data-page-node-id="WcrE7JsLV7h9irfZgq2cvj">没有一张母题卡</b></td>
+  </tr>
+  <tr data-page-node-id="NIXvLYGHQY6jTOia3xNBsi">
+    <td data-page-node-id="FfVi8KFA2y91xh1LgQmA3P">商业智能报表研发、维护优化</td>
+    <td data-page-node-id="4IbQD6F0KjkeAiYnQ1XMhZ">用 PowerBI / Tableau / SmartBI 拉报表、做看板</td>
+    <td data-page-node-id="8VfdRRd6cVEcBE6izTG4gD"><span class="cross" data-page-node-id="4VbnqVK0COdo1uDhVxU5Tr">空档</span>：<b data-page-node-id="2ViGoxSF9kphCHDHJ735nu">一个字都没有</b></td>
+  </tr>
+  <tr data-page-node-id="d2iNlM5D0BZYOlOvAZmCbn">
+    <td data-page-node-id="BZRhthf1Iu3E77DVRWyMH2">后台数据库需求开发</td>
+    <td data-page-node-id="aBuYJopxmKjRG0mHj0vvCJ">Oracle / DB2 / MySQL / SQL 优化</td>
+    <td data-page-node-id="uzAohjedEz2sQJ3RL3ViDs"><span class="tick" data-page-node-id="J7Yv1kDfp9B7FUhC4eWzW7">强</span>：PostgreSQL 19 张 + MySQL 17 张母题，SQL 优化是你的主战场</td>
+  </tr>
+</table>
+
+<div class="warnbox" data-page-node-id="t8Ab1QV2eGIPeoHqYrsH0P">
+  <b data-page-node-id="sQn4RiTEkJ3nWYCryuJ2kl">这件事怎么用：</b>不要在心里把它当「AI 岗」准备——那样你会把精力花在微调原理上，而对方要的其实是 SQL 与 ETL。
+  反过来也别因为「AI 只占一条」就轻视：<b data-page-node-id="fiA76o1lroJADFVxrBNdaP">你要展示的恰好是第 ③ 条「扎实语言基础 + SQL + 主流数据库 + 常用优化方法」，这是你的强项，而且 JD 明写「3、4、5 满足其中一项即可」。</b>
+</div>
+
+<h3 data-page-node-id="5lMpCFqR0aMgFSrzIIiQuR">凯捷这家公司的真实画像【判断，依据二手转述】</h3>
+<ul data-page-node-id="8okAG6MUwD5LS0AP2GGHGk">
+  <li data-page-node-id="pcwUVTDCVd1hHsDa5JFH6i"><b data-page-node-id="haQ2bXGD7SQEYVVeAwpain">性质</b>：法资 IT 咨询公司（Capgemini，1967 年巴黎，全球 40 万+ 人）。中国业务以<b data-page-node-id="QNeB8KPMyahkalzFCAUoAA">项目制交付 / 驻场</b>为主，客户多为跨国企业与大型国企。</li>
+  <li data-page-node-id="eJ3enRqXL6CdIQDBLTzYD0"><b data-page-node-id="iZ2FjblHTL9BFxh70eRhCl">岗位模式</b>：官方流程为「简历投递 → HR 初面 → 业务复面 → 实习 → 转正」，<b data-page-node-id="OuYSuDGXjx2AnezrEMoqPJ">实习期 120–160 元/日、要求全职连续实习至毕业</b>。「AI 工程师约 7k-9k/月」这一档在公开薪酬信息里被明确提到过。</li>
+  <li data-page-node-id="CikgseNosCPDebSzJSiOvS"><b data-page-node-id="A7Orzbkt4UEAunQDF8oE6l">要注意的点</b>：部分岗位涉及<b data-page-node-id="C8GzSJf3911qaahT2zb82Z">驻场外包</b>，实际做什么高度取决于被派到哪个项目、哪家甲方 —— 这也是为什么「岗位名」和「实际工作」会错位。另有凯捷社招 JD 明写「外派半导体大厂，介意的请忽略」。</li>
+  <li data-page-node-id="EHujKxGaiAl2VOOCU51wGj"><b data-page-node-id="UWUN1B6pKFHsnDSESoq3oZ">对你的意义</b>：平台背书 + 体系化培养（凯捷大学）是真的；但**它不适合承载你「AI 应用 / Agent 工程」的职业主线**。当保底是合适的，当主攻会跑偏。</li>
+</ul>
+
+<h2 data-page-node-id="2fbjZZgH5cf4prXfaNIvpz"><span class="n" data-page-node-id="520Nh2bYNJJR1PBbNVB4Co">02</span>明天最可能是什么：HR 初面 / 电话初筛</h2>
+
+<p data-page-node-id="Dxnb1ev0gQjfxO9HAFgcAV">三个信号都指向 HR 面而不是技术面：<b data-page-node-id="T3BL3u8CqDQBGzVr0iqk0V">①</b> 对接人是「沈女士」（HR 称谓）；<b data-page-node-id="YGmUNFfNceSzf8qx2Fqoyr">②</b> 岗位挂着「毕业时间 2027 年」的校招属性；<b data-page-node-id="t0S1kchbnoFmJrr7gbuRDG">③</b> 官方流程第二步就是 HR 初面。HR 面的考点不是技术深度，而是下面五个。</p>
+
+<div class="grid2" data-page-node-id="pB9OGTKOLNxFJMCe4WoC3r">
+  <div class="mi" data-page-node-id="C7uIZXy5kEEUvQDEQIEBw2"><div class="k" data-page-node-id="Fzxs9zU7xSEGAXZ36epMeF">考点一</div><div class="v" data-page-node-id="z90A3gH9Cg5vH9x08dsTZe">能不能来 <small data-page-node-id="xnLPcssNspUFfUy7JshYiJ">· 到岗时间</small></div></div>
+  <div class="mi" data-page-node-id="C04SzSdO4PLDtSimqkhpw8"><div class="k" data-page-node-id="mndvA9KUbedyOwDzrQmgQH">考点二</div><div class="v" data-page-node-id="m1FF6c40Fw4zdVxPuHoE8y">能干多久 <small data-page-node-id="jlerEBMAeFTnCd52o7S7z4">· 实习到毕业</small></div></div>
+  <div class="mi" data-page-node-id="RB5Kl14YTXWY46J61i8eBf"><div class="k" data-page-node-id="dwYjDKNgiE8CpAztL8CfWJ">考点三</div><div class="v" data-page-node-id="1vcY8R3zJiGnTB3QqSzt0Y">要多少钱 <small data-page-node-id="vI8ool6S3DyvxHwfESoR3L">· 期望薪资</small></div></div>
+  <div class="mi" data-page-node-id="MKqdTJQeldZXbIjUPwpUXK"><div class="k" data-page-node-id="0wZ5Dj95HYdV9B2u9bQwCF">考点四</div><div class="v" data-page-node-id="pvztlrEoR6niljcBiJyoST">为什么投 <small data-page-node-id="fE5rUGzmCLfHR4DKqGbFxe">· 稳不稳定</small></div></div>
+</div>
+<p style="margin-top:10px" data-page-node-id="sIteqBU5GuCfhUPccXOF1A">第五个是<b data-page-node-id="DqXaPSPOMGHdPVY08JyBQp">英语</b>——JD 第 2 条明写「英语四级以上，能够使用英语进行基本的听说读写」，法资公司这一条是会真看的（凯捷其他岗位出现过「英语六级或日语 N1」的门槛）。</p>
+
+<h2 data-page-node-id="MgHBvF0bAiEthGxm4259KR"><span class="n" data-page-node-id="WMEDdpm70Op4PEHXgWZ0Zs">03</span>HR 四问 · 按这个说（可直接照念）</h2>
+
+<h3 data-page-node-id="eIDArhAvBu8p7yCwWCnBHd">Q1「你现在什么状态？什么时候能到岗？」</h3>
+<div class="say" data-page-node-id="Kntd8YJwNMPSehqlKZUAYk">
+  大三升大四，现在在金山做 AI 开发实习，近期结束。之后学校基本没课，<b data-page-node-id="GInehW3xBedAQaYYVsPllY">可以全职实习到毕业，毕业直接转正入职</b>。如果贵司项目着急，结束时间我可以协调提前。
+</div>
+<p data-page-node-id="fbWMfwITVD9AioFnKzAz2S"><span class="pill p-blue" data-page-node-id="v5anALkssRJVTjE5h2WiB8">要点</span>落点永远放在「能全职实习到毕业 + 可转正」。<b data-page-node-id="o1NZV4SFWt5hRQxHk3ohxC">不要把话题引到「还在实习所以来不了」。</b></p>
+
+<h3 data-page-node-id="L2CoVv5t02dPDZtmQdHu2Y">Q2「实习期你能多久？能转正吗？」</h3>
+<div class="say" data-page-node-id="mDA4lQHySwvaO6Q6eY9bTF">
+  可以<b data-page-node-id="9pr8s7gRtkmpPt0qc6TYzc">连续实习到毕业</b>，答辩期间可能会请几天短假。我是按毕业后直接入职来规划的，也希望能通过转正考核留下来。
+</div>
+<p data-page-node-id="kBTrAPh7weahFCAWWu2z3U"><span class="pill p-blue" data-page-node-id="n52FRnKfl0PnvdfrOZkbVi">要点</span>凯捷官方写明「全职连续实习至毕业，如涉及答辩可请短假」——你的回答正好踩在他们的要求上，这一问是你的加分题，答得越干脆越好。</p>
+
+<h3 data-page-node-id="42QzqrZYdeWn5ijtP8QT9h">Q3「你期望薪资多少？」<span class="pill p-amber" data-page-node-id="PwydZ1C9dhPlLNnR7FCX2j">唯一需要动脑的一问</span></h3>
+<div class="say" data-page-node-id="nRAIB10loi46xwKCMEzSB6">
+  作为应届生我更看重方向匹配和成长空间，<b data-page-node-id="dmf39QnzIWGklQEFGgKNA2">薪资按贵司校招标准来就好</b>——方便的话能不能告诉我这个岗位的范围？
+</div>
+<p data-page-node-id="0WV5LamQEZkgKqtHnyRsqM">如果对方<b data-page-node-id="tWbhFDEpAkFGWCvlvFkIh8">坚持要你说</b>，就报这个数：</p>
+<div class="say" data-page-node-id="tj10XVXUXLzWIXqU0HX1rF">
+  我了解到贵司这一档大概在 <b data-page-node-id="gpwwnAhvjykVOs2Bcsj15V">7-9K·13 薪</b>，我可以接受在这个范围里，<b data-page-node-id="R6dHGsWe81dyjLA7Tuebos">按岗位标准定就行</b>。
+</div>
+<div class="warnbox" data-page-node-id="wXPiMmARHBMBzoPd5RCUKa">
+  <b data-page-node-id="ajnPiB4F7dkK5tdUEODMLE">为什么敢直接说这个数：</b>这个范围是你自己贴给我的 JD 原文（明码标在标题上），不是猜的——<b data-page-node-id="f2J6SCoPzg26Tw2DPeOKn0">说 JD 上已有的数字没有任何风险</b>，比支支吾吾或报一个虚高的数都安全。
+  注意不要说「7K 也行」——那等于自己往下压。<b data-page-node-id="1LiN6P5J65QFfnYQISaNOa">说「在 7-9K 范围内，按标准定」，把定价权交回去，同时表明你不低于 7K。</b>
+</div>
+
+<h3 data-page-node-id="dwDBOHHCpgHCAiWHvotTt5">Q4「你为什么投我们公司 / 为什么这个岗位？」<span class="pill p-amber" data-page-node-id="DG63U4geVepTMuLB4DTbZU">有坑，见下</span></h3>
+<p data-page-node-id="zKC92T4g53OoWjk2x15ekw">这是唯一可能露怯的一问——<b data-page-node-id="DMCi3wyF0qtngJN4fXPSyN">因为对方知道这岗主要是数据开发，你要是硬吹「我想做 AI 大模型」，一句就能被戳穿</b>。</p>
+<div class="say" data-page-node-id="jAc9pyF5DwcR2yBZ1m6yBQ">
+  我投这个岗主要看两件事。<br data-page-node-id="S2CtJLtEBpRG0TbcZOkQOs">
+  <b data-page-node-id="ssBnJqCb0a1yTm9omB1eEM">一是我的能力结构和它的要求是重合的</b>：JD 里第 ③ 条要求扎实的语言基础、SQL、主流数据库和优化方法——我两段实习里一直在做数据侧的事情：金山那个项目我做了四层数据模型和口径治理，把 5.8 万条/日的设备读数做到完整率 99.7%、查询 P95 从 20.4 秒降到 2.8 秒；另一个问数平台项目里我把百万行的分析查询从 12.6 秒压到 2.7 秒。这些都是大数据的底子。<br data-page-node-id="NFu48WfcbW4Ie9JiKYgEbt">
+  <b data-page-node-id="KQDguaBt1zXuwy0QjKD43J">二是能力可以往上接</b>：这个岗位还有模型评估和安全的部分，我上一段实习正好在做评测与治理——评测集设计、防污染、发布门禁这一套，跟「模型评估」是同一件事。
+</div>
+<p data-page-node-id="mQQPkOhhfi0DTOTKcIcAeR"><span class="pill p-green" data-page-node-id="ot8Xo1XANCTGnB0bqbfNg8">这么答的好处</span>你说的每一条都是真的、可追问；而且主动把「数据侧」摆到前面，对方会觉得<b data-page-node-id="gEHEJuAWWkS7sVvGTAt2YV">你读懂了岗</b>，而不是海投瞎撞。</p>
+<div class="no" data-page-node-id="3KY2GZlt24IFBClsIaFQHC">
+  <b data-page-node-id="VdQrBKC1PJcrULJ25UX4OO">绝对不能说的两种话：</b><br data-page-node-id="wMAfm8Klr7n3f7vPaZ8lHv">
+  ① 「我很想做大模型微调 / 我主要想做 AI。」——你这方面没有实操，而且岗位也不主要做这个，说了就是自己挖坑。<br data-page-node-id="9IS1rBzgmf5LaOa8EUwUg1">
+  ② 「大数据和报表我没做过，但可以学。」——<b data-page-node-id="vysvT39MnzI2VshDP3oior">不要自己先认怂</b>。JD 明写「满足其一即可」，你满足的是 ③ 和（部分）AI 那一条，把自己说成不合格是白送。
+</div>
+
+<h2 data-page-node-id="fjkRvTIq20fNVjOyCkAYMS"><span class="n" data-page-node-id="hewWnf1i5VfJBChDBGNW5t">04</span>被问到大数据 / BI：如实认 + 立刻转</h2>
+
+<p data-page-node-id="3zSi0OWIPuxvqbNeADsFuE">如果对方往 Hadoop / Spark / PowerBI 上追（HR 面概率低，业务面概率高），用这个固定动作：<b data-page-node-id="PUOnX740ddcsIJyVcTH7hk">承认没做过 → 给出你已经有的等价能力 → 说清怎么补</b>。三段话，不辩解。</p>
+
+<table data-page-node-id="mdoGqLmHd3Q5udHAWD2aps">
+  <tr data-page-node-id="W2g4xWJcOMITX3tW6fGlUb">
+    <th style="width:24%" data-page-node-id="3DDaXf78hx3SpdExrvx3Fw">对方问的</th>
+    <th style="width:76%" data-page-node-id="gkZPpcHF0mOfGlzAhCZPU9">你这么说</th>
+  </tr>
+  <tr data-page-node-id="0AZZyjVkSYPLKkDs1nzFTG">
+    <td data-page-node-id="tQnsDlwzDgnzAK1vL3JUqs">用过 Hadoop / Spark 吗？</td>
+    <td data-page-node-id="PCjCBfIddmSl1jc2LW47AF">「<b data-page-node-id="oFFfnQjY2fuFvzs8hiihWF">没有直接用过</b>。我做的数据侧工作主要落在数据库层和查询层——建模、口径治理、索引与预聚合优化。分布式计算这部分我是有基本概念的，但没有生产实操，<b data-page-node-id="2Kjf7v52ASVc7px4tOH9My">这块我需要补</b>。」<br data-page-node-id="Daq1sq8Q54XqiYf62bWjBe"><small data-page-node-id="9DEfHrF5J6s6LzHHSJAudb">（一句话认干净，然后把话题拉回你强的「数据库 + 优化」。<b data-page-node-id="sWv30P5GLFlreOGLAVYUbb">不要背 Spark 八股充数</b>——HR 听不出，业务面一听就知道你没跑过集群。）</small></td>
+  </tr>
+  <tr data-page-node-id="9JYqfkSljugRJYdgPco4LT">
+    <td data-page-node-id="UWepakRJeW7gClqenD3aTZ">会做 BI 报表吗？PowerBI / Tableau？</td>
+    <td data-page-node-id="6cFC9JWe1RgJ8hXlncKTas">「<b data-page-node-id="lGBCYd5wpceCkOmd5YIdlC">这些工具我没有用过</b>。不过报表的底层是 SQL 和多维口径，这部分是我做得比较多的：我在金山做的四层数据模型（原始 → 区间 → 小时 → 日）本质上就是给报表准备的数据层，我当时还处理了跨页面、API、导出、账单四处的口径一致性，把一致率从 86.7% 做到 100%。<b data-page-node-id="dRwRkuAHBuoNqlaku8GLcT">工具上手我很快，报表逻辑我是熟的。</b>」<br data-page-node-id="pmF3dgZyMl5g98HWqw0tBl"><small data-page-node-id="05DPyaZnDGyZ3DUJ2QvM4B">（这是本卡最值钱的一段转移——把「没用过工具」翻译成「工具的活我干过、只是没用它这个壳」。<b data-page-node-id="prJW8hGbhmlXzI5d0pAd8o">是真的，不是话术。</b>）</small></td>
+  </tr>
+  <tr data-page-node-id="uaxf7L5vGs9MOPsSs1gZap">
+    <td data-page-node-id="RGS8vtpwLHPNBHzvzHv4p6">英语怎么样？</td>
+    <td data-page-node-id="PywY62TF3lC7dFGekl6pEd">「四级已过。<b data-page-node-id="ZnPWxmwRCfzfbUG25VdDwd">读写没问题</b>，我看技术文档和写文档都是用英文原始资料，平时读的官方文档基本都是英文的。<b data-page-node-id="nx7h6jkcFM3xz9HdUgtzKz">听说还需要练</b>，日常技术交流可以应付，正式会议我还要适应一下。」<br data-page-node-id="3XNfrU0AG1yOQlzZQEDyip"><small data-page-node-id="0klrC21UzXU7Xgmvtw3N1v">（如实分层——法资公司更反感吹牛。若四级还没过，就说实际情况 + 正在备考。）</small></td>
+  </tr>
+</table>
+
+<h2 data-page-node-id="lwBNZpS5b9YijROF3EywrV"><span class="n" data-page-node-id="9zBFruVNmqGeaTFwOm0EKM">05</span>开场 60 秒自我介绍（背下来）</h2>
+
+<div class="say" data-page-node-id="xIlaOIAgFkv1dwpyw80eCh">
+  面试官好，我是刘宇广，南华大学数据科学与大数据技术专业，2027 届。<br data-page-node-id="9pGPoIXhhpa28eUsaHt6aD"><br data-page-node-id="qx2gVdWZLryF5AH6wM6mLW">
+  我有两段实习。最近这段在<b data-page-node-id="58vH1CByGGgxksXRMzUEyD">金山</b>做 AI 开发，负责一个园区能耗 Agent 后端：我做了四层数据模型和一套口径治理机制，把每天 5.8 万条设备读数的聚合完整率从 96.8% 提到 <b data-page-node-id="FhA9aOBwHGbwxh7DRzZn1H">99.7%</b>，常用查询 P95 从 20.4 秒降到 <b data-page-node-id="ANi6rkIdhYdVXnscWwOky2">2.8 秒</b>，同时用 30 个工具封装把 Agent 的任务完成率从 83.3% 提到 <b data-page-node-id="hwwvaw94uzKxGbNRuOcoVA">95.8%</b>。<br data-page-node-id="EHPS5zLmJAjULdQwE2roPz"><br data-page-node-id="QLNJTbV6iGGTd6dh3rwVe4">
+  更早一段在一家 AI 公司做应用开发，做的是自然语言问数平台，我把百万行的分析查询从 12.6 秒优化到 <b data-page-node-id="5Q3KqxnfQ0CjkUdzotOrYC">2.7 秒</b>，模型输入 token 从 18.4K 降到 <b data-page-node-id="gMyPRKGrVl5tBbELhbJ6VF">3.6K</b>。<br data-page-node-id="Od8ec0zFSzjHka20kHktLp"><br data-page-node-id="N2mC1L1NEfGkMHW4cdPEAx">
+  我的技术栈是 <b data-page-node-id="vysUQLGqbbA2BiGpCyPXwi">Python 为主，PostgreSQL 和 SQL 优化是我的强项</b>，也在做 Agent 工具编排和发布门禁这一套。这次投这个岗位，是因为它的数据库和 SQL 优化要求跟我的能力很对口，模型评估这块我也有实习积累，希望能在这个方向继续做下去。
+</div>
+<p data-page-node-id="KGHLB2Z74pPtPklDxBplqh"><span class="pill p-blue" data-page-node-id="8AismRTIRHgDSBLsqeCk4F">两个刻意的设计</span>① 数字全部取自简历母版口径，<b data-page-node-id="tjZJzbvfTVeFhOnWoLqNi3">不新造</b>；② 结尾落点放在「数据库 + SQL 优化对口」而不是「我想做大模型」——<b data-page-node-id="tksHcVeEJnQ4q6puehdFbZ">与第 01 节的岗位真相一致</b>。</p>
+
+<h2 data-page-node-id="VbeZB9QYbSIiwThx4BndfF"><span class="n" data-page-node-id="G1yyCqqhDFKT9JDVKGRgnZ">06</span>反问环节：问这 3 个（会显得你懂行）</h2>
+
+<p data-page-node-id="qmCfCLMOAFBs585RF6e3Ci">反问是保底岗最容易加分的位置——<b data-page-node-id="hAjYXy89MkhETLgZH9K5X9">问对问题=你已经知道这岗实际要做什么</b>。按优先级挑 2–3 个问：</p>
+
+<ol data-page-node-id="vYXNMFAEXvFfperpLJTmKs">
+  <li data-page-node-id="ZYwgpzVljLpnRxkvBPrGQV"><b data-page-node-id="ygnOXNCK607f7KYRYlHUc0">「这个岗位具体会进哪一类的项目？是偏数据仓库 / 报表交付，还是也有模型侧的工作？」</b><br data-page-node-id="uKFZFn4FkoAUClWeBlOXbS">
+  <span class="pill p-green" data-page-node-id="HGCT038WwGNeXQfmYI1jCQ">推荐首问</span>直接问出真实工作内容。<b data-page-node-id="bN9AZzBM9ADeRvUZqHUByP">这是你唯一能在入职前打听到真相的机会</b>，而且对方会觉得你务实。</li>
+
+  <li data-page-node-id="S4sRMp8CER9MMCSrhJGCV9"><b data-page-node-id="NYx4uMeYQb3Sf8Cl4dOWHy">「团队现在主要用什么技术栈？数据库是 Oracle 还是 MySQL 这一类，报表工具是自研还是用 PowerBI / Tableau？」</b><br data-page-node-id="CTyYzuGvHnpcneYB8NB1Mc">
+  <span class="pill p-blue" data-page-node-id="HySRIYJFk92wfwudzEDtX1">问细节</span>用 JD 里的原词问，等于告诉对方「我把要求读进去了」。</li>
+
+  <li data-page-node-id="1jGw1Gbt5lygAs1uQXHlJh"><b data-page-node-id="VCbtapdlcTJQErRbcKCqQZ">「实习期是有明确的项目跟着做，还是先培训？转正考核主要看什么？」</b><br data-page-node-id="inHOTXfm4xEkcNOFy2yBUN">
+  <span class="pill p-blue" data-page-node-id="ATnP6xt2T8s1uUWuUlfjWV">问成长</span>法资咨询公司有培训体系（凯捷大学），这一问会得到正反馈。</li>
+</ol>
+
+<div class="no" data-page-node-id="hj9jfErBcp1xMMYYYytHXq">
+  <b data-page-node-id="XXHj5BA4YcYJJuBHIijVjy">不要问的：</b>「能不能只做 AI 部分」「加班多不多」「能不能远程」——<b data-page-node-id="foKFKtprkzwhlvBlBrVRyR">前两个在保底岗上是减分项，第三个太早</b>。加班这类问题留到有 offer 之后再谈。
+</div>
+
+<h2 data-page-node-id="N3RGJIkN1h5w3wmqQ60Svz"><span class="n" data-page-node-id="5pHI9M74GyMWoChEDKE9aE">07</span>今晚 40 分钟怎么用</h2>
+
+<ul class="chk" data-page-node-id="qIU9zuDxfUGwLaPCB6wY4k">
+  <li data-page-node-id="ocirpLMOoNuJShSd7sToIZ"><b data-page-node-id="OUhIBKCpXgpLVkk0hZjzLf">10 分钟｜念一遍</b>：第 05 节自我介绍，出声念 3 遍，掐表控制在 60 秒左右。<span class="pill p-amber" data-page-node-id="efIkM5HB8fiy6hdckM6qww">最高优先级</span></li>
+  <li data-page-node-id="aDEYnBBGE49CHh457pZQXp"><b data-page-node-id="gxGI2oGWi2bcUVV29EKCYw">10 分钟｜念一遍</b>：第 03 节 Q1–Q4，每问出声答一次。<b data-page-node-id="Ug1izambqsttP5jh2rcASf">不要默读</b>——HR 面输在结巴不输在内容。</li>
+  <li data-page-node-id="DCTr018XdfzcrOfDCedz69"><b data-page-node-id="04DzGGQhvYDlhbsZPBcnc8">8 分钟｜记住一个数</b>：你被问「期望薪资」时说的那句「7-9K 范围内，按标准定」。<b data-page-node-id="sBlDdwFzAva1F6Q2OUUsvu">反复说到脱口而出</b>，这一问最容易当场卡住。</li>
+  <li data-page-node-id="4IdZVPrJOwlbBA7EXgdLqk"><b data-page-node-id="ZYnRyHehD8g2mAYdnEcZrT">6 分钟｜准备两个反问</b>：从第 06 节挑 2 个，念顺。</li>
+  <li data-page-node-id="qYPyyoGHc59iZBFPCSUBZs"><b data-page-node-id="Q0Q7Ee1uNhvwrXzZE1GtfG">6 分钟｜设备与材料</b>：见下方清单。</li>
+  <li data-page-node-id="QIyVVq7pFqQEU52asPGUpv"><b data-page-node-id="wqjNFLlCdTqeKOLt5NGzBW">剩下的时间｜不要学新东西。</b>尤其别去看 Hadoop / Spark 教程——<b data-page-node-id="3EMHFI2abJFo18ADOBGcqt">明天用不上，而且会挤掉你练口条的时间</b>。</li>
+</ul>
+
+<h3 data-page-node-id="OAPjCCppMIzAEG0RVwMqXN">设备与材料清单（视频 / 电话）</h3>
+<ul class="chk" data-page-node-id="bajumfevpKeXy0RNSQSgiZ">
+  <li data-page-node-id="5AZ5QHEoeFNzdmlJGfnGo8">手机 / 电脑<b data-page-node-id="0txwv7rpIobVCXgGNtuFRB">充满电并插上电源</b>；提前 15 分钟测试麦克风与摄像头。</li>
+  <li data-page-node-id="BHz4hvDukALmhjXwWW5RUx"><b data-page-node-id="qgB6CMn7zoNX9JsrGJk0l5">找出一个安静、背景干净的位置</b>；告诉室友/家人 15:00–15:40 不要打扰。</li>
+  <li data-page-node-id="Lhrcgq02N2z9OKNByGqwzN">桌面只放三样：<b data-page-node-id="Tcma6MDfMUmE3F8mBKrG0D">本卡（或第 03、05 节的一页纸）、简历 PDF、一支笔</b>。<b data-page-node-id="wkLLR02qnqpRdvRqESVSf3">不要放第二块屏幕开着别的资料</b>——分神比不知道更致命。</li>
+  <li data-page-node-id="FyqmH8Uu5uAmRzMJYEMs3N">周边：<b data-page-node-id="Ucrj97jq1EQXpGmlO0IRaG">一杯温水</b>。紧张时嘴唇会干，说话会僵。</li>
+  <li data-page-node-id="rPYm5FX36O8NV9iq3yvwVn"><b data-page-node-id="t9so2UOBlEnSRA0nPvaiPx">提前 3 分钟进会议室 / 守在电话旁</b>，不要踩点。</li>
+  <li data-page-node-id="LVVIMkOrE1QyUni5bcoNLu">如果是电话：<b data-page-node-id="n9O4BeGHOfQoDa4oohOPOZ">站起来说、或者坐直</b>——姿态直接影响声音的稳定感。</li>
+</ul>
+<div class="warnbox" data-page-node-id="uofiW2uhIRM7qKaPQFt5fZ">
+  <b data-page-node-id="4XvKCoQ1IqzfVoU7bL5NTZ">一条纪律：</b>这是面试（官方条款允许的普通面试），赛前准备我全给你；但<b data-page-node-id="OyOwwQ7aaKBFnZiOpgznBZ">正式开始后不要一边聊一边查资料、不要让我在旁边递词</b>——HR 会听出停顿和念稿感，而且这场是你的真实采样，被覆盖了就白打了。
+</div>
+
+<h2 data-page-node-id="n7NDICxNDHek9BmuVaBjvu"><span class="n" data-page-node-id="MaztuRHL0SapNJu95b5uJA">08</span>赛后回填（明天面完贴回来）</h2>
+
+<p data-page-node-id="VyIREN87zR9MYA9jSHNnM2">每场面试都是库里的资产，尤其是这种「岗位名与实际不符」的样本——<b data-page-node-id="saFJDgwefsvKgqzwqCNbbB">它验证的是投递台账的甄别规则，价值超过这一场本身</b>。面完把下面四项贴给我，我来做复盘：</p>
+
+<table data-page-node-id="ykoBQY51potcFQOLlzxeCh">
+  <tr data-page-node-id="bTO8Y3qGejxMlreOuYoks7"><th style="width:32%" data-page-node-id="DRqGfNUBoIYoKhtWphaNl0">要回的</th><th data-page-node-id="bYETzS6BGHlxRQdMGJQpDR">为什么</th></tr>
+  <tr data-page-node-id="gIGCGt2xPWzRv5tDWIyAjL"><td data-page-node-id="AhUmD06qUQwOWE66bQFhi1">对方问的<b data-page-node-id="8Y2Zdxh8XoGzEcIl5jFzmj">问题全清单</b></td><td data-page-node-id="SXBqa3lk0QXGwvJHZQyAZi">HR 面题库是通用的，下家保底岗直接复用</td></tr>
+  <tr data-page-node-id="c56ELvlJzd5nVYDiJBEqRZ"><td data-page-node-id="tRKk1DLiUOJSndHcNraz3p">哪些问题<b data-page-node-id="OzBufLkCPmLzJGLDKZW5QO">被问住了</b> / 卡在哪</td><td data-page-node-id="Sq4iDqdlLMbkRZek1qre4U">进 <code data-page-node-id="oiYdBZEHWUX6YRAU5cCdO5">questions.md</code> 台账（24h 内，面试准备第一性原理的强制动作）</td></tr>
+  <tr data-page-node-id="uzGZhGktxQD8Kx66ZQPWeD"><td data-page-node-id="63M1iXmEiVzNl9Ka53FHTb">这岗<b data-page-node-id="8iExw9G4yuh8yMz0eA79Nx">实际要做什么</b>（你反问到的）</td><td data-page-node-id="fYCUEqCgbXmUYB3pOoYlad">补进 `秋招投递台账.html` 的备注列；也验证第 01 节的判断对不对</td></tr>
+  <tr data-page-node-id="gvDB1R3iDY2GB9oxU4XSb7"><td data-page-node-id="2eVCGAyMDza8Xeqefu15pr">是否有<b data-page-node-id="vJY5AOdKwTAyZIrN6XSjMA">下一步</b>（业务面 / 笔试）</td><td data-page-node-id="2t39JSXv3hoeLvpGQtAXfw">决定要不要补大数据 —— 那才需要第二份准备</td></tr>
+</table>
+
+<div class="foot" data-page-node-id="wWTYiBhYkVuGWFmWr2yqJS">
+  <b data-page-node-id="jetOn1iMhAGGefV9JdMuBT">判断性质声明（守「区分数字的性质」这条库规）：</b>「凯捷实习期 120–160 元/日」「AI 工程师约 7k-9k/月」「15 天年假 / 12 天病假 / 六险一金」来自公开招聘信息与薪酬统计站点（<b data-page-node-id="vcxGcnPvj2V0PgPeQTN8E7">二手转述，未经企业官方确认</b>）；「官方流程五步」「连续实习至毕业」「岗位表原文」来自凯捷校招材料的转载（<b data-page-node-id="zYrCHXqvAfCd6cQeaQk6Vy">可信度高但仍是转载</b>）。<b data-page-node-id="G7ZgI6WCIlUACME65lYW0l">唯一一手材料是你自己截的 JD 图。</b><br data-page-node-id="tlBWG7lvlfrg5BusMRHfld">
+  本卡为 2026-09-22 版本，仅服务 2026-09-23 这一场。赛后按第 08 节回填即可作废。
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 S1 · OLTP 与 OLAP 的分野与选型</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/数据存储选型.html">← 数据存储选型 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">数据存储选型</span>
+    <h1 class="mv-topic-title">母题 S1 · OLTP 与 OLAP 的分野与选型</h1>
+    <p class="mv-topic-meta">关联 母题-M15-数据增长治理（单个库内部应对增长 vs 本卡的跨引擎选择）· 母题-M7-慢查询与SQL优化手段（在行存引擎内部的优化）· 母题-G2-向量与关键词的混合检索（同一条"按查询形状选结构"的判据）· 母题-L2-锁的粒度与临界区（写入代价的来源） ｜ 正本 wiki/topics/数据存储选型/母题-S1-OLTP与OLAP的分野与选型.md</p>
+  </div>
+<p class="mv-guide">必懂 3 件事（① 分水岭不是"功能多少"，而是<strong>数据在磁盘上怎么排</strong> ② <strong>一次查询要读多少字节</strong>是所有选型讨论的唯一可比指标 ③ 大多数业务数据量下，<strong>引入第二个引擎是负债而不是升级</strong>）· 读完约 12 分钟 · 需要先懂：无</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">某业务库 MySQL 里有一张 <strong>1 亿行的订单明细表</strong>（约 <strong>100 个字段</strong>）。分析师要跑一句"按城市统计近一年客单价"的报表：<code class="mv-md-code">SELECT city, sum(amount)/count(distinct user_id) FROM orders WHERE dt &gt;= ... GROUP BY city</code>。这句 SQL 在 MySQL 上要跑 <strong>几分钟</strong>，而且跑的时候线上接口开始变慢。团队提了三个方案：</p>
+<ul class="mv-md-ul"><li><strong>A</strong>：给 MySQL 加上 <code class="mv-md-code">city</code>、<code class="mv-md-code">dt</code>、<code class="mv-md-code">amount</code> 的联合索引</li><li><strong>B</strong>：主库不动，加一个从库专门跑报表</li><li><strong>C</strong>：把这批数据同步到 ClickHouse，报表查 ClickHouse</li></ul>
+<p class="mv-md-p">选哪个？还有第二个问题：另一个团队只有 <strong>500 万行</strong> 的数据，也想上 ClickHouse，该不该拦？</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：所有的差别只来自一件事——数据在磁盘上怎么排</h3>
+<h4 class="mv-md-h mv-md-h4">1.1 先把两类负载说清楚【事实】</h4>
+<p class="mv-md-p">【事实】<strong>这不是两个技术名词，这是两类负载。</strong> 先用"一次操作碰多少数据"把它们分开：</p>
+<table class="mv-table"><thead><tr><th></th><th><strong>OLTP</strong>（联机事务处理）</th><th><strong>OLAP</strong>（联机分析处理）</th></tr></thead><tbody><tr><td>全称</td><td>Online <strong>Transaction</strong> Processing</td><td>Online <strong>Analytical</strong> Processing</td></tr><tr><td>一次操作碰多少</td><td><strong>几行到几十行</strong></td><td><strong>百万行到亿行</strong></td></tr><tr><td>典型动作</td><td>下单、扣库存、改状态、按主键查详情</td><td>按维度聚合、算比值、多表关联、下钻</td></tr><tr><td>并发</td><td><strong>高</strong>（每笔都很小）</td><td><strong>低</strong>（每条都很重）</td></tr><tr><td>延迟预期</td><td><strong>毫秒</strong></td><td>亚秒到分钟都可接受</td></tr><tr><td>数据新鲜度</td><td><strong>必须是当前最新</strong></td><td>允许有窗口（T+1 或分钟级）</td></tr><tr><td>失败代价</td><td><strong>不可接受</strong>（钱和账不能错）</td><td>可重跑</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>这张表已经决定了一件事</strong>：<strong>这两类负载对"读取效率"的定义是相反的</strong>——OLTP 希望"给我一行时一次把这一行拿全"，OLAP 希望"给我一列时别把别的列也读进来"。<strong>同一个物理排布不可能同时满足这两个愿望</strong>，这就是整个分野的起点。</p>
+<h4 class="mv-md-h mv-md-h4">1.2 两种物理排布【事实】</h4>
+<p class="mv-md-p">【事实】<strong>行式存储（row store）</strong>：<strong>同一行的字段连续存放</strong>，一行接一行。 【事实】<strong>列式存储（column store）</strong>：<strong>同一列的字段连续存放</strong>，一列接一列。</p>
+<figure-box num="同一张表的两种物理排布" title="" note="逻辑上是同一张表，物理上顺序完全不同：行存按行连续，列存按列连续"><svg viewBox="0 0 680 296" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>行式存储与列式存储的物理布局：同一张表的两种排布</title>
+<desc>同一张三行四列的表，行式存储把同一行的四个字段连续存放（1/BJ/24/M 挨在一起），列式存储把同一列的三个值连续存放（BJ/SH/GZ 挨在一起）。分水岭不是功能多少，而是数据在磁盘上怎么排——这决定了点查快还是扫描快。</desc>
+
+<text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">同一张表的两种物理排布</text>
+<text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">分水岭不是功能多少，而是数据在磁盘上怎么排——这决定了「点查快」还是「扫描快」</text>
+
+<text x="30" y="88" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A">行式存储</text>
+<text x="30" y="108" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">同一行的字段连续存放</text>
+
+<rect x="200" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="236" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="272" y="76" width="36" height="40" fill="#185FA5"/>
+<rect x="308" y="76" width="36" height="40" fill="#185FA5"/>
+<text x="218" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="254" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">BJ</text>
+<text x="290" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">24</text>
+<text x="326" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">M</text>
+
+<rect x="344" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="380" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="416" y="76" width="36" height="40" fill="#378ADD"/>
+<rect x="452" y="76" width="36" height="40" fill="#378ADD"/>
+<text x="362" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="398" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SH</text>
+<text x="434" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">31</text>
+<text x="470" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">F</text>
+
+<rect x="488" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="524" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="560" y="76" width="36" height="40" fill="#85B7EB"/>
+<rect x="596" y="76" width="36" height="40" fill="#85B7EB"/>
+<text x="506" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="542" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">GZ</text>
+<text x="578" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">28</text>
+<text x="614" y="96" font-family="system-ui,sans-serif" font-size="11" fill="#042C53" text-anchor="middle" dominant-baseline="central">M</text>
+
+<text x="272" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 1</text>
+<text x="416" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 2</text>
+<text x="560" y="132" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">row 3</text>
+
+<text x="30" y="188" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A">列式存储</text>
+<text x="30" y="208" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">同一列的字段连续存放</text>
+
+<rect x="200" y="176" width="36" height="40" fill="#0F6E56"/>
+<rect x="236" y="176" width="36" height="40" fill="#0F6E56"/>
+<rect x="272" y="176" width="36" height="40" fill="#0F6E56"/>
+<text x="218" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="254" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="290" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">3</text>
+
+<rect x="308" y="176" width="36" height="40" fill="#1D9E75"/>
+<rect x="344" y="176" width="36" height="40" fill="#1D9E75"/>
+<rect x="380" y="176" width="36" height="40" fill="#1D9E75"/>
+<text x="326" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">BJ</text>
+<text x="362" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SH</text>
+<text x="398" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">GZ</text>
+
+<rect x="416" y="176" width="36" height="40" fill="#5DCAA5"/>
+<rect x="452" y="176" width="36" height="40" fill="#5DCAA5"/>
+<rect x="488" y="176" width="36" height="40" fill="#5DCAA5"/>
+<text x="434" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">24</text>
+<text x="470" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">31</text>
+<text x="506" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">28</text>
+
+<rect x="524" y="176" width="36" height="40" fill="#9FE1CB"/>
+<rect x="560" y="176" width="36" height="40" fill="#9FE1CB"/>
+<rect x="596" y="176" width="36" height="40" fill="#9FE1CB"/>
+<text x="542" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">M</text>
+<text x="578" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">F</text>
+<text x="614" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#04342C" text-anchor="middle" dominant-baseline="central">M</text>
+
+<text x="254" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 1</text>
+<text x="362" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 2</text>
+<text x="470" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 3</text>
+<text x="578" y="232" font-family="system-ui,sans-serif" font-size="10" fill="#6B6A65" text-anchor="middle">col 4</text>
+
+<rect x="30" y="252" width="620" height="40" rx="7" fill="#FFFFFF" stroke="#D8D5CC"/>
+<text x="48" y="268" font-family="system-ui,sans-serif" font-size="11" fill="#2C2C2A">同样的 12 个值，物理顺序完全不同：点在查一行时行存赢（一次读完），在扫一列时列存赢（只读这一列）</text>
+<text x="48" y="284" font-family="system-ui,sans-serif" font-size="10.5" fill="#6B6A65">而「改一行」在列存里要碰 4 个列段——这就是列存引擎的 UPDATE 普遍是异步按批的根本原因</text>
+</svg>
+</figure-box>
+<p class="mv-md-p"><strong>别把这张图当成"两种索引"</strong>——它不是索引层面的差异，是<strong>数据文件本身的组织方式</strong>。索引再花哨，底层读的还是这些块。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"OLTP 和 OLAP 的区别"这个问题，不能从"功能列表"回答，只能从"物理排布"回答？</p>
+<h3 class="mv-md-h mv-md-h3">2. 用同一个指标把两种排布算一遍</h3>
+<p class="mv-md-p mv-md-quote"><strong>统一指标：扫一次全表，要从磁盘读多少字节。</strong> 这是唯一能公平比较的尺子——<strong>别的指标（QPS、响应时间）都受硬件和实现影响，只有"读多少字节"是由排布直接决定的</strong>。</p>
+<h4 class="mv-md-h mv-md-h4">2.1 场景一：按主键查一行【推导】</h4>
+<p class="mv-md-p">【推导】假设表宽 <strong>100 个字段、行宽约 1 KB</strong>：</p>
+<pre class="mv-md-pre">行存：读一行 = 找到这 1 KB 连续数据 → 1 次 IO 拿回整行（全部 100 个字段都在）
+列存：要拼出一行 = 需要从【100 个不同的列段】各取一个值 → 100 次定位
+      （而且这 100 个值在磁盘上彼此相距很远，因为列与列之间隔着一整列的数据）</pre>
+<p class="mv-md-p"><strong>结论：点查场景行存赢，而且赢的不是一点。</strong></p>
+<h4 class="mv-md-h mv-md-h4">2.2 场景二：扫全表算一列的聚合【推导】</h4>
+<p class="mv-md-p">【推导】还是那张表，现在只算 <strong>3 个数值列</strong>（每列 8 字节）：</p>
+<pre class="mv-md-pre">行存：必须把每一行整行读进来，再扔掉其中 97 个字段
+   1 亿行 × 1 KB = 【约 100 GB】要读
+
+列存：只读这 3 列
+   1 亿行 × 3 列 × 8 B = 【2.4 GB】要读
+   → 而且同列数据同构、取值域窄，可压缩 → 实际读的更少（倍数取决于数据基数，属【经验值】，必须按自己的数据实测）</pre>
+<p class="mv-md-p"><strong>同一个查询，IO 量差 40 倍以上。</strong> 这就是"为什么列存快"的全部秘密——<strong>不是它算得快，是它要读的东西少。</strong></p>
+<p class="mv-md-p">【推导】<strong>附带还有两个加成，都来自同一件事</strong>：</p>
+<table class="mv-table"><thead><tr><th>加成</th><th>为什么</th><th>来源</th></tr></thead><tbody><tr><td><strong>压缩率高</strong></td><td>同一列的数据类型相同、相邻、取值域窄（城市名、状态码、日期），列式排列让"相似的东西挨在一起"，通用压缩算法能吃到更多重复</td><td>同列同构</td></tr><tr><td><strong>能用向量化执行</strong></td><td>连续内存 + 同构类型 → 可以一次处理一批值，而不是一行一行循环（SIMD 指令的前提）</td><td>数据连续</td></tr></tbody></table>
+<h4 class="mv-md-h mv-md-h4">2.3 场景三：改一行【推导】</h4>
+<p class="mv-md-p">【推导】<strong>这一条最容易被忽略，但它决定了 OLAP 引擎的"功能边界"</strong>：</p>
+<pre class="mv-md-pre">行存：改一行 = 在那一行 1 KB 上原地改（或追加新版本，见 MVCC）
+列存：改一行 = 要改 100 个列段里的各一个值
+      → 逻辑上的"一行"，物理上散落在 100 个地方
+      → 所以列存引擎普遍把"更新"实现成【异步重写整块数据】（先标记，后台合并）</pre>
+<p class="mv-md-p">【事实】<strong>这就是为什么列存引擎的"UPDATE"普遍是异步的、按批的、代价高的</strong>（ClickHouse 的 mutation 走这条路径；Doris / StarRocks 用 Unique Key 模型 + 后台合并来缓解，但语义上仍是"最终一致"）。<strong>"它能做点更新"和"它划得来做高频点更新"是两句话。</strong></p>
+<figure-box num="三步把负载归到引擎族" title="" note="第一问访问模式定大类，后两问在组内收敛"><svg viewBox="0 0 680 462" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>选型三问：从负载推出引擎族</title>
+<desc>第一问看访问模式：点查小事务走向行存数据库，大范围扫描与聚合走向列存；第二问问数据量：千万行以内先别引入新引擎，亿级以上再上专用列存引擎。顺序很重要——前一问能定死答案，后面就不用问了。</desc>
+<defs>
+<marker id="figstorage-selection-tree-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="30" y="26" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#2C2C2A">从负载推出引擎族：顺序不能反</text>
+<text x="30" y="46" font-family="system-ui,sans-serif" font-size="11.5" fill="#6B6A65">先问访问模式，再问数据量，最后才问引擎——任何一问能定死答案，后面就不用问</text>
+
+<path d="M340 122 L340 144 L130 144 L130 166" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#figstorage-selection-tree-svg-arrow)"/>
+<path d="M340 122 L340 144 L550 144 L550 166" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#figstorage-selection-tree-svg-arrow)"/>
+
+<rect x="240" y="66" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="340" y="88" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">第一问：访问模式</text>
+<text x="340" y="108" font-family="system-ui,sans-serif" font-size="11.5" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">点查，还是大范围扫描？</text>
+
+<rect x="40" y="166" width="180" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="130" y="188" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#0C447C" text-anchor="middle" dominant-baseline="central">点查 / 小事务</text>
+<text x="130" y="208" font-family="system-ui,sans-serif" font-size="11.5" fill="#185FA5" text-anchor="middle" dominant-baseline="central">要强一致 · 要低延迟</text>
+
+<rect x="460" y="166" width="180" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="550" y="188" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#04342C" text-anchor="middle" dominant-baseline="central">大范围扫描与聚合</text>
+<text x="550" y="208" font-family="system-ui,sans-serif" font-size="11.5" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">数据量大 · 并发不高</text>
+
+<path d="M130 222 L130 262" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figstorage-selection-tree-svg-arrow)"/>
+<path d="M550 222 L550 262" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#figstorage-selection-tree-svg-arrow)"/>
+<path d="M550 322 L550 362" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#figstorage-selection-tree-svg-arrow)"/>
+
+<rect x="40" y="266" width="180" height="76" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text x="130" y="288" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#0C447C" text-anchor="middle" dominant-baseline="central">行存数据库</text>
+<text x="130" y="308" font-family="system-ui,sans-serif" font-size="11.5" fill="#444441" text-anchor="middle" dominant-baseline="central">MySQL / PostgreSQL</text>
+<text x="130" y="326" font-family="system-ui,sans-serif" font-size="11.5" fill="#444441" text-anchor="middle" dominant-baseline="central">TiDB · OceanBase</text>
+
+<rect x="460" y="266" width="180" height="56" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="550" y="288" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">第二问：数据量多大</text>
+<text x="550" y="308" font-family="system-ui,sans-serif" font-size="11.5" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">千万行以内先别加引擎</text>
+
+<rect x="460" y="366" width="180" height="76" rx="8" fill="#FFFFFF" stroke="#5DCAA5" stroke-width="0.5"/>
+<text x="550" y="388" font-family="system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#04342C" text-anchor="middle" dominant-baseline="central">列存分析引擎</text>
+<text x="550" y="408" font-family="system-ui,sans-serif" font-size="11.5" fill="#444441" text-anchor="middle" dominant-baseline="central">ClickHouse · Doris</text>
+<text x="550" y="426" font-family="system-ui,sans-serif" font-size="11.5" fill="#444441" text-anchor="middle" dominant-baseline="central">StarRocks · DuckDB</text>
+</svg>
+</figure-box>
+<h3 class="mv-md-h mv-md-h3">3. 从物理排布推出的全部差异</h3>
+<p class="mv-md-p">【推导】下面是<strong>同一张表的两种排布</strong>推导出来的完整差异表——<strong>每一条都能追到 2.1 / 2.2 / 2.3</strong>：</p>
+<table class="mv-table"><thead><tr><th>维度</th><th>OLTP（行存）</th><th>OLAP（列存）</th></tr></thead><tbody><tr><td>单次数据量</td><td>几行 ~ 几十行</td><td>百万 ~ 亿行</td></tr><tr><td>并发 / QPS</td><td>高（每笔小）</td><td>低（每条重）</td></tr><tr><td>延迟预期</td><td>毫秒级</td><td>亚秒 ~ 分钟</td></tr><tr><td>索引</td><td>B+ 树主键 + 少量二级索引（更新时维护代价高）</td><td>稀疏索引 / 排序键 / min-max / 布隆过滤器（<strong>不要求唯一，维护便宜</strong>）</td></tr><tr><td>事务</td><td>强 ACID、细粒度锁 / MVCC</td><td>多数没有跨行事务；批量导入有原子性；点更新昂贵</td></tr><tr><td>写入模式</td><td>高频点更新 / 删除</td><td>大批量追加（append）</td></tr><tr><td>数据新鲜度</td><td>当前最新状态</td><td>通常有窗口（要最新就得付同步代价）</td></tr><tr><td>表设计</td><td><strong>规范化（3NF）</strong>：避免冗余、避免更新异常</td><td><strong>反规范化 / 宽表 / 星型模型</strong>：少 join、少扫描；用冗余换查询速度</td></tr><tr><td>瓶颈所在</td><td>随机 IO、锁竞争、写放大</td><td>扫描量、shuffle、join 内存、数据倾斜</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>最后两行是真正的哲学分歧，值得单独记</strong>：</p>
+<p class="mv-md-p mv-md-quote"><strong>规范化是为了"一份事实只存在一个地方"（保证更新不出错）；反规范化是为了"一次查询少碰几个地方"（保证读得快）。</strong> 两者的代价正好是对方的目标。</p>
+<p class="mv-md-p">【推导】由此还能推出一件工程事实：<strong>既然两边的表设计不一样，数据就不能"同一张表两边共用"</strong>——必须经过 ETL / CDC 同步，<strong>于是必然带来延迟和一致性窗口</strong>。<strong>"要不要上 OLAP 引擎"这个问题，一半的答案其实是在问"你受得了这个延迟窗口吗"。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"OLAP 引擎快"这个说法不准确，准确说法应该是"它要读的字节少"？</p>
+<h3 class="mv-md-h mv-md-h3">4. 选型：三个问题，依次收敛</h3>
+<p class="mv-md-p">【取舍】选型不要从"哪个引擎先进"开始。<strong>按顺序问三个问题，任何一个能定死答案，后面的就不用问了。</strong></p>
+<p class="mv-md-p"><strong>第一问：访问模式是什么？</strong></p>
+<pre class="mv-md-pre">点查 / 小事务 / 要求强一致  → 行存（OLTP）
+大范围扫描 / 聚合 / 多表关联 → 列存（OLAP），继续问第二问</pre>
+<p class="mv-md-p"><strong>第二问：数据量到底多大？</strong></p>
+<p class="mv-md-p">【取舍】<strong>这一问是"拦住过度设计"的那一关。</strong></p>
+<pre class="mv-md-pre">千万行以内、查询不复杂 → 【先用现有的关系库】加索引 / 物化视图 / 分区
+                     → 上第二个引擎的收益小于它的代价（见第三问）
+亿级以上、宽表聚合、要压缩率 → 列存引擎</pre>
+<p class="mv-md-p">【事实】<strong>关系型数据库本身也能做分析</strong>（PostgreSQL 的并行扫描、物化视图、分区表；MySQL 8 的窗口函数与 CTE）。<strong>"能不能做"和"划不划得来"是两件事</strong>——<strong>数据量没到那个量级时，多一套引擎带来的同步链路、一致性窗口、运维面、以及"两份数据谁是准的"这一串问题，代价远大于省下的那几秒查询时间。</strong></p>
+<p class="mv-md-p"><strong>第三问：更新与并发怎么分布？</strong></p>
+<pre class="mv-md-pre">高频单行 UPDATE / DELETE   → 【留在行存那边】，或者用支持 Unique Key 的列存引擎
+                        → 高频点更新打到 ClickHouse 这类引擎上，是最常见的误用
+大批量 append（日志、埋点、流水归档）→ 列存引擎最舒服
+交互式 BI、几百人同时点报表 → 需要强并发能力的列存引擎（Doris / StarRocks 这类）
+单条重查询跑到底、并发不高 → ClickHouse 这类擅长单表扫描的引擎</pre>
+<h4 class="mv-md-h mv-md-h4">4.1 回到开头那道题【推导】</h4>
+<p class="mv-md-p">【推导】<strong>三个方案，逐个用指标算</strong>：</p>
+<table class="mv-table"><thead><tr><th>方案</th><th>会发生什么</th></tr></thead><tbody><tr><td><strong>A</strong> 加联合索引</td><td><strong>改善有限</strong>。这个查询要的是"近一年全部明细的和与去重计数"，<strong>它天然要扫掉那一年的大量数据</strong>——索引能帮 <code class="mv-md-code">WHERE dt &gt;= ...</code> 做范围裁剪，<strong>但聚合本身躲不掉全量读</strong>。而且<strong>1 亿行的宽表加索引，写入代价也要算</strong>（见 [[母题-M4-索引代价与大表变更]]）</td></tr><tr><td><strong>B</strong> 加一个从库跑报表</td><td><strong>解决了"干扰线上"这一半，没解决"慢"这一半</strong>。它把负载隔离出去（这是对的，也是数驭穹图 <code class="mv-md-code">SNAPSHOT / LIVE_READ</code> 分流想干的事），但<strong>行存扫宽表这件事本身还是那么贵</strong></td></tr><tr><td><strong>C</strong> 同步到 ClickHouse</td><td><strong>两条都解决</strong>：扫描只读需要的那几列（2.2 的 40 倍），而且<strong>和线上库物理隔离</strong>。<strong>代价是</strong>：新增一条同步链路、新增一个要对齐的存储、新增一个口径可能不一致的地方</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>正确答案是 C，但理由要说完整</strong>：<strong>C 赢在两个地方——IO 量、负载隔离；C 的成本也在这两个地方——多一份数据、多一个"谁是准的"的问题。</strong> 只答"因为 ClickHouse 快"是没答到点的（那是方案说明，不是选型理由）。</p>
+<h4 class="mv-md-h mv-md-h4">4.2 第二个问题：500 万行该不该上 ClickHouse【推导】</h4>
+<p class="mv-md-p">【推导】<strong>该拦。</strong> 按第二问：</p>
+<pre class="mv-md-pre">500 万行 × 假设行宽 1 KB ≈ 5 GB 原始数据
+→ 单机关系库加好索引 / 物化视图，这类量级的聚合是【秒级】能给出的
+→ 而引入 ClickHouse 的固定成本是【不变的】：
+   一条同步链路 + 一个引擎的运维 + 一份口径对齐 + 一条"数据延迟了怎么办"的处理路径
+→ 固定成本不变、收益随数据量增长 → 数据量小的时候，收益 &lt; 固定成本</pre>
+<p class="mv-md-p">【取舍】<strong>这里有一个反直觉但重要的判断</strong>：<strong>"要不要上 OLAP 引擎"的主要变量是"团队能不能承受多一份数据的复杂度"，不是"数据量到了哪个数"。</strong> 数据量只是让它变得划算的快慢问题。<strong>一个有专职数据团队的公司，500 万行上实时数仓也可能合理；一个三人的小团队，5 亿行也未必该上——因为上了没人能维护。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们数据量很大"这句话本身，不足以支撑选型决策？</p>
+<h3 class="mv-md-h mv-md-h3">5. HTAP 与那几个容易被说错的边界</h3>
+<h4 class="mv-md-h mv-md-h4">5.1 HTAP 是折中，不是全面胜出【事实】</h4>
+<p class="mv-md-p">【事实】<strong>HTAP（Hybrid Transactional/Analytical Processing）</strong> 指一套系统同时承担两类负载。主流实现方式有两条路线：</p>
+<table class="mv-table"><thead><tr><th>路线</th><th>做法</th><th>代表</th></tr></thead><tbody><tr><td><strong>一份数据 + 两种副本</strong></td><td>行存副本负责事务，列存副本负责分析，通过复制协议同步</td><td>TiDB（TiKV 行存 + TiFlash 列存）· OceanBase（行存 + 列存副本）</td></tr><tr><td><strong>单一引擎兼顾</strong></td><td>内存列存 / 向量化 + 事务能力共存</td><td>MySQL HeatWave · 部分单机分布式一体化产品</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>它的价值是明确的</strong>：<strong>省掉"再搭一套同步链路"</strong>，并且把分析拉近实时（这是多库架构最主要的痛点，<code class="mv-md-code">summaries/oceanBase.md</code> 里得物的实践正是从"多库并存"走向"一体化"）。</p>
+<p class="mv-md-p">【取舍】<strong>但它不是免费的，也不是终点</strong>：</p>
+<pre class="mv-md-pre">好处：少一条同步链路、少一份口径分歧、实时性更好、运维面收敛
+代价：① 分析负载与事务负载仍会争抢同一套底层资源（要靠资源隔离去管）
+      ② 极重的分析场景下，专用 OLAP 引擎的性价比仍可能更高
+      ③ 单产品锁定更深——迁移成本比"多个独立引擎"更高</pre>
+<p class="mv-md-p">【推导】<strong>准确的表述</strong>：<strong>HTAP 把"同步链路"这个成本换成了"资源隔离 + 产品锁定"这两个成本。</strong> 它在中大数据量 + 强实时性 + 团队规模有限时最优；数据量极大、查询极重时，专用引擎分工仍更划算。</p>
+<h4 class="mv-md-h mv-md-h4">5.2 边界与常见误解</h4>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>"OLAP 引擎也支持 UPDATE，所以一个引擎就够了"</td><td>【事实】<strong>它支持，但那是异步、按批、代价高的路径</strong>（列存的"改一行"物理上要碰 N 个列段，见 2.3）。<strong>能做的语义 ≈ 最终一致的批量重写，不是 ACID 事务</strong>——面试里把这两者混着说，是硬伤</td></tr><tr><td>"列存快是因为它算得快"</td><td>【推导】<strong>错在归因</strong>。列存快的根本原因是<strong>它要读的字节少</strong>（只读用到的列 + 压缩率更高），<strong>执行层的向量化是"数据连续"这个前提带来的附加收益</strong>，不是原因</td></tr><tr><td>"MySQL 上跑得慢，加个索引就好了"</td><td>【推导】<strong>要看慢在哪</strong>。索引解决的是"定位"（<code class="mv-md-code">WHERE</code> 挑出少数行）；<strong>如果查询本身就要聚合掉大量数据，索引帮不上忙</strong>——那是扫描量的问题，属于"选错引擎族"而不是"缺索引"</td></tr><tr><td>"我们数据量大，必须上大数据方案"</td><td>【取舍】<strong>"大"要有量级</strong>。千万行以内先算账（4.2）：<strong>固定成本不变的条件下，收益必须随量级增长才划算</strong></td></tr><tr><td>"HTAP 是最终答案，两套系统迟早要合并"</td><td>【取舍】<strong>它是折中</strong>（5.1）：省掉同步链路，换来资源争抢与产品锁定。<strong>在什么规模上哪种更优，取决于数据量、实时性要求和团队规模三个变量，没有普适答案</strong></td></tr><tr><td>"ClickHouse 是 OLAP，所以它=分析"</td><td>【事实】<strong>OLAP 是一类负载，不是一类产品</strong>。同样叫 OLAP 引擎，有的擅长单表大扫描（压缩与扫描速度优先），有的擅长多表 join 与高并发短查询（<strong>这与它们的存储与执行设计有关</strong>）。<strong>"OLAP 引擎"这个词不能替代具体选型</strong></td></tr><tr><td>"从库跑报表就不影响线上了"</td><td>【事实】<strong>只搬走了负载，没搬走成本</strong>。从库仍要承担复制开销，而且<strong>报表如果扫的是同一份行存数据，慢的根源一点没变</strong>（4.1 方案 B）</td></tr><tr><td>"报表慢一点没关系，反正不影响交易"</td><td>【取舍】<strong>要区分"慢"和"把线上拖慢"</strong>。这两件事的解法不同：<strong>前者是引擎族选型问题（本卡），后者是资源隔离问题</strong>（[[母题-X1-容器是什么]] 的同一个原则：<strong>给资源设上界</strong>）。数驭穹图 <code class="mv-md-code">07</code>/<code class="mv-md-code">08</code> 对"扫描量、超时、行数、并发"的限制，正是把这两件事分开处理</td></tr></tbody></table>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型-q1" tag="数据存储选型" q="一张宽表，100 个字段，行宽 1 KB，共 1 亿行。现在只查询其中 2 个数值列（每列 8 字节）：SELECT sum(a), avg(b) FROM t。&#10;问：① 行存要读多少字节？② 列存要读多少字节（不考虑压缩）？③ 倍数是多少？④ 如果这 2 列是&quot;订单状态&quot;（取值只有 5 种）和&quot;城市&quot;（取值约 300 种），压缩之后会怎样？" a="``&#10;① 行存：必须整行读进来再扔掉 98 个字段&#10;1 亿 × 1 KB = 【100 GB】&#10;② 列存：只读 2 列&#10;1 亿 × 2 × 8 B = 16 亿 B = 【1.6 GB】&#10;③ 倍数 = 100 GB / 1.6 GB = 【62.5 倍】&#10;→ 这就是&quot;列存快&quot;的全部来源：要读的字节少 62 倍&#10;④ 压缩：这两个列的取值域都很窄（状态 5 种、城市 300 种）&#10;→ 同列相邻、类型相同、重复度高 → 通用压缩能吃到大量重复&#10;→ 实际落盘远小于 1.6 GB&#10;★ 但【具体倍数取决于数据基数，属经验值】——必须拿自己的数据实测，&#10;不许把任何一个&quot;列存能压 N 倍&quot;的说法当结论背（库内规矩：区间 + 来源性质）&#10;``&#10;【这一步在验证什么】验证 2.2：列存的收益主要是&quot;少读&quot;，压缩是叠加在&quot;少读&quot;之上的第二层收益。两个收益都来自同一个原因——同列的数据挨在一起。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型-q2" tag="数据存储选型" q="还是这张表。现在有两个写入场景：&#10;场景甲：每秒 500 笔订单状态更新，每笔改 1 行&#10;场景乙：每小时追加 200 万行新流水&#10;问：① 两个场景在行存上的代价？② 在列存上呢？③ 结论是什么？" a="``&#10;① 行存：&#10;甲：500 行/秒 × 1 KB = 500 KB/秒 的随机写 —— 量很小，但每个事务要维护&#10;主键索引与二级索引 → 代价在【索引维护与锁】上，不在数据量上&#10;乙：200 万行追加 = 顺序写 + 批量提交 → 行存完全能承受&#10;② 列存：&#10;甲：每改 1 行要碰 100 个列段 → 500 行/秒 = 每秒要改【5 万处】&#10;逻辑一行、物理散落 100 处（2.3）→ 只能走异步重写整块（mutation）&#10;→ 后台合并（merge）会持续被压住，是【典型的误用】&#10;乙：追加正是列存最擅长的——顺序写入、按块组织、后台合并&#10;→ 每小时 200 万行是很轻松的批量导入&#10;③ 结论：同样一句&quot;我们要写数据&quot;，&#10;甲该给行存，乙该给列存。&#10;→ 【写入模式比写入量更重要】：高频小写的杀手是&quot;改一行要碰几处&quot;，&#10;不是&quot;每秒多少行&quot;&#10;``&#10;【这一步在验证什么】验证 2.3 与第三问：&quot;写入量大&quot;不是判断依据，&quot;点更新还是批量追加&quot;才是。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型-q3" tag="数据存储选型" q="某团队说：&quot;我们的库有 8000 万行，报表要跑 40 秒。我们打算 MySQL 和 ClickHouse 双写，以后所有查询都走 ClickHouse，MySQL 只做写入。&quot;&#10;问：这个方案的问题在哪？" a="``&#10;问题一：【&quot;所有查询&quot;包含了点查】&#10;ClickHouse 做按主键查单行是它的弱项（2.1 反向）&#10;→ 点查必须留在行存那边。&quot;以后都走 ClickHouse&quot;是把两类负载混为一谈&#10;问题二：【双写的成本被低估了】&#10;双写 = 两个写入口 → 必须处理：&#10;· 一边成功一边失败怎么办（分布式事务问题，见 [[母题-Q1-消息为什么会丢怎么才不丢]]）&#10;· 写顺序与幂等（见 [[母题-L3-分布式锁与fencing-token]]）&#10;主流做法是【单写 + CDC 同步】而不是应用层双写，就是为了避开这个坑&#10;问题三：【口径分歧没人管】&#10;两份数据必然出现&quot;报表和明细对不上&quot;&#10;→ 必须有对账机制与&quot;以哪边为准&quot;的明确规则&#10;问题四：【量级需要复核】&#10;8000 万行、40 秒——先确认慢在哪（Q1 的算法）：&#10;如果只是缺索引或写法问题（[[母题-M7-慢查询与SQL优化手段]]），&#10;加引擎是&quot;用大炮打蚊子&quot;；如果确实是宽表全量聚合，那 C 方案成立&#10;【准确说法】保留&quot;同步到 ClickHouse 供分析&quot;这个方向，&#10;但必须补三条：① 点查留在行存 ② 用 CDC 而不是双写&#10;③ 明确哪边是准的 + 对账机制&#10;``"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型-q4" tag="数据存储选型" q="下面这段话哪里错了？&#10;&quot;列式存储比行式存储先进，所以新系统都应该用列存。而且列存的压缩率高，占的磁盘少，连存储成本都更低。&quot;" a="三处错。&#10;1. &quot;先进&quot;错了，错在把&quot;针对某类负载更优&quot;说成&quot;总体更先进&quot;。行存与列存是针对两类相反负载的两个最优解（2.1 与 2.2 是同一个计算的两面）。点查场景行存赢；聚合场景列存赢。 没有先进与落后，只有匹配与不匹配。&#10;2. &quot;都应该用列存&quot;错了：绝大多数业务系统的核心负载是 OLTP（下单、支付、改状态、按主键查详情），而且要强一致。列存在这类负载上会同时输在&quot;点查&quot;和&quot;点更新&quot;两件事上（2.1、2.3）。&#10;3. &quot;连存储成本都更低&quot;错在只算了一边：持有一份列存数据，你要付的不只是磁盘钱——还有：&#10;一条同步链路的开发与维护&#10;一个引擎的运维&#10;&quot;两份数据口径不一致怎么处理&quot;&#10;数据延迟窗口带来的业务处理（报表要不要标注&quot;数据截止时间&quot;）&#10;磁盘便宜，人不便宜。 在小数据量下，这些固定成本远大于省下的磁盘与查询时间（4.2）。&#10;准确说法：*行存与列存是两类负载各自的最优解，不是新旧关系。判断该用哪个，先算&quot;一次查询要读多少字节&quot;（点查看行存、聚合看列存），再算&quot;多一份数据的固定成本划不划算&quot;。列存确实压缩率高、占盘少，但那只是它众多差异里的一项，不足以单独支撑选型。*"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型-q5" tag="数据存储选型" q="下面这段话哪里错了？&#10;&quot;HTAP 把 OLTP 和 OLAP 合并到一个系统里，所以以后就不需要数据同步、不需要数仓了，一个数据库全搞定。&quot;" a="两处错。&#10;1. &quot;不需要数据同步&quot;只在同源数据上没有错：HTAP 的价值确实是省掉&quot;再搭一套同步链路&quot;（5.1）。但这句话的隐含前提是&quot;所有数据都在这个 HTAP 系统里&quot;——而现实里数据分散在十几个系统（summaries/oceanBase.md 里得物的清单就是：MySQL、TiDB、MongoDB、HBase、DuckDB、ClickHouse、StarRocks、向量库）。跨系统的同步该有还是有，HTAP 只解决了&quot;这一份数据内部分析与事务&quot;的那一段。&#10;2. &quot;一个数据库全搞定&quot;错在无视了折中的代价：&#10;资源争抢仍在：分析和事务共用一套底层，重分析会与事务抢 CPU / IO / 内存 → 靠资源隔离去管，不是自动消失&#10;产品锁定更深：单产品越重，迁移成本越高&#10;专用引擎并非无意义：极重分析场景下专用列存引擎的性价比仍可能更高&#10;准确说法：*HTAP 是把&quot;再搭一套同步链路 + 维护两份数据&quot;这个成本，换成了&quot;资源隔离 + 更深的产品锁定&quot;这两个成本。它在数据量中等、实时性要求高、团队人手有限时最优；不是&quot;以后不需要其他东西&quot;，而是&quot;这几个约束下的更好折中&quot;。*&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">OLTP 与 OLAP 的本质差别是什么，凭什么它俩不能被一个引擎同时做好，什么信号出现时才真的该上第二个引擎。</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型" tag="数据存储选型" q="OLTP 与 OLAP 的本质差别是什么，凭什么它俩不能被一个引擎同时做好，什么信号出现时才真的该上第二个引擎。" a="OLTP 与 OLAP 的差别只有一个根因——数据在磁盘上怎么排。 行存把同一行的字段放在一起，所以点查一次 IO 拿回整行、改写一行只碰一处，但它做聚合时必须整行读进来再扔掉大部分字段；列存把同一列的放在一起，所以聚合只读用到的列（一张 100 列的表只取 2 列时，IO 差 60 倍以上），而且同列同构所以压缩率高、数据连续所以能用向量化，但它点查要拼 N 个列段、改一行要碰 N 个列段——这就是列存引擎的 UPDATE 普遍是异步按批的根本原因。由此推出选型三步：先问访问模式（点查→行存，聚合→列存）；再问数据量（千万行以内先别加引擎，因为同步链路与运维的固定成本不随数据量缩小）；最后问更新模式（高频点更新别给列存，大批量追加才是列存的地盘）。HTAP 是折中不是终点：它把&quot;同步链路&quot;的成本换成&quot;资源隔离 + 产品锁定&quot;的成本。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>OLTP 与 OLAP 的差别只有一个根因——数据在磁盘上怎么排。</strong> 行存把同一行的字段放在一起，所以<strong>点查一次 IO 拿回整行、改写一行只碰一处</strong>，但它做聚合时<strong>必须整行读进来再扔掉大部分字段</strong>；列存把同一列的放在一起，所以<strong>聚合只读用到的列</strong>（一张 100 列的表只取 2 列时，IO 差 60 倍以上），而且<strong>同列同构所以压缩率高、数据连续所以能用向量化</strong>，但它<strong>点查要拼 N 个列段、改一行要碰 N 个列段</strong>——<strong>这就是列存引擎的 UPDATE 普遍是异步按批的根本原因</strong>。由此推出选型三步：<strong>先问访问模式</strong>（点查→行存，聚合→列存）；<strong>再问数据量</strong>（千万行以内先别加引擎，因为同步链路与运维的固定成本不随数据量缩小）；<strong>最后问更新模式</strong>（高频点更新别给列存，大批量追加才是列存的地盘）。<strong>HTAP 是折中不是终点</strong>：它把"同步链路"的成本换成"资源隔离 + 产品锁定"的成本。</div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>根因只有一个——数据在磁盘上怎么排</strong></li><li>行存=同一行连续</li><li>列存=同一列连续</li><li><strong>统一指标：扫全表要读多少字节</strong></li><li>点查看行存 · 聚合看列存 · 点更新看行存</li><li>列存快的真因是<strong>读得少</strong>（压缩与向量化是附加）</li><li><strong>改一行要碰 N 个列段</strong> → UPDATE 异步按批</li><li>规范化 vs 反规范化</li><li><strong>选型三问：访问模式 → 数据量 → 更新模式</strong></li><li>千万行以内先算账</li><li><strong>HTAP = 折中（省同步链路，换资源隔离与锁定）</strong></li><li>OLAP 是一类负载不是一类产品</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 347 字 · 按 4 字/秒折算约 87 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p"><strong>OLTP 与 OLAP 的差别只有一个根因——数据在磁盘上怎么排。</strong> <strong>行存</strong>把同一行的字段放在一起：<strong>点查一次 IO 拿回整行、改写一行只碰一处</strong>；但做聚合时<strong>必须整行读进来再扔掉大部分字段</strong>。<strong>列存</strong>把同一列的放在一起：<strong>聚合只读用到的列</strong>（100 列的表只取 2 列时 IO 差 60 倍以上），而且<strong>同列同构所以压缩率高、数据连续所以能用向量化</strong>；代价是<strong>点查要拼 N 个列段、改一行要碰 N 个列段</strong>——<strong>这就是列存引擎的 UPDATE 普遍是异步按批的根本原因</strong>。</p>
+<p class="mv-md-p">选型三步：<strong>① 先问访问模式</strong>（点查 → 行存，聚合 → 列存）；<strong>② 再问数据量</strong>（千亿以下的行存大多够用，别一上来就上列存）；<strong>③ 最后问维护成本</strong>（两套存储 = 两套运维 + 一条同步链路）。</p>
+<p class="mv-md-p">和 MySQL 侧呼应：冷热分离/归档解决的是"热查询背着冷数据跑"，而<strong>分析型查询要隔离到列存或从库</strong>，不能让它在主库上跑全表聚合。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：根因是存储布局；行存利点查与改写，列存利聚合。</li><li><strong>推导链</strong>：布局 → 点查 vs 聚合的 IO 差异 → 列存 UPDATE 为什么按批 → 选型三步。</li><li><strong>量化</strong>：100 列取 2 列时 IO 差 60 倍以上。</li><li><strong>边界与常见误解</strong>："列存全面更好"×（点查和单行改写是它的短板）；数据量不大时用不上列存。</li></ul></collapse-panel>
+    <collapse-panel title="方言差异（面试安全底线）"><p class="mv-md-p">| 同一件事 | 行存（MySQL / PG） | 列存（ClickHouse / Doris / DuckDB） | |---|---|---| | "改一行" | 原地改 / 版本链（MVCC） | <strong>异步重写整块</strong>（mutation / 合并） | | "事务" | 强 ACID、跨行、可回滚 | 批量导入原子性；<strong>无跨行事务</strong> | | 索引的用途 | <strong>定位</strong>（挑出少数行） | <strong>裁剪</strong>（跳过整块数据：min-max / 排序键） | | 唯一性约束 | 主键 / 唯一索引，强制保证 | 通常不强制（<strong>去重要在写入或查询时另做</strong>） | | 一条查询能吞多少行 | 要控制（会拖垮线上） | 上亿行是常态 |</p></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>为什么列存的压缩率高？</strong></strong></p>
+<p class="mv-md-p"><strong>因为同列的数据类型相同、取值域窄、物理相邻</strong>，"相似的东西挨在一起"让通用压缩算法能吃到大量重复。<strong>注意：具体倍数取决于数据基数，是经验值</strong>——正确说法是"取决于基数，要按自己的数据实测"，而不是给一个倍数。</p>
+<p class="mv-md-p"><strong>2. <strong>为什么 ClickHouse 这类引擎不适合高频单行更新？</strong></strong></p>
+<p class="mv-md-p"><strong>列存的物理结构决定的</strong>：改一行要碰 N 个列段（100 列就是 100 处），只能实现成<strong>异步重写整块数据</strong>。所以它的更新语义是"最终一致的批量重写"，不是 ACID 事务。<strong>要高频点更新就留在行存。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>一张 100 列的表，MySQL 上跑聚合很慢，加索引能解决吗？</strong></strong></p>
+<p class="mv-md-p"><strong>不能根治</strong>。索引解决的是"定位少数行"；<strong>如果查询本来就要聚合掉大量数据，索引帮不上忙</strong>——那是扫描量问题，属于"选错引擎族"。<strong>先确认慢在哪</strong>（是缺索引、写法问题，还是要扫的数据本来就多），再决定加索引还是换引擎。</p>
+<p class="mv-md-p"><strong>4. <strong>HTAP 是不是就不需要数仓了？</strong></strong></p>
+<p class="mv-md-p"><strong>不是</strong>。它解决的是"同一份数据里分析与事务共存"，<strong>跨系统的同步该有还是有</strong>；而且它把成本从"同步链路"换成了"资源隔离 + 产品锁定"。<strong>它是折中，不是终点。</strong></p>
+<p class="mv-md-p"><strong>5. <strong>为什么 OLAP 要有反规范化的宽表？</strong></strong></p>
+<p class="mv-md-p">因为<strong>规范化是为了"更新不出错"，反规范化是为了"读得少"</strong>——两者的代价正好是对方的目标。OLAP 允许冗余，是因为它的负载是"大量读、极少更新"，<strong>规范化的更新保护在它这里换不到好处</strong>。</p>
+<p class="mv-md-p"><strong>6. <strong>数据同步（ETL / CDC）会带来什么？</strong></strong></p>
+<p class="mv-md-p"><strong>一个必然的一致性窗口</strong>。所以真正的选型问题不只是"分析要不要更快"，还有"<strong>业务受不受得了这个窗口</strong>"（报表要标注数据截止时间、实时决策类需求要另想办法）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「为什么大宽表在 OLAP 里反而好？」——<strong>列存 + 宽表是配套的</strong>：列存让"多列"不成为负担（只读用到的列），宽表让查询不用 join。<strong>两者是同一个"少碰数据"的目标</strong></li><li>「DuckDB 为什么能嵌进进程里，还能很快？」——<strong>它是列存 + 向量化执行 + 面向单机分析</strong>（数驭穹图正是这么用的：<code class="mv-md-code">02</code> 写"PostgreSQL 只保存目录与状态，DuckDB 负责分析执行"）。<strong>它证明"列存"这件事不依赖分布式</strong></li><li>「数据湖 / 湖仓是什么？」——<strong>把数据以开放格式（如 Parquet）放在对象存储上，再由计算引擎去读</strong>。数驭穹图的"轻量湖仓"就是这个思路的小型版：<strong>存储与计算分开，算的时候才把列读进来</strong></li><li>「向量数据库算 OLAP 吗？」——<strong>都不算</strong>，它是第三类负载（近邻检索）。<strong>但"按查询形状选结构"这条判据是同一条</strong>（见 [[母题-G2-向量与关键词的混合检索]]）</li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p"><strong>数驭穹图</strong>（本卡最完整的实例，三条线都命中）——<code class="mv-md-code">02-数据接入与轻量湖仓.md</code> 把它写得很直白：<strong>*"实际分析数据保存为对象存储中的 Parquet，PostgreSQL 只保存目录、Schema、同步状态和版本，DuckDB 负责分析执行。"</strong>* 这句话就是本卡第 4 节的落地：<strong>控制面（权限、目录、任务状态）是典型 OLTP，交给 PG；数据面（大范围聚合）是典型 OLAP，交给列存引擎</strong>；而且<strong>通过 <code class="mv-md-code">SNAPSHOT</code> / <code class="mv-md-code">LIVE_READ</code> 双模式控制"数据新鲜度 vs 成本"</strong>——LIVE_READ *"优先连接只读副本或分析库"*，<strong>并且明确"若客户只有生产主库，默认不开放复杂即席查询"</strong>（<code class="mv-md-code">02</code>）——<strong>这正是"不许分析负载打到生产主库"这条硬规矩</strong>。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先给根因（磁盘排布）→ 用一个可算的场景把差距算出来（100 列宽表只取 2 列，60 倍）→ 从根因推出四种差异（点查 / 聚合 / 写入 / 压缩）→ 推出两条工程后果（表设计规范 vs 反规范、必须有同步链路）→ 给选型三问 → 用三问回答"该不该上第二个引擎" → 补 HTAP 是折中 → 边界（OLAP 引擎的"事务"不是 ACID 事务）</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>一切差异都能从"一次读多少字节"和"改一行要碰几处"这两个算术题推出来。</strong> 面试里被追问任何 OLAP / OLTP 细节（为什么压缩率高、为什么不支持高频更新、为什么要有同步链路、为什么列存不适合点查），<strong>都可以回到这两个问题现推</strong>——<strong>不需要背，需要会算。</strong></p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能<strong>用"扫全表要读多少字节"当场算出</strong>行存与列存的量级差；能从"改一行要碰几列"推出列存引擎 UPDATE 为什么是异步按批；能用<strong>选型三问</strong>把任意一段负载归到引擎族，并说清"千万行以内先别加引擎"的理由是<strong>固定成本不随量级缩小</strong>；能说清 <strong>HTAP 是折中不是终点</strong>（省同步链路，换资源隔离与产品锁定）；<strong>且自测 5 题全对</strong>（尤其 Q4、Q5 的纠错）。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

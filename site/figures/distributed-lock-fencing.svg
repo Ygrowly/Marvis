@@ -1,0 +1,41 @@
+<svg viewBox="0 0 680 388" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>分布式锁的三种实现、三大失效场景与 fencing token</title>
+<desc>锁过期而持有者还活着时会同时出现两个持有者；只有让被保护的资源校验单调递增的 token 才能真正安全。</desc>
+<defs>
+<marker id="arrowL3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">分布式锁：能买到「大概互斥」，买不到「一定互斥」</text>
+
+<rect x="40" y="46" width="196" height="104" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">Redis</text>
+<text x="56" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">SET k v NX PX ttl（一条原子）</text>
+<text x="56" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">释放要用 Lua 校验 v（防误删）</text>
+<text x="56" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">主从异步复制 → 切换会丢锁</text>
+
+<rect x="242" y="46" width="196" height="104" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="258" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">数据库</text>
+<text x="258" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">唯一约束插入 / 带条件更新</text>
+<text x="258" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">不引入新组件，事务一致</text>
+<text x="258" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">锁争用直接压在数据库上</text>
+
+<rect x="444" y="46" width="196" height="104" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="460" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">ZooKeeper / etcd</text>
+<text x="460" y="90" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">临时顺序节点 / 租约 + watch</text>
+<text x="460" y="108" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">会话与锁绑定，语义最干净</text>
+<text x="460" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">要多维护一套强一致系统</text>
+
+<rect x="40" y="164" width="600" height="112" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="186" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">三大失效场景 —— 根因都是「锁服务的判断」与「客户端的事实」脱节</text>
+<text x="58" y="208" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">① GC 停顿 / 线程阻塞：锁过期了，持有者还活着 → 两个人同时认为自己持有</text>
+<text x="58" y="228" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">② 时钟漂移：过期判断依赖时间，机器间的时钟不一致</text>
+<text x="58" y="248" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">③ 网络分区：锁服务认为租约到期，客户端认为自己还持有</text>
+<text x="58" y="268" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">→ 所以任何「靠过期时间」的锁都只能给概率，给不了保证</text>
+
+<rect x="40" y="290" width="600" height="84" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="310" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#412402" dominant-baseline="central">fencing token：把安全性从「锁」搬到「被保护的资源」上</text>
+<text x="58" y="332" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">每次发锁时给一个单调递增的号；写操作带上号；资源侧拒绝更小的号</text>
+<text x="58" y="352" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">于是即使出现两个持有者，旧持有者的写入也一定会被挡掉 —— 这才是真正的互斥</text>
+<text x="58" y="368" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">前提：资源要支持「带条件写」；否则只能靠幂等，而不是靠锁</text>
+</svg>

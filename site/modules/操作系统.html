@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>操作系统模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">操作系统模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/操作系统/操作系统模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>30</b> 道题（<b>18</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>3</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="操作系统-01-CPU 怎么决定先跑谁.html"><span class="mv-line-no">一</span><span class="mv-line-name">CPU 怎么决定先跑谁</span><span class="mv-line-q">进程和线程到底差在哪、一次切换花了什么、为什么线程开多了反而更慢、共享地址空间带来的竞态与死锁</span><span class="mv-line-st">母题 1 · 题 11</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="操作系统-02-内存为什么看起来够用.html"><span class="mv-line-no">二</span><span class="mv-line-name">内存为什么看起来够用</span><span class="mv-line-q">8GB 的程序为什么能跑在 4GB 内存上、`malloc` 成功为什么还会 OOM、OOM 杀的是谁</span><span class="mv-line-st">母题 1 · 题 10</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="操作系统-03-IO 为什么慢、内核能省掉什么.html"><span class="mv-line-no">三</span><span class="mv-line-name">IO 为什么慢、内核能省掉什么</span><span class="mv-line-q">一次 IO 的等待发生在哪、`epoll` 比 `select` 强在哪、零拷贝省掉的是哪几次拷贝</span><span class="mv-line-st">母题 1 · 题 9</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>服务端是"受控并发"的活教材</strong>——当前规模明确用 PostgreSQL 任务表 + APScheduler + 批处理 + <strong>受控并发</strong>，而不是无限开线程/协程。这里 O1 的切换成本账就是"受控"两个字的依据：<strong>并发单元不是越多越好，过了拐点总吞吐反而下降</strong>。</li><li>解决什么问题：<strong>任务中断后的恢复</strong>——服务重启后扫描最近七天缺口、<strong>限定窗口、分批、低优先级</strong>回补（<code class="mv-md-code">02-aggregation-and-recovery.md</code>）。<strong>"低优先级"这个设计就是因为它要和实时任务争同一批 CPU 和数据库连接</strong>——这是调度与资源竞争在业务层的投影。</li><li>踩过的坑：<strong>把 Checkpoint 当成"业务完成证明"</strong>——Checkpoint 是恢复线索，不是事实。<strong>这在操作系统层面的对应是"进程崩溃后内存状态全丢，只有落盘的东西算数"</strong>（<code class="mv-md-code">07-task-lifecycle-and-delivery.md</code>）。</li><li>决策与取舍：<strong>并发度是配出来的、不是开出来的</strong>——受控并发 + 并发配额限流，而不是"有多少任务就起多少执行单元"（O1 的量化判据）。</li><li>对应母题：【O1、O3】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>一次问数请求的绝大部分时间是 IO 等待</strong>——SQL 要发给 DuckDB / PostgreSQL 执行、结果集要从对象存储读回来。所以服务端该用异步（[[母题-N3-进程线程与协程]] 的判据），而<strong>这张卡要补的是"等待时线程在操作系统里处于什么状态"</strong>：它被换下 CPU、进等待队列，<strong>换下去和换回来都要付 O1 的切换成本</strong>——这就是"IO 密集时别用线程池硬扛"的底层原因。</li><li>解决什么问题：<strong>硬超时与取消</strong>——项目里明确要求"超时、行数、扫描量、并发、取消能力"（<code class="mv-md-code">07-权限安全与生产隔离.md</code>）。<strong>"取消"在操作系统层面不是免费的</strong>：把取消传下去 = 让还在内核里等待的线程退出等待，这需要能中断阻塞的系统调用（O3 的 IO 模型）。</li><li>踩过的坑：<strong>超时设了一层就以为够了</strong>——外层和内层同时放弃时无法归因（此坑在 [[母题-N1-一次请求的完整路径]] 已记）；这里补一句：<strong>超时的实现依赖"能中断阻塞调用"，否则超时只是标记，线程还挂在原地。</strong></li><li>决策与取舍：<strong>并发靠配额而不是靠机器</strong>——按租户限制并发和队列、超预算拒绝或缩小范围。<strong>这是"资源有限"这个前提在应用层的直接落地</strong>（O1 的并发拐点、O2 的内存上限）。</li><li>对应母题：【O1、O3】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>这是本模块的主证据。</strong> 架构是 <strong>PostgreSQL 权威状态 + Redis/ARQ 队列 + Worker 进程</strong>，任务长、<strong>进程随时可能崩</strong>（<code class="mv-md-code">06-architecture-and-scenarios.md</code>、<code class="mv-md-code">04-idempotency-and-recovery.md</code> §9）。<strong>"进程随时崩"这件事在操作系统层面就是 O1 的进程模型</strong>——地址空间独立、崩溃不传染（优点），但<strong>内存里的所有状态全丢</strong>（代价，所以状态必须落在数据库里）。</li><li>解决什么问题：<strong>Worker 重启后的状态重建</strong>——Worker 起来先读 AttackRun 和最后一个 Receipt，再校准 Checkpoint。<strong>这正对应"进程 = 独立地址空间 + 内存态不持久"这条底层事实</strong>：重启等于内存清零，所以能恢复的只有落盘的部分。</li><li>踩过的坑：<strong>容器内存限制</strong>——<code class="mv-md-code">08-capacity-cost-and-facts.md</code> 给 Redis 只配 256~512MB，意味着<strong>这个容器是被 cgroup 限制的</strong>。一旦超限，<strong>cgroup 级 OOM 会杀容器内的进程</strong>（不是整机 OOM）。<strong>不区分这两种 OOM，排查方向会完全错</strong>（O2 第 5 节的判据）。</li><li>决策与取舍：<strong>队列可以丢或重投，业务正确性落在可恢复的权威数据库里</strong>——<strong>这句话的底层理由就是"进程内存不可信、只有持久化状态可信"</strong>。它把"进程会崩"当作设计前提，而不是异常。</li><li>对应母题：【O1、O2】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

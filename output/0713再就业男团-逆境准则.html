@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0713 再就业男团 · 逆境行为准则</title>
+<style>
+:root{
+  --bg:#0e1116; --bg2:#131820; --card:#1a2029; --card2:#202834;
+  --line:#2a323d; --line2:#39424f;
+  --tx:#e8eaed; --tx2:#a8b2c0; --tx3:#78838f;
+  --gold:#d4a04a; --gold2:#f0c274;
+  --red:#e0605c; --green:#4fa383; --blue:#5b8fd4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--tx);
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.75;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 22px 90px}
+
+/* header */
+header{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+.kicker{font-size:13px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase;margin-bottom:16px}
+h1{font-size:38px;line-height:1.3;font-weight:700;letter-spacing:-.01em}
+h1 small{display:block;font-size:16px;font-weight:400;color:var(--tx2);margin-top:12px;letter-spacing:0}
+.lede{margin-top:24px;padding:22px 24px;background:linear-gradient(135deg,rgba(212,160,74,.13),rgba(212,160,74,.03));
+  border:1px solid rgba(212,160,74,.3);border-radius:12px;font-size:17px;color:var(--gold2);line-height:1.85}
+.lede b{color:var(--gold)}
+.lede .sub{display:block;margin-top:12px;font-size:14px;color:var(--tx2)}
+
+/* section */
+section{margin-top:56px}
+h2{font-size:22px;font-weight:650;margin-bottom:6px;display:flex;align-items:center;gap:12px}
+h2 .num{font-size:12px;color:var(--gold);border:1px solid rgba(212,160,74,.4);
+  border-radius:5px;padding:2px 8px;letter-spacing:.1em;font-weight:600}
+.h2sub{font-size:14px;color:var(--tx3);margin-bottom:24px}
+
+/* errata */
+.errata{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+.ecard{border-radius:12px;padding:20px 22px;border:1px solid var(--line);background:var(--card)}
+.ecard.wrong{border-color:rgba(224,96,92,.45);background:rgba(224,96,92,.07)}
+.ecard.right{border-color:rgba(79,163,131,.45);background:rgba(79,163,131,.07)}
+.ecard .tag{font-size:12px;letter-spacing:.12em;margin-bottom:10px;font-weight:600}
+.ecard.wrong .tag{color:var(--red)}
+.ecard.right .tag{color:var(--green)}
+.ecard .big{font-size:32px;font-weight:700;line-height:1.2;margin-bottom:8px}
+.ecard.wrong .big{color:var(--red)}
+.ecard.right .big{color:var(--green)}
+.ecard p{font-size:14px;color:var(--tx2)}
+.takeaway{margin-top:4px;padding:18px 22px;background:var(--bg2);border-left:3px solid var(--gold);
+  border-radius:0 10px 10px 0;font-size:15px;color:var(--tx)}
+.takeaway b{color:var(--gold2)}
+
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-weight:600;font-size:12px;letter-spacing:.08em}
+td:first-child{color:var(--tx3);white-space:nowrap;font-variant-numeric:tabular-nums}
+td.amt{font-weight:650;font-variant-numeric:tabular-nums}
+tr.key td{background:rgba(212,160,74,.07)}
+tr.key td.amt{color:var(--gold2)}
+.src{font-size:12px;color:var(--tx3)}
+.src.mine{color:var(--gold)}
+
+/* six cards */
+.six{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.p{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;transition:border-color .18s}
+.p:hover{border-color:var(--line2)}
+.p.open{border-color:var(--accent,var(--gold));background:var(--card2)}
+.phead{padding:18px 18px 16px;cursor:pointer;user-select:none}
+.rank{display:inline-block;font-size:11px;letter-spacing:.1em;color:var(--tx3);
+  border:1px solid var(--line2);border-radius:4px;padding:1px 7px;margin-bottom:10px}
+.pname{font-size:19px;font-weight:700;display:flex;align-items:center;gap:9px}
+.pname .dot{width:9px;height:9px;border-radius:50%;background:var(--accent,var(--gold));flex:none}
+.prole{font-size:12.5px;color:var(--tx3);margin-top:5px}
+.pquote{font-size:13.5px;color:var(--tx2);margin-top:12px;font-style:italic}
+.pbody{display:none;padding:0 18px 20px;border-top:1px solid var(--line);margin-top:2px;padding-top:16px}
+.p.open .pbody{display:block}
+.pbody ul{list-style:none;font-size:13.5px;color:var(--tx2)}
+.pbody li{padding:5px 0 5px 16px;position:relative}
+.pbody li::before{content:"";position:absolute;left:0;top:14px;width:5px;height:5px;
+  border-radius:50%;background:var(--accent,var(--gold));opacity:.75}
+.plabel{font-size:11px;letter-spacing:.12em;color:var(--tx3);margin:14px 0 6px}
+.plabel:first-child{margin-top:0}
+.pbody b{color:var(--tx)}
+.hint{text-align:center;font-size:12.5px;color:var(--tx3);margin-top:14px}
+
+/* timeline */
+.tl{position:relative;padding-left:26px;margin-top:8px}
+.tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(180deg,var(--line2),var(--gold),var(--line2))}
+.ti{position:relative;padding:0 0 22px 0}
+.ti::before{content:"";position:absolute;left:-23px;top:8px;width:10px;height:10px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--line2)}
+.ti.hot::before{border-color:var(--gold);background:var(--gold)}
+.tiy{font-size:12px;letter-spacing:.1em;color:var(--gold);font-weight:600;font-variant-numeric:tabular-nums}
+.tit{font-size:15px;font-weight:600;margin:3px 0 3px}
+.tid{font-size:13.5px;color:var(--tx2)}
+
+/* rules */
+.rule{border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:12px;overflow:hidden}
+.rtop{padding:17px 20px;display:flex;gap:14px;align-items:flex-start}
+.rn{flex:none;width:26px;height:26px;border-radius:7px;background:rgba(212,160,74,.14);
+  color:var(--gold);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.rtext{font-size:15.5px;line-height:1.8}
+.rtext b{color:var(--gold2)}
+.rnote{margin:0 20px 0 60px;padding:0;overflow:hidden;max-height:0;transition:max-height .25s ease}
+.rule.open .rnote{max-height:560px;margin:10px 20px 16px 60px}
+.rnote-in{padding:13px 16px;background:var(--bg2);border-left:2px solid var(--accent,var(--gold));
+  border-radius:0 8px 8px 0;font-size:14px;color:var(--tx2);line-height:1.8}
+.rnote-in b{color:var(--tx)}
+.toggle{flex:none;margin-left:auto;font-size:12px;color:var(--tx3);cursor:pointer;
+  border:1px solid var(--line2);border-radius:6px;padding:3px 10px;white-space:nowrap;align-self:center}
+.toggle:hover{color:var(--gold);border-color:var(--gold)}
+.rule.open .toggle{color:var(--gold);border-color:rgba(212,160,74,.5)}
+
+/* map */
+.mrow{display:grid;grid-template-columns:150px 1fr;gap:0;border-bottom:1px solid var(--line)}
+.mrow:first-child{border-top:1px solid var(--line)}
+.mrow div{padding:14px 14px;font-size:14px}
+.mrow .mk{color:var(--gold2);font-weight:600;border-right:1px solid var(--line);background:rgba(212,160,74,.04)}
+.mrow .mv{color:var(--tx2)}
+.mrow .mv b{color:var(--tx)}
+.mrow .mv .gap{display:inline-block;margin-top:6px;font-size:13px;color:var(--red)}
+.mrow .mv .ok{display:inline-block;margin-top:6px;font-size:13px;color:var(--green)}
+
+.mrow.three{grid-template-columns:116px 1fr 1fr}
+.mrow.three .mk{border-right:1px solid var(--line)}
+.mrow.three .mm{border-right:1px solid var(--line);color:var(--tx2);font-size:13.5px}
+.mrow.three .mv{color:var(--gold2);font-weight:600;font-size:13.5px}
+.ask{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:baseline;
+  padding:13px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.askq{color:var(--tx3)}
+.aska{color:var(--gold2);font-weight:600}
+.mech{padding:20px 24px;border:1px solid rgba(212,160,74,.3);border-radius:12px;
+  background:linear-gradient(135deg,rgba(212,160,74,.1),rgba(212,160,74,.02));
+  font-size:15.5px;line-height:1.9;color:var(--tx)}
+.mech b{color:var(--gold2)}
+.mech .wo{display:block;margin-top:12px;font-size:14px;color:var(--tx2)}
+
+/* wall */
+.wall{margin-top:56px;padding:34px 30px;border-radius:14px;text-align:center;
+  background:radial-gradient(ellipse at 50% 0%,rgba(212,160,74,.16),transparent 70%),
+    linear-gradient(180deg,var(--card),var(--bg2));border:1px solid rgba(212,160,74,.28)}
+.wall .q{font-size:19px;line-height:1.95;color:var(--gold2);font-weight:600}
+.wall .a{font-size:14px;color:var(--tx2);margin-top:16px}
+
+/* foot */
+footer{margin-top:56px;padding-top:26px;border-top:1px solid var(--line);font-size:12.5px;color:var(--tx3);line-height:1.9}
+footer b{color:var(--tx2)}
+footer a{color:var(--tx3)}
+
+@media(max-width:760px){
+  h1{font-size:29px}
+  .errata,.six{grid-template-columns:1fr}
+  .mrow{grid-template-columns:1fr}
+  .mrow.three .mm{border-right:none;border-bottom:1px solid var(--line)}
+  .ask{flex-direction:column;gap:4px}
+  .mrow .mk{border-right:none;border-bottom:1px solid var(--line)}
+  .rnote{margin-left:20px}
+  .wrap{padding:0 16px 60px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">0713 · Re-employment Boys</div>
+  <h1>0713 再就业男团 · 逆境行为准则
+    <small>陈楚生 · 苏醒 · 王栎鑫 · 张远 · 王铮亮 · 陆虎 —— 出道即巅峰，沉寂十几年，靠硬实力重新登顶</small>
+  </h1>
+  <div class="lede">
+    <b>逆境里不要算对方喊的价，算自己的账。</b>先动起来，先释放能量，业务练到能闭卷讲出来，赢了不膨胀，全程不装。
+    <span class="sub">—— 他们等了 15 年才等到那束追光，但那 15 年他们一直在唱。</span>
+  </div>
+</header>
+
+<!-- 六人 -->
+<section>
+  <h2><span class="num">01</span>六个人 · 一人一卡</h2>
+  <div class="h2sub">名次为 2007 年《快乐男声》全国总决赛官方赛果。点击展开事迹与可学的品质。</div>
+
+  <div class="six">
+    <div class="p" style="--accent:#d4a04a">
+      <div class="phead">
+        <span class="rank">全国 01 · 西安赛区亚军</span>
+        <div class="pname"><span class="dot"></span>陈楚生</div>
+        <div class="prole">冠军 · 团队大哥 · 沉稳是长期主义的外壳</div>
+        <div class="pquote">「歌王不能证明什么。」</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国总冠军，<b>出道时已 27 岁</b>。代表作《有没有人告诉你》。</li>
+          <li>2009–2012 三年解约官司：天娱索赔一度开到 <b>227.1217 亿</b>，最终仲裁判赔 <b>650 万</b>、一审约 <b>950 万</b>，2012-11 双方和解撤诉。2009-10 签约华谊，此后<b>连续三年</b>拿中歌榜「最佳创作歌手」；2014 年成立个人工作室。</li>
+          <li><b>2023《披荆斩棘》第三季总冠军；2025《歌手 2025》歌王</b>（8 月 8 日决出）——27 岁到 45 岁的「三连冠」。</li>
+          <li>决赛轮坚持首唱还没人听过的新歌《获奖之作》，第二轮以 <b>21.36%</b> 得票率第一；是<b>该节目史上首位全程用原创作品登顶的歌王</b>。</li>
+          <li>《歌手 2025》录制现场离 2007 快男录制地咫尺之遥 —— 18 年，一个完整的回环。</li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>敢承担</b>——承担的是不确定性，不是确定数字。</li>
+          <li><b>沉稳不是慢，是把时间当朋友</b>——45 岁登顶靠的是 18 年没断过的创作。</li>
+          <li><b>赢了不膨胀</b>，主动把称号还回给舞台。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p" style="--accent:#5bb8a8">
+      <div class="phead">
+        <span class="rank">全国 02 · 西安赛区冠军</span>
+        <div class="pname"><span class="dot"></span>苏醒</div>
+        <div class="prole">亚军 · 一直做自己，而且有账本</div>
+        <div class="pquote">「全标价的时代，不标价的才是无可替代。」</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国亚军，<b>西安赛区冠军（在西安唱区赢过陈楚生）</b>。</li>
+          <li>《醒来说》是他持续在做的一档个人表达节目，2026 年仍在更新。聊过的题：流量与道德成本（用 ROI 框架算「标题党」的长期回报）、明星创业、偷拍边界。</li>
+          <li>谈创业时直言<b>「名气从来不是创业的底牌」</b>，并坦言自己试水酒吧、潮牌效果不理想。</li>
+          <li>谈偷拍：<b>「艺人去餐厅首先是顾客，去诊所首先是患者。」</b></li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>有主见且不迎合</b>——代价是流量，收益是不被阈值拖着走。</li>
+          <li><b>会算账</b>——不是账房先生的短期账，是长期 ROI。</li>
+          <li>让朋友舒适（团综里的接梗与控场）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p" style="--accent:#e08a4a">
+      <div class="phead">
+        <span class="rank">全国 07 · 广州赛区冠军</span>
+        <div class="pname"><span class="dot"></span>王栎鑫</div>
+        <div class="prole">最小的弟弟 · 干活最实在</div>
+        <div class="pquote">团综里被兄弟们封为「伙食担当」。</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国第七，广州赛区冠军，<b>六人中最年轻</b>。</li>
+          <li>团综里不是最出风头的那个，是<b>把活干了的那个</b>。</li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>率真</b>——最小却最不端着。</li>
+          <li><b>执行力</b>——活来了先干，不先算面子账。</li>
+          <li>年纪最小，但在群体里靠「干活」而非「撒娇」立足。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p" style="--accent:#5b8fd4">
+      <div class="phead">
+        <span class="rank">全国 09 · 南京赛区冠军</span>
+        <div class="pname"><span class="dot"></span>张远</div>
+        <div class="prole">「碎活王」· 放得下身段</div>
+        <div class="pquote">出道 12 年后，重新以学员身份走上选秀舞台。</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国第九，南京赛区冠军。曾是男团至上励合成员，代表作《嘉宾》。</li>
+          <li><b>2019 年重新以学员身份参加《创造营 2019》</b>——那年 33 岁，冠军出身、出道 12 年，从头再走一遍选秀。这正是后来「再就业男团」成团的直接契机。</li>
+          <li>团综里自嘲「装嫩担当」，从「没活」接到「碎活」。</li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>辛勤且放得下身段</b>——33 岁重走选秀是极硬的证据。</li>
+          <li>不为了结婚而随意迁就，对自己的人生节奏有主见。</li>
+          <li><b>碎活也是活</b>，先接住再谈挑。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p" style="--accent:#a07ad4">
+      <div class="phead">
+        <span class="rank">全国 10 · 成都赛区季军</span>
+        <div class="pname"><span class="dot"></span>王铮亮</div>
+        <div class="prole">最年长 · 手风琴底子，最稳的那块</div>
+        <div class="pquote">代表作《时间都去哪儿了》。</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国第十，成都赛区季军，<b>六人中最年长（1977 年生）</b>。</li>
+          <li>手风琴、钢琴等乐器功底扎实，音乐专业能力在六人里一直是最硬的之一。</li>
+          <li>《欢迎来到蘑菇屋》里是<b>递补进来的</b>（陈楚生原定档期冲突），结果成了团里稳定的一块。</li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>专业基本功是抗周期的</b>——不是靠综艺翻红，是本来就硬。</li>
+          <li><b>递补也能站稳</b>，机会来了接得住。</li>
+          <li>年长者在群体里不抢戏。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p" style="--accent:#4fa383">
+      <div class="phead">
+        <span class="rank">全国 13 · 长沙赛区冠军</span>
+        <div class="pname"><span class="dot"></span>陆虎</div>
+        <div class="prole">赤子之心 · 被一纸合同偷走十年</div>
+        <div class="pquote">「跨年晚会都有我的歌，但没我。」</div>
+      </div>
+      <div class="pbody">
+        <div class="plabel">可核实的事迹</div>
+        <ul>
+          <li>2007 全国第十三，长沙赛区冠军。</li>
+          <li><b>签约时同届选手都只签一份经纪合同，唯独他签了两份</b>——第二份是词曲版权约。此后十几年，他写的《拾忆》（一起来看流星雨）、《剑伤》（古剑奇谭）、《看月亮爬上来》（张杰）、《雪落下的声音》版权全归公司，收益与他无关，<b>他本人公开演唱自己的歌还要付版权费</b>。</li>
+          <li>花了<b>约十年</b>陆续把版权拿回来。</li>
+          <li>他没有停：一直在写、一直在做 OST、一直在出专辑，最后靠 0713 的舞台被看见。</li>
+        </ul>
+        <div class="plabel">可学的品质</div>
+        <ul>
+          <li><b>最乐观顽强</b>——十年「为别人做嫁衣」还在写。</li>
+          <li><b>赤子之心</b>——他自己说：「如果当年没被坑，我可能写不出这么疼的歌。」</li>
+          <li><b>签字前逐条看清权利归属。</b>他为多签的那一页付了十年。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="hint">点击卡片展开 · 建议先自己说一遍「这个人身上我能学什么」，再展开对照</div>
+</section>
+
+<!-- 时间线 -->
+<section>
+  <h2><span class="num">02</span>15 年才等到那束追光</h2>
+  <div class="h2sub">翻红不是策划出来的，是「人一直在」等来的。</div>
+  <div class="tl">
+    <div class="ti"><div class="tiy">2007</div><div class="tit">快男 13 强出道</div><div class="tid">签约天娱。陈楚生夺冠，苏醒亚军，王栎鑫 7、张远 9、王铮亮 10、陆虎 13。</div></div>
+    <div class="ti"><div class="tiy">2009 – 2012</div><div class="tit">各自沉浮</div><div class="tid">陈楚生三年解约官司；其余人转战影视、幕后制作，曝光度持续走低。</div></div>
+    <div class="ti hot"><div class="tiy">2019</div><div class="tit">团名诞生，但没人看</div><div class="tid">张远参加《创造营 2019》后，五人（除王铮亮）以「07 快乐男声合唱团」上《合唱吧！300》，录制期间自行宣布组成「再就业男团」。此后三年，依然没有回报。</div></div>
+    <div class="ti hot"><div class="tiy">2022 初</div><div class="tit">机会是从群里吆喝开始的</div><div class="tid">陆虎在群里邀大家接《欢迎来到蘑菇屋》。陈楚生因巡演档期来不了，王铮亮递补；后来陈楚生巡演因疫情取消，六人才凑齐。</div></div>
+    <div class="ti hot"><div class="tiy">2022</div><div class="tit">蘑菇屋反响炸裂 → 《快乐再出发》</div><div class="tid">两季团综豆瓣 9.5+ / 9.6（平台评分，测量值）。观众称其为「内娱罕见的活人现场」。</div></div>
+    <div class="ti"><div class="tiy">2023 – 2025</div><div class="tit">硬实力兑现</div><div class="tid">《披荆斩棘》第三季总冠军（2023）、《歌手 2025》歌王（2025）。</div></div>
+  </div>
+  <div class="takeaway" style="margin-top:8px">
+    读这条线的三个结论：① 翻红不是策划出来的，是<b>「人一直在」等来的</b>——2019 到 2022 那三年没有回报；② 机会是<b>从群里吆喝开始的</b>（陆虎主动邀的），不是谁施舍的；③ <b>递补也是机会</b>（王铮亮），六个人里没有一个是「等来的位置」。
+  </div>
+</section>
+
+<!-- 逆境六条 -->
+<section>
+  <h2><span class="num">03</span>《醒来说》那一期 · 逆境六条</h2>
+  <div class="h2sub">先看原文，自己想一遍「这条对应我什么」，再点右侧展开我的注解。</div>
+
+  <div class="rule" style="--accent:#d4a04a">
+    <div class="rtop">
+      <div class="rn">1</div>
+      <div class="rtext">在逆境中，最该做的是<b>了解自己</b>。了解性格特质、现实条件、优点缺点，再结合相对合理的目标，去找更有机会实现的那条路径。</div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in"><b>「现实条件」这四个字是关键。</b>它不是让你认命，是让你别把资源花在概率为零的路径上。<br>→ 我的对应：甄别规则（JD 要算法/模型训练 → 跳过；出现 CUDA/GPU/集群 → Infra 跳过）就是「了解自己」的产物。</div></div>
+  </div>
+
+  <div class="rule" style="--accent:#5bb8a8">
+    <div class="rtop">
+      <div class="rn">2</div>
+      <div class="rtext"><b>得先行动准备起来。</b></div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in">准备不是「想清楚再动」，是<b>动起来才能想清楚</b>。<br>→ 我的对应：投递是流水线入口不是最后一站；每天 30 分钟投递块，做完收手。</div></div>
+  </div>
+
+  <div class="rule" style="--accent:#e08a4a">
+    <div class="rtop">
+      <div class="rn">3</div>
+      <div class="rtext">保持自己的能力、活力甚至生命力；只有自己持续鲜活，才能有机会被外界感知。<b>先主动释放能量，才可能得到回馈。</b></div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in"><b>「先释放，才有回馈」是这六条里最反直觉也最重要的一条。</b>等被看见是等不来的。<br>→ 我的对应：<b>内推今天开口（两位大哥，尚未联系）</b>——这就是先释放能量，且成本最低的一次；还有命功（睡眠 / 跑步 / 吃饭不碰手机）保住「持续鲜活」。</div></div>
+  </div>
+
+  <div class="rule" style="--accent:#5b8fd4">
+    <div class="rtop">
+      <div class="rn">4</div>
+      <div class="rtext"><b>业务要硬。</b></div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in">没有这一条，前三条都是自我安慰。<br>→ 我的对应：母题卡 92 张已建完，但瓶颈不是补内容，是<b>「内容没错 ≠ 会用」</b>——练到 integrated 才算硬。</div></div>
+  </div>
+
+  <div class="rule" style="--accent:#a07ad4">
+    <div class="rtop">
+      <div class="rn">5</div>
+      <div class="rtext"><b>不能膨胀</b>，对自己有清晰认知。</div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in">翻红之后才是真正的考验。<br>→ 我的对应：证据等级 L0–L4 <b>只能由闭卷自评推进、禁手改</b>——这本身就是「不膨胀」的机制化。</div></div>
+  </div>
+
+  <div class="rule" style="--accent:#4fa383">
+    <div class="rtop">
+      <div class="rn">6</div>
+      <div class="rtext"><b>尽量保持真我。</b></div>
+      <div class="toggle">注解</div>
+    </div>
+    <div class="rnote"><div class="rnote-in">他们最被观众买账的恰恰是「内娱罕见的活人现场」——<b>不装本身就是竞争力</b>。<br>→ 我的对应：简历红线「事实不变、表达自由」，对自己不利的实测放 C 位；面试里也一样，不会就说不会，别编。</div></div>
+  </div>
+</section>
+
+<!-- 映射 -->
+<section>
+  <h2><span class="num">04</span>怎么才能像他们一样：把品质换成动作</h2>
+  <div class="h2sub">这一节是整篇的地基。跳过它，上面所有人名就只是励志素材。</div>
+
+  <div class="mech">
+    <b>「豁达、乐观、坚强」是别人从外面贴的标签，不是他们每天在练的东西。</b>
+    品质不可直接习得 —— 你没法通过「决定要坚强」变得坚强，就像你没法通过「决定要身体好」变壮。
+    你能做的是<b>深蹲</b>；做够次数之后，别人从外面看你，说你「身体好」。
+    <span class="wo"><b>品质 = 重复的行为 × 时间。</b>它是副产品，不是目标。所以要抄的不是六个形容词，是<b>六个动作</b>。</span>
+  </div>
+
+  <div style="height:22px"></div>
+  <div class="mrow three"><div class="mk" style="color:var(--tx3);font-weight:600">我敬佩的说法</div><div class="mm" style="color:var(--tx3);font-weight:600">他真正在做的动作</div><div class="mv" style="color:var(--tx3);font-weight:600">我明天能做的同一件事</div></div>
+  <div class="mrow three"><div class="mk">陈楚生<br><span style="font-weight:400;color:var(--tx3);font-size:12px">沉稳 / 坚强</span></div><div class="mm">不看反馈地持续产出 —— 18 年写歌，绝大部分没人听</div><div class="mv">每天 1 条母题闭卷复述，<b>今天有没有面试消息都一样</b></div></div><div class="mrow three"><div class="mk">陆虎<br><span style="font-weight:400;color:var(--tx3);font-size:12px">乐观 / 赤子之心</span></div><div class="mm">情绪不达标也照做 —— 被坑十年，手没停过</div><div class="mv">情绪 0 分时，<b>保底那件照样做</b>（复训 1 + 命功 1）</div></div><div class="mrow three"><div class="mk">张远<br><span style="font-weight:400;color:var(--tx3);font-size:12px">辛勤 / 放下身段</span></div><div class="mm">主动做低于自己身份的事 —— 33 岁重走选秀</div><div class="mv"><b>内推今天开口</b>（成本最低、最容易被面子挡住的那件）</div></div><div class="mrow three"><div class="mk">王栎鑫<br><span style="font-weight:400;color:var(--tx3);font-size:12px">率真 / 执行力</span></div><div class="mm">活来了先干，不算面子账</div><div class="mv">派单出来立刻开工，<b>不换题、不挑题</b></div></div><div class="mrow three"><div class="mk">苏醒<br><span style="font-weight:400;color:var(--tx3);font-size:12px">有主见 / 不迎合</span></div><div class="mm">长期 ROI 记账 —— 真在算，不是凭感觉</div><div class="mv">每周一次：左栏「我这周做了什么」/ 右栏「外界给了什么反馈」，<b>只看左栏定下周</b></div></div><div class="mrow three"><div class="mk">王铮亮<br><span style="font-weight:400;color:var(--tx3);font-size:12px">基本功 / 稳</span></div><div class="mm">童子功天天练，翻红时早就硬了</div><div class="mv">手撕 1 题不断，<b>哪怕只写一半</b></div></div>
+
+  <div class="takeaway" style="margin-top:24px">
+    <b>最关键的一条：不比量级，比方向。</b>陈楚生写了 18 年，我今天复述了 1 条母题，差了几千倍 ——
+    但它们是<b>同一件事</b>。「像他们一样」从来不是做到他们的量级，而是：
+    <b>今天这件小事，是不是他们也会做的那种事。</b>是，你就在那个方向上。他们的 15 年也是这么一天一天攒出来的。
+  </div>
+
+  <div style="height:26px"></div>
+  <h2 style="font-size:17px"><span class="num">04·2</span>把偶像从「目标」改成「判断参照」</h2>
+  <div class="h2sub">别用「我要成为陈楚生那样的人」—— 这句话只会让你在今天感到距离很远。换成一句当时当地就能用的问句。</div>
+  <div class="mech" style="border-color:var(--line2);background:var(--card)">
+    <b>「陆虎今天状态这么烂，他会怎么做？」</b>
+    <span class="wo">答案是：他还是会写。这不是鸡汤，是<b style="color:var(--gold2)">决策捷径</b> —— 它绕过当下的情绪，直接给你动作。</span>
+  </div>
+  <div style="height:14px"></div>
+  <div class="ask"><span class="askq">被拒了，要不要继续投</span><span class="aska">「张远 33 岁重走选秀，他会投吗？」</span></div><div class="ask"><span class="askq">今天的活太碎，不想接</span><span class="aska">「王栎鑫会挑吗？」</span></div><div class="ask"><span class="askq">简历想夸一点</span><span class="aska">「陈楚生会吗？」—— 他把「歌王」还回了舞台</span></div><div class="ask"><span class="askq">想刷手机到两点</span><span class="aska">「陆虎的乐观是熬夜硬撑吗？」—— 不是，是睡醒了第二天还写</span></div>
+
+  <div class="takeaway" style="margin-top:22px">
+    <b>一句最诚实的话：</b>他们等了 15 年才等到那束追光，我的秋招等不了 15 年。
+    所以别把「成为他们」当目标 —— <b>我今天只能做到：这一件小事，是他们也会做的。</b>这就够了。
+    <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line2)">
+      附一条逆境里最实用的算术：<b>算自己的账（判决值 650 万），不算对方喊的价（索赔 227 亿）。</b>
+      JD 上写的「3 年经验」「硕士优先」是对方喊的价，不是我的判决值。
+    </div>
+  </div>
+</section>
+
+<div class="wall">
+  <div class="q">别练品质，练动作。<br>今天不想做、还是做了那件小的 —— 这就是坚强。<br>做完不看反馈、明天继续 —— 这就是沉稳。</div>
+  <div class="a">逆境里最实用的算术：算自己的账（判决值），不算对方喊的价（索赔额）。<br>他们等了 15 年才等到那束追光，但那 15 年他们一直在唱。</div>
+</div>
+
+<footer>
+  <b>来源与数字性质</b><br>
+  · 名次 / 赛区：2007 快乐男声官方赛果（<b>规定值</b>）。<br>
+  · 227.1217 亿 / 2600 万 / 3800 万：天娱的<b>诉讼主张</b>，非判决金额。<br>
+  · 650 万：长沙仲裁委 2009-08 终局裁决（<b>判决值</b>）；约 950 万：长沙中院 2012-04 一审（<b>判决值</b>）。2012-11 双方和解撤诉，最终金额未公开。<br>
+  · 245 万（被冻结存款）：媒体报道。21.36%：《歌手 2025》决赛第二轮得票率（平台公布）。<br>
+  · 豆瓣 9.5+ / 9.6：<b>平台评分（测量值，随时间变动）</b>。陆虎「约十年」拿回版权为媒体表述的<b>约数</b>，未见权威方披露具体年限。<br>
+  · 生日各来源互相打架（如王栎鑫有 1988 / 1989 两种说法），本页只取年龄序，不写死具体日期。<br>
+  · 只记可核实的公开事迹与作品，<b>不记私人生活与传闻</b>。<br><br>
+  正本 md：<code>wiki/thinking/0713再就业男团-逆境准则.md</code> · 落盘 2026-09-27
+</footer>
+
+</div>
+
+<script>
+(function(){
+  // 六人卡展开
+  document.querySelectorAll('.p').forEach(function(card){
+    var head = card.querySelector('.phead');
+    head.addEventListener('click', function(){
+      card.classList.toggle('open');
+    });
+  });
+  // 逆境六条注解展开
+  document.querySelectorAll('.rule').forEach(function(r){
+    var t = r.querySelector('.toggle');
+    t.addEventListener('click', function(e){
+      e.stopPropagation();
+      r.classList.toggle('open');
+      t.textContent = r.classList.contains('open') ? '收起' : '注解';
+    });
+  });
+})();
+</script>
+</body>
+</html>

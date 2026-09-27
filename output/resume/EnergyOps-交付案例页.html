@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="AbTrMTq25Vlk9dcc1ncneZ">
+<head data-page-node-id="mKCy4826vBwgNd72FIbIYp">
+<meta charset="UTF-8" data-page-node-id="0FSRTgeauECfWYAKJYBWn3">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="bj8Z6JGQgK2zFlRbcbE9oD">
+<title>EnergyOps — 交付案例页 · 刘宇广</title>
+<style>
+  :root{
+    --ink:#181c22; --ink2:#3d4653; --muted:#6b7684; --faint:#98a1ad;
+    --line:#e4e7ec; --line2:#eef1f4; --bg:#fbfcfd; --card:#ffffff;
+    --accent:#1f5fa9; --accent-soft:#eaf1f9; --accent-line:#c9dcf0;
+    --warn:#9a5b06; --warn-soft:#fdf4e3; --warn-line:#f0dcb4;
+    --ok:#1a6b3c; --ok-soft:#eaf6ee; --ok-line:#c4e3cd;
+    --grey:#4c5561; --grey-soft:#f2f4f7; --grey-line:#dde1e7;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans SC",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:15px; line-height:1.75;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:44px 26px 72px}
+
+  /* ---------- 页头 ---------- */
+  .eyebrow{font-size:12.5px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; margin-bottom:10px}
+  h1{font-size:27px; line-height:1.4; letter-spacing:-.01em; font-weight:800}
+  h1 small{display:block; font-size:15px; font-weight:600; color:var(--ink2); margin-top:8px; letter-spacing:0}
+  .kicker{margin-top:16px; font-size:15.5px; color:var(--ink2); border-left:3px solid var(--accent); padding-left:14px}
+  .who{margin-top:20px; display:flex; flex-wrap:wrap; gap:8px}
+  .chip{font-size:12.5px; color:var(--grey); background:var(--grey-soft); border:1px solid var(--grey-line);
+        border-radius:999px; padding:3px 11px; white-space:nowrap}
+
+  /* ---------- 泛用块 ---------- */
+  section{margin-top:38px}
+  h2{font-size:17px; font-weight:800; display:flex; align-items:baseline; gap:10px; padding-bottom:9px;
+     border-bottom:1px solid var(--line)}
+  h2 .no{font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--accent);
+         background:var(--accent-soft); border:1px solid var(--accent-line); border-radius:5px; padding:1px 8px}
+  h2 .sub{font-weight:600; font-size:13px; color:var(--muted); margin-left:auto}
+  p{margin-top:12px}
+  .lead{color:var(--ink2)}
+  strong{font-weight:700}
+  em{font-style:normal; background:linear-gradient(transparent 62%, #dbe9f7 62%); padding:0 1px}
+  ul{margin-top:12px; list-style:none}
+  li{position:relative; padding-left:18px; margin-top:7px; color:var(--ink2)}
+  li::before{content:""; position:absolute; left:4px; top:.68em; width:5px; height:5px;
+             border-radius:50%; background:var(--faint)}
+
+  /* ---------- 概要卡 ---------- */
+  .brief{margin-top:24px; display:grid; grid-template-columns:repeat(2,1fr); gap:1px;
+         background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .brief > div{background:var(--card); padding:15px 17px}
+  .brief .k{font-size:12.5px; color:var(--muted); letter-spacing:.02em}
+  .brief .v{margin-top:5px; font-size:14.5px; color:var(--ink); font-weight:600}
+  .brief .v span{font-weight:400; color:var(--ink2)}
+
+  /* ---------- 表格 ---------- */
+  .tbl{margin-top:16px; width:100%; border-collapse:collapse; font-size:14px}
+  .tbl th{text-align:left; font-size:12.5px; font-weight:700; color:var(--muted); letter-spacing:.03em;
+          padding:9px 12px; background:var(--grey-soft); border-bottom:1px solid var(--line)}
+  .tbl td{padding:11px 12px; border-bottom:1px solid var(--line2); vertical-align:top; color:var(--ink2)}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl td:first-child{color:var(--ink); font-weight:600; width:31%}
+  .tbl.tight td:first-child{width:38%}
+  .tbl .neg{color:var(--warn)}
+  .tbl-wrap{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card)}
+
+  /* ---------- Q&A ---------- */
+  .qa{margin-top:16px; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card)}
+  .qa .row{display:grid; grid-template-columns:1.05fr 1.5fr; gap:0}
+  .qa .row + .row{border-top:1px solid var(--line2)}
+  .qa .q,.qa .r{padding:13px 16px}
+  .qa .q{background:var(--grey-soft); font-weight:600; color:var(--ink); font-size:14px}
+  .qa .q::before{content:"问 "; color:var(--accent); font-weight:800; font-size:12.5px}
+  .qa .r{font-size:14px; color:var(--ink2)}
+
+  /* ---------- 流水线 ---------- */
+  .flow{margin-top:18px; border:1px solid var(--line); border-radius:10px; background:var(--card); padding:18px 16px 14px}
+  .stage{display:flex; flex-wrap:wrap; align-items:stretch; gap:7px}
+  .step{flex:1 1 96px; min-width:96px; background:var(--grey-soft); border:1px solid var(--grey-line);
+        border-radius:7px; padding:9px 10px; font-size:12.5px; line-height:1.5; color:var(--ink2); position:relative}
+  .step b{display:block; font-size:12.5px; color:var(--ink); margin-bottom:2px; font-weight:700}
+  .step.gate{background:var(--accent-soft); border-color:var(--accent-line)}
+  .step.gate b{color:var(--accent)}
+  .step.win{background:var(--ok-soft); border-color:var(--ok-line)}
+  .step.win b{color:var(--ok)}
+  .flow .cap{margin-top:12px; font-size:12.5px; color:var(--muted); line-height:1.7}
+  .agent-bar{margin-top:10px; font-size:12.5px; color:var(--ink2); background:var(--warn-soft);
+             border:1px dashed var(--warn-line); border-radius:7px; padding:9px 12px}
+  .agent-bar b{color:var(--warn)}
+
+  /* ---------- 结果表徽标 ---------- */
+  .lv{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:.03em; border-radius:4px;
+      padding:1px 6px; white-space:nowrap}
+  .lv.e1{color:var(--ok); background:var(--ok-soft); border:1px solid var(--ok-line)}
+  .lv.e2{color:var(--accent); background:var(--accent-soft); border:1px solid var(--accent-line)}
+  .lv.cf{color:var(--grey); background:var(--grey-soft); border:1px solid var(--grey-line)}
+
+  /* ---------- 提示块 ---------- */
+  .note{margin-top:14px; font-size:13.5px; line-height:1.75; border-radius:8px; padding:12px 15px;
+        background:var(--warn-soft); border:1px solid var(--warn-line); color:#5c400a}
+  .note b{color:var(--warn)}
+  .quote{margin-top:14px; font-size:14px; color:var(--ink); background:var(--accent-soft);
+         border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:12px 16px}
+
+  /* ---------- 卡片组 ---------- */
+  .cards{margin-top:16px; display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px}
+  .card h3{font-size:14px; font-weight:800; color:var(--ink); margin-bottom:5px}
+  .card p{margin-top:0; font-size:13.5px; color:var(--ink2); line-height:1.7}
+  .card .tag{display:inline-block; font-size:11.5px; color:var(--muted); background:var(--grey-soft);
+             border:1px solid var(--grey-line); border-radius:4px; padding:0 6px; margin-bottom:7px}
+
+  /* ---------- 页脚 ---------- */
+  footer{margin-top:46px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px;
+         color:var(--muted); line-height:1.85}
+  footer b{color:var(--ink2)}
+  .foot-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px 26px; margin-top:10px}
+  .print{margin-top:20px; font-size:13px; color:var(--muted)}
+  .print button{font:inherit; font-size:13px; color:var(--accent); background:transparent;
+                border:1px solid var(--accent-line); border-radius:7px; padding:6px 14px; cursor:pointer}
+  .print button:hover{background:var(--accent-soft)}
+
+  @media (max-width:640px){
+    .wrap{padding:30px 18px 56px}
+    h1{font-size:22px}
+    .brief,.cards,.foot-grid{grid-template-columns:1fr}
+    .qa .row{grid-template-columns:1fr}
+    .qa .q{border-bottom:1px solid var(--line2)}
+  }
+  @media print{
+    body{background:#fff; font-size:9.6pt; line-height:1.58}
+    .wrap{max-width:none; padding:0}
+    /* 只在「行级」禁断：段落/表格行/卡片不许跨页拆开，但 section 允许自然分页——
+       早先对 section 一律 break-inside:avoid 会留下大片空白，8 页里有一半是空的 */
+    header, h2{break-after:avoid}
+    p, li, .tbl tr, .card, .qa .row, .step, .note, .quote, .agent-bar{break-inside:avoid}
+    section{margin-top:16px}
+    h2{padding-bottom:6px; font-size:13pt}
+    p{margin-top:7px}
+    ul{margin-top:7px} li{margin-top:4px}
+    .tbl td{padding:7px 9px} .tbl th{padding:6px 9px}
+    .qa .q,.qa .r{padding:9px 11px}
+    .brief > div,.card{padding:11px 13px}
+    .flow{padding:13px 12px 10px}
+    .flow .stage{gap:5px}
+    /* 7 步在 A4 宽度内排成一行，避免最后一步孤零零换行 */
+    .step{flex:1 1 76px; min-width:72px; font-size:8.4pt; line-height:1.45; padding:6px 7px}
+    .step b{font-size:8.6pt}
+    .flow .cap,.agent-bar{font-size:8.6pt}
+    footer{margin-top:22px; padding-top:12px}
+    .print{display:none}
+    @page{size:A4; margin:13mm}
+  }
+</style>
+</head>
+<body data-page-node-id="s7SkoKj34xmKSEBNPBKIlL">
+<div class="wrap" data-page-node-id="vGAI6nusA1xr5VxAnYixtq">
+
+  <header data-page-node-id="jhE9DRt5LvwF7ZIEeNDatu">
+    <div class="eyebrow" data-page-node-id="ExtOC86Q6Gz6ILmCBbG0GH">交付案例 · Delivery Case</div>
+    <h1 data-page-node-id="wqgHJWyOCddXcgHWtHpgX2">EnergyOps — 园区能耗智能运营平台
+      <small data-page-node-id="UMUbC5jiLK2UyTYZhdHxar">把质量参差的表计读数，变成一张能直接交给财务的月度结算单</small>
+    </h1>
+    <p class="kicker" data-page-node-id="JnyNYgbUuzMW8CHywGCQlH">这不是一个「加了大模型的能耗看板」。它是一个<strong data-page-node-id="QZfMU74pjjitfAur8KFOOY">交付问题</strong>：客户手里已经有读数，但没有人能拿它出账；工程的目标不是把模型做聪明，是让行政和财务<strong data-page-node-id="tZ7jxf0gcDLqGePZmFT0JO">敢签字</strong>。</p>
+    <div class="who" data-page-node-id="2HvsDed0mloSRGm3R1ZCGp">
+      <span class="chip" data-page-node-id="DFrFMO5CoxIApyTH7UnzXN">角色：数据链路 + Agent 操作模块（主导设计与实现）</span>
+      <span class="chip" data-page-node-id="utYJzX1HDoODhBIDBoqvmi">范围：约 604 台智能水电表</span>
+      <span class="chip" data-page-node-id="b5nXAwJZCanYqtf25gQ9GI">周期：15 分钟 / 次</span>
+      <span class="chip" data-page-node-id="o32DJc6uWxRDr2D4A0vOd2">规模：日均约 5.8 万条读数</span>
+      <span class="chip" data-page-node-id="SHKocXaPN37wwkxHAliPjJ">客户：园区行政 · 财务 · 设备运营</span>
+    </div>
+  </header>
+
+  <!-- ================= 概要卡 ================= -->
+  <div class="brief" data-page-node-id="ISZpSmEEboeb6mHABEpZ1m">
+    <div data-page-node-id="xn8HpreII2IovGHRwtsLpq">
+      <div class="k" data-page-node-id="wSro9obXCRZwPsEA2cDSWv">客户拿到的（交付起点）</div>
+      <div class="v" data-page-node-id="kGeeWweFA9svFmwgQBi4u7"><span data-page-node-id="xIF4bHN5RAPlfqDlEmUTit">既有采集平台的累计读数 —— 解决"设备有没有上报"，不解决"这张表能不能出账"</span></div>
+    </div>
+    <div data-page-node-id="F7DleRYDu23b6OAIRqMGUo">
+      <div class="k" data-page-node-id="Kvv2BFApVjV5EvaLwjmAyj">客户要的（最小价值单位）</div>
+      <div class="v" data-page-node-id="xPM5ZAKNjtAgntEyZMKTHY"><span data-page-node-id="B8SthP8CD6tgP13S0aIXxB">一张带计算说明、规则版本与差异检查的月度结算单</span></div>
+    </div>
+    <div data-page-node-id="ftoK10lWWNzLctlvlQkZQE">
+      <div class="k" data-page-node-id="h5IxkRa0ifJXpBCKvamJUh">交付形态</div>
+      <div class="v" data-page-node-id="hdZoyMExB1QyU3aHyYhhRc"><span data-page-node-id="4dX4B1jhqIr8SJwVg92BEB">日常操作走办公协作平台里的对话入口；规则配置、结算复核、审计追溯保留 Web 界面</span></div>
+    </div>
+    <div data-page-node-id="dLeUGZQsCP5cgRk9zdcvxL">
+      <div class="k" data-page-node-id="pml9XzwFL9mtVkznTyRqPG">我负责 / 不对齐的部分</div>
+      <div class="v" data-page-node-id="18TVPZlgjJkWhzWEZD31Lu"><span data-page-node-id="YGWQ3rNyd5gKEpORn1LE9Q">数据模型、工具拆分、Hook 链治理、安全分级由我主导；结算财务口径与财务团队对齐</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 01 初始问题 ================= -->
+  <section data-page-node-id="CtRljuQhrUlL447Mc0CFP1">
+    <h2 data-page-node-id="3clvkvSU54fyHDn9hNkFYs"><span class="no" data-page-node-id="qBinh4dbkfWFh5LCruOxuK">01</span>初始问题与缺失信息<span class="sub" data-page-node-id="AyxKVoizQZlkKIDL4Sz2Ui">交付从"缺什么"开始，不是从"做什么"开始</span></h2>
+    <p class="lead" data-page-node-id="UCtOgfQOEbbEw6KjuOK2dt">进场时手上有的和没有的，必须分开列——因为<em data-page-node-id="3Lk6DPQWhJYjobotQyQOmz">客户以为他要的是功能，实际缺的是判断依据</em>。</p>
+    <div class="tbl-wrap" data-page-node-id="jKeWIgBSjVnaiUs01O2lgN">
+      <table class="tbl" data-page-node-id="SJKclKpa05Lzn9ZnXINDkU">
+        <thead data-page-node-id="2GJ1jeVjAUDJfZ3SDxzg21"><tr data-page-node-id="HgFEWFFVPQAvDdG9aM1xcz"><th data-page-node-id="5TCwuHTni62oQrDwD6GTBZ">已经有的</th><th data-page-node-id="0nSCFAbqOR1M5ji77zp3Rq">没有的（真正的缺口）</th></tr></thead>
+        <tbody data-page-node-id="R7yjwCCsRyBVFN8164KCP8">
+          <tr data-page-node-id="i21iYAk3BIajez7UvJJBzy">
+            <td data-page-node-id="FHvrlCIspmJvHbiNwz4GYT">约 604 台智能水电表的持续上报</td>
+            <td data-page-node-id="2PKZkUtl1MzQR7RP8kyjVL">园区自己的数据治理层 —— 读数质量好不好，没人说得清</td>
+          </tr>
+          <tr data-page-node-id="l0PgMzPVVELKg0pUSm9QEN">
+            <td data-page-node-id="kiPsd7kPXf5r8tuPp790zF">累计读数（设备"此刻的刻度"）</td>
+            <td data-page-node-id="sHtQYeMcx98iRuHQMsg0yV">区间用量（业务真正要的"这个月用了多少"）</td>
+          </tr>
+          <tr data-page-node-id="eYxZCSHnD7cT3WFbRkdGap">
+            <td data-page-node-id="2YFA9t5IATEB4hL2Ej9G0M">一批显式阈值规则</td>
+            <td data-page-node-id="5rDLtQ1bOSnH1mXRDgIxlz">规则是否可信、改之前会命中多少 —— 没有准入环节，规则只能靠"试"</td>
+          </tr>
+          <tr data-page-node-id="UdcRq9LEn5kz9SgUq5E4MI">
+            <td data-page-node-id="Fab1jkD1O14Ej6eDoCAqg2">Excel 里的分摊算法（在财务手上）</td>
+            <td data-page-node-id="lBinK5qlOE7NBVmkNqeLSt">可追溯的计算过程 —— 出了差异只能人工倒推</td>
+          </tr>
+          <tr data-page-node-id="v68POfJweY4ypUf4Xys6Gu">
+            <td data-page-node-id="L5zv4GQULXAbjAd0DHzTr0">三个各有痛点的部门</td>
+            <td data-page-node-id="tsbsBCClTicvf6pi7fW0BJ">统一口径 —— <span class="neg" data-page-node-id="QMZYxq1wDRkSA7RwYFXLsa">页面一个数、导出一个数、财务又一个数</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" data-page-node-id="MDtvnCRMFWtkuz8q1gMrxc"><b data-page-node-id="kzEIQ5aYDk4NIHIa7f4dOt">缺失信息里最关键的一条：</b>没有人一开始就说得清「这个月的费用到底以哪个数为准」。这条不问清楚，后面所有自动化都是白做 —— 它后来变成了整个结算设计的事实源。</div>
+  </section>
+
+  <!-- ================= 02 发现阶段 ================= -->
+  <section data-page-node-id="jfZMDxAuzdAjLAAbAeEUh6">
+    <h2 data-page-node-id="3RHw3AT8x4rYrWJEoBA7Y1"><span class="no" data-page-node-id="6i5mT9rsHQELzqUhh0YOCZ">02</span>发现阶段：我问了什么<span class="sub" data-page-node-id="6GKF6TXCf0BoVHmIK2Mlxi">需求转译 —— 每句话都落成一条设计约束</span></h2>
+    <p class="lead" data-page-node-id="xiVEYf3kywWMnVBdJA4kNB">这几句是<em data-page-node-id="lWijSQLYUooA2gBKGYC5ai">交付工作的核心动作</em>：客户不会用工程语言提需求，他只会讲他现在的麻烦。转译的工作是把它变成可验证的约束。</p>
+    <div class="qa" data-page-node-id="fnTDE457rh326HRc7hSN6p">
+      <div class="row" data-page-node-id="yxyBmcJTUUWcav3qsw3vtI">
+        <div class="q" data-page-node-id="78KLAfG8Qvulo3BlSjXnwR">这个月的费用，以哪个数出账？</div>
+        <div class="r" data-page-node-id="WUHTg8TY6ramN8ypFHRLp1">抄表底稿（行政确认过的）为准；自动采集的数只能用来<strong data-page-node-id="KAGaaBO1isixlK0Hz5ZJt5">核对</strong>。<br data-page-node-id="KZUo9um0mw6hJIw3kJ38O7">
+          <span class="neg" data-page-node-id="alF4sl3Q0mny7UDIv17DdQ">→ 约束：</span>自动采集<strong data-page-node-id="cAje6U4Rwrdcjg6yBIeEb2">不得</strong>生成正式账；它只产出一份「差异 / 缺失 / 疑似漏抄」清单。同一月份不允许出现两套结算数字。</div>
+      </div>
+      <div class="row" data-page-node-id="9gnrP8ZB5mP7eMKLdvq2d5">
+        <div class="q" data-page-node-id="gRBbZgtXAQbJff7ds44rB1">缺数的那几天，你们平时怎么补？</div>
+        <div class="r" data-page-node-id="nPTGNXh6ZOhGbfZmv5Ddpg">不补。<strong data-page-node-id="INjM8BXn1QyVQb6IBeQ2o8">估算出来的用量财务不认。</strong><br data-page-node-id="65GD12LdPspsuF0i2ZZWVx">
+          <span class="neg" data-page-node-id="8Bw2ktprfbTtQ2l0JcaI4n">→ 约束：</span>缺失一律标为"不可判定"并进异常账，<strong data-page-node-id="AT1WkrTC6VNJl3D1c8sgpM">不进正式用量与费用</strong>；确实当月修不了的，走显式的<strong data-page-node-id="TT8aJis4nKN13pHd110SE2">结转说明路径</strong>并标注"待下期"，不得静默通过。</div>
+      </div>
+      <div class="row" data-page-node-id="ZJ5q107q2w0vwwONylLcTO">
+        <div class="q" data-page-node-id="bzUllSv9pTii4yMoJb8CJe">一天给你们几十条告警，你们会看吗？</div>
+        <div class="r" data-page-node-id="QEgOD8Z8QrAfMjqqulcayR">不会，真问题反而被淹没。<br data-page-node-id="NFj6ka0o8u6fDTxKj9nhlA">
+          <span class="neg" data-page-node-id="S2KCArypNq9Dh03jIIfB8v">→ 约束：</span>把「数据偏离」和「打扰业务人员」拆成两层 ——<strong data-page-node-id="PIaDncu20dgS7NiYQkDpBU">异常候选 ≠ 业务告警</strong>，中间再加一层"为什么可疑"的判断。</div>
+      </div>
+      <div class="row" data-page-node-id="IdXT7yCOYPUioieDtEvQHD">
+        <div class="q" data-page-node-id="kS4Iocn9A3urHr4BA9thnq">出账这一步，谁签字才算数？</div>
+        <div class="r" data-page-node-id="Pcvj3EzoMO3SHzCUAv92kJ">行政先确认说明版，财务再核验。<br data-page-node-id="QnEqEPHrsqhOZcYp4RGRBv">
+          <span class="neg" data-page-node-id="jjtKzukqphIRNp03AS1WGn">→ 约束：</span>结算设<strong data-page-node-id="kcE0xMAcghQMoFRC9qtSS0">三道质量门</strong>（事实源门 / 预演门 / 责任门），任一门失败都<strong data-page-node-id="6xRzSMz0Zj6czsAujmp6tN">不能</strong>生成正式分发版 —— 这就是"共建验收标准"落到代码里的样子。</div>
+      </div>
+      <div class="row" data-page-node-id="gnnR6SGVH5UWAfInCFFAWr">
+        <div class="q" data-page-node-id="gaxQsi4C5BY8eQ4VAZ2TmX">为什么不做一个独立的系统和 App？</div>
+        <div class="r" data-page-node-id="UKhMiLi4xIvUcxOi5jXeZJ">行政和财务的一天本来就在文档和表格里；多一个登录就多一层不用的理由。<br data-page-node-id="9PpA0OiYKiYA85nTUYYhyw">
+          <span class="neg" data-page-node-id="Y8qaBSg2JDPbQrCpFY8TqX">→ 约束：</span>入口长在客户已有的工作流里。<strong data-page-node-id="A09XIr6iNCFAAXfCD5B4qk">越简单的操作越收敛到对话，越需要精确控制的操作越保留界面。</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 03 架构与取舍 ================= -->
+  <section data-page-node-id="2PqpL9lA33JwYBmempKJJY">
+    <h2 data-page-node-id="PPfNw3oRKEct6FW0wQ0ZwH"><span class="no" data-page-node-id="D3iQ1eIWwlYNEREVAG2DiA">03</span>架构与关键取舍<span class="sub" data-page-node-id="EsGJ0vyWF4TlKLoACIk3zM">选了 A，意味着放弃了 B —— 每条都写清为什么不选 B</span></h2>
+    <div class="tbl-wrap" data-page-node-id="p28xpdFupk8LG3qssXDSmM">
+      <table class="tbl tight" data-page-node-id="A0o7DHoG5fUbypo49easep">
+        <thead data-page-node-id="AKrGKEdezG4dCVLVAOo1n6"><tr data-page-node-id="5qPYu0yZuJsYOW2Y9Fn8Kl"><th data-page-node-id="G7PIPBPU9XIlCdIHIXpRdL">交付时选了</th><th data-page-node-id="XsqIp5ZJVudWX1X4SYGkUv">放弃了什么，为什么不</th></tr></thead>
+        <tbody data-page-node-id="1y20tVN0lCfgN91glQ1HZy">
+          <tr data-page-node-id="70qiFPein4i7em9kus8kGq">
+            <td data-page-node-id="RSfRAAzk4tDAt3ThdLASjh">分层数据模型 raw → interval → hourly → daily，配 7 类质量状态与可信白名单，只有可信区间能进聚合层</td>
+            <td data-page-node-id="gIrCmrdXZTlDrHzbF8Cdug">直接「本次读数 − 上次读数」。累计值会被重置、回退、换倍率、乱序补写打断 —— 那样做等于<strong data-page-node-id="xwZpKgkDteFNDERLgIHfz5">把数据错误直接翻译成虚假用量和费用</strong>。</td>
+          </tr>
+          <tr data-page-node-id="PUQ9YHagDBycTtbDHPOHoT">
+            <td data-page-node-id="8CJ8UyZHpeljT3wCR7XSFN">缺失就标"不可判定"，不估算</td>
+            <td data-page-node-id="T7SdhGtl5deB13GywyvsCG">行业做建筑能耗数据质量普遍走 VEE 流程，<strong data-page-node-id="trtMzhbCr4RcxkjZiqsdIo">估算补缺是标准动作</strong>。我们反过来：补出来的数会进正式账单，而账单是要收钱的。</td>
+          </tr>
+          <tr data-page-node-id="AU6yx2SZv8i6CBMoPiRAwH">
+            <td data-page-node-id="yg5VUBPNvGkCVGB1S7A4FF">约 30 个业务工具收敛为 6 类能力包，按 R0 只读 / R1 可回滚 / R2 高风险写入分级，Before Tool Hook 在调用前校验参数、权限与确认状态</td>
+            <td data-page-node-id="dPGdr4iTBb0xjQEM6mEkxs">给模型一个数据库连接或一段自由 SQL。模型输出的参数始终是<strong data-page-node-id="FDNqjtUGHQpRR0875RziSg">不可信输入</strong>，它不理解操作的真实代价 —— 对它来说"查一下"和"发布账单"只是两个工具名。</td>
+          </tr>
+          <tr data-page-node-id="Za6r3wfHQE6FNDqlJyRGkK">
+            <td data-page-node-id="rAetbBq3gnQMwEf3A22mIM">治理规则做成挂在 Hook 上的可插拔策略：业务只声明"哪个能力、什么风险级、要不要确认"</td>
+            <td data-page-node-id="npPdH4DOSoiQsz9cc9T3BP">把权限规则写进 Prompt。<strong data-page-node-id="LTCbdYcDvH2Bt79YXWWjBI">Prompt 适合表达意图，不适合充当安全边界</strong>；而且新增一类治理规则就得改核心 Agent Loop，客户每加一条业务规则都要动运行框架。</td>
+          </tr>
+          <tr data-page-node-id="152pEMFFN5ZHFWj7h1nYJ1">
+            <td data-page-node-id="vjIPlodWIAIi7dVQCE9D2a">长结果外置为 Artifact，只回传口径摘要 + 关键样例 + 句柄；读侧失败降级、写侧失败阻断</td>
+            <td data-page-node-id="nUWtm0DZPR8Rafz83SQTYH">把读数明细和导出文件全塞进上下文。Token 容量会截断，模型可能<strong data-page-node-id="CZbPv8v1hd385oX6LE7ld6">基于不完整数据给出看似合理但错误的结论</strong>；成本还会随结果规模线性膨胀。</td>
+          </tr>
+          <tr data-page-node-id="77LW5ZwV976GCHvyBFNOqC">
+            <td data-page-node-id="pUMsVKRlHz5tg0RWVNUBXy">Agent 只做入口与编排，不做自主设备控制</td>
+            <td data-page-node-id="G1GYNGI5m5FvN0MTKSmsik">让大模型直接控空调照明。2023–2026 年 66 篇同行评议研究的综述结论是<strong data-page-node-id="9uUYCRUrYymCJRPELO0zT1">没有一篇跑到可持续的生产部署</strong>，当前证据支持 LLM 停在语义层与工作流层。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flow" data-page-node-id="W0zyv43lMkOTf628tWvNPs">
+      <div class="stage" data-page-node-id="3VoUuRxQNJbqV0C5jMCKZ2">
+        <div class="step" data-page-node-id="GEUhZa95irZww7dMypHg9b"><b data-page-node-id="2aov2uun1uvvaiQEFadGF3">读数进</b>既有采集平台的累计读数</div>
+        <div class="step" data-page-node-id="SSZJbh48jw9SiUwUM1diiH"><b data-page-node-id="14Vu0dx2wvRKuXn5UWJ7Xr">质量判断</b>7 类状态 + 可信白名单</div>
+        <div class="step" data-page-node-id="NOnXBPd2VFCnRDJX8aoOGz"><b data-page-node-id="QdaJBS7G82WfEN7wTxYwSl">分层聚合</b>区间 → 时 → 日 → 月</div>
+        <div class="step" data-page-node-id="1e2HIcurHozW7vcs1dWPXQ"><b data-page-node-id="8GtfXYkWoOKsYYUPWuWsXI">用能分析</b>多级钻取 + 覆盖率</div>
+        <div class="step" data-page-node-id="1tI781fazS9H88creOp8sg"><b data-page-node-id="dTFr4KHgENIF7CjNRp02aG">异常候选</b>基线 → 候选 → 通知三层</div>
+        <div class="step gate" data-page-node-id="cgVfnIQrRLQtUbQVooz9pe"><b data-page-node-id="g6omSpIlanFFSm12m8sZp5">三道质量门</b>事实源 / 预演 / 责任</div>
+        <div class="step win" data-page-node-id="7oZg0obmwFFJryBn7uzsS5"><b data-page-node-id="tDqVSp2LiScIdDqC0zzaFq">正式分发版</b>可交财务核验</div>
+      </div>
+      <div class="agent-bar" data-page-node-id="4xKZuvjoQsVqJAP9TLwTUg"><b data-page-node-id="RCBngLBYotZ7DH2HpFgAID">Agent 入口横切在上面这条链上</b> —— Hook 链治理（Before / After Tool）与 R0 / R1 / R2 风险分级约束它只能选择已注册的能力，不能绕过后端权限，也不能直接改业务状态。</div>
+      <div class="cap" data-page-node-id="jb0oMZZRFBNx0rDL22B6os">结算的事实源是<strong data-page-node-id="M49HAwSaG1WqH4TgYPt3Eg">行政确认过的当月抄表底稿</strong>；自动采集只在这条链上做<strong data-page-node-id="vZwOctIfUEtKgUWnp2fAZ5">交叉核对</strong>，输出差异清单，不充当另一套结算来源。</div>
+    </div>
+  </section>
+
+  <!-- ================= 04 集成与约束 ================= -->
+  <section data-page-node-id="ZdTEuylyDV6AA3bOGjV8Tg">
+    <h2 data-page-node-id="PEA75RcMUdAgK52KWzSsof"><span class="no" data-page-node-id="5W7g9AYKcM6ODpykwbCMhx">04</span>集成与约束<span class="sub" data-page-node-id="53C3rThHO3b4FpGFggNN4a">交付现场的真实条件，往往比技术选型更决定架构</span></h2>
+    <ul data-page-node-id="RnZVDSuGUmu2FNKDKgwXnT">
+      <li data-page-node-id="0cno5n85eSc6aItffcEaSG"><strong data-page-node-id="g9byvFPTHtPLGVmTprrfOB">对接的是别人的平台，没有源码也没有写权限 —— 只能读。</strong>所以质量治理必须建在自己这一侧：原始读数不可覆盖，只允许追加修正版本，重算产生新的处理版本。</li>
+      <li data-page-node-id="OZXJxh3paSQvXnmr14zB5r"><strong data-page-node-id="bUupJa66X4jASYQbjf6R4X">凭据不落在 Agent 侧。</strong>Agent 不持有采集平台和数据库的真实凭据，由后端连接器管理，执行环境只拿到受限的业务能力。</li>
+      <li data-page-node-id="sL4XyIBsQ5RwE2Psy90S1o"><strong data-page-node-id="xCfA1e0ySS8PkGGEiifQGv">Agent 宿主是客户已有的产品，入口形态不完全由我们决定。</strong>应对方式是把任务状态外置到系统：长耗时导出与结算任务在用户关掉页面后继续跑，回来能恢复进度 —— 不依赖宿主会话活着。</li>
+      <li data-page-node-id="LhSZhsI5HVoM4J0HDYAN7H"><strong data-page-node-id="GG8ZxOk76SdAvuyqhlJx02">结算口径不由工程单方面定义。</strong>财务是这道口径的最终裁判，工程负责把它变成可执行、可审计的检查项。这条是<a data-page-node-id="4YRkYcvPkFCwCunKB1hVot">「与业务方共建验收标准」</a>的具体含义。</li>
+      <li data-page-node-id="GWNSTQ6d9qKDTqieZTLYxy"><strong data-page-node-id="D1uHSkreqSIEE5ShwanMXj">权限按角色收窄。</strong>维修 / 物业协作人员只能收工单、回传处理结果，不直接操作核心数据；设备、组织与结算数据按角色授权。</li>
+      <li data-page-node-id="ivI87K6DCyTobE1XFS8XLA"><strong data-page-node-id="eXrmmcb9vAzniTSDwxMEEO">明确写在纸上的"不做"：</strong>不替代采集平台的物理接入、不控设备、不做维修派工与排班 SLA、不替代财务记账开票、不做碳核算与 ISO 50001 认证。<span class="neg" data-page-node-id="gAHSY2dYtAHiEzWLK5MjmS">划清边界不是免责，是让客户知道该信哪部分。</span></li>
+    </ul>
+  </section>
+
+  <!-- ================= 05 可衡量结果 ================= -->
+  <section data-page-node-id="Rd6dsyJ22OHfYKNNgPC71z">
+    <h2 data-page-node-id="vr6KJIIgOaw5Ieoz4GOLtv"><span class="no" data-page-node-id="zSok9veG4DaK5AxiD6vo73">05</span>可衡量结果<span class="sub" data-page-node-id="D0VluLLqBShzWzuHWH9EqE">每个数都带口径与证据等级</span></h2>
+    <div class="tbl-wrap" data-page-node-id="zoaBas5ByAiy6iNej4GcB6">
+      <table class="tbl tight" data-page-node-id="0jrfz6442E35UQTd61bXdH">
+        <thead data-page-node-id="dsONXLimrFcN8006w8qpmA"><tr data-page-node-id="v7bOAR9V7DxEE0VAf0j5Bk"><th data-page-node-id="1CkyLRCXvyue6tu8GvKaOU">结果</th><th data-page-node-id="0WBIm8tWH1mR9uB1FMWFza">口径（怎么量出来的）</th><th style="width:74px" data-page-node-id="QnL3fVUH1OOBfpfN6NhGBS">等级</th></tr></thead>
+        <tbody data-page-node-id="xZ50koYeOtCIEBQq8Eux0Y">
+          <tr data-page-node-id="6HSmqTNBR4RCiXl0TayXIB"><td data-page-node-id="yJaGJNCMr4sejmhJj0X5BP">可信聚合完整率 96.8% → 99.7%</td><td data-page-node-id="lSsk3uMeMAKgBp1Y1NjEIJ">有效区间 ÷ 应产生区间</td><td data-page-node-id="BxEFxcCLY9OYgskCOqBhP0"><span class="lv e2" data-page-node-id="UUHXgBZ5wEUoZQXojWKG4b">E2</span></td></tr>
+          <tr data-page-node-id="y9tdf0AXLwQ3y6poQ2Giu5"><td data-page-node-id="PVRHLBVSb5CCGCPiFOSMl2">Agent 任务完成率 83.3% → 95.8%</td><td data-page-node-id="9tgbWwGS1BYKhYGvGBINdQ">固定 72 条任务集（同模型版本 / 同权限配置 / 同数据快照），60 → 69 条</td><td data-page-node-id="fuxiQDYE9Ok2rvCnYwdBzv"><span class="lv e2" data-page-node-id="uXjsZ7xVdMcsegEVJWkzc9">E2</span></td></tr>
+          <tr data-page-node-id="A5Y8DCneC31lpx2IjBf2w8"><td data-page-node-id="BYG9sG28zhQ1KNyB3SSpcF">越权用例拦截率 100%</td><td data-page-node-id="TrBeRvjCwB82O083qVyGzU">80 条<strong data-page-node-id="icDrWUppCQAo3lZKPKnk86">构造</strong>用例（跨租户 / 越权限 / 越范围），不是线上拦截流量</td><td data-page-node-id="My0MVkjcjcg9fe1Q9f3EMR"><span class="lv e2" data-page-node-id="FRRGLjgYQUJl39eiUlDuWt">E2</span></td></tr>
+          <tr data-page-node-id="whT1EFnxO7vGhyqOdWoPec"><td data-page-node-id="Z3m6fJmL1fG5K9FnjMkP4V">核心统计接口 P95 20.4s → 2.8s（−86.3%）</td><td data-page-node-id="p20rJpC0Zb3pafBXuLctCh">固定查询集多轮执行取 P95</td><td data-page-node-id="Lt80shgCk1x0cJKhPIsckl"><span class="lv e2" data-page-node-id="wGjwb2edCEQSfXXWDWsf4x">E2</span></td></tr>
+          <tr data-page-node-id="184SAR1T7XkivtPw8rCRli"><td data-page-node-id="YT18B8a9RvF3qOSriWlEEW">聚合成功率 96.9% → 99.6%，人工补数 −72%</td><td data-page-node-id="BoJiUk3Xh5il1VtfFeXKm5">成功调度窗口 ÷ 应执行窗口；两个等长观察窗口对比</td><td data-page-node-id="fLyC21HOeHlHAblrjB8vka"><span class="lv e2" data-page-node-id="9cXxlp5hKA2x9iwHOAlzpK">E2</span></td></tr>
+          <tr data-page-node-id="qcsXdPrEziFXp3UJXB7AVH"><td data-page-node-id="NNAui1IzXHZP46zdZuWsLj">告警量 −43%，异常研判 18 分钟 → 6 分钟</td><td data-page-node-id="awdpDUieLUAE8DjbK3YdHZ">相同历史窗口分别跑原始规则与准入方案；Incident 到首次明确分类的中位时长</td><td data-page-node-id="mN6WlSfegtOe6PzNct5y10"><span class="lv e2" data-page-node-id="Bi7N2cAzkA45QI5ubW2C8W">E2</span></td></tr>
+          <tr data-page-node-id="Hs7YIbzzA7peWcH6dxp1Si"><td data-page-node-id="mIoH3t3qP7AmRskoUo4E4y">核心链路回归通过率 98.4%</td><td data-page-node-id="xE86Qzt0dGyIZOkXtnXsq8">122 项用例通过 120 项（92 项单元 + 30 项回归）</td><td data-page-node-id="SfW6qr7tHhzujA2wSELhrP"><span class="lv e1" data-page-node-id="sDN6FQJwxMDnLKo3seibZZ">E1</span></td></tr>
+          <tr data-page-node-id="9JvDqm3j1SmUgFE4CixHXV"><td data-page-node-id="TDgnnvK7RHe9FoHTGke9iR">规模：约 604 台 · 15 分钟 / 次 · 日均约 5.8 万条</td><td data-page-node-id="HCXUu02JNimZ2kbSf8PzKr">604 台 × 96 个时间点 —— <strong data-page-node-id="U3JiGukRkkov7XRuYF0QOE">算出来的，不是测出来的</strong></td><td data-page-node-id="ki8mddTQFsLSO6znPJKKDy"><span class="lv cf" data-page-node-id="hZQHTO63tiH0YIPCtMkyVF">计算事实</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" data-page-node-id="15JCUmDyFHKCMDdQ4zVYkU"><b data-page-node-id="WYtGFV1rmrRlJtZkFm1SJb">读这张表必须带的一句话：</b>标 <strong data-page-node-id="M2PZFSkPpF1xmrWeqLoSFC">E2</strong> 的是在<strong data-page-node-id="7EnMlrHtVTpQnPha9gf0r7">固定评测集 / 回放窗口</strong>上得到的离线结果，<strong data-page-node-id="msZPxIHIVkrG8griOMARjo">不是线上监控数字</strong>；标 <strong data-page-node-id="y5JWmdHERJJkFbSpDKZkGh">E1</strong> 的有测试执行记录本身作为证据；"计算事实"是理论推算。<strong data-page-node-id="3UscsZ1Tq7Sya02jZV5ZWj">三者不能并排说成"统计结果显示"。</strong></div>
+  </section>
+
+  <!-- ================= 06 可复用组件 ================= -->
+  <section data-page-node-id="YRxNzQAIWCPo1BHACi3H71">
+    <h2 data-page-node-id="PF7q6nmNDu7FCQJ9igJYrk"><span class="no" data-page-node-id="R2hCKn8xEmHfLMYCZYByl4">06</span>可复用组件<span class="sub" data-page-node-id="LRHum6aHqoyVP5JdyhkosW">下次交付能直接搬走的部分</span></h2>
+    <div class="cards" data-page-node-id="YhkzAt7aCr9z7cSMOjuWFv">
+      <div class="card" data-page-node-id="qKUHdLdHCDfDklMGL7gsgZ">
+        <span class="tag" data-page-node-id="o3MRAjvQomAFwjWaVvsN2H">治理层</span>
+        <h3 data-page-node-id="zKuRMVmrqdNwXxF8aBDQET">Hook 链 + 风险分级策略层</h3>
+        <p data-page-node-id="CK2DG6TIyxwiwfouwgARE8">Before / After Tool 两个切面挂可插拔策略，业务只声明「哪个能力、什么风险级、要不要确认」。换一个业务域，核心 Agent Loop 不用改。</p>
+      </div>
+      <div class="card" data-page-node-id="Ti0Mv4rXFkB5w9HW3aiu5m">
+        <span class="tag" data-page-node-id="KTS1sYp0PcQzChPnkhXlSI">数据层</span>
+        <h3 data-page-node-id="nF1CIWBwACS0KAlF8jfKaC">7 类质量状态 + 可信白名单</h3>
+        <p data-page-node-id="3AYD1qhitCgAJW0Hyt8xXV">任何「累计值 → 区间增量」的场景都适用（电表水表燃气表、里程、库存流水）。核心是把"不可判定"当成一个正常状态，而不是当成一个错误。</p>
+      </div>
+      <div class="card" data-page-node-id="r2MevezWmUNMysDTlZMSJE">
+        <span class="tag" data-page-node-id="23SPMw73nlCKF9wA9MHsgX">运营层</span>
+        <h3 data-page-node-id="YHkhoy8d0627HTvUjupIEC">异常三层分离：基线 → 候选 → 通知</h3>
+        <p data-page-node-id="nQUqVIxBbfGmkPNzm8EH1d">把"发现异常"和"打扰人"解耦。告警疲劳不是靠调阈值解决的，是靠把中间那层判断显式建出来解决的。</p>
+      </div>
+      <div class="card" data-page-node-id="QUrqxQ45H6hUWcUw78ORfk">
+        <span class="tag" data-page-node-id="AW5RU3CrqiETy5G027WTuK">流程层</span>
+        <h3 data-page-node-id="ddMBbH6cOJY1LZ064QCLl1">三道质量门：事实源 → 预演 → 责任</h3>
+        <p data-page-node-id="ZQkumLSdY5dTPDj1vLQvSp">任何需要人工签字、且错了要担责的自动化流程都能套：先定<strong data-page-node-id="y0I7Ys2T098bEdYO6fuGKg">谁签字</strong>，再定自动化到哪一步停。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 07 边界与反思 ================= -->
+  <section data-page-node-id="moQzbzaYpLeNR3O4d1XkVz">
+    <h2 data-page-node-id="b5DDdQaLnwXLyjS3UdRR63"><span class="no" data-page-node-id="5rVOEJDdgbiCFPx8SniQvE">07</span>边界与技术反思<span class="sub" data-page-node-id="YM85NIDCAab2QgT4Dq9AXZ">还有什么是没做到的</span></h2>
+    <div class="quote" data-page-node-id="9QFv6N5fiK4Qcd9u1wFlmx">
+      <strong data-page-node-id="zhCUQA8JbfE2EqsAEfDgNl">最贵的一条经验：先定「谁签字」，再定自动化到什么程度。</strong><br data-page-node-id="e29UTHYl6BxQybhR40rSJS">
+      三道质量门看起来是个技术设计，其实是从客户那句「估算出来的数财务不认」倒推出来的。<strong data-page-node-id="XDcBm7rnG2Dv8KvaPkMGCW">自动化程度不只看技术能力，还要看这个动作离"产生真金白银的后果"有多远。</strong>越接近生产写入，就越要往可验证、可审计那边让一步。
+    </div>
+    <ul data-page-node-id="dnG6hPqsaHHrU7gopZZZDB">
+      <li data-page-node-id="vZWEV1iZatE4JTRkYl3rVp"><strong data-page-node-id="lHm3P7DMsoWculAewBCVFh">系统边界本身就是交付物的一部分。</strong>把"不做什么"写清楚（不派工、不排班、不算 SLA、不做碳核算），客户反而更敢用 —— 他知道了该信哪部分、以及不会被越权代劳。</li>
+      <li data-page-node-id="kHFqPvncbOuUHay3mMxlXO"><strong data-page-node-id="JgAuZqCdwxAdIdRC9omGP9">Agent 只停在语义层和工作流层是刻意的选择，不是能力不足。</strong>它负责理解意图、组织证据、解释结果；用量、费用、状态迁移和高风险写入全部由确定性程序控制。核心原则一句话：<strong data-page-node-id="wwGaWR2qgNbwC4xJSoRABA">能由代码确定性保证的，不交给模型自行决定。</strong></li>
+      <li data-page-node-id="VCCJw2VdSzDxo8yhEWo3rd"><strong data-page-node-id="YqhaIwlBCgfFghznNOGqVB">还没做到的（如实列出）：</strong>维修工单的回流信号已经在跑（行动指南是否被采纳、是否一次关单、建议与真实根因是否一致），但这些信号还没积累到能稳定支撑"哪类设备的指南写得不好"的结论；结算的结转说明路径还需要更多月份的实际案例来验证它够不够用。</li>
+      <li data-page-node-id="HAQYArjV1ICgprDdG60aSg"><strong data-page-node-id="An6X606mihIDxFUcar43nX">如果重做一次：</strong>会更早把「口径归属」这件事写进需求收集的第一轮 —— 它决定了事实源、决定了哪一层不能自动化、也决定了验收标准长什么样。技术选型反而是后面才需要拍板的。</li>
+    </ul>
+  </section>
+
+  <footer data-page-node-id="CTgm0uJI56GtmJFC8J3AyD">
+    <b data-page-node-id="AE3dIceATYv9U9AVPkvkgj">关于本页</b>
+    <div class="foot-grid" data-page-node-id="0gCyCGf0XeTif9m9lkVsVl">
+      <div data-page-node-id="GXRMmKVASfLSCsxO8jJ8jB">
+        <b data-page-node-id="lixqE6vQMycE1eSFCdxhOF">脱敏说明</b><br data-page-node-id="9g55uH6oiRt508TmjMJZ9D">
+        本页为对外材料，已做如下处理：既有采集平台与内部系统名一律抽象为角色描述；人员以角色（行政 / 财务 / 设备运营 / 维修协作）代替姓名；不出现具体楼层、商户编号、金额、单价与任何内部文档编号。数据规模为平台设计基线，非精确清点值。
+      </div>
+      <div data-page-node-id="f5zrkZ0SEVk4dWTDDe0ILO">
+        <b data-page-node-id="H0fn6ZzyLE75Mvjnb2VuIe">数字口径与证据等级</b><br data-page-node-id="FA3F3EENYuaW6mQZ0i3iVq">
+        <span class="lv e1" data-page-node-id="WZNC2KbbTdEgAmm5NDuqIJ">E1</span> 有代码、测试、日志或线上记录，可直接拿出证据。<br data-page-node-id="IizlmCDl4HaLYg6jw8lzX3">
+        <span class="lv e2" data-page-node-id="LzaxSlDIcF4wwnRVSjxlyb">E2</span> 固定评测集 / 回放窗口上的离线结果 —— 讲的时候必须带上这句，不能说成线上监控数字。<br data-page-node-id="vu9bsb71SyTk4CFvRIlC8m">
+        <span class="lv cf" data-page-node-id="NUACly1kmYQC3kk3oJNAsw">计算事实</span> 由规模基线推算，不是测量值。
+      </div>
+      <div data-page-node-id="cvBI1vfivq3BCaEsaiEEmH">
+        <b data-page-node-id="Mff3cKgZfQFfmjc976BlqR">我负责的范围</b><br data-page-node-id="VCuuMHhty253DFMLUrkjJ3">
+        数据模型、工具拆分、Hook 链治理与安全分级由我主导设计与实现；结算业务口径与财务团队对齐；Agent 宿主为团队既有产品。
+      </div>
+      <div data-page-node-id="BjclEHmqt9RAb4K13zN4hH">
+        <b data-page-node-id="0dZ0YdVrAZt3iqyEUcOfOm">联系</b><br data-page-node-id="VBK0mI298Gs7dRFjeIZmcW">
+        刘宇广 · 2027 届 · AI 应用 / Agent 开发<br data-page-node-id="2h57fZm7aFfFTQqqlnvfBL">
+        github.com/Ygrowly &nbsp;·&nbsp; lyg3044@qq.com
+      </div>
+    </div>
+    <div class="print" data-page-node-id="Hm3NwEwjalI7eYagaazooX"><button type="button" onclick="window.print()" data-page-node-id="UbdOcrlTXFCpEJobShv5xM">导出为 PDF</button> &nbsp;页面更新于 2026-09-20</div>
+  </footer>
+
+</div>
+</body>
+</html>

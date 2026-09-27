@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>消息队列模块深挖卡</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">模块概览</span>
+    <h1 class="mv-topic-title">消息队列模块深挖卡</h1>
+    <p class="mv-topic-meta">正本 wiki/topics/消息队列/消息队列模块卡.md</p>
+  </div>
+
+  <div class="mv-stat">
+    <span class="mv-stat-i"><b>3</b> 条主线</span>
+    <span class="mv-stat-i"><b>3</b> 个母题</span>
+    <span class="mv-stat-i"><b>26</b> 道题（<b>17</b> 必背）</span>
+    <span class="mv-stat-i ok"><b>3</b> 可讲</span>
+    <span class="mv-stat-i warn"><b>0</b> 缺骨架</span>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">一句话结论</h2>
+    <div class="mv-problem"><p class="mv-md-p"><span class="mv-topic-meta">一句话结论待填（闭卷后自己写 20 秒版）</span></p></div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">模块边界 <span class="mv-topic-meta">防无限扩张</span></h2>
+    <div class="mv-bd">
+      <p class="mv-md-p"><strong>包含</strong>：</p>
+      <p class="mv-md-p"><strong>明确不包含</strong>：</p>
+      <p class="mv-md-p"><strong>为什么现在</strong>：</p>
+    </div>
+  </div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">主线 <span class="mv-topic-meta">一次只开一条</span></h2>
+    <a class="mv-line-row" href="消息队列-01-消息怎么才能不丢.html"><span class="mv-line-no">一</span><span class="mv-line-name">消息怎么才能不丢</span><span class="mv-line-q">一条消息从生产者到消费者，在哪几段可能丢，每段靠什么兜住</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="消息队列-02-消息为什么会重复、会乱序.html"><span class="mv-line-no">二</span><span class="mv-line-name">消息为什么会重复、会乱序</span><span class="mv-line-q">为什么所有主流 MQ 都只保证"至少一次"，业务层怎么把"至少一次"变成"只生效一次"；要顺序就得牺牲并行，边界在哪</span><span class="mv-line-st">母题 1 · 题 7</span><span class="mv-line-bar"><i style="width:100%"></i></span></a><a class="mv-line-row" href="消息队列-03-MQ 撑不住的时候怎么办.html"><span class="mv-line-no">三</span><span class="mv-line-name">MQ 撑不住的时候怎么办</span><span class="mv-line-q">积压怎么消、Broker 挂了为什么能不停服、选型到底在选什么</span><span class="mv-line-st">母题 1 · 题 10</span><span class="mv-line-bar"><i style="width:100%"></i></span></a>
+  </div>
+
+  <div class="mv-section"><h2 class="mv-section-title">本模块的题 · 总纲 <span class="mv-topic-meta">2 道 · 不属于某一条主线，先说后翻</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">1</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">Q1</span><button class="mv-qdone" data-k="消息队列-q1" type="button">未掌握</button></div><flip-card card-id="消息队列-q1" tag="消息队列" q="MQ 的三大作用（解耦 / 异步 / 削峰）分别解决什么" a="**解耦**：生产者不需要知道谁在消费、有几个消费者（新增消费者不改生产端）；**异步**：把不需要同步返回的处理丢到后台（主链路 RT 下降）；**削峰**：突发流量先存进队列，消费者按自己的速率消化（保护下游）。&#10;&#10;三者的判据不同：解耦看&quot;改动会不会波及另一端&quot;，异步看&quot;这一步要不要等结果&quot;，削峰看&quot;到达速率能不能被下游直接吃下&quot;。"><div class="mv-fc-more"><p class="mv-fc-sub">这道题属于母题 Q1 · 消息为什么会丢；要它不丢，生产者 / Broker / 消费者三段各要做对什么，每段加严的代价是什么 · 下面挂它的完整回答（学的时候看）</p><collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 515 字 · 按 4 字/秒折算约 129 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">消息只可能在<strong>三段</strong>丢——发送、存储、消费，<strong>每段各有一道确认</strong>：生产端等 Broker 确认（<code class="mv-md-code">acks</code>）、Broker 端持久化 + 多副本、消费端<strong>处理完再 ack</strong>。</p>
+<p class="mv-md-p">不丢不是一个参数能搞定的，要<strong>三个一起给</strong>：<strong><code class="mv-md-code">acks=all</code>（等 ISR 全部确认）+ <code class="mv-md-code">min.insync.replicas ≥ 2</code>（ISR 不足就拒绝写，把"可能丢"换成"明确不可用"）+ 禁止从落后副本选主</strong>。因为 <strong><code class="mv-md-code">acks=all</code> 单独不保证不丢</strong>——它指的是 ISR 里的副本，ISR 缩到 1 时照样接受写。</p>
+<p class="mv-md-p">两个必须说清的语义：① <strong>"不丢"的准确定义是"生产者收到成功 ack 的消息永不消失"</strong>，不是"消息一定被处理一次"——<strong>跨进程通信没有"恰好一次"，框架只保证至少一次</strong>，重复是它的代价，由业务幂等吃掉；② <strong>不能"收到消息就 ack"</strong>，那是主动制造丢消息：提前 ack 后崩溃，Broker 认为已处理完不会再投，消息永久消失且无任何报警。</p>
+<p class="mv-md-p">消费失败三档兜底：<strong>重试（限次 + 退避）→ 重试队列（RocketMQ 并发消费默认 16 次）→ 死信队列</strong>；死信队列的意义是"<strong>绝不静默丢弃</strong>"。本地事务和发消息的一致性本质是"两个系统没法放进一个本地事务"，三条路线：<strong>事务消息 / 本地消息表 / Outbox</strong>（EnergyOps 用的是 Outbox）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：三段各一道确认；不丢要三个参数一起给；框架只保证至少一次。</li><li><strong>推导链</strong>：三段 → 各段确认 → acks=all 的漏洞（ISR 缩到 1）→ 用 min.insync.replicas 闭环 → 重复的代价交给幂等 → 失败三档兜底 → Outbox 解决跨系统事务。</li><li><strong>量化</strong>：<code class="mv-md-code">acks</code> 三档（0/1/all）；<code class="mv-md-code">min.insync.replicas ≥ 2</code>；RocketMQ 默认重试 16 次。</li><li><strong>边界与常见误解</strong>："acks=all 就保证不丢"×；"收到就 ack"会永久丢消息且无报警；持久化开着不等于不会丢（还有异步复制与误操作）。</li></ul></collapse-panel><p class="mv-md-p"><a class="mv-mt-link" href="../topics/消息队列-母题-Q1-消息为什么会丢怎么才不丢.html">打开单卡 Q1 →</a></p></div></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">2</span><span class="mv-chip ghost">必背</span><span class="mv-chip ghost">Q1</span><button class="mv-qdone" data-k="消息队列-q2" type="button">未掌握</button></div><flip-card card-id="消息队列-q2" tag="消息队列" q="引入 MQ 的三笔代价是什么（可用性下降 / 复杂度上升 / 数据一致性）" a="**① 可用性下降**——多了一个必须活着的组件，MQ 一挂链路就断，所以要有&quot;MQ 不可用&quot;这个被设计过的状态（降级、本地缓冲 / Outbox、幂等补发）；**② 复杂度上升**——要处理重复、乱序、积压、回溯、幂等，多一套运维对象；**③ 数据一致性**——本地事务和发消息不是一个事务，得靠事务消息 / 本地消息表 / Outbox。&#10;&#10;所以 MVP 阶段未必需要 MQ——能用数据库 + 定时任务解决的，先别上。"><div class="mv-fc-more"><p class="mv-fc-sub">这道题属于母题 Q1 · 消息为什么会丢；要它不丢，生产者 / Broker / 消费者三段各要做对什么，每段加严的代价是什么 · 下面挂它的完整回答（学的时候看）</p><collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 515 字 · 按 4 字/秒折算约 129 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p">消息只可能在<strong>三段</strong>丢——发送、存储、消费，<strong>每段各有一道确认</strong>：生产端等 Broker 确认（<code class="mv-md-code">acks</code>）、Broker 端持久化 + 多副本、消费端<strong>处理完再 ack</strong>。</p>
+<p class="mv-md-p">不丢不是一个参数能搞定的，要<strong>三个一起给</strong>：<strong><code class="mv-md-code">acks=all</code>（等 ISR 全部确认）+ <code class="mv-md-code">min.insync.replicas ≥ 2</code>（ISR 不足就拒绝写，把"可能丢"换成"明确不可用"）+ 禁止从落后副本选主</strong>。因为 <strong><code class="mv-md-code">acks=all</code> 单独不保证不丢</strong>——它指的是 ISR 里的副本，ISR 缩到 1 时照样接受写。</p>
+<p class="mv-md-p">两个必须说清的语义：① <strong>"不丢"的准确定义是"生产者收到成功 ack 的消息永不消失"</strong>，不是"消息一定被处理一次"——<strong>跨进程通信没有"恰好一次"，框架只保证至少一次</strong>，重复是它的代价，由业务幂等吃掉；② <strong>不能"收到消息就 ack"</strong>，那是主动制造丢消息：提前 ack 后崩溃，Broker 认为已处理完不会再投，消息永久消失且无任何报警。</p>
+<p class="mv-md-p">消费失败三档兜底：<strong>重试（限次 + 退避）→ 重试队列（RocketMQ 并发消费默认 16 次）→ 死信队列</strong>；死信队列的意义是"<strong>绝不静默丢弃</strong>"。本地事务和发消息的一致性本质是"两个系统没法放进一个本地事务"，三条路线：<strong>事务消息 / 本地消息表 / Outbox</strong>（EnergyOps 用的是 Outbox）。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：三段各一道确认；不丢要三个参数一起给；框架只保证至少一次。</li><li><strong>推导链</strong>：三段 → 各段确认 → acks=all 的漏洞（ISR 缩到 1）→ 用 min.insync.replicas 闭环 → 重复的代价交给幂等 → 失败三档兜底 → Outbox 解决跨系统事务。</li><li><strong>量化</strong>：<code class="mv-md-code">acks</code> 三档（0/1/all）；<code class="mv-md-code">min.insync.replicas ≥ 2</code>；RocketMQ 默认重试 16 次。</li><li><strong>边界与常见误解</strong>："acks=all 就保证不丢"×；"收到就 ack"会永久丢消息且无报警；持久化开着不等于不会丢（还有异步复制与误操作）。</li></ul></collapse-panel><p class="mv-md-p"><a class="mv-mt-link" href="../topics/消息队列-母题-Q1-消息为什么会丢怎么才不丢.html">打开单卡 Q1 →</a></p></div></flip-card></div></div>
+
+  <div class="mv-section">
+    <h2 class="mv-section-title">项目映射 <span class="mv-topic-meta">把这个模块挂到真实经历上</span></h2>
+    <collapse-panel title="EnergyOps（金山园区能耗）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/EnergyOps/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>这是"什么时候不该上 MQ"的活教材。</strong> 当前规模（约 604 台设备）用的是 <strong>PostgreSQL 任务表 + APScheduler + 批处理 + 受控并发</strong>，项目里<strong>明确决定不引入消息队列与流处理</strong>，并写下了升级条件（表计到万级 / 分钟写入持续高峰 / 补数大量堆积 / 单机无法在窗口内完成）。长耗时导出、规则回放与结算才走队列 + 并发配额限流（[[母题-Q1-消息为什么会丢怎么才不丢]] 的前提节）。</li><li>解决什么问题：<strong>通知这类外部副作用不能进数据库事务</strong>——短信发出去了没法回滚。所以 Alarm 与 Notification Outbox 在<strong>同一个本地事务</strong>里落库，通知 Worker 再拿业务幂等键去调外部平台；调用超时标记 <code class="mv-md-code">result_unknown</code>，<strong>不直接重试，先查外部权威状态</strong>或用同一幂等键重试。这就是"本地消息表 / Outbox"这条路线在没有 MQ 时的真实形态。</li><li>踩过的坑：<strong>① 超时被当成失败</strong>——超时表示结果未知，直接重试会重复发短信；<strong>② 租约版本只防住了本地数据库的旧写，撤不回旧 Worker 已经发出的外部调用</strong>——所以外部调用必须用稳定幂等键 + 恢复前先查权威状态；<strong>③ Checkpoint 被当成"业务完成证明"</strong>——它只是恢复线索（[[母题-A4-长任务状态与Checkpoint]]）。</li><li>决策与取舍：<strong>先用数据库任务表换掉 MQ，等升级条件出现再说</strong>。这笔账划得来是因为：当前吞吐离 MQ 的收益门槛还远，而引入 MQ 的<strong>三笔代价（可用性、复杂度、一致性）立刻要付</strong>。<strong>"不上 MQ"不是保守，是算了账</strong>（[[母题-Q1-消息为什么会丢怎么才不丢]]）。</li><li>对应母题：【Q1、Q2】</li></ul></div></collapse-panel><collapse-panel title="数驭穹图（企业问数）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/数驭穹图/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>队列在这里只承担"限流与排队"一个职责</strong>——按租户限制并发和队列、给查询设超时/扫描量/行数配额，超预算时<strong>拒绝、缩小范围或转异步</strong>（<code class="mv-md-code">08-查询性能与成本控制.md</code>）。不承担解耦，也不承担削峰。</li><li>解决什么问题：<strong>保护源库不被慢 SQL 打穿</strong>。SQL 执行是不确定的（数据倾斜、统计信息过期都会让它变慢），所以必须有硬超时、取消和租户配额——<strong>这是"队列最小的用法"：不为削峰，只为排队</strong>。</li><li>踩过的坑：<strong>无依赖子查询可以并发，但写回顺序必须确定</strong>——这是 Q2 说的"局部串行"在非 MQ 场景里的同一个问题。</li><li>决策与取舍：<strong>异步是预算超支后的降级动作，不是默认路径</strong>——默认同步返回，超预算才转异步。<strong>"什么时候把同步改成异步"是产品问题，不是技术偏好</strong>。</li><li>对应母题：【Q1、Q2】</li></ul></div></collapse-panel><collapse-panel title="RuleArena（规则竞技场）"><div class="mv-pj-item"><b>锚点</b><p class="mv-md-p"><code class="mv-md-code">projects/RuleArena/</code></p>
+<ul class="mv-md-ul"><li>用在哪：<strong>这是本卡的主证据。</strong> 架构是 <strong>PostgreSQL 存权威状态 + Redis/ARQ 负责队列、限流与短期进度</strong>（<code class="mv-md-code">06-architecture-and-scenarios.md</code>）；<code class="mv-md-code">04-idempotency-and-recovery.md</code> §9 直接叫「Worker、队列与至少一次投递」，并有一节专答「Q5：消息队列能保证 exactly-once 吗」。Worker 跑一条规则审查是长任务，进程随时可能崩。</li><li>解决什么问题：<strong>"队列可以丢或重投，业务正确性必须落在可恢复的权威数据库里"</strong>——这一句就是 Q2 的全部答案。系统<strong>接受至少一次投递和进程随时崩溃</strong>，靠不重复的业务副作用把这个前提吃掉：同一数据库事务里完成聚合更新、账本、BusinessEvent 和 ActionReceipt，用唯一约束保证同一动作只生效一次。</li><li>踩过的坑：<strong>① 不能拿 ToolCallID 当幂等键</strong>——它每次调用都变，重试时对不上；正确的是按「run + 动作 + 目标 + 参数 + 规则版本 + 逻辑步骤」构造<strong>稳定幂等键</strong>（这是 Q2 里"幂等键怎么选"的原题）；<strong>② Worker 超时后不许换 key 直接重试</strong>——先查 Receipt，已完成就继续，明确失败才按错误类型决定重试，仍无法确认就记 <code class="mv-md-code">ACTION_UNKNOWN</code> 并停下（这就是"超时 ≠ 失败"）。</li><li>决策与取舍：<strong>不提前引入 Kafka / Outbox</strong>，升级条件是"出现真实的跨服务事件投递需求"（<code class="mv-md-code">04</code> §9 末尾）。当前用 <code class="mv-md-code">%RETRY%</code> 式的重投 + 权威状态查询就够了。<strong>队列选 Redis/ARQ 而不是 RabbitMQ/Kafka，理由是 MVP 阶段要的是"能异步跑、能查状态"，不是"高吞吐 + 丰富特性"</strong>（这条取舍正是 Q3 选型节的判据）。</li><li>对应母题：【Q1、Q2、Q3】</li></ul>
+<hr class="mv-md-hr"></div></collapse-panel>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+</body>
+</html>

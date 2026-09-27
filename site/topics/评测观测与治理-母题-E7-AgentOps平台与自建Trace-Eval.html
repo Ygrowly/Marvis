@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母题 E7 · AgentOps 平台与自建 Trace / Eval</title>
+<link rel="stylesheet" href="../_components/marvis.css">
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+  <a class="mv-back" href="../index.html">← 返回训练台</a>
+  <a class="mv-back mv-back-2" href="../modules/评测观测与治理.html">← 评测观测与治理 模块概览</a>
+
+  <div class="mv-topic-head">
+    <span class="mv-topic-module">评测观测与治理</span>
+    <h1 class="mv-topic-title">母题 E7 · AgentOps 平台与自建 Trace / Eval</h1>
+    <p class="mv-topic-meta">关联 母题-E2-Trace与可观测性（本卡是它的数据模型在产品上的落地，E2 只保留指针）· 母题-E1-评测集设计与pass^k（平台沉淀的 Dataset 就是它的五层数据集）· 母题-E3-回归门禁与发布卡口（Dataset run 就是离线门禁的执行单位）· 母题-E6-灰度发布与回滚（反馈飞轮的落地依赖本卡的保留期约束） ｜ 正本 wiki/topics/评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval.md</p>
+  </div>
+<p class="mv-guide">必懂 4 件事（① 平台卖的是一条管道，不是"更漂亮的日志" ② 两家的数据模型同构 ③ 采集必须非阻塞且先落地 ④ <strong>Trace 会过期、Dataset 不会</strong>）· 读完约 15 分钟 · 需要先懂：[[母题-E2-Trace与可观测性]]（Trace 与日志的分工）</p>
+  <nav class="mv-toc" aria-label="本页大纲">
+    <a href="#s-problem">题目</a>
+    <a href="#s-lesson">教材</a>
+    <a href="#s-quiz">自测</a>
+    <a href="#s-output">面试输出</a>
+    <a href="#s-conclusion">一句话结论</a>
+    <a href="#s-extra">展开</a>
+    <a href="#s-recycle">复训</a>
+  </nav>
+
+  <div class="mv-section" id="s-problem">
+    <h2 class="mv-section-title">题目</h2>
+    <div class="mv-problem"><p class="mv-md-p">面试官问——"你们线上 Agent 的质量怎么保证？用了 LangSmith / Langfuse 这类平台吗？还是自己搭的？"</p></div>
+  </div>
+
+<div class="mv-section" id="s-lesson"><h2 class="mv-section-title">一 · 教材 <span class="mv-topic-meta">从前提推到结论，不需要先会</span></h2><div class="mv-lesson"><h3 class="mv-md-h mv-md-h3">1. 前提：平台卖的不是"看日志"，是一条管道</h3>
+<figure-box num="AgentOps 平台的四段管道" title="" note="采集 → Trace 树 → Score → Dataset，四段依次相连；E 簇的三条主线正好被拆进这四段里"><svg viewBox="0 0 680 260" width="100%" xmlns="http://www.w3.org/2000/svg" style="font-family:var(--font-sans)">
+<title>AgentOps 平台的四段管道</title>
+<desc>采集、Trace 树、Score、Dataset 四段依次相连，下方标注两家独立收敛到同一套结构。</desc>
+<defs>
+<marker id="figagentops-platform-pipeline-svg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="30" width="132" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="106" y="52" font-size="14" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">采集</text>
+<text x="106" y="72" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">SDK · OTel · 非阻塞</text>
+<rect x="194" y="30" width="132" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="260" y="52" font-size="14" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">Trace 树</text>
+<text x="260" y="72" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">observation / run</text>
+<rect x="348" y="30" width="132" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="414" y="52" font-size="14" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">Score</text>
+<text x="414" y="72" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">挂到某个节点上</text>
+<rect x="502" y="30" width="132" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="568" y="52" font-size="14" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">Dataset</text>
+<text x="568" y="72" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">可复现的回归集</text>
+<line x1="176" y1="58" x2="190" y2="58" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-platform-pipeline-svg-arrow)"/>
+<line x1="330" y1="58" x2="344" y2="58" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-platform-pipeline-svg-arrow)"/>
+<line x1="484" y1="58" x2="498" y2="58" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-platform-pipeline-svg-arrow)"/>
+<text x="106" y="102" font-size="12" fill="#888780" text-anchor="middle">平台自带</text>
+<text x="260" y="102" font-size="12" fill="#888780" text-anchor="middle">E2 证据层</text>
+<text x="414" y="102" font-size="12" fill="#888780" text-anchor="middle">E1 判定层</text>
+<text x="568" y="102" font-size="12" fill="#888780" text-anchor="middle">E1 · E3 沉淀层</text>
+<rect x="40" y="126" width="594" height="44" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="337" y="148" font-size="12" fill="#444441" text-anchor="middle" dominant-baseline="central">两家独立收敛到同一套形状：observation / run → trace → session / thread，且都建在 OpenTelemetry 之上</text>
+<text x="40" y="196" font-size="13" font-weight="500" fill="#2C2C2A">平台买的是这条管道，不是"更漂亮的日志"</text>
+<line x1="40" y1="210" x2="640" y2="210" stroke="#D3D1C7" stroke-width="0.5"/>
+<text x="40" y="232" font-size="12" fill="#5F5E5A">管道不等于结论：结构要自己设计，真值要自己确认，保留期从第一天就在倒计时</text>
+<text x="40" y="250" font-size="12" fill="#5F5E5A">自建要付的：队列 + 列存 + 事务库 + 对象存储，以及它们之间的一致性</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【推导】<strong>先想清楚"没有平台的时候你在做什么"</strong>：</p>
+<pre class="mv-md-pre">没有平台时，你要自己回答四个问题：
+  ① 一次运行发生了什么     → 需要 Trace（E2）
+  ② 这次做得好不好         → 需要 Score（E1 的判分）
+  ③ 怎么变成可复现的测试   → 需要 Dataset（E1 的数据集）
+  ④ 改了之后有没有退化     → 需要可比的 Experiment（E3 的门禁）</pre>
+<p class="mv-md-p">【事实】<strong>平台把这四段串成了一条现成管道</strong>——<strong>这就是它卖的东西</strong>：</p>
+<pre class="mv-md-pre">采集（SDK / OTel）→ Trace 树 → Score 挂载 → Dataset + Experiment
+   ↑ 平台自带          ↑ E2 证据层   ↑ E1 判定层   ↑ E1/E3 沉淀层</pre>
+<p class="mv-md-p">【推论】<strong>所以"我们用了 X"这句话要翻译成"我们用它做了第几段"</strong>——<strong>只接了采集，就只是把日志换了个界面看</strong>（本卡第 7 节的误解表）。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"平台 = 可观测性 + 评测"仍然是一句空话？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">2. 数据模型：两家独立收敛到同一套形状【事实】</h3>
+<p class="mv-md-p">【事实】<strong>先各介绍一遍，再比较</strong>（Langfuse 与 LangSmith 是两家公司、两套命名）：</p>
+<table class="mv-table"><thead><tr><th></th><th>Langfuse</th><th>LangSmith</th></tr></thead><tbody><tr><td>基本单元</td><td><strong>observation</strong>（<strong>可嵌套</strong>）= LLM 调用 / 工具调用 / 检索步骤；<strong><code class="mv-md-code">span</code> 只是其中一种类型</strong>，另有 <code class="mv-md-code">generation</code> / <code class="mv-md-code">event</code> 等</td><td><strong>run</strong>（官方原话：*you can think of a run as a span*）</td></tr><tr><td>一次操作</td><td><strong>trace</strong> = 共享 <code class="mv-md-code">trace_id</code> 的 observation 集合</td><td><strong>trace</strong> = 共享 trace ID 的 run 集合；<strong>单条 trace 硬上限 25,000 个 run，超过直接拒收</strong></td></tr><tr><td>多轮归组</td><td><strong>session</strong></td><td><strong>thread</strong>（靠 <code class="mv-md-code">thread_id</code> 这个 metadata 键归组）</td></tr><tr><td>另一种视图</td><td>—</td><td><strong>trajectory</strong>：把 thread <strong>拍平</strong>成有序消息列表（去嵌套、去重）——<strong>看"交换了什么"，不看"怎么执行的"</strong></td></tr><tr><td>组织单位</td><td>project</td><td>project</td></tr><tr><td>质量挂载</td><td><strong>Score</strong></td><td><strong>Feedback</strong>（一个 tag + 一个分，绑定到 run）</td></tr><tr><td>底座</td><td><strong>built on OpenTelemetry</strong></td><td>OTLP <strong>双向</strong>：能摄入，也能导出到已有观测栈</td></tr></tbody></table>
+<p class="mv-md-p">【推导】<strong>用同一个指标衡量两者——"三层是否齐全"</strong>：</p>
+<pre class="mv-md-pre">层级（谁调用谁）：observation / run 可嵌套   → 两家都有
+边界（一次请求）：trace                       → 两家都有
+归组（多轮怎么串）：session / thread          → 两家都有</pre>
+<p class="mv-md-p">【结论】<strong>两家独立收敛到同一个模型，说明这不是产品口味，是问题的形状</strong>——<strong>这三件缺一不可</strong>（少了层级就归因不了、少了边界就聚合不了、少了归组就看不出"用户是不是在被反复折腾"）。</p>
+<p class="mv-md-p">【推论】<strong>对面试的含义</strong>：<strong>记结构，别背命名</strong>。被问"Langfuse 的 observation 和 span 什么关系"，答「<strong>span 是 observation 的一种，observation 是统称、可嵌套</strong>」就够了——<strong>背不全类型清单不会扣分，说错"它就是 span"才会</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么两家这么巧长成同一个形状？它反过来说明了什么？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">3. 语义标准：字段名会变，所以只记语义【事实】</h3>
+<p class="mv-md-p">【事实】<strong>两家共用的语义层是 OTel GenAI Semantic Conventions</strong>。以 LangSmith 的 OTel 接入为例：</p>
+<pre class="mv-md-pre">gen_ai.system              → provider
+gen_ai.prompt / completion → inputs / outputs
+gen_ai.usage.input_tokens  → usage
+平台自己的类型靠一个额外属性标注：
+langsmith.span.kind ∈ llm / chain / tool / retriever / embedding / prompt / parser</pre>
+<p class="mv-md-p">【事实】<strong>官方已把 <code class="mv-md-code">gen_ai.usage.prompt_tokens</code> / <code class="mv-md-code">completion_tokens</code> 标记为 deprecated</strong>（改用 <code class="mv-md-code">input_tokens</code> / <code class="mv-md-code">output_tokens</code>）。</p>
+<p class="mv-md-p">【推论】<strong>这就是"只记语义、不背平台字段"的理由</strong>——<strong>你背的属性名可能在下一版就被改名了</strong>，而「模型名 / 输入 / 输出 / token 用量 / 类型」这些<strong>语义对象不会被改</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么接入细节（端点、header、属性名）只能算【了解】层级？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">4. 采集：非阻塞 + 先落地再入库【事实】</h3>
+<figure-box num="写入路径：先落地，再入库" title="" note="SDK 本地缓冲 → Web 批量接收 → 立刻写 S3 → Redis 只留引用 → Worker 从 S3 取 → 写 ClickHouse"><svg viewBox="0 0 680 146" width="100%" xmlns="http://www.w3.org/2000/svg" style="font-family:var(--font-sans)">
+<title>Langfuse 的写入路径：先落地再入库</title>
+<desc>SDK 本地缓冲、Web 批量接收、立刻写 S3、Redis 只存引用、Worker 落库到 ClickHouse，共五段。</desc>
+<defs>
+<marker id="figagentops-ingest-path-svg-arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="40" width="112" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="96" y="62" font-size="13" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SDK 缓冲</text>
+<text x="96" y="82" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">不阻塞请求</text>
+<rect x="162" y="40" width="112" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="218" y="62" font-size="13" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">Web 接收</text>
+<text x="218" y="82" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">批量收下</text>
+<rect x="284" y="40" width="112" height="56" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="340" y="62" font-size="13" font-weight="500" fill="#04342C" text-anchor="middle" dominant-baseline="central">写 S3</text>
+<text x="340" y="82" font-size="12" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">原始事件先落地</text>
+<rect x="406" y="40" width="112" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="462" y="62" font-size="13" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">Redis</text>
+<text x="462" y="82" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">只存一条引用</text>
+<rect x="528" y="40" width="112" height="56" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="584" y="62" font-size="13" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">ClickHouse</text>
+<text x="584" y="82" font-size="12" fill="#185FA5" text-anchor="middle" dominant-baseline="central">Worker 落库</text>
+<line x1="155" y1="68" x2="159" y2="68" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-ingest-path-svg-arrow2)"/>
+<line x1="277" y1="68" x2="281" y2="68" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-ingest-path-svg-arrow2)"/>
+<line x1="399" y1="68" x2="403" y2="68" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-ingest-path-svg-arrow2)"/>
+<line x1="521" y1="68" x2="525" y2="68" stroke="#185FA5" stroke-width="1.5" marker-end="url(#figagentops-ingest-path-svg-arrow2)"/>
+<text x="40" y="126" font-size="12" fill="#5F5E5A">官方命名「可恢复性」：队列里不搬大对象（峰值不打库），数据库短暂不可用也不丢事件</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】<strong>写入路径不是「SDK → 数据库」</strong>，而是：</p>
+<pre class="mv-md-pre">SDK 本地批量缓冲（后台导出器，非阻塞）
+  → Web 容器批量接收 → 【立刻写进 S3 / Blob】（原始事件）
+  → Redis 里只留一条【引用】（当队列用，不搬大对象）
+  → Worker 从 S3 取 → 写进 ClickHouse</pre>
+<p class="mv-md-p">【推导】<strong>两个理由都是可靠性，不是性能</strong>：</p>
+<pre class="mv-md-pre">① 峰值不打库：队列里只有引用，突发流量不会把数据库压成超时
+② 库挂了不丢事件：原始事件已经在对象存储里，可以补处理
+   → 官方把这条命名为「可恢复性」（recoverability）</pre>
+<p class="mv-md-p">【事实】<strong>但非阻塞有代价，官方写明了两处</strong>：</p>
+<pre class="mv-md-pre">① 短命进程（脚本 / 一次性任务）必须在退出前显式 flush()
+   —— 否则进程先退、缓冲没发出去
+② LangSmith 的 OTLP 端点是【异步】的：收下批量就返回 200，后台再落库
+   —— 如果某个子 span 的父 span 从未被导出，
+      这个子 span 会在缓冲期过后被【静默丢弃、且不报错】
+      （自托管缓冲窗口由 REDIS_RUNS_EXPIRY_SECONDS 控制，默认 12 小时）</pre>
+<p class="mv-md-p">【推论】<strong>这条正好回答 [[母题-E2-Trace与可观测性]] 追问 5「怎么验证 Trace 本身没坏」</strong>：<strong>「我们有 Trace」不是靠接了 SDK 证明的，是靠「随便挑一条失败记录能 Replay 出来」证明的</strong>——<strong>静默丢失的定义就是"你以为记了，其实没有"</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"采集非阻塞"这个正确的设计，反过来制造了一类最难发现的故障？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">5. 存储：按查询形状选库，不是都塞进 Postgres【推导】</h3>
+<p class="mv-md-p">【推导】<strong>先问 Trace 的读写形状是什么</strong>：</p>
+<pre class="mv-md-pre">写：高吞吐追加、基本不更新、偶尔峰值
+读：按维度筛一大片 + 聚合（P95 延迟、token 总量、按 tag 分组）
+    → 典型的【分析型】查询，不是按主键取单行</pre>
+<p class="mv-md-p">【事实】<strong>两家给出的答案几乎一样</strong>：</p>
+<table class="mv-table"><thead><tr><th>库</th><th>存什么</th><th>官方给的理由</th></tr></thead><tbody><tr><td><strong>ClickHouse</strong>（OLAP）</td><td>traces / observations / scores</td><td>宽表、<strong>基本不可变</strong>、<strong>避免读时 join 与去重</strong>——正好吃「按维度筛 + 聚合」</td></tr><tr><td><strong>Postgres</strong>（OLTP）</td><td>项目、配置、账号、权限</td><td>事务型</td></tr><tr><td><strong>Redis / Valkey</strong></td><td>队列 + 缓存</td><td>API Key 与 Prompt 都走读缓存，否则每次取 Prompt 都要打库</td></tr><tr><td><strong>S3 / Blob</strong></td><td>原始事件、多模态附件、大导出</td><td>大对象不进数据库；多模态文件由 SDK 直传</td></tr></tbody></table>
+<p class="mv-md-p">【事实】<strong>LangSmith 自托管的组件划分几乎一样</strong>——ClickHouse 存 traces + feedback、PostgreSQL 存事务型、Redis / Valkey 做队列与缓存、Blob 可选但生产强烈建议；服务侧另有前端（Nginx）、后端、platform 后端、queue、Playground、ACE（任意代码执行）。</p>
+<p class="mv-md-p">【结论】<strong>两家在"用什么库"上又一次收敛 → 这是这类系统的形状，不是某家的偏好。</strong></p>
+<p class="mv-md-p">【推论】<strong>面试里最耐用的说法</strong>（比背某家用了什么库耐用得多）：</p>
+<p class="mv-md-p mv-md-quote"><strong>Trace 的读是分析型（大范围筛 + 聚合 + 不更新），写是高吞吐追加；所以它该落在列存上，事务库只留配置与权限——而原始事件先落对象存储，是为了让"入库"这个动作可以失败重来。</strong></p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么不把 trace 直接写进 Postgres？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">6. Trace 是易失资产，Dataset 是持久资产【事实 + 推导】</h3>
+<figure-box num="Trace 会过期，Dataset 不会" title="" note="Trace 保留 180 天、到期永久删除；Dataset 无限期保留，即使源 trace 已删"><svg viewBox="0 0 680 176" width="100%" xmlns="http://www.w3.org/2000/svg" style="font-family:var(--font-sans)">
+<title>Trace 会过期，Dataset 不会</title>
+<desc>Trace 在 SaaS 上保留 180 天后永久删除，Dataset 无限期保留；坏例必须在保留期内从前者搬到后者。</desc>
+<defs>
+<marker id="figagentops-trace-vs-dataset-svg-arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<marker id="figagentops-trace-vs-dataset-svg-arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="68" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">Trace</text>
+<text x="40" y="132" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">Dataset</text>
+<rect x="120" y="48" width="380" height="40" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text x="136" y="68" font-size="12" fill="#791F1F" dominant-baseline="central">保留 180 天</text>
+<text x="508" y="68" font-size="12" fill="#A32D2D" dominant-baseline="central">到期永久删除</text>
+<rect x="120" y="112" width="500" height="40" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="136" y="132" font-size="12" fill="#04342C" dominant-baseline="central">无限期保留（源 trace 已删也保留）</text>
+<line x1="622" y1="132" x2="634" y2="132" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#figagentops-trace-vs-dataset-svg-arrow4)"/>
+<line x1="200" y1="88" x2="200" y2="108" stroke="#0F6E56" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#figagentops-trace-vs-dataset-svg-arrow3)"/>
+<text x="212" y="98" font-size="12" fill="#5F5E5A" dominant-baseline="central">坏例要在保留期内搬走</text>
+</svg>
+</figure-box>
+<p class="mv-md-p">【事实】<strong>LangSmith 官方写明：SaaS 的 trace 数据自摄入起保留 180 天</strong>，到期<strong>永久删除</strong>（只保留少量用量统计元数据）；<strong>而 Dataset 无限期保留，即使源 trace 已被删除</strong>。</p>
+<p class="mv-md-p">【推导】<strong>这条约束能算出人力的硬指标</strong>——假设每天 10,000 个 run、失败率 5%（沿用 [[母题-E2-Trace与可观测性]] 第 4 节的假设，<strong>两个都是经验量级，不是实测值</strong>）：</p>
+<pre class="mv-md-pre">每天新增失败 trace = 10,000 × 5% = 500 条
+
+如果人工复核队列每天只能处理 50 条：
+  净积压 = 500 − 50 = 450 条/天
+  180 天保留期内累计积压 = 450 × 180 = 81,000 条
+  → 处理能力只覆盖了 10%
+  → 剩下的 90% 会在【还没被任何人类看过一眼】的时候就过期删除</pre>
+<p class="mv-md-p">【结论】<strong>「线上发现坏例 → 人工确认 → 沉淀为 dataset item」不是流程上的好习惯，是数据会过期带来的硬约束</strong>。</p>
+<p class="mv-md-p">【推论】<strong>三条连带结论</strong>：</p>
+<pre class="mv-md-pre">① 人工标注队列的处理能力必须按【失败量】定，不是按"想标多少"定
+② 这也是"失败全采、成功抽样"（E2 第 4 节）在人力侧的同一条约束：
+   信息密度高的才值得占人力，而它恰好也正是会被删掉的那部分
+③ 平台买的就是这条管道（从线上流量到可复现数据集）的现成实现
+   —— 自己拼当然也行，但 180 天从第一天上线就开始倒计时</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么说"坏例要尽快沉淀"不是流程建议而是硬约束？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">7. 责任边界：平台替不了什么【事实】</h3>
+<p class="mv-md-p">【事实】<strong>平台是控制面，它不替代两样东西</strong>：</p>
+<pre class="mv-md-pre">① 业务真值 —— 根因对不对、答案对不对，平台判不了
+② 代码里的确定性安全规则 —— 越权与提示注入的红线必须由代码保证
+   （[[母题-E5-越权与提示注入防护]]）</pre>
+<p class="mv-md-p">【事实】<strong>还有一条与 [[母题-E3-回归门禁与发布卡口]] 一致的口径</strong>：<strong>LLM Judge 与专家的一致性没达到可接受水平之前，不应让它单独触发线上质量告警或发布阻断</strong>。</p>
+<p class="mv-md-p">【事实】<strong>官方另有两条明确的结构要求</strong>（违反它们，平台就退化成日志）：</p>
+<pre class="mv-md-pre">① LLM 调用要落成 generation（才带 token 与成本）、工具调用要落成 tool
+   并挂在【正确的父节点】下
+② 不要把整个 Agent 循环包成一个父 generation
+   —— 那样每一步的 token 与成本全看不见，
+      LLM Judge 也无法按 observation 类型定位</pre>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>："我们用了平台"之后，还有哪些事一定得团队自己做？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">8. 选型与自建：按约束选，不按功能表选【取舍】</h3>
+<p class="mv-md-p">【事实】<strong>两家的自建门槛不一样</strong>（这决定"我们为什么没用它 / 用了它"怎么答）：</p>
+<table class="mv-table"><thead><tr><th></th><th>Langfuse</th><th>LangSmith</th></tr></thead><tbody><tr><td>许可</td><td><strong>核心 MIT</strong>；企业功能（管理 API、项目级 RBAC、保留策略、审计日志、SSO）需 license key</td><td><strong>自托管是 Enterprise 计划的 add-on</strong>，需 license key</td></tr><tr><td>自托管形态</td><td>Docker Compose（单机试用）· K8s Helm · 各云模板</td><td>K8s（官方给 AWS / GCP / Azure 架构指南）</td></tr><tr><td>评测依赖</td><td>评测功能需外接 LLM API / Gateway</td><td>Playground 与 ACE（任意代码执行）需对应服务</td></tr><tr><td>网络</td><td><strong>可在 VPC 内甚至完全离线部署</strong>（官方原文：*internet access is optional*）</td><td>见官方部署指南</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>选型只有三条约束，且它们不会过期</strong>（功能表半年就变）：</p>
+<pre class="mv-md-pre">① 数据能不能出网 —— 最硬的一条，直接决定要不要自托管
+② 已经在谁的生态里 —— LangChain / LangGraph 的自动埋点最省事
+   （但"不用 LangChain 就不能用 LangSmith"是错的：两家都支持 OTLP）
+③ 要不要和现有观测栈并存 —— OTLP 可同时投递到
+   Langfuse / LangSmith 与 Datadog / Grafana / Jaeger</pre>
+<p class="mv-md-p">【推导】<strong>自建要付什么，可以照第 5 节直接列出来</strong>：</p>
+<pre class="mv-md-pre">四件存储：队列（Redis）+ 列存（ClickHouse）+ 事务库（Postgres）+ 对象存储（S3）
+外加：它们之间的一致性、采集侧的非阻塞与先落地、以及短命进程的 flush</pre>
+<p class="mv-md-p">【结论】<strong>但要把两件事分开</strong>：<strong>Trace 管道是脏活但机械（可以外包给平台或开源）</strong>，<strong>评测集与 grader 是判断力（必须自己长）</strong>——<strong>团队真正该自建的是后者</strong>。<strong>这也是"自建 Trace/Eval"这句话在 JD 里的真实含义</strong>：它要的不是你会搭 ClickHouse，是<strong>你知道在没有平台的时候该建什么</strong>。</p>
+<p class="mv-md-p"><strong>到这里你应该能回答</strong>：如果面试官问"那你们为什么不自建"，你怎么分层次回答？</p>
+<hr class="mv-md-hr">
+<h3 class="mv-md-h mv-md-h3">9. 边界与常见误解</h3>
+<table class="mv-table"><thead><tr><th>常见说法</th><th>修正</th></tr></thead><tbody><tr><td>「上了 Langfuse / LangSmith 就有可观测性和评测了」</td><td><strong>那只完成了采集</strong>。<strong>没有结构就没有归因</strong>：LLM 调用要落成 <code class="mv-md-code">generation</code>、工具调用要落成 <code class="mv-md-code">tool</code> 并挂在正确的父节点下；<strong>官方明确警告不要把整个 Agent 循环包成一个父 <code class="mv-md-code">generation</code></strong>——<strong>那样每一步的 token 与成本全看不见</strong>，LLM Judge 也无法按类型定位</td></tr><tr><td>「Trace 都存下来了，随时能查」</td><td><strong>两个反例</strong>：<strong>保留期到了会删</strong>（SaaS 180 天）；<strong>OTLP 接入下孤儿 span 会被静默丢弃</strong>（父 span 从未导出，子 span 到期丢弃且不报错）。<strong>所以"有 Trace"是待验证的断言，不是接入的副产品</strong></td></tr><tr><td>「用 OTel 就能无缝接」</td><td><strong>路径与 ID 都有具体的坑</strong>：<code class="mv-md-code">OTEL_EXPORTER_OTLP_ENDPOINT</code> 要填 <strong>base URL</strong>（如 <code class="mv-md-code">https://api.smith.langchain.com/otel</code>），<strong>不能再拼 <code class="mv-md-code">/v1/traces</code></strong>（否则变成 <code class="mv-md-code">.../otel/v1/traces/v1/traces</code> 报 404）；<strong>原生 OTLP 的 <code class="mv-md-code">parentSpanId</code> 是 8 字节而平台 run ID 是完整 UUID，跨系统续接父节点必须显式把父 UUID 写进属性</strong>。细节属【了解】层级，<strong>但知道"有坑"能防住"我们直接接上了"这种过度承诺</strong></td></tr><tr><td>「不用 LangChain 就不能用 LangSmith」</td><td><strong>错</strong>。两家都支持 OTLP 摄入，<strong>LangSmith 官方明确写了它不要求 LangChain</strong>（LangChain / LangGraph 只是自动埋点最省事的那一档）</td></tr><tr><td>「自建就是把 trace 存进数据库」</td><td><strong>差得远</strong>。自建要付的是<strong>队列 + 列存 + 事务库 + 对象存储</strong>四件套与它们的一致性，外加非阻塞采集与 flush。<strong>而真正该自建的其实是评测集与 grader，不是存储</strong></td></tr><tr><td>「平台能判定我们的 Agent 做得对不对」</td><td><strong>不能</strong>。平台存的是你给它的分，<strong>业务真值不在平台职责内</strong>（[[母题-E1-评测集设计与pass^k]] 的 grader 顺序：能确定性的不用模型 Judge）</td></tr></tbody></table>
+<p class="mv-md-p">【取舍】<strong>读成一句话</strong>：<strong>平台把 E 簇前六节做成了现成管道</strong>——<strong>但管道不等于结论：结构要你自己设计，真值要你自己确认，而保留期在你毫不知情的时候就已经开始倒计时。</strong></p>
+<hr class="mv-md-hr"></div></div>
+<div class="mv-section" id="s-quiz"><h2 class="mv-section-title">二 · 自测 <span class="mv-topic-meta">先自己想，再翻面看答案 · 做错说明没懂</span></h2><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q1</span><span class="mv-chip ghost">判读</span></div><flip-card card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval-q1" tag="评测观测与治理" q="下面两种&quot;用了平台&quot;的状态，哪一种真的具备了归因能力？为什么？&#10;``text&#10;甲：接了 SDK，Agent 的每次调用都上报，UI 里能看到完整调用链&#10;乙：接了 SDK，且 LLM 调用落成 generation、工具调用落成 tool 并挂在下令它的那一步下&#10;``" a="乙。&#10;``text&#10;甲只完成了【采集】：数据进来了，但没有类型、没有正确的父子关系&#10;→ 无法按 observation 类型筛选（Judge 也就无从定位）&#10;→ 无法回答&quot;这一步花了多少 token&quot;&#10;乙完成了【建模】：类型 + 结构都在&#10;→ 可以按 generation 聚合成本、按 tool 筛异常&#10;`&#10;【结论】&quot;接上了&quot;和&quot;能归因&quot;之间隔着一层建模工作——而这层工作平台不会替你做。&#10;【补充】官方还警告了一种常见的反向错误：把整个 Agent 循环包成一个父 generation`，只记最终输出——那样每一步的 token 与成本全被聚合掉了，等于自己把归因能力删掉。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q2</span><span class="mv-chip ghost">设计</span></div><flip-card card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval-q2" tag="评测观测与治理" q="团队决定不用平台、自建。请列出最少要付的五样东西，并指出其中哪一样最容易被漏掉。" a="``text&#10;① 列存（ClickHouse 一类）—— 承接&quot;按维度筛 + 聚合&quot;的分析型读&#10;② 事务库（Postgres 一类）—— 项目、配置、权限&#10;③ 队列 + 缓存（Redis 一类）—— 削峰，且队列里只放引用&#10;④ 对象存储（S3 一类）—— 原始事件先落地，让&quot;入库&quot;可以失败重来&#10;⑤ 非阻塞的采集 SDK —— 并且短命进程要能 flush&#10;最容易被漏掉的是【④ + flush 的组合】：&#10;只做&quot;队列 → 数据库&quot;，数据库一抖就丢事件；&#10;只做非阻塞而不处理短命进程，脚本类任务会静默少数据&#10;``&#10;【推论】所以&quot;自建&quot;的最小可用形态不是一张表，是「先落地 + 再入库」这条链。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q3</span><span class="mv-chip ghost">计算</span></div><flip-card card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval-q3" tag="评测观测与治理" q="每天 10,000 个 run、失败率 5%，平台 trace 保留 180 天。人工复核队列每天能处理 50 条。&#10;问：保留期内会积压多少条从未被人工看过的失败 trace？这说明什么？" a="``text&#10;每天新增失败 trace = 10,000 × 5% = 500 条&#10;净积压 = 500 − 50 = 450 条/天&#10;180 天累计 = 450 × 180 = 81,000 条&#10;处理能力覆盖率 = 50 / 500 = 10%&#10;``&#10;【结论】90% 的失败 trace 会在没被任何人类看过一眼时就过期删除。&#10;【推论】这说明两件事：① 人工标注队列的容量必须按失败量倒推，不是按&quot;想标多少&quot;定；② &quot;坏例要尽快沉淀成 dataset&quot;是硬约束——因为 Trace 会过期而 Dataset 不会。"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q4</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval-q4" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;我们全链路都上了 OpenTelemetry，任何平台都能无缝接上，父 span 关系自动就对了。&quot;" a="两处不准确。&#10;1. OTLP 的 span ID 与平台 run ID 不是一回事。原生 OTLP 的 parentSpanId 是 8 字节，而平台 run ID 是完整 UUID，所以跨系统续接父节点必须显式把父 UUID 写进属性（如 langsmith.span.parent_id），不会&quot;自动就对&quot;。&#10;2. &quot;无缝&quot;忽略了异步带来的静默丢失：OTLP 端点收下批量就返回 200，后台再落库；如果父 span 从未被导出，子 span 会在缓冲期后被丢弃且不报错（自托管缓冲窗口 REDIS_RUNS_EXPIRY_SECONDS 默认 12 小时）。&quot;接上了&quot;之后必须验证，而不是相信。&#10;【准确说法】&quot;我们走 OTLP 接入，父节点的 UUID 是显式写进属性的；并且上线后会挑失败的 trace 做 Replay 反验，确认没有静默丢失。&quot;"></flip-card></div><div class="mv-qitem"><div class="mv-qhead"><span class="mv-qid">Q5</span><span class="mv-chip ghost">纠错</span></div><flip-card card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval-q5" tag="评测观测与治理" q="下面这段话哪里不准确？&#10;&quot;Langfuse 和 LangSmith 都是闭源的 SaaS，所以数据合规的场景只能自建。&quot;" a="两处不准确。&#10;1. Langfuse 核心是 MIT 许可的开源项目，可自托管，且官方写明可在 VPC 内甚至完全离线部署（internet access is optional）；需要 license key 的是企业功能（管理 API、项目级 RBAC、保留策略、审计日志、SSO）。&#10;2. &quot;只能自建&quot;这个结论跳过了另一条路——LangSmith 自托管是 Enterprise 计划的 add-on（需要 license key 与 K8s 部署）。所以合规场景的正确判据是&quot;数据能不能出网&quot;，选型结论要落到&quot;哪一家能自托管、以及自建要付什么&quot;，而不是笼统地说&quot;只能自建&quot;。&#10;【准确说法】&quot;合规约束先落到『数据能不能出网』这一条：能出网就用 SaaS；不能出网，Langfuse 有 MIT 核心可以离线自托管，LangSmith 需要 Enterprise add-on。选型看的是约束，不是功能表——功能表半年就变。&quot;&#10;---"></flip-card></div></div>
+  <div class="mv-section" id="s-output">
+    <h2 class="mv-section-title">三 · 面试输出 <span class="mv-topic-meta">闭卷口述 60 秒，再看结论</span></h2>
+    <div class="mv-ask">
+      <p class="mv-ask-q">观测与评测这套东西，业界是怎么做成产品的——它替你做了什么、不替你做什么；如果不用，自己要付什么？</p>
+      <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
+    </div>
+    <flip-card gradable card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval" tag="评测观测与治理" q="观测与评测这套东西，业界是怎么做成产品的——它替你做了什么、不替你做什么；如果不用，自己要付什么？" a="平台卖的不是&quot;更漂亮的日志&quot;，是一条管道——采集（SDK / OTel）→ Trace 树 → Score → Dataset + Experiment，正好把 E 簇三条主线做成了现成实现。两家的数据模型独立收敛到同一套形状（层级 / 边界 / 归组：observation 或 run 可嵌套 → trace → session 或 thread），说明这是问题的形状而不是产品口味——所以记结构、别背命名。采集必须非阻塞且先落地再入库（SDK 缓冲 → Web 批量 → 立刻写 S3 → Redis 只留引用 → Worker 落 ClickHouse），两个理由都是可靠性：峰值不打库、库挂了不丢事件——代价是短命进程要 flush()、以及 OTLP 下孤儿 span 会被静默丢弃，所以&quot;有 Trace&quot;必须靠 Replay 反向验证。存储按查询形状选：Trace 的读是分析型、写是追加型 → 列存 + 队列 + 事务库 + 对象存储。最关键的一条是 Trace 会过期而 Dataset 不会（SaaS 只留 180 天，到期永久删除；Dataset 无限期保留）——所以&quot;坏例要尽快沉淀&quot;是硬约束，人工标注队列的容量必须按失败量倒推（每天 500 条失败、每天只能看 50 条时，90% 会在没人看过之前就过期）。最后，平台是控制面：业务真值与代码里的安全红线它都替不了，Judge 与专家一致性没达标前不能单独触发发布阻断；选型只看三条不会过期的约束——数据能不能出网、在谁的生态里、要不要和现有观测栈并存。"></flip-card>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" style="margin-top:10px">为什么重要：<strong>字节 JD 把它写进了「强竞争力要求」</strong>（不是加分项，是明牌）。<strong>但这类题最容易答砸在两个方向</strong>：① <strong>只说"我们用了 Langfuse"</strong>——那是汇报工具，不是回答能力；② <strong>背功能对比表</strong>——功能表半年就变，而且面试官问的是"为什么这么设计"。<strong>真正值钱的是三层：数据的形状（为什么都长这样）、管道的形状（为什么必须这么存）、以及责任边界（哪些事平台替不了）。</strong></p>
+  </div>
+  <div class="mv-section" id="s-conclusion">
+    <h2 class="mv-section-title">一句话结论 <span class="mv-topic-meta">全卡唯一要背的锚点</span></h2>
+    <div class="mv-conclusion"><strong>平台卖的不是"更漂亮的日志"，是一条管道</strong>——<strong>采集（SDK / OTel）→ Trace 树 → Score → Dataset + Experiment</strong>，正好把 E 簇三条主线做成了现成实现。<strong>两家的数据模型独立收敛到同一套形状</strong>（层级 / 边界 / 归组：observation 或 run 可嵌套 → trace → session 或 thread），<strong>说明这是问题的形状而不是产品口味</strong>——所以记结构、别背命名。<strong>采集必须非阻塞且先落地再入库</strong>（SDK 缓冲 → Web 批量 → <strong>立刻写 S3</strong> → Redis 只留引用 → Worker 落 ClickHouse），<strong>两个理由都是可靠性：峰值不打库、库挂了不丢事件</strong>——代价是<strong>短命进程要 <code class="mv-md-code">flush()</code>、以及 OTLP 下孤儿 span 会被静默丢弃</strong>，所以<strong>"有 Trace"必须靠 Replay 反向验证</strong>。<strong>存储按查询形状选</strong>：Trace 的读是分析型、写是追加型 → <strong>列存 + 队列 + 事务库 + 对象存储</strong>。<strong>最关键的一条是 Trace 会过期而 Dataset 不会</strong>（SaaS 只留 <strong>180 天</strong>，到期永久删除；Dataset 无限期保留）——<strong>所以"坏例要尽快沉淀"是硬约束，人工标注队列的容量必须按失败量倒推</strong>（每天 500 条失败、每天只能看 50 条时，<strong>90% 会在没人看过之前就过期</strong>）。<strong>最后，平台是控制面</strong>：<strong>业务真值与代码里的安全红线它都替不了</strong>，<strong>Judge 与专家一致性没达标前不能单独触发发布阻断</strong>；<strong>选型只看三条不会过期的约束——数据能不能出网、在谁的生态里、要不要和现有观测栈并存。</strong></div>
+    
+    <ul class="mv-kw" style="margin-top:1.25rem"><li><strong>管道四段</strong>（采集 → Trace → Score → Dataset）</li><li><strong>三层同构</strong>（层级 · 边界 · 归组；记结构不背命名）</li><li><strong>LangSmith 单 trace 上限 25,000 run</strong></li><li><strong>OTel GenAI SemConv 是公共语义层</strong>（字段名会变）</li><li><strong>先落地再入库</strong>（S3 → Redis 引用 → ClickHouse；可恢复性）</li><li><strong>短命进程 flush · 孤儿 span 静默丢弃</strong></li><li><strong>列存吃分析型读</strong></li><li><strong>Trace 易失 180 天 · Dataset 持久</strong></li><li><strong>标注队列容量按失败量倒推</strong>（500 vs 50 → 90% 过期）</li><li><strong>平台替不了真值与安全红线</strong></li><li><strong>选型三约束</strong>（出网 · 生态 · 并存）</li></ul>
+    <p class="mv-note">卡住时靠这几个词重建整条链。</p>
+
+  </div>
+
+  <div class="mv-section" id="s-extra">
+    <h2 class="mv-section-title">展开（先自答，再看 · 默认收起，不进复训调度）</h2>
+    <collapse-panel title="完整回答 · 口述稿（先自己答，再看）"><p class="mv-note" style="margin:0 0 .625rem">实测 258 字 · 按 4 字/秒折算约 64 秒（秒数是估算，字数才是实测）</p><p class="mv-md-p"><strong>平台卖的不是"更漂亮的日志"，是一条管道</strong>：<strong>采集（SDK / OTel）→ Trace 树 → Score → Dataset + Experiment</strong>，正好把 E 簇三条主线做成了现成实现。</p>
+<p class="mv-md-p">两家的数据模型<strong>独立收敛到同一套形状</strong>（层级 / 边界 / 归组：Langfuse 的 observation 可嵌套 → trace → session；LangSmith 的 run → trace → thread，且多一个 trajectory 视图）——<strong>说明这是问题的形状而不是产品口味：记结构、别背命名</strong>。硬数字：LangSmith 单条 trace 上限 <strong>25,000 个 run</strong>，超过拒收。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：平台 = 采集 → Trace → Score → Dataset+Experiment 的管道；两家的模型同构。</li><li><strong>推导链</strong>：为什么采集要异步落盘 → 两类丢失（缓冲未刷 / 孤儿 span）→ 用 Replay 反验 → 自建三笔成本 → 选型看约束。</li><li><strong>量化</strong>：LangSmith 单条 trace 上限 25,000 个 run；孤儿 span 自托管窗口默认 12 小时。</li><li><strong>边界与常见误解</strong>：同步写库会把观测延迟加进业务请求延迟，且峰值打爆数据库；功能表谁都能勾选，差别在机房/延迟/上限/自托管这些约束上。</li></ul></collapse-panel>
+    <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>Langfuse 和 LangSmith 的数据模型有什么差别？</strong></strong></p>
+<p class="mv-md-p"><strong>命名不同、结构同构</strong>。<strong>Langfuse：observation（可嵌套，<code class="mv-md-code">span</code> 只是其中一种）/ trace / session</strong>；<strong>LangSmith：run（= span）/ trace / thread</strong>，<strong>且多一个 trajectory 视图</strong>（把 thread 拍平成有序消息列表）。<strong>差别值得提的硬数字：LangSmith 单条 trace 上限 25,000 个 run，超过拒收。</strong></p>
+<p class="mv-md-p"><strong>2. <strong>Trace 的采集为什么不能同步写库？</strong></strong></p>
+<p class="mv-md-p"><strong>同步写会把观测的延迟加进业务请求的延迟里</strong>，而且<strong>峰值会打爆数据库</strong>。正确做法是<strong>本地批量缓冲 + 后台导出</strong>，<strong>服务端收到后先写对象存储、队列里只放引用</strong>，让"入库"这个动作可以失败重来。<strong>代价是短命进程必须 <code class="mv-md-code">flush()</code>。</strong></p>
+<p class="mv-md-p"><strong>3. <strong>怎么确认没有丢 trace？</strong></strong></p>
+<p class="mv-md-p"><strong>两类丢失</strong>：① <strong>缓冲未刷</strong>（短命进程 / 进程被杀）② <strong>孤儿 span</strong>（父 span 从未导出 → 子 span 到期静默丢弃，自托管窗口 <code class="mv-md-code">REDIS_RUNS_EXPIRY_SECONDS</code> 默认 12 小时）。<strong>验证手段是 Replay</strong>：<strong>挑一条失败的 trace，看能不能复现出当时的行为</strong>（[[母题-E3-回归门禁与发布卡口]]）。</p>
+<p class="mv-md-p"><strong>4. <strong>为什么不适合把 trace 放进 Postgres？</strong></strong></p>
+<p class="mv-md-p"><strong>读的形状不匹配</strong>：trace 的读是<strong>大范围筛 + 聚合 + 基本不更新</strong>，属于分析型；<strong>列存宽表 + 避免读时 join</strong> 才吃得下。<strong>事务库留给项目、配置与权限。</strong>（这是两家都这么选的理由，不是某家的偏好。）</p>
+<p class="mv-md-p"><strong>5. <strong>为什么选 Langfuse / LangSmith？</strong></strong></p>
+<p class="mv-md-p"><strong>按约束选</strong>：① <strong>数据能不能出网</strong>（Langfuse 核心 MIT、可离线自托管；LangSmith 自托管是 Enterprise add-on）② <strong>在谁的生态里</strong>（LangChain / LangGraph 自动埋点最省事，<strong>但不用 LangChain 也能用 LangSmith</strong>）③ <strong>要不要和现有观测栈并存</strong>（OTLP 可同时投递）。<strong>功能表半年就变，约束不会变。</strong></p>
+<p class="mv-md-p"><strong>6. <strong>不用平台、自建要付什么？</strong></strong></p>
+<p class="mv-md-p"><strong>队列 + 列存 + 事务库 + 对象存储</strong>四件套与它们的一致性，外加<strong>非阻塞采集与 flush</strong>。<strong>但真正该自建的是评测集与 grader</strong>（判断力），<strong>不是存储</strong>（脏活但机械）。</p>
+</collapse-panel>
+    <collapse-panel title="同类变体"><ul class="mv-md-ul"><li>「你们项目里是怎么做可观测的？」——<strong>别报工具名，报"做到第几段"</strong>：<strong>有没有 Trace 结构、有没有 Score、坏例有没有沉淀成 Dataset、改动有没有可比的 Experiment</strong>。<strong>四段里缺哪段，就老实说缺哪段——这比"我们用了平台"有信息量得多。</strong></li><li>「Agent 的可观测性和微服务的可观测性有什么不同？」——<strong>多三层语义</strong>（模型调用的 token 与版本、检索的候选与分数、人工审批）<strong>外加一件事：非确定性</strong>——<strong>同一输入两次运行的 Trace 不同</strong>，所以<strong>对比两条 Trace 时要知道"差异可能是采样噪声，也可能是真的退化"</strong>（[[母题-E1-评测集设计与pass^k]] 的 pass^k 就是这个问题的度量）。</li><li>「自建 Trace/Eval 该从哪一步开始？」——<strong>反过来做</strong>：<strong>先建评测集与 grader（判断力，没有替代品），再考虑要不要自建存储（脏活，能外包就外包）</strong>。<strong>顺序反了会出现"有漂亮的 trace 界面、但没有任何一条可复现的测试"。</strong></li></ul></collapse-panel>
+    <collapse-panel title="可迁移场景"><p class="mv-md-p">- <strong>RuleArena</strong>：<strong>最贴近的一处是"Dataset 与门禁"</strong>——<strong>hidden 17 条由 Evaluation 侧维护、Runtime 不可读、只用于最终裁决并重复多次</strong>，这就是本卡第 6 节"Dataset 是持久资产"的自建版本。<strong>如果面试被问"你们和平台方案比差在哪"，如实答：差在"从线上流量自动沉淀坏例"这一段，我们当时是人工挑的。</strong> - <strong>EnergyOps</strong>：<strong>六层评测与数据飞轮</strong>——<strong>"发现问题的集合"要靠 Trace 产出的 Bad Case 来补充</strong>，而本卡的保留期约束说明<strong>这个补充动作有时限</strong>。 - <strong>数驭穹图</strong>：<strong>150 条评测集</strong>若放进平台，就是 Dataset；<strong>Retrieval Eval 与 Answer Eval 分开</strong>，对应 Score 挂在<strong>不同的 observation</strong> 上而不是挂在 trace 根上。</p></collapse-panel>
+    <collapse-panel title="完整回答骨架"><p class="mv-md-p">先答"我们做了第几段"（不是"用了哪家"）→ <strong>数据模型三层（同构，说明是问题形状）</strong> → <strong>采集先落地再入库 + 静默丢失的坑</strong> → <strong>存储按查询形状选库</strong> → <strong>Trace 会过期、Dataset 不会（给算式）</strong> → <strong>责任边界（真值 / 红线 / Judge 不单独阻断）</strong> → 收束到"选型看约束不看功能表"</p></collapse-panel>
+    <collapse-panel title="核心不变量 / 主线"><p class="mv-md-p"><strong>平台把"怎么证明它变好了"这件事做成了管道，但管道不等于结论。</strong> 三件事永远在你这边：<strong>结构</strong>（类型与父子关系要建模）、<strong>真值</strong>（对不对由你确认）、<strong>时间</strong>（保留期从第一天就在倒计时）。</p></collapse-panel>
+    <collapse-panel title="本次断点与通过证据"><p class="mv-md-p"><strong>本次断点</strong>：【待填 —— 闭卷时具体卡在哪，写成事实不写评价】</p><p class="mv-md-p"><strong>通过证据</strong>：能说出<strong>管道四段</strong>并把它对回 E 簇的三条主线；能说出<strong>两家数据模型三层同构</strong>且举出「LangSmith 单 trace 上限 25,000 run」；能画出<strong>先落地再入库</strong>的写入路径并说出两个理由；能算出<strong>"每天 500 条失败 / 每天能看 50 条 → 180 天积压 81,000 条"</strong>并解释它把"沉淀坏例"变成了硬约束；能说出<strong>平台替不了的三件事</strong>（结构建模 / 业务真值 / 安全红线）；<strong>且自测 5 题全对</strong>。</p></collapse-panel>
+  </div>
+
+  <div class="mv-section" id="s-recycle">
+    <h2 class="mv-section-title">复训</h2>
+    <div class="mv-ladder">
+      <span class="mv-ladder-step">D1</span>
+      <span class="mv-ladder-step">D3</span>
+      <span class="mv-ladder-step">D7</span>
+      <span class="mv-ladder-step">D14</span>
+      <span class="mv-ladder-step">D30</span>
+      <span class="mv-topic-meta" style="margin-left:6px">进度在训练台统一调度</span>
+    </div>
+  </div>
+</div>
+<script src="../_components/marvis.js"></script>
+<script>
+document.addEventListener('mv-grade', function (e) {
+  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
+  var t = document.getElementById('mv-grade-tip');
+  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
+});
+</script>
+</body>
+</html>

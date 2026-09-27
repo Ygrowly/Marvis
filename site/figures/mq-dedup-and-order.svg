@@ -1,0 +1,38 @@
+<svg viewBox="0 0 680 386" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>重复的消解与顺序的粒度</title>
+<desc>左：幂等的四类查重与一个稳定业务键要求；右：按业务键哈希做局部串行，保序的粒度就是并行的粒度。</desc>
+<defs>
+<marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="500" fill="#2C2C2A" dominant-baseline="central">重复靠「幂等」消化　·　顺序靠「局部串行」拿</text>
+
+<rect x="40" y="46" width="290" height="186" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="56" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">四类查重，问的是同一句话</text>
+<text x="56" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">唯一键查重（Redis）　·　唯一约束（数据库）</text>
+<text x="56" y="112" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">乐观锁版本号　·　状态机条件更新</text>
+<text x="56" y="136" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">幂等键必须是【稳定业务键】：</text>
+<text x="56" y="154" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">业务键 + 动作 + 目标 + 参数 + 版本/步骤</text>
+<text x="56" y="178" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">✗ 消息 ID / offset（重投就换新值）</text>
+<text x="56" y="196" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">✗ ToolCallID（每次调用都变）</text>
+<text x="56" y="216" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">粒度要对到「一次动作」，不是「一个实体」</text>
+
+<rect x="350" y="46" width="290" height="186" rx="10" fill="#F1EEF8" stroke="#7A6FA8" stroke-width="0.5"/>
+<text x="366" y="68" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">按业务键哈希 → 通道内串行，通道间并行</text>
+<text x="366" y="92" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">订单 A 创建·支付·完成 ── 全进分区 1（串行）</text>
+<text x="366" y="110" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">订单 B 创建·支付·完成 ── 全进分区 2（串行）</text>
+<text x="366" y="128" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">订单 C ── 分区 3　…　A 与 B 之间【并行】</text>
+<text x="366" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">单分区吞吐 = 1 ÷ 单条处理时间</text>
+<text x="366" y="170" font-family="system-ui,sans-serif" font-size="11" fill="#633806" dominant-baseline="central">单条 5ms → 200 条/秒　　要 2000 条/秒 → 10 个分区</text>
+<text x="366" y="194" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">★ 但单订单上限仍是 200 条/秒</text>
+<text x="366" y="212" font-family="system-ui,sans-serif" font-size="11" fill="#8A3B2A" dominant-baseline="central">　 加分区只提高总量，不提单键（热点键问题）</text>
+
+<rect x="40" y="244" width="600" height="60" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/>
+<text x="58" y="264" font-family="system-ui,sans-serif" font-size="12" font-weight="500" fill="#2C2C2A" dominant-baseline="central">全局串行（只用一个分区）为什么是错的</text>
+<text x="58" y="284" font-family="system-ui,sans-serif" font-size="11" fill="#444441" dominant-baseline="central">并行度 = 1，吞吐被单条处理时间锁死（200 条/秒）；加机器无效、加消费者无效、加分区就推翻了「全局有序」前提。</text>
+
+<rect x="40" y="314" width="600" height="56" rx="10" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="58" y="334" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">乱序还有两个隐藏来源，光靠单分区挡不住：</text>
+<text x="58" y="354" font-family="system-ui,sans-serif" font-size="11" fill="#412402" dominant-baseline="central">① 消费端对同一分区开多线程　② 生产者重试（enable.idempotence=false 且 max.in.flight>1）—— linger.ms 治不了这个</text>
+</svg>

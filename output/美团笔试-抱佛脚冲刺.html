@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="0IG9oHoETYVrUX2ysAiaU6">
+<head data-page-node-id="nFIDwUeyYGKNcYUDvqeb1U">
+<meta charset="UTF-8" data-page-node-id="E7xDjWkMIhzsJ6VWO9ZimY">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="i4BgMor0EchpJv8z4PaEeA">
+<title>美团笔试 · 抱佛脚冲刺（内容版）</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2328; --ink2:#4b5563; --ink3:#6b7280;
+    --line:#e5e7eb; --line2:#d1d5db;
+    --red:#c0392b; --redbg:#fdf2f1;
+    --amber:#b45309; --amberbg:#fffbeb;
+    --blue:#1d4ed8; --bluebg:#eff4ff;
+    --green:#047857; --greenbg:#ecfdf5;
+    --purple:#6d28d9; --purplebg:#f5f3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:26px 20px 60px;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:14.5px;line-height:1.72;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 6px}
+  .sub{color:var(--ink3);font-size:13px}
+  .src{margin-top:10px;padding:10px 13px;border-radius:6px;background:var(--amberbg);
+    border:1px solid #fde68a;font-size:12.6px;color:#7c4a03;line-height:1.7}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--blue);line-height:1.3}
+  h2 .n{color:var(--ink3);font-weight:600;font-size:14px;margin-right:6px}
+  h3{font-size:14.5px;margin:16px 0 8px}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{background:#eef1f5;padding:1.5px 5px;border-radius:4px;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:14px 18px;margin:12px 0;break-inside:avoid;page-break-inside:avoid}
+  .hero{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:16px 20px;margin:14px 0;break-inside:avoid;page-break-inside:avoid}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:var(--card)}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f3f6;font-weight:600;color:var(--ink2);font-size:13px}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .p-red{background:var(--redbg);color:var(--red)}
+  .p-amber{background:var(--amberbg);color:var(--amber)}
+  .p-blue{background:var(--bluebg);color:var(--blue)}
+  .p-green{background:var(--greenbg);color:var(--green)}
+  .p-purple{background:var(--purplebg);color:var(--purple)}
+  .box{border-radius:8px;padding:12px 15px;margin:12px 0;border:1px solid;break-inside:avoid;page-break-inside:avoid}
+  .b-red{background:var(--redbg);border-color:#f5c6c0}
+  .b-amber{background:var(--amberbg);border-color:#fde68a}
+  .b-blue{background:var(--bluebg);border-color:#c7d8fd}
+  .b-green{background:var(--greenbg);border-color:#a7f3d0}
+  .b-purple{background:var(--purplebg);border-color:#ddd6fe}
+  .box .t{font-weight:700;font-size:13.8px;margin-bottom:5px}
+  pre{background:#1e2228;color:#e6e9ef;border-radius:8px;padding:13px 16px;overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.4px;line-height:1.65;
+    margin:10px 0;white-space:pre;break-inside:avoid;page-break-inside:avoid}
+  pre .c{color:#8b95a5}
+  pre .k{color:#8ec9ff}
+  pre .s{color:#b9e39a}
+  .cmt{color:var(--ink3);font-size:12.8px}
+  .fp{font-weight:700;color:var(--blue)}
+  .ans{color:var(--green);font-weight:700}
+  footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.4px;line-height:1.7}
+  @media print{body{background:#fff;padding:0;font-size:11px}
+    .card,.hero,.box,pre,tr{break-inside:avoid;page-break-inside:avoid}
+    pre{background:#f1f3f6;color:#1f2328}pre .c{color:#5b6572}pre .k{color:#0b53b6}pre .s{color:#0b6b3a}}
+</style>
+</head>
+<body data-page-node-id="OEUCAEPlyg23kkRvgC7QWA">
+<div class="wrap" data-page-node-id="RCAbkmTDwPW5IuB8kZihtR">
+
+<header data-page-node-id="xCeuZkVp6q8sAx39WPNvkz">
+  <h1 data-page-node-id="yFz5I7CaumcVKAKNoxqBJj">美团笔试 · 抱佛脚冲刺（内容版）</h1>
+  <div class="sub" data-page-node-id="Ah29Szzx6lVDtna7e1lWgy">三板块：选择题 + 编程（1 道）+ AI Coding · 读于 <b data-page-node-id="uqqOZO2VMMqr12jHE0ILNg">17:20 – 18:45</b>，配合作战卡（规则版）用 · 2026-09-22</div>
+  <div class="src" data-page-node-id="ye2jPIDSow5aREI2sml9RE">
+    <b data-page-node-id="zCnD3YoGjopZySUb4BLALq">信源：</b>选择题第 01 节的十道「考点指纹」来自 <b data-page-node-id="fRZK8GGGGmgOf9JwGZdHda">2026-09-05 场牛客考生真题回忆</b>（题目 + 答案 + 解析均为考生整理，<b data-page-node-id="w7lgL0NVkxteYcFoe2q0Az">单题答案可能有个别误差，但考点形态是可靠的</b>）；编程考点同理。AI Coding 打法来自多场考生经验汇总。<b data-page-node-id="bLHBbE57pLnOVYeFQqBB3q">本页不是今年的题，是「美团爱怎么考」的指纹库。</b>
+  </div>
+</header>
+
+<h2 data-page-node-id="LAvP4bmOVt8eMBWSQHnkpB"><span class="n" data-page-node-id="MpBOhjORsjNHtpcWAihxCc">00</span>第一性原理：三个板块是三种考试</h2>
+
+<div class="hero" data-page-node-id="2H7QG4EhLG84HQByFMpwPx">
+  <table style="margin:0" data-page-node-id="FnAIqXBXgYgXT8YwDs3pbX">
+    <thead data-page-node-id="K2urP2io9nbchTUe2zsgXq"><tr data-page-node-id="bdp1fG1f7lOxUdihBPLhSn"><th style="width:14%" data-page-node-id="73pNPZGQWz8yroBh0AGnpV">板块</th><th style="width:18%" data-page-node-id="2hHETv9TxVtyLQF2G6fNgq">本质</th><th data-page-node-id="4NUlf6G1shcEpmK7kARies">你怎么输</th><th style="width:22%" data-page-node-id="bfVpZTkiTaacjtinL3yQal">抱佛脚的姿势</th></tr></thead>
+    <tbody data-page-node-id="wsmj9gKqTXEV1DPPJCyJk7">
+      <tr data-page-node-id="zFTC8q27ecejXyPS1ijUbJ"><td data-page-node-id="yPQqw1xCDEDfaEn1DVitDg"><b data-page-node-id="kgxJ2mFdB3l9NAudhOJkYP">选择题</b></td><td data-page-node-id="BMqtkl9kq5iTEsRqw4b8ko"><span class="pill p-blue" data-page-node-id="i3Erp7OZH7fg9KXgzOr6nu">识别题</span></td><td data-page-node-id="cWgpSh8mVuxPrOWb2FcEfO">看错考点，不是不会</td><td data-page-node-id="2uK6nYU0xc3asVLgc1pJuf"><b data-page-node-id="UBzCQJjslGSDBDvFyMyHvV">记指纹</b>（第 01 节）</td></tr>
+      <tr data-page-node-id="VCWaW8DPEyFvE471SAVehC"><td data-page-node-id="KwyXjpcfGJ2RhpMFBdkm1d"><b data-page-node-id="mreAFdwngIrlpe4JE3wbNM">编程 1 道</b></td><td data-page-node-id="pjU1d2cMzB9tyF5s9ziVNw"><span class="pill p-purple" data-page-node-id="k6u9R9tkn76cLE8wTKN9fN">执行题</span></td><td data-page-node-id="Kt9gcRH8B1fZYY7IBLA07y">IO 格式错 / TLE / 边界漏——几乎不是算法灵感</td><td data-page-node-id="1XyrG1nixuLBLlgBB8a9QH"><b data-page-node-id="rbtkyzvVCD8sGG3xYwynyO">抄模板</b>（第 02 节）</td></tr>
+      <tr data-page-node-id="ZqwFqVHCR2ptAj2Ej1iBI0"><td data-page-node-id="dbMVqTKeuBeOCYUJ9bw7Fy"><b data-page-node-id="1yDOtR0HGBGh7BZwj67BXj">AI Coding</b></td><td data-page-node-id="0HNyE5ApYNkgHb9Oz9ILyS"><span class="pill p-red" data-page-node-id="0H5RyT3jpBD51UrgwmwGyR">指挥题</span></td><td data-page-node-id="IzIDP11w5Hp4hx8A48tTMk">工程纪律崩：没搭公共通道、字段名凭感觉、没自测、死磕不换窗口</td><td data-page-node-id="G0n7BMwCHdbmcllegGrvn5"><b data-page-node-id="aWDNUKWjxDgKhuUo8jdv1p">背纪律</b>（第 03 节）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 data-page-node-id="vvpUwckSUY457cj7DCANcX"><span class="n" data-page-node-id="lUbEeWiYhtB6G6Xaqz8ABM">01</span>选择题：十道「考点指纹」（2026-09-05 场全套）</h2>
+<p class="cmt" data-page-node-id="HPH00oqvoQufbHaUCQ204c">用法：每道看「指纹 → 判据 → 答案」，<b data-page-node-id="BoYqCLNgEAJJXD4nDEohzb">遮住答案先自己判一遍</b>。判错的停下来想 30 秒为什么。这十道覆盖了「算法 4 + 深度学习 3 + 大模型 2 + 机器学习 1」的完整分布。</p>
+
+<div class="card" data-page-node-id="VA3ALyUKt9a1n3jf0UXe4G">
+<p data-page-node-id="DHZXGJs4mSFTtucDRnKbEE"><span class="fp" data-page-node-id="JrRKXEULnWAS03pWRPuSZ1">指纹 1 · 递归求值</span> — 给 <code data-page-node-id="F5SQe40nlxz3GiCBjrGqCF">g(t)= t>0 ? t*g(t-1) : 2</code>，求 g(g(g(1)))。<br data-page-node-id="HASoRXkVDn6vZHTDpwaw1R">
+判据：<b data-page-node-id="N6u6RKmP8MQUO8vMQ5AUD0">由内向外逐层算，每一层都要乘上 t</b>；干扰项 = 只算最内层就停、或把基例 2 当每层固定值连乘。 <span class="ans" data-page-node-id="3U1i8YYldMFUkutqSuCZmX">答：48</span></p>
+
+<p data-page-node-id="9m5eZ47dS3TcgcI0QHve2x"><span class="fp" data-page-node-id="jNzEDrrATHhEbYmCZeGNB5">指纹 2 · CNN 正确说法</span><br data-page-node-id="AboC3Kkk4gqDiitQZda6ti">
+判据：图像分类靠「图像+标签」训练 = <b data-page-node-id="hi5bd4f17CCrNdZHozgQbo">有监督</b>（对）。卷积核越大参数越多 → <b data-page-node-id="vyuoDjVBVUKCeZ3xdjdEgm">更容易过拟合，不是更不容易</b>。池化 = 下采样扩感受野，跟「全连接换成 RNN」无关。二维输入本来就是卷积的老本行。 <span class="ans" data-page-node-id="qmUVjHW9NKGMCYPblvBVbj">答：有监督那项</span></p>
+
+<p data-page-node-id="GsRXnAmQ4o9sft7kJsbUJF"><span class="fp" data-page-node-id="cgBv8O0wmOu0AIPBgu9cfK">指纹 3 · 分布式训练通信优化</span> — 梯度聚合通信占 70% 且可与反向计算重叠。<br data-page-node-id="lf6tHO6WzIIlOLl7JypD8z">
+判据：反向传播从输出层往输入层走，靠输出的层梯度先就绪 → <b data-page-node-id="WCxnoJVIzkwmAaBiVwZBZc">按就绪顺序分桶立即发 all-reduce，把通信藏进后续计算</b>（= PyTorch DDP 梯度分桶重叠）。「换随机猜参数」「关所有通信」「把 batch 顶到显存上限」全是干扰。 <span class="ans" data-page-node-id="DiOebniPdn1YtytLAzNJf1">答：梯度就绪顺序发通信</span></p>
+
+<p data-page-node-id="TBUYZSFVvzlxB2QKs4axD3"><span class="fp" data-page-node-id="PZXFJMcVcBfxBnEVhA67vK">指纹 4 · 单神经元二分类输出层激活</span><br data-page-node-id="Z4cAsTPmRGq1hplZKwoGD4">
+判据：输出要当概率 → <b data-page-node-id="QHzXWA2Kxwe7axkTvZ176k">logistic / sigmoid</b>（压到 (0,1)，配二元交叉熵）。线性恒等不能当概率；单神经元没有多通道可 argmax；符号函数导数为零训不动。 <span class="ans" data-page-node-id="OP0HmuRA9ZuCZQOjG03F7R">答：logistic</span></p>
+
+<p data-page-node-id="tmWce5KPx52vacJ6QSW6Mg"><span class="fp" data-page-node-id="6rakDDprkQRiQbVt8wgWAB">指纹 5 · 无法直接解决长序列建模的是？</span><br data-page-node-id="aKlCTSvNpLk81Yi1wqW1hS">
+判据（本场最容易想反的一题）：<b data-page-node-id="ibUa8KxmP8yZQxRMtq89sG">FlashAttention 只优化显存与访存，数学上与标准注意力等价，复杂度仍是 O(n²)</b> → 它才是「无法直接解决」的那项。Transformer-XL 分段递归缓存、Performer 核方法线性注意力、Longformer/BigBird 分块稀疏，都真改了复杂度或有效上下文。 <span class="ans" data-page-node-id="YrAfqxsE06bLexc9fXhJR1">答：FlashAttention</span></p>
+
+<p data-page-node-id="ZnIyVKmE0FVQsHKEOqUmNU"><span class="fp" data-page-node-id="v7KxLrD06z1nIvGwwMdQ00">指纹 6 · 邻接矩阵存稠密图，DFS 复杂度</span><br data-page-node-id="PkzMOIfTdHlfEBYIrWeZOi">
+判据：找一个顶点的全部邻居要扫一整行 O(n)，n 个顶点各扫一次 → <b data-page-node-id="Ogs5DoWYFyUW5ugfObAslE">时间 O(n²)</b>；空间不计存图则只剩标记数组和递归栈 → <b data-page-node-id="ZpfpRaFhbLVLyK8vCLbCTa">O(n)</b>。邻接表才是 O(n+e)。 <span class="ans" data-page-node-id="nmJfl1ckSo0lvvhKrw2EK8">答：O(n²) / O(n)</span></p>
+
+<p data-page-node-id="p3yMgNfuQ4YAWr7ZNgrQau"><span class="fp" data-page-node-id="4iNDokubqltbiFu4iDuhm8">指纹 7 · 状态价值函数 V^π 的定义</span><br data-page-node-id="rHZyxwfOc26w5kzpwOq6tf">
+判据：<b data-page-node-id="2zavQWvx1BrGh3Zf8TRTzu">从状态 s 出发、之后遵循策略 π 的累积折扣回报的期望</b>。干扰项「对动作价值取 max」= 最优状态价值 V*，只在最优策略下成立；转移概率是环境动力学不是价值。 <span class="ans" data-page-node-id="aVbWMd37kcdWG9Knhk18n5">答：期望那项</span></p>
+
+<p data-page-node-id="BA3uZomGF08FNqNXIf53Ei"><span class="fp" data-page-node-id="3UnaZRDbDK6LYVgTE7Y4MC">指纹 8 · 词向量正确说法</span><br data-page-node-id="JCqgM6fycE3i6RWJfsrrRH">
+判据：<b data-page-node-id="0FV2efd3mXdsknk1PIroyH">word2vec 本质是降维</b>（V 维 one-hot → 几百维稠密）。one-hot 是 V 维向量不是 1 个比特；词袋/TF-IDF/共现矩阵+SVD（LSA）都<b data-page-node-id="CfYCfSdpiWuNb41VdWoXEv">不需要</b>生成式语言模型；字符级卷积是<b data-page-node-id="JB9quPWopPyU5AFrIwr4j3">缓解</b>未登录词、不是把词表膨胀。 <span class="ans" data-page-node-id="WkxGTbXKB1Eaq9N0DDmmmL">答：word2vec 是降维</span></p>
+
+<p data-page-node-id="gPhkoft4cn4h4cBl1DTH2Q"><span class="fp" data-page-node-id="h6DETlpcLtKlmr6bnxaNlI">指纹 9 · 给前序，判哪个中序不可能</span><br data-page-node-id="4vY2ZkIrxHIEmlFI667hkf">
+判据（固定套路）：<b data-page-node-id="4XFzTcZKPITGPgKXxAzAko">前序首元素定根 → 在中序里以根切左右两段 → 递归检查左右段元素集合与前序对应段是否一致</b>。矛盾常出现在子树：右子树前序定根 E，若中序里 E 左边只有 F，则前序中紧跟 E 的应该是 F——不是就矛盾。 <span class="ans" data-page-node-id="TsgxFX2E2JvRI7m5ALN77a">按切分逐层验</span></p>
+
+<p data-page-node-id="NZRKtfNSrG1o0NEA5fDx9y"><span class="fp" data-page-node-id="CE91rnR7ay4GQd9JEhIHCc">指纹 10 · 建成最小堆后的中序遍历</span><br data-page-node-id="oBpeVkTMRBj66S9KBabqTz">
+判据：<b data-page-node-id="SzW8DCC2ELFywd0GTjFvsg">从最后一个非叶结点（下标 n/2−1）开始自底向上下沉</b>，老老实实把建堆过程走一遍排出数组，再按完全二叉树形态做中序（左→根→右）。光看选项排除不掉，<b data-page-node-id="PLlmA7CtlIHeHJONehF0ph">得动笔</b>。 <span class="ans" data-page-node-id="JXjfDDcE3UmgTD8OzJ3DiZ">草稿纸上走一遍</span></p>
+</div>
+
+<h3 data-page-node-id="WiD6FnLYY4EeXbblaoB8zV">再补五个「大概率出现」的 AI / 八股指纹</h3>
+<table data-page-node-id="BymNzRVNfGepBMaX9MoQsm">
+  <thead data-page-node-id="NE4CLzGW3aoftUEH7xzmbU"><tr data-page-node-id="Nit0LoLcfEpxhpyxdkwE1q"><th style="width:24%" data-page-node-id="mGlR0SjJddSHBFopyftrAb">指纹</th><th data-page-node-id="OvZXbRlba9Zhfl4EAMrGzN">一句话判据</th></tr></thead>
+  <tbody data-page-node-id="bisHAp65fvYraFPbWuE25m">
+    <tr data-page-node-id="aXVfMOL7rGftCH3LfchvyH"><td data-page-node-id="Tv6ExSCTNnjmcITwTeOPSd"><b data-page-node-id="6QlgDRqLqjGN19OB0OMNJT">SFT vs RLHF vs 预训练</b></td><td data-page-node-id="tGIeeTuud27djF4L17CRqO">预训练=无标注语料学语言；<b data-page-node-id="KsFm7sMECEFrvlwwFDFE03">SFT=有标注指令数据教「听懂指令」</b>；RLHF=用人类偏好奖励模型调「说得好」。</td></tr>
+    <tr data-page-node-id="CjCcii9rhT56gGWN5KY7Rl"><td data-page-node-id="0DlmVpE5RIcCuXKmb1vtOk"><b data-page-node-id="CRFKNpG0DUpJlGvAhuuvp4">RAG 标准链路</b></td><td data-page-node-id="ZWM4M2MG4vmczB0fEJZKVx">切分 → 向量化 → 检索 → <b data-page-node-id="AzEXAd8WEiedjZYCmG6DTy">重排</b> → 拼上下文 → 生成；幻觉治理靠<b data-page-node-id="3WrtSnRFHkC1EpnL1CGOak">引用绑定证据</b>。</td></tr>
+    <tr data-page-node-id="H1kbNPqVDEdiF7pW7kMHI0"><td data-page-node-id="8LjFwoFwO9IgkiQQ4DEKWC"><b data-page-node-id="JiHXXLPg0uskBo2h4huDaf">Function Calling / 工具调用</b></td><td data-page-node-id="uR1F8ip8OcGwMqgK1ZfQ59">模型输出<b data-page-node-id="1zJQeOetQuotp1G9uqBDb7">结构化参数</b>由外部代码执行；副作用操作要确认+幂等（正好对应你 A2/A3 卡）。</td></tr>
+    <tr data-page-node-id="fTCl4rPBBRrQZBsB602shf"><td data-page-node-id="LTa3qOe8OPfPA4h5GfyIQY"><b data-page-node-id="RKndPB2Cb5e7Lq07iD06i9">死锁四条件</b></td><td data-page-node-id="U2yk1J0x3TuLyASI3KVqaQ">互斥、占有且等待、不可剥夺、循环等待；<b data-page-node-id="dApvUGYHzRbhzeFrdksMh9">破坏任一条即可预防</b>（资源有序分配破循环等待最常用）。</td></tr>
+    <tr data-page-node-id="IL4TUAje0RAWL5aFUcsaPM"><td data-page-node-id="NIe30D2QibxrG7Kh7autbF"><b data-page-node-id="7j9oBM7CG2mudOzZAdsio5">进程 vs 线程</b></td><td data-page-node-id="XpDaHeIYv8sQM9mmaad8Xs">进程是资源分配单位、线程是调度单位；线程共享地址空间，切换代价更小（对应你 N3/O1 卡）。</td></tr>
+  </tbody>
+</table>
+
+<h2 data-page-node-id="Eww0frSETBSL3jzvT0JSgK"><span class="n" data-page-node-id="VdyeGFiDC7YMpn6nFgUCCw">02</span>编程：抄模板（ACM 输入输出 + 五个手写骨架）</h2>
+
+<h3 data-page-node-id="3HZP2gkieRoa5OHufjKHZE">2.0 先过这份「IO 四查」（每题提交前 10 秒）</h3>
+<div class="box b-amber" data-page-node-id="tzVs9MjtYrheaEJEPWPLHO">
+  <div class="t" data-page-node-id="g4qBtEXIucqsUFAmcjTDCT">编程题的死法排名：读入错 > 输出格式错 > TLE > 才是算法没想法</div>
+  <ul data-page-node-id="S0Twq2iVLjfNDpONmSvSqO">
+    <li data-page-node-id="WDyBf8r2rteD05Qaq7oxiD"><b data-page-node-id="OJYP23T6r4cddW7DzDxedB">多组数据？</b>看题面是「T 组」还是「读到 EOF」还是单组——读错直接全挂。</li>
+    <li data-page-node-id="v6EzKNKpeNngFeOGL2sweo"><b data-page-node-id="7kuIkapPDvkUBIrBs5FDBt">快读</b>：<code data-page-node-id="xlvlUR680fXzuuqqeTd6yW">sys.stdin.buffer.read().split()</code>，n 大就别用 <code data-page-node-id="Q4CpOsjHidWVHaFk0ZhbUM">input()</code>。</li>
+    <li data-page-node-id="FNM7T52JXzKBdiQ5lpJzOJ"><b data-page-node-id="oti968sWvMfX7ejS6KRJaS">行尾空格</b>：一行多值用 <code data-page-node-id="exLKbWzqGs36tJJZI6GVG6">' '.join(map(str, res))</code>，别手动拼出尾部空格。</li>
+    <li data-page-node-id="WSHnRjtjlENuhxukeL0kHg"><b data-page-node-id="WJr5vrKKOPyDBey2A5ygpy">开方</b>：用 <code data-page-node-id="Oi4S2FSdv458MfOlO22hvt">math.isqrt</code>，<b data-page-node-id="gPkosRHCZxxNTmJIwGLa1G">别用 sqrt</b>（浮点误差）。取模负数：<code data-page-node-id="fHMOWiZr8AejUnT5CK75l2">(x % MOD + MOD) % MOD</code>。</li>
+  </ul>
+</div>
+
+<div class="two-cards" data-page-node-id="hRZU48AvsHbYe5BOszME8Q">
+<div class="card" data-page-node-id="0LlkHIGi2eE8Oyh5W0QmND">
+<h3 style="margin-top:0" data-page-node-id="eiaK3agY5CJthqeeSD1d3K">模板 · 读入输出（PyPy3 也照这个写）</h3>
+<pre data-page-node-id="WrC2OoggDuKInpprzeB3BF"><span class="k" data-page-node-id="2wBpY5YFu9Zm5aM11Px0XJ">import</span> sys
+data = sys.stdin.buffer.read().split()
+it = iter(data)
+n = int(next(it))
+a = [int(next(it)) <span class="k" data-page-node-id="h5NZwwykKBYKp0TA9zAi5H">for</span> _ <span class="k" data-page-node-id="vCUIRMv2pI5O6Oq70GNBqn">in</span> range(n)]
+
+<span class="c" data-page-node-id="8LLaYwB1SNEWYBoOKZ2OBx"># 单组多值输出</span>
+sys.stdout.write(<span class="s" data-page-node-id="DdQaKL6WsGo3kC6dM4TlEg">' '</span>.join(map(str, res)) + <span class="s" data-page-node-id="Xq16ZU01lOr4lLtozyOCzm">'\n'</span>)
+
+<span class="c" data-page-node-id="cBziyn6ce5zFYPtt3beXhP"># 多组（读到 EOF）写法</span>
+<span class="c" data-page-node-id="Ts8k57PN93DgMY70cxgZJ5"># tokens 全读进来后按题意切分即可</span></pre>
+</div>
+
+<div class="card" data-page-node-id="KFtRs1eB2MLSQAudnW3Y1o">
+<h3 style="margin-top:0" data-page-node-id="Ui9GedCcXWAhd5IGxx7rqJ">骨架 1 · 并查集（+ 逆序处理删边）</h3>
+<pre data-page-node-id="HVP6BA1WKHMFuHiXIAEjgV"><span class="k" data-page-node-id="ZjlyHh32FvPpomrAtdiWSo">class</span> DSU:
+    <span class="k" data-page-node-id="NIpc27LdFVOvzQy3ubZ4pn">def</span> __init__(self, n):
+        self.p = list(range(n + 1))
+    <span class="k" data-page-node-id="Gc3s7kL7u4YxgjOcs1xh3l">def</span> find(self, x):
+        <span class="k" data-page-node-id="dhds0uKsB4uqPOkHcRPXz2">while</span> self.p[x] != x:
+            self.p[x] = self.p[self.p[x]]
+            x = self.p[x]
+        <span class="k" data-page-node-id="kVjtuEtlvPDrMcDlYyydNK">return</span> x
+    <span class="k" data-page-node-id="YmK4bhJzfo45znjU7m6Xcm">def</span> union(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        <span class="k" data-page-node-id="WGQJf12TktjvDwfvS3IDhV">if</span> ra != rb: self.p[ra] = rb
+
+<span class="c" data-page-node-id="pHCjkvsj4yUByenzeZBiGd"># 删边做不了 → 离线 + 逆序：
+# 先标记所有要删的边 → 用「永不被删」的边建初始 DSU
+# → 操作逆序回放，删边变 union，答案存下再逆序输出</span></pre>
+</div>
+
+<div class="card" data-page-node-id="dVEMKHaqQ9k9QZZsVJDeOD">
+<h3 style="margin-top:0" data-page-node-id="OEASckZXwRUm8qhUshnCbL">骨架 2 · 前缀和优化递推（k 阶斐波那契）</h3>
+<pre data-page-node-id="atxkP1C8pQSemHajvkaeN6"><span class="c" data-page-node-id="8lQt0ahVRbYaxh2YkVmg8P"># f[1..k]=1；f[i]=前 k 项之和。朴素 O(nk) 超时 → 前缀和每项 O(1)</span>
+MOD = 10**9 + 7
+f = [0]*(n+2); P = [0]*(n+2)
+<span class="k" data-page-node-id="GkoJU9MfwvropcjGOS5b0H">for</span> i <span class="k" data-page-node-id="XeDX8dJSA8wyJNLDlCDRoI">in</span> range(1, n+1):
+    f[i] = 1 <span class="k" data-page-node-id="Xz4qKDE8AqxC2mN4ZYZNE0">if</span> i <= k <span class="k" data-page-node-id="Avhu5DVTydp127mpGZzMRh">else</span> (P[i-1] - P[max(0, i-1-k)]) % MOD
+    P[i] = (P[i-1] + f[i]) % MOD</pre>
+</div>
+
+<div class="card" data-page-node-id="r0Fk2i1BvcE4OpAgno0AfB">
+<h3 style="margin-top:0" data-page-node-id="1So8CyQZZE7qLdIfSwOLGw">骨架 3 · 贡献法（删点后的连通块数）</h3>
+<pre data-page-node-id="jkZq413VJYvBorymb1h94x"><span class="c" data-page-node-id="yA6KFDEkcux4efCYENFLPe"># 树按编号 1..n 依次删点，每次输出剩余连通块数
+# 森林：连通块 = 点数 - 边数；每条边只记在「编号较小端」</span>
+bigger = [0]*(n+2)
+<span class="k" data-page-node-id="ItwUg3oTEW5HezFOC86cmr">for</span> _ <span class="k" data-page-node-id="3OtoAKDle2aenGG92cg035">in</span> range(n-1):
+    u, v = int(next(it)), int(next(it))
+    <span class="k" data-page-node-id="0b5vSNFZJQ0v1ApYAG1nZ1">if</span> u > v: u, v = v, u
+    bigger[u] += 1
+broken = 0
+<span class="k" data-page-node-id="mFom2bv5w4JfSJmCpXQvki">for</span> i <span class="k" data-page-node-id="W72ub3U5wB9m9s7FFBuU8y">in</span> range(1, n+1):
+    broken += bigger[i]
+    ans = (n - i) - ((n - 1) - broken)   <span class="c" data-page-node-id="e4JE9uqJoqs3JYOScE78d9"># 收集进 res</span></pre>
+</div>
+
+<div class="card" data-page-node-id="zPdlBvXDXiMdWHZsutaWU4">
+<h3 style="margin-top:0" data-page-node-id="pkiSJgdQnjcvOQJ09jBVcp">骨架 4 · 完全平方数计数（因子数为奇数）</h3>
+<pre data-page-node-id="1wvqa9uDT32OOonRdhXN3W"><span class="k" data-page-node-id="SXIYpbAC8qzFnuDfhEZY2o">import</span> math
+<span class="c" data-page-node-id="3IMrnnl9ha2hxEEm8Y2LO5"># 因子个数为奇数 ⇔ 完全平方数（因子成对，d=n/d 时多一个）</span>
+<span class="k" data-page-node-id="VTBHhXvdZGEYw31XX20uoZ">def</span> sq(x):
+    <span class="k" data-page-node-id="A078UOZCGHhY5E98iNWqZe">return</span> math.isqrt(x)          <span class="c" data-page-node-id="k6a0El0XqnFCquA7tAOPn0"># 1..x 内完全平方数个数，无浮点误差</span>
+ans = sq(R) - sq(L - 1)</pre>
+</div>
+
+<div class="card" data-page-node-id="Bbo3Xg5xMYzmaNUd3zWzOl">
+<h3 style="margin-top:0" data-page-node-id="Jv8YZGdQNTIj9VuBztqd7Q">骨架 5 · 中位数贪心（旋转/交换 → 位移）</h3>
+<pre data-page-node-id="mK9HcVu64Fr3ubMwxJLZQK"><span class="c" data-page-node-id="gEJAqsLU16X9m3HvA0yk7Y"># 相邻交换只改变异色相对位移；第 i 个目标位被次序定死，
+# 只剩一个整体偏移量 t 要挑：cost(t) = sum|c_i - t|</span>
+c = sorted(a_i - b_i <span class="k" data-page-node-id="3vQrGpevq5RFEO4D7ZDb3G">for</span> i <span class="k" data-page-node-id="SCy9ySOfsBrszPWwluEXbn">in</span> ...)   <span class="c" data-page-node-id="PKBfYsgU7fKLk7a26YSH2K"># 每个元素的「当前-目标」偏差</span>
+m = c[len(c)//2]                       <span class="c" data-page-node-id="CCCeScx42GudpM3qPScVHi"># 中位数使绝对值和最小</span>
+cost = sum(abs(x - m) <span class="k" data-page-node-id="EXn6YSHKjaBJ3FRlgxgtpq">for</span> x <span class="k" data-page-node-id="8jLAGgmeAxPkN8HKdE0d06">in</span> c)
+<span class="c" data-page-node-id="2drFY9DliDHIOXLcNr6UBi"># 注意：两种目标形态（奇/偶位）各算一遍取小</span></pre>
+</div>
+
+<div class="card" data-page-node-id="ciQ4axCE2gHVwSXLf8hzuo">
+<h3 style="margin-top:0" data-page-node-id="e4K28mr7EzwwH2yIB5Olnn">骨架 6 · 欧拉回路（Hierholzer，每条边恰走一次回起点）</h3>
+<pre data-page-node-id="yAtkS4JhDs52B5Q0f25l4k"><span class="c" data-page-node-id="YPYZZyrn5CPO0TREMMFtrt"># 前提：图连通 + 所有点度数为偶 → 欧拉回路存在</span>
+<span class="c" data-page-node-id="OCa6klR65gDCOOyvzBI7Ye"># 迭代：stack 走到底，回溯时把边/点记下，最后逆序即回路</span>
+stack = [start]; path = []
+<span class="k" data-page-node-id="MrA3U37F5mJGXAVDqwgDCi">while</span> stack:
+    v = stack[-1]
+    <span class="k" data-page-node-id="8bMK6NDosToBd9C4IuuM0S">if</span> adj[v]:
+        u = adj[v].pop()        <span class="c" data-page-node-id="EPUwp2Ep0XdhBCMQydiWuv"># 同时删 adj[u] 里这条边</span>
+        adj[u].remove(v)
+        stack.append(u)
+    <span class="k" data-page-node-id="4fuC9gy5nPoU87eYKeKCAn">else</span>:
+        path.append(stack.pop())
+path.reverse()</pre>
+</div>
+</div>
+
+<h2 data-page-node-id="1JBwT96k8O9EBtfKAaWYpn"><span class="n" data-page-node-id="RVsVYoPmsnOCaJfXLyIZqi">03</span>AI Coding：背纪律（真题画像 + 五个最常见的死法）</h2>
+
+<h3 data-page-node-id="p0Xc3ZW2LQekXOIhWGffc4">3.1 真题画像：先对「需求文档长什么样」有预期</h3>
+<div class="box b-purple" data-page-node-id="LCqvuf8zWmy6Bv4YqXigvw">
+  <div class="t" data-page-node-id="0YIowMpX5HNXHeByfCeebC">美团 9/1 场考过的「多云成本分摊」——感受下复杂度，别被 1400 行需求吓住</div>
+  <p data-page-node-id="uJw8A8OXQFxbncDghfUPUW">要你交付一个<b data-page-node-id="fa1LygHY0AtRZfIIevNiFH">内存型 HTTP 服务</b>：费用按版本化分摊方案归集为可审计账单；余数按 nodeId 字典序补 1；批量发布与批量更正<b data-page-node-id="Ho5m1PooOxiLhDp9oYmbrf">整体原子、失败全回滚</b>；<b data-page-node-id="Pe9m4aMk98gpvUK9dURpPh">已关账账期不可改写</b>，迟到费用落入当前开放期；<b data-page-node-id="baEKT61B4Ojo9eGMi3OMKq">所有写操作按幂等键去重</b>；任一时刻满足<b data-page-node-id="ce91RWuLJgXY17eyCtmAhg">对账不变量</b>（分摊合计=金额、分录净额=账单净额）。</p>
+  <p data-page-node-id="rjBwHnB20IyFCDELhB7tFv"><b data-page-node-id="OOFOHSkXE7PpEJmqccBmBf">翻译过来：</b>就是作战卡那三条公共通道（干净拒绝 / 重放安全 / 逻辑时钟）+ 状态机 + 金额取整，<b data-page-node-id="Hv04hh6f2hCLkUX9UY5Oxc">全是你库里 M16/M17/Q2/P19 那套</b>。文档长 ≠ 难，是把规则写得很细——<b data-page-node-id="9h9g4QSHGj5V0KGaDnfKj1">你的活是把规则原样搬进指令，不是自己概括。</b></p>
+</div>
+
+<h3 data-page-node-id="w2qLF4FrVEeH0jeuBw1iLh">3.2 五个最常见的死法（对照自查，每条都有解）</h3>
+<table data-page-node-id="PToz5aFDBHn8YCn9rzOHTD">
+  <thead data-page-node-id="nxIwcyWu9L4EU274hRgTyA"><tr data-page-node-id="5C7HEvoaR8acZgcBNxBbAM"><th style="width:34%" data-page-node-id="u5hEcdHQO6TDqplYpsbqwg">死法</th><th data-page-node-id="NCWj6Ad3E8Rn1lXNqBcOsA">解法（抄作战卡）</th></tr></thead>
+  <tbody data-page-node-id="Uc5FcN1craKugFRnvzc6Px">
+    <tr data-page-node-id="LtfuldCys7sIwFGHBBlXPc"><td data-page-node-id="AT01cPh3dUA6XjsrCAOEw9">① 上来就「帮我实现一下这个系统」</td><td data-page-node-id="I8E9l7uaIqVm6qkXAy46fJ">用<b data-page-node-id="0ckolUrGylGRH6J2WFH1Kt">第一段指令模板</b>：环境原样抄 + 规则原样搬 + 字段名写死 + 三条公共通道先搭。</td></tr>
+    <tr data-page-node-id="Hf8Ns9eb1sQEv6mbvdkOLF"><td data-page-node-id="2rpHaXVBvDb57WtCIyUbmv">② 没搭公共通道就写业务，各接口越写越不一致</td><td data-page-node-id="K91dBIcAX6DSyZxBcpxltW">前 20% 时间只干<b data-page-node-id="OVx4Y1bkEcuhgYOceThdCk">干净拒绝 / 重放安全 / 逻辑时钟</b>三件事，能跑再写业务。</td></tr>
+    <tr data-page-node-id="3G670Uvb1IAKsl1wP192qZ"><td data-page-node-id="2i2M1U0jukdbbFXFsKo7zr">③ 响应体字段名凭感觉编</td><td data-page-node-id="UzxAtQq6R4EwG6qsrRq4ba"><b data-page-node-id="RaSo95kkonR7Wwdubk1kiM">判题按字段名取值，对不上就是 0 分</b>。契约逐条写死，一个字母都不许模型自由发挥。</td></tr>
+    <tr data-page-node-id="dC3RUpgzB2AiZhpxmmRS1V"><td data-page-node-id="PFvboGm1A7CDDrnSm67OVt">④ 公开样例全过就交</td><td data-page-node-id="KB6m5yowbCXJYphBEr9d2z"><b data-page-node-id="WDCc8CJxFimlPVPARTQYb0">让 AI 造隐藏用例打自己</b>，挂掉的连报错贴回修，走 2–3 轮。记住加「先不要改我的业务代码」「已经通过的不要动」。</td></tr>
+    <tr data-page-node-id="csjrAxWjOCSeveulE3LSjl"><td data-page-node-id="HdGap28japLE6QqIij82WV">⑤ 同一问题死磕 / 分数下降还赌</td><td data-page-node-id="RnUyF4BBS2tbPoBZgXixXQ"><b data-page-node-id="lVXawqFO1iBPg5AbudFXpw">三轮没解决→新开会话重贴报错；提交后分数下降→立刻回退到上一个好状态。</b>见好就收是能力。</td></tr>
+  </tbody>
+</table>
+
+<div class="box b-green" data-page-node-id="cIP6rqsXK9RNiJA25dXOnL">
+  <div class="t" data-page-node-id="6rgzFGF4mM8Ii7XvYPdQ0o">拿分顺序：先保「冒烟 + 基础」两档满分，再冲「高级 / 复杂」</div>
+  <p data-page-node-id="0kSxZKvDeF7yySfw4XUREA">AI Coding 按冒烟 / 基础 / 高级 / 复杂四档业务给分。<b data-page-node-id="XcySKCYpWy9eN0Odlt0ejV">主干业务（冒烟+基础）才是基本盘</b>——一个功能写不完可以砍，但<b data-page-node-id="l6iyhRIafr6Uy6AXy55ufI">主干的接口契约、状态机、幂等、错误码必须全对</b>。题面说「写不完是常态，怎么拆由你判断」，<b data-page-node-id="wDopjIU0BSst6X18DKNWGC">分数看取舍，不看完成度</b>。</p>
+</div>
+
+<h2 data-page-node-id="0609unRyNANZyZ7pG0kVPf"><span class="n" data-page-node-id="AfkpTHlBitwz6c9LIfqBLr">04</span>如果还想动真格练一下（可选，按剩余时间取舍）</h2>
+<ul data-page-node-id="Jvcumsw4GvhGaOSOzFcO1w">
+  <li data-page-node-id="Up7EqzRiRx1AYCSGg92iP2"><b data-page-node-id="ba9MX0AljSJBEgTKsWd2I1">牛客 · 美团公司真题（最优先）</b>：<code data-page-node-id="IT0uPsrjDEM90IHqDcQGmz">nowcoder.com/exam/company</code> 里选美团，练 2–3 道 ACM 模式编程题找输入输出手感。<span class="cmt" data-page-node-id="kbTfbLo7bPEUuDtyxeRBbE">这是唯一值得你今晚真的动手刷的东西。</span></li>
+  <li data-page-node-id="CSaWd5kPFjNFR9trhmYEzp"><b data-page-node-id="qb2CRRwTdnjVrUcaYrsRl6">AI Coding 模拟</b>（时间不够就跳过）：找一道「实现内存型 HTTP 服务」的题，<b data-page-node-id="1qIZ9RfEQewOnIDj8xFVrB">重点练「把需求文档的接口契约一次性原样搬进第一段指令」这个动作</b>，不用真写完。</li>
+  <li data-page-node-id="5KuxK9iMkPjSURAW80S3kv"><b data-page-node-id="KpiAmt4LwH1UAzvvgal9Ul">别碰的</b>：新算法类型、大段八股、任何「再学一个知识点」的冲动。<b data-page-node-id="FXOL3qmGmEhkAFFGNPOEHB">今晚只做「把已会的调到手上」。</b></li>
+</ul>
+
+<h2 data-page-node-id="fSSzu4tuDUkNH6Gc4n9FEt"><span class="n" data-page-node-id="XTZpQbCSpHJ5GBhM7nDS12">05</span>最后：三个板块的「一句话」</h2>
+<div class="card" data-page-node-id="fRfFfoO1gGs73JJewqwtMj">
+  <ul data-page-node-id="bTIEg2UliWzVjSIb462MBI">
+    <li data-page-node-id="LHeKJHH76L8aJJTBHXIGss"><b data-page-node-id="7ooNFjqYTInFkTs88NzCev">选择题：</b>AI 6 题是你的主场必须全拿；数据结构 4 题<b data-page-node-id="pDZyPGSV2zi4k9RHtuYXOH">动笔算</b>，单题别超 2 分钟，算不出先标记跳。</li>
+    <li data-page-node-id="f16ESgMYOf7pKsrNCxFrQA"><b data-page-node-id="fwidlgskJBH1D9OLjIAdx2">编程：</b>先过「IO 四查」，再谈算法；n 大读入多就切 <b data-page-node-id="GpGpiF6QROs9VuFuYKYdZz">PyPy3</b>；提交前跑一遍样例对输出格式。</li>
+    <li data-page-node-id="49yCd7sh1j7fjhByRrJNSJ"><b data-page-node-id="7NnhHskpSNKhsb39waBK2U">AI Coding：</b>先搭三条通道 → 主干接口契约全对 → 让 AI 造用例自测 → 三轮修不好换窗口、分数下降就回退。</li>
+  </ul>
+  <p style="margin-bottom:0" data-page-node-id="S1e3H6VWryGzDX8rX5EWhG"><b data-page-node-id="QGETgvim9DYh6x1SObdHEh">19:00 之后，我零协助。</b>考完把题回忆给我，逐题复盘照旧。去吧。</p>
+</div>
+
+<footer data-page-node-id="x0vwlJQbdOtFPv9LYUkFt1">
+  · 第 01 节十道指纹：<b data-page-node-id="d1s6r4WFxiKORAq8ByRzlW">2026-09-05 场考生回忆</b>（题+答案+解析为考生整理，单题答案可能个别误差，考点形态可靠）；「再补五个指纹」为通用考点。<br data-page-node-id="2RR5jtuoNGXbfTXr8yLDCH">
+  · 第 02 节骨架：依据已出现考点（前缀和 / 并查集逆序 / 贡献法 / 数论 / 中位数贪心 / 欧拉回路）手写，供抄写。<br data-page-node-id="XUZMTD6AYQGZqHUvKOZEMJ">
+  · 第 03 节真题画像：美团 2026-09-01 场「多云成本分摊」考生回忆。<br data-page-node-id="64kdfATqK4DAFi3Nnx8iwJ">
+  · 与作战卡分工：<b data-page-node-id="djZXEciz03QkYuLEk1LmoX">本页 = 内容速记（现在读）；作战卡 = 规则与流程（考前 15 分钟看）。</b>
+</footer>
+
+</div>
+</body>
+</html>
