@@ -60,21 +60,25 @@ console.log('\n【1】全新状态：第一天派什么');
 fresh();
 console.log('   ', todayItems().map(i => i.label + (i.need ? '' : '[加餐]')).join(' | '));
 ok('今天没有到期复训', needOf('rev').length === 0);
-ok('新题 1 条（配额 1）', needOf('new').length === 1);
+ok('新题保底 5 条（NEW_MIN=5）', needOf('new').length === 5, needOf('new').length + ' 条');
 ok('首条新题是 llm 模块的第 1 条主线（模型为什么不可靠）',
   needOf('new')[0].label.includes('模型为什么不可靠'), needOf('new')[0].label);
-ok('日课 2 条（手撕 + 命功）', needOf('drill').length === 1 && needOf('life').length === 1);
+ok('日课 6 条（手撕 5 题 + 命功）', needOf('drill').length === 5 && needOf('life').length === 1,
+  '手撕 ' + needOf('drill').length + ' 条');
+ok('5 题互不重复', new Set(needOf('drill').map(i => i.key)).size === 5,
+  needOf('drill').map(i => i.key).join(','));
+ok('手撕标了序号 1/5…5/5', needOf('drill')[0].label.startsWith('手撕 1/5'), needOf('drill')[0].label);
 ok('项目线 1 条，是 EnergyOps 90 秒骨架', needOf('proj').length === 1 &&
   needOf('proj')[0].label.includes('EnergyOps 90 秒骨架'), needOf('proj').map(i => i.label).join(''));
-ok('必做共 4 条（1 新题 + 1 项目 + 2 日课）', todayItems().filter(i => i.need).length === 4,
+ok('必做共 12 条（5 新学 + 1 项目 + 5 手撕 + 1 命功）', todayItems().filter(i => i.need).length === 12,
   todayItems().filter(i => i.need).length + ' 条');
 ok('没有任何 L≥2 母题时不派抽检', needOf('exam').length === 0);
 ok('加餐给了其它 zone 的首题', extraOf('new').length > 0, extraOf('new').map(i => i.label).join(' / '));
 ok('加餐来自一档的其它模块（和必做那条不重复）',
   extraOf('new').length > 0 && !extraOf('new').some(i => i.label.includes('模型为什么不可靠')),
   extraOf('new').map(i => i.label).join(' / '));
-ok('项目线不占 zone 轮转名额（新题仍只有配额内那 1 条）', needOf('new').length === 1);
-ok('加餐命中上限 EXTRA_MAX=4', extraOf('new').length <= 4);
+ok('项目线不占新学名额（新学仍是保底 5 条）', needOf('new').length === 5, needOf('new').length + ' 条');
+ok('加餐命中上限 EXTRA_MAX=8', extraOf('new').length <= 8);
 
 console.log('\n【2】模块内推进：mysql 第 1 条到 L2 后，下一条是第 2 条');
 fresh("S.lv['mysql/1'].l = 2;");
@@ -122,9 +126,9 @@ const OVERDUE8 = "var D = today();" +
       " 'net/1','net/2','llm/2'].forEach(function(k, i) {" +
       " if(S.lv[k]){ S.lv[k].l=2; S.lv[k].due=shift(D,-(i+1)); } });";
 fresh(OVERDUE8);
-ok('必做复训封顶 4 条', needOf('rev').length === 4, needOf('rev').length + ' 条');
-ok('溢出最多 2 条进加餐', extraOf('rev').length === 2, extraOf('rev').length + ' 条');
-ok('记录下溢出总数供提示', g('S.days[today()].revOver') === 4, '溢出 ' + g('S.days[today()].revOver') + ' 条');
+ok('必做复训封顶 5 条（REV_BUDGET=5）', needOf('rev').length === 5, needOf('rev').length + ' 条');
+ok('复训溢出全部进加餐（不封顶）', extraOf('rev').length === 3, extraOf('rev').length + ' 条');
+ok('记录下溢出总数供提示', g('S.days[today()].revOver') === 3, '溢出 ' + g('S.days[today()].revOver') + ' 条');
 
 console.log('\n【7】跨天欠账：实时算，只统计必做');
 fresh("function fakeDay(ds, needDone, extraDone) {" +
@@ -139,7 +143,7 @@ ok('只连欠 1 天 → 不减负', g('debtStats().relieve') === false);
 run("fakeDay(daysAgo(2), false, false);");
 ok('连欠 2 天 → 减负', g('debtStats().relieve') === true, '欠 ' + g('debtStats().debt') + ' 条');
 
-console.log('\n【8】减负模式：不派新题 + 复训降到 2 条');
+console.log('\n【8】减负模式：不派新题 + 复训降到 2 条 + 日课不压（仍 5 题）');
 fresh("function fakeDay(ds){ S.days[ds] = { items:[{type:'new',need:true,done:false,label:'n',sub:''}], settled:true }; }" +
       "var D = today();" +
       "['mysql/1','mysql/2','mysql/3','redis/1','redis/3','net/1'].forEach(" +
@@ -149,19 +153,21 @@ ok('relieve = true', g('S.relieve') === true);
 ok('今天 0 条新题', needOf('new').length === 0);
 ok('复训预算降到 2 条', g('S.days[today()].revBudget') === 2, g('S.days[today()].revBudget'));
 ok('复训必做只有 2 条', needOf('rev').length === 2);
+ok('减负不压日课：仍 5 题手撕 + 1 命功',
+  needOf('drill').length === 5 && needOf('life').length === 1, needOf('drill').length + ' 题');
 ok('欠账 = 2 条', g('debtStats().debt') === 2, g('debtStats().debt') + ' 条');
 
-console.log('\n【9】自适应配额：昨天全交 → 2 条，前天也全交 → 3 条');
+console.log('\n【9】自适应配额：保底 4 条，昨天全交 → 5 条，前天也全交 → 6 条');
 fresh("function fakeDay(ds, all){ S.days[ds] = { items:[{type:'new',need:true,done:all,label:'x',sub:''},{type:'life',need:true,done:true,label:'y',sub:''}], settled:true }; }" +
       "fakeDay(daysAgo(1), true); fakeDay(daysAgo(2), false);");
-ok('昨天全交 → 配额 2', g('quota()') === 2, g('quota()'));
-ok('今天必做新题 2 条', needOf('new').length === 2, needOf('new').length + ' 条');
+ok('昨天全交 → 配额 6', g('quota()') === 6, g('quota()'));
+ok('今天必做新题 6 条', needOf('new').length === 6, needOf('new').length + ' 条');
 fresh("function fakeDay(ds, all){ S.days[ds] = { items:[{type:'new',need:true,done:all,label:'x',sub:''},{type:'life',need:true,done:true,label:'y',sub:''}], settled:true }; }" +
       "fakeDay(daysAgo(1), true); fakeDay(daysAgo(2), true);");
-ok('前天也全交 → 配额 3', g('quota()') === 3, g('quota()'));
-ok('一档有 10 个模块 → 配额 3 派满 3 条', needOf('new').length === 3, needOf('new').length + ' 条');
-ok('3 条来自 3 个不同模块（同一模块每天最多推进 1 条）',
-  new Set(needOf('new').map(i => i.sub.split(' · ')[0])).size === 3,
+ok('前天也全交 → 配额 7', g('quota()') === 7, g('quota()'));
+ok('一档有 10 个模块 → 配额 7 派满 7 条', needOf('new').length === 7, needOf('new').length + ' 条');
+ok('7 条来自 7 个不同模块（同一模块每天最多推进 1 条）',
+  new Set(needOf('new').map(i => i.sub.split(' · ')[0])).size === 7,
   needOf('new').map(i => i.sub.split(' · ')[0]).join(' / '));
 
 console.log('\n【10】加餐条目完成照常升 L，但不产生欠账');
@@ -270,7 +276,7 @@ run("S.days[today()] = { items:[" +
     "{type:'rev',key:'mysql/1',need:true,done:false,label:'旧复训',sub:''}," +
     "{type:'life',key:'life',need:true,done:false,label:'旧命功',sub:''} ], settled:false };" +
     "render();");
-ok('旧版派单（没有 v:3、还没动手）被重建', g('S.days[today()].v') === 3 && todayItems().length > 2,
+ok('旧版派单（没有 v:4、还没动手）被重建', g('S.days[today()].v') === 4 && todayItems().length > 2,
   todayItems().length + ' 条');
 ok('重建后带上了项目线', needOf('proj').length === 1);
 run("S.days[today()] = { items:[" +
@@ -294,7 +300,7 @@ ok('裁剪后欠账仍能算（今天不算欠账）', g('debtStats().debt') ===
 console.log('\n【19】手撕日课：点开先给材料，且不能一击打勾');
 fresh();
 const di = todayItems().findIndex(i => i.type === 'drill');
-ok('今天派到 1 条手撕', di >= 0 && needOf('drill').length === 1,
+ok('今天派到 5 条手撕', di >= 0 && needOf('drill').length === 5,
   di >= 0 ? todayItems()[di].label : '没派到');
 ok('手撕条目挂着本题材料链接', !!todayItems()[di].link, todayItems()[di].link || '无链接');
 run(`rate('${g('today()')}', ${di});`);

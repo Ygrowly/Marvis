@@ -79,7 +79,8 @@
         <b>推进单位</b>：一条主线——读完这条主线下的母题，按「完整回答骨架」讲一遍，讲得出才算过。<br>
         <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以每个模块每天最多推进 1 条。<br>
         <b>两档串行</b>：一档十个模块 35 条主线（两周内必须能讲）走完，才派二档三个模块 14 条（PostgreSQL / 操作系统 / 数据存储选型）。一档没走完，不派二档。<br>
-        <b>派单</b>：复训只派今天到期的（1-3-7-14 阶梯，逾期久的先做，必做预算 4 条，超出的进加餐、不计欠账）；新题按昨天表现自适应配额 1–4 条；项目线、手撕各每天 1 条；当天总数封顶 8 条。同一簇内前一条到「会了」才解锁下一条（所以每簇每天最多派 1 条新主线）。<br>
+        <b>派单量（2026-09-28 主人定）</b>：<b>复训 5 条</b>（只派今天到期的，1-3-7-14 阶梯，逾期久的先做，超出的进加餐、不计欠账）；<b>新学保底 5 条</b>（昨天全交 → 6 条，连交两天 → 7 条；再往上受模块数限制，因为每模块每天最多推进 1 条）；<b>算法日课 5 题</b>（每题 10 分钟限时）；项目线每天 1 条；命功 1 条。<b>当天总条数不封顶</b>，做完为止；加餐（可选，不做不算欠账）也不封顶。<b>减负模式</b>（连欠 2 天自动触发）只降复训（5→2）和新学（→0），<b>日课 5 题不压</b>。<br>
+        <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以<b>每个模块每天最多推进 1 条</b>，新学那 4~6 条来自 4~6 个不同模块。<br>
         <b>自评三档</b>：讲得出 → 进「常练」、复训间隔翻倍；卡壳 → 留在原档、明天重讲；讲不出 → 回「会了」、明天重来。卡面和弹窗会摆开上次写下的断点。<br>
         <b>抽检</b>：每 7 天一轮 5 题，每题 60 秒，连答不回头，结果直接改等级；项目线口述 90 秒。<br>
         数据只存在本机浏览器（localStorage，键名 mv.progress.v1），换机器或清缓存前记得导出备份。
@@ -116,12 +117,17 @@ var DRILL_SEC = 600;                       /* 手撕限时：10 分钟 */
 
 var MASTER = 1;        // 门控阈值：前置到「会了」(L1) 就解锁下一条
 var EXAM_MIN = 2;      // 抽检池门槛：只有「常练」(L2) 才进抽检——刚会的还不配被抽
-var REV_BUDGET = 4;    // 复训必做预算（条）
+/* 2026-09-28 主人定：复训 5 条 / 新学保底 5 条 / 算法日课 5 题 / 总条数不封顶。
+   派单量按这个口径算：5 复训 + 4~6 新学 + 1 项目 + 5 手撕 + 1 命功 ≈ 16~18 条必做。 */
+var REV_BUDGET = 5;    // 复训必做预算（条）
 var REV_RELIEVE = 2;   // 减负模式下的复训预算
-var NEW_MAX = 4;       // 自适应新题上限（＝主线新学每天最多 4 条）
-var EXTRA_MAX = 4;     // 加餐上限（条）
-var EXTRA_REV_MAX = 2; // 加餐里最多放几条复训溢出
-var DAY_CAP = 8;       // 当天总条数封顶（含「继续派发」手动补的），防手滑
+var NEW_MIN = 5;       // 新学保底（条）——不管昨天交没交，都至少派这么多
+var NEW_MAX = 13;      // 自适应新题上限（= 全部模块数，实际自然受每模块每天 1 条限制；等于不设人为上限）
+var DRILL_N = 5;       // 算法日课每天几题
+var DRILL_N_RELIEVE = 5; // 减负模式**不压日课**（2026-09-29 主人：日课每天 5 道无条件成立），此常量保留只为兼容
+var EXTRA_MAX = 0;     // 加餐上限；0 = 不封顶（2026-09-29 主人：全部去除上限）
+var EXTRA_REV_MAX = 0; // 加餐里复训溢出条数；0 = 不封顶，溢出的复训全部进加餐
+var DAY_CAP = 0;       // 当天总条数封顶；0 = 不封顶（2026-09-28 主人：都不需要封顶）
 
 var PROJECT_CID = 'pitch'; // 项目线：这个簇不参与 zone 轮转，单开板块每天 1 条
 var EXAM_GAP = 7;      // 抽检间隔（天）
@@ -475,11 +481,30 @@ function examPool() {
 /* 自适应新题配额 */
 function quota() {
   if (S.relieve) return 0;
-  var y = needStats(daysAgo(1)), b = needStats(daysAgo(2)), c = needStats(daysAgo(3));
-  if (y && y.all && b && b.all && c && c.all) return Math.min(4, NEW_MAX);  // 连续全交 → 顶格
-  if (y && y.all && b && b.all) return Math.min(3, NEW_MAX);
-  if (y && y.all) return Math.min(2, NEW_MAX);
-  return Math.min(1, NEW_MAX);
+  /* 保底 NEW_MIN：不靠「昨天交没交」来决定今天学不学新东西，
+     只靠连续全交往上加。欠账时减的是复训和日课，不是新学。 */
+  var y = needStats(daysAgo(1)), b = needStats(daysAgo(2));
+  var n = NEW_MIN;
+  if (y && y.all) n++;
+  if (y && y.all && b && b.all) n++;
+  return Math.min(n, NEW_MAX);
+}
+
+/* 手撕：一天派 n 题。没练过的优先；不够就从日课队列队首（最久没练的）补；
+   再不够才从头取。同一天不重复。 */
+function pickDrills(n) {
+  var D = window.MARVIS_DRILL;
+  if (!D || !D.topics.length) return [];
+  var out = [], seen = {};
+  function take(t) { if (t && !seen[t.id] && out.length < n) { seen[t.id] = 1; out.push(t); } }
+  D.topics.forEach(function (t) { if (S.drill.indexOf('drill/' + t.id) < 0) take(t); });
+  if (out.length < n) {
+    (S.drill || []).forEach(function (k) {
+      take(D.topics.filter(function (t) { return t.id === k.split('/')[1]; })[0]);
+    });
+  }
+  if (out.length < n) D.topics.forEach(function (t) { take(t); });
+  return out;
 }
 
 /* 手撕：没练过的优先；全练过 → 取最久没练的 */
@@ -580,20 +605,25 @@ function buildDay() {
     }
   }
 
-  /* ⑤ 日课：手撕 + 命功 */
-  var d = pickDrill();
-  if (d) items.push({
-    type: 'drill', key: 'drill/' + d.id, need: true, done: false, link: d.href,
-    label: '手撕：' + d.name, sub: '日课 · 点开先跳本题材料 · 10 分钟限时，关掉 AI 补全'
+  /* ⑤ 日课：手撕 n 题 + 命功 */
+  var dn = S.relieve ? DRILL_N_RELIEVE : DRILL_N;
+  var ds = pickDrills(dn);
+  ds.forEach(function (d, i) {
+    items.push({
+      type: 'drill', key: 'drill/' + d.id, need: true, done: false, link: d.href,
+      label: '手撕 ' + (i + 1) + '/' + ds.length + '：' + d.name,
+      sub: '日课 · 点开先跳本题材料 · 每题 ' + (DRILL_SEC / 60) + ' 分钟限时，关掉 AI 补全'
+    });
   });
   items.push({
     type: 'life', key: 'life', need: true, done: false, link: '',
     label: '命功：八段锦 12 分钟 + 23:00 手机放客厅', sub: '电池优先，不强求跑步'
   });
 
-  /* ⑥ 加餐：复训溢出（最多 2）+ 新题溢出，总数不超过 EXTRA_MAX */
-  q.slice(budget, budget + EXTRA_REV_MAX).forEach(function (x) { items.push(mkRev(x, false)); });
-  var room = EXTRA_MAX - Math.min(revOver, EXTRA_REV_MAX);
+  /* ⑥ 加餐：复训溢出 + 新题溢出。EXTRA_MAX=0 / EXTRA_REV_MAX=0 → 都不封顶（2026-09-29） */
+  q.slice(budget, EXTRA_REV_MAX ? budget + EXTRA_REV_MAX : undefined)
+    .forEach(function (x) { items.push(mkRev(x, false)); });
+  var room = EXTRA_MAX ? EXTRA_MAX - Math.min(revOver, EXTRA_REV_MAX || revOver) : Infinity;
   extraNew.slice(0, Math.max(0, room)).forEach(function (c) { items.push(mkNew(c, false)); });
 
   return {
@@ -638,7 +668,7 @@ function nextDrill(d) {
 function addOne(type) {
   var d = S.days[today()];
   if (!d) return 'empty';
-  if (d.items.length >= DAY_CAP) return 'cap';
+  if (DAY_CAP && d.items.length >= DAY_CAP) return 'cap';   // DAY_CAP=0 → 不封顶
   var it = null;
   if (type === 'new') {
     var c = nextNew(d);
@@ -672,7 +702,7 @@ function forceUnlock() {
   if (!confirm('这条前置还没到「会了」：' + pre + '。\n\n跳过它会打乱记忆链顺序——确定要强行解锁「' + c.name + '」吗？')) return;
   var d = S.days[today()];
   if (!d) return;
-  if (d.items.length >= DAY_CAP) { alert('今天已经 ' + DAY_CAP + ' 条了，明天再来。'); return; }
+  if (DAY_CAP && d.items.length >= DAY_CAP) { alert('今天已经 ' + DAY_CAP + ' 条了，明天再来。'); return; }
   d.items.push(mkNew(c, false));
   save(); render();
 }
@@ -683,7 +713,7 @@ function forceUnlock() {
       旧 key（be1/M1 这类）在新表里查不到，这种死 key 必须重派，
       否则今天一整天都还在派母题。重派时把还活着的 key（手撕 drill/*、
       命功 life、项目线 pitch/*）的完成状态原样接回去，不让人白做一遍。 */
-var DAY_V = 3;
+var DAY_V = 4;   // 2026-09-29：上限全解除 + 减负不压日课，旧派单按新口径重排（打勾的日课/命功/项目按 key 接回）
 function deadKeys(d) {
   if (!d || !d.items) return false;
   var live = keySet();
@@ -832,11 +862,22 @@ function quickDrill(ds, idx) {
   var it = S.days[ds] && S.days[ds].items[idx];
   if (!it || it.done) return;
   if (!confirm('把「' + it.label.replace(/^手撕：/, '') +
-      '」直接标记为完成？\n\n会按「闭卷写出来」记（算进 x/37，明天换下一题）。' +
+      '」直接标记为完成？\n\n会按「闭卷写出来」记（算进 x/' + dg0() + '，明天换下一批）。' +
       '没练完想如实报，就点行上其它位置走弹窗。')) return;
   RATE_DS = ds; RATE_IDX = idx;
   doDrill('ok');
 }
+
+/* 今天派了几道手撕、做了几道（统计框用；一天 5 题后需要看当日进度） */
+function todayDrillN() {
+  var d = S.days[today()];
+  return d && d.items ? d.items.filter(function (i) { return i.type === 'drill'; }).length : 0;
+}
+function todayDrillDone() {
+  var d = S.days[today()];
+  return d && d.items ? d.items.filter(function (i) { return i.type === 'drill' && i.done; }).length : 0;
+}
+function dg0() { return (window.MARVIS_DRILL && window.MARVIS_DRILL.goal) || 30; }
 
 /* 只动日课队列，不碰等级（手撕不进 L0–L4，单独计连续天数） */
 function doDrill(score) {
@@ -1152,7 +1193,7 @@ function render() {
     (scan.locked.length
       ? ' <button class="mv-btn" style="padding:.25rem .625rem" onclick="forceUnlock()">强行解锁下一条</button>'
       : '') +
-    '<span class="mv-note" style="margin:0">当天封顶 ' + DAY_CAP + ' 条</span>' +
+    '<span class="mv-note" style="margin:0">' + (DAY_CAP ? '当天封顶 ' + DAY_CAP + ' 条' : '不封顶，做完为止') + '</span>' +
     '</div>' +
     (lockedNote(scan.locked)
       ? '<div class="mv-note" style="margin:0 0 .75rem">' + lockedNote(scan.locked) + '</div>'
@@ -1235,7 +1276,9 @@ function render() {
       '<span class="mv-pg-name">手撕算法<em>日课</em></span>' +
       '<span class="mv-pg-num"><b>' + dn + '</b>/' + dg + ' · ' + Math.round(dn / dg * 100) + '%</span></div>' +
       '<div class="mv-pg-bar"><i class="mv-lv lv3" style="width:' + Math.min(100, dn / dg * 100) + '%"></i></div>' +
-      '<div class="mv-note" style="margin-top:.625rem">练过的不再重复派，全部练完后按「最久没练」轮转；存量卡片 ' + D.topics.length + ' 张，其余按 Hot100 顺序补。</div></div>';
+      '<div class="mv-note" style="margin-top:.625rem">每天 ' + (S.relieve ? DRILL_N_RELIEVE : DRILL_N) +
+      ' 题（今天 ' + todayDrillDone() + '/' + todayDrillN() + '）；练过的不再重复派，全部练完后按「最久没练」轮转；存量卡片 ' +
+      D.topics.length + ' 张，其余按 Hot100 顺序补。</div></div>';
   }
 
   /* ── 近 7 天 ── */

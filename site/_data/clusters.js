@@ -207,3 +207,39 @@ window.MARVIS_DRILL = {
     { id: 'D37', name: '柱状图最大矩形', href: '../output/算法手撕-32题每日作战卡.html#B6' }
   ]
 };
+
+/* 独立准则段（2026-09-28 建）—— 行事准则派单池
+   ─────────────────────────────────────────────────────────────
+   **目前未激活**：本对象单独挂着，没有 push 进 MARVIS_CLUSTERS，
+   所以现有档位轮转与派单完全不受影响。这样做是为了让「接入」这件事
+   变成一次可回滚的小改动（明天改 progress.html 时再 push）。
+   题面（场景 + 标准动作）在 site/_data/rules.js，用同一个 id 对齐；
+   本段只挂 href 供派单跳转，不复制题面。
+   正本：wiki/thinking/行动规则.md / 0713再就业男团-逆境准则.md / 性命双修执行案.md
+
+   为什么写在文件末尾：_rebuild_clusters.py 只重写
+   HEADER + 13 个模块簇 + pitch，然后原样接上 index('/* 独立日课') 之后的内容——
+   所以本段和 drill 段一样，重跑脚本不会被冲掉。
+
+   接入清单（明天做，四处）：
+     ① progress.html 顶部加 var RULE_CID = 'rule';
+     ② clusterOrder() 与 scanClusters() 的 zone 收集都要排除 RULE_CID（照 PROJECT_CID 的写法）
+     ③ 加 ruleNext()（照 projectNext()），buildDay 里补一条：每天派 1 条准则
+     ④ TYPE_TAG/TYPE_CLS/TYPE_ORD 三张表同加 rule（漏一张标签静默消失）
+     ⑤ runRule 的日序：一天派 1 条，答对进 1-3-7-14，答错明天重派
+     接入后跑：node output/_verify_progress.js && node site/_tests/*.js（三个必须全绿） */
+window.MARVIS_RULE_CLUSTER = {
+  id: 'rule', name: '行事准则', zone: '准则',
+  topics: [
+    { id: 'R1',  name: '机会成本门',        href: 'rules.html#r-R1',  src: 'wiki/thinking/行动规则.md' },
+    { id: 'R2',  name: '有限计划会',        href: 'rules.html#r-R2',  src: 'wiki/thinking/行动规则.md' },
+    { id: 'R3',  name: '决策门：单向还是双向', href: 'rules.html#r-R3', src: 'wiki/thinking/行动规则.md' },
+    { id: 'R4',  name: '信息价值截止线',     href: 'rules.html#r-R4',  src: 'wiki/thinking/行动规则.md' },
+    { id: 'R5',  name: '丑版本配额',        href: 'rules.html#r-R5',  src: 'wiki/thinking/行动规则.md' },
+    { id: 'R6',  name: '我不负责清单',      href: 'rules.html#r-R6',  src: 'wiki/thinking/行动规则.md' },
+    { id: 'R7',  name: '逆境：算自己的账',   href: 'rules.html#r-R7',  src: 'wiki/thinking/0713再就业男团-逆境准则.md' },
+    { id: 'R8',  name: '逆境：情绪 0 分也照做', href: 'rules.html#r-R8', src: 'wiki/thinking/0713再就业男团-逆境准则.md' },
+    { id: 'R9',  name: '命功是电池',        href: 'rules.html#r-R9',  src: 'wiki/thinking/性命双修执行案.md' },
+    { id: 'R10', name: 'never miss twice', href: 'rules.html#r-R10', src: 'wiki/thinking/行动规则.md' }
+  ]
+};

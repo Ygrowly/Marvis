@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>行事准则 · 场景判断题</title>
+<link rel="stylesheet" href="_components/marvis.css">
+<style>
+  .rl { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
+    padding: 14px 16px; margin: 12px 0; scroll-margin-top: 20px; }
+  .rl.hl { border-color: #7F77DD; box-shadow: 0 0 0 3px rgba(127,119,221,.14); }
+  .rl-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .rl-n { font-size: 12px; color: #888780; font-variant-numeric: tabular-nums; }
+  .rl-t { font-size: 15px; font-weight: 500; }
+  .rl-tag { font-size: 11px; padding: 1px 7px; border-radius: 20px;
+    background: #EEEDFE; color: #534AB7; }
+  .rl-src { font-size: 11px; color: #888780; margin-left: auto; }
+  .rl-scene { font-size: 14px; line-height: 1.65; color: #2C2C2A;
+    background: #fbfaf7; border-left: 3px solid #CECBF6; border-radius: 0 8px 8px 0;
+    padding: 10px 12px; margin: 0 0 10px; }
+  .rl-scene b { font-weight: 500; color: #534AB7; }
+  details.rl-d { border-top: 1px dashed rgba(0,0,0,.12); padding-top: 8px; }
+  details.rl-d summary { cursor: pointer; font-size: 13px; color: #534AB7;
+    list-style: none; user-select: none; }
+  details.rl-d summary::-webkit-details-marker { display: none; }
+  details.rl-d summary::before { content: '▸ '; }
+  details.rl-d[open] summary::before { content: '▾ '; }
+  .rl-act { font-size: 14px; line-height: 1.7; margin: 8px 0 0; color: #2C2C2A; }
+  .rl-sum { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+  .rl-sum div { border: 1px solid rgba(0,0,0,.1); border-radius: 10px; padding: 8px 12px; background: #fff; }
+  .rl-sum small { display: block; color: #5F5E5A; font-size: 11px; }
+  .rl-sum strong { font-size: 17px; font-weight: 500; }
+</style>
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h1 class="mv-h1" style="margin:0">行事准则</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
+      <a class="mv-btn" href="brain.html" style="text-decoration:none">我的宫殿</a>
+    </div>
+  </div>
+  <p class="mv-sub" style="margin-bottom:4px">
+    这里不是摘抄。每条只问一件事：<b>遇到这个情境，你做什么。</b>
+    先自己想一遍再展开——展开的是标准动作，不是标准答案。
+  </p>
+  <div class="rl-sum" id="sum"></div>
+
+  <div id="list"></div>
+
+  <p class="mv-note" style="margin-top:20px">
+    正本在 <code>wiki/thinking/</code>（行动规则 / 逆境准则 / 性命双修），本页只是派单用的题面，不复制正文。
+    读过的书要走同一条路：<b>先归口成一条可执行的准则，再进派单</b>——不然读完就只剩个概念。
+  </p>
+
+</div>
+
+<script src="_data/rules.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = window.MARVIS_RULES || [];
+  var list = document.getElementById('list');
+
+  R.forEach(function (r) {
+    var d = document.createElement('div');
+    d.className = 'rl';
+    d.id = 'r-' + r.id;
+    d.innerHTML =
+      '<div class="rl-h">' +
+        '<span class="rl-n">' + r.id + '</span>' +
+        '<span class="rl-t">' + r.name + '</span>' +
+        (r.tag ? '<span class="rl-tag">' + r.tag + '</span>' : '') +
+        '<span class="rl-src">' + (r.src || '') + '</span>' +
+      '</div>' +
+      '<p class="rl-scene">' + r.scene + '</p>' +
+      '<details class="rl-d"><summary>想好了，展开对一下</summary>' +
+        '<p class="rl-act">' + r.action + '</p>' +
+      '</details>';
+    list.appendChild(d);
+  });
+
+  var tags = {};
+  R.forEach(function (r) { tags[r.tag || '其他'] = (tags[r.tag || '其他'] || 0) + 1; });
+  document.getElementById('sum').innerHTML =
+    '<div><small>准则条数</small><strong>' + R.length + '</strong></div>' +
+    Object.keys(tags).map(function (k) {
+      return '<div><small>' + k + '</small><strong>' + tags[k] + '</strong></div>';
+    }).join('') +
+    '<div><small>全部</small><strong style="font-size:13px;color:#993C1D">未接入派单</strong></div>';
+
+  // 从派单跳进来时高亮对应那条
+  if (location.hash) {
+    var el = document.getElementById(location.hash.slice(1));
+    if (el) {
+      el.classList.add('hl');
+      el.querySelector('details').open = true;
+    }
+  }
+})();
+</script>
+</body>
+</html>

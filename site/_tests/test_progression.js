@@ -144,7 +144,7 @@ ok('抽检确实在跑且不密于 7 天一轮',
   examDays.length + ' 轮：' + examDays.join(', '));
 
 const maxLoad = Math.max(...loadByDay), avgLoad = loadByDay.reduce((a, b) => a + b, 0) / loadByDay.length;
-ok('每日必做条数不超过 16', maxLoad <= 16, '峰值 ' + maxLoad + ' 条，均值 ' + avgLoad.toFixed(1));
+ok('不封顶后每日必做条数仍在合理区间（≤30）', maxLoad <= 30, '峰值 ' + maxLoad + ' 条，均值 ' + avgLoad.toFixed(1));
 ok('45 天后没有欠账（全是必做全交）', g('debtStats().debt') === 0, g('debtStats().debt') + ' 条');
 ok('45 天后不再派新题（都学完了）',
   newByDay.slice(-5).every(r => r.new.length === 0),
