@@ -377,7 +377,7 @@ graph TB
 
 ### 简历材料
 - **详细简历**：`E:\notes\Marvis\output\resume\刘宇广-AI应用开发-Agent后端-2027秋招-投递版.md`
-- **Boss直聘简历**：`E:\notes\Marvis\output\resume\刘宇广-BOSS直聘在线简历.md`
+- **Boss直聘简历**：`E:\notes\Marvis\output\resume\刘宇广-BOSS在线简历.md`（打招呼语 / 问答已于 2026-09-28 拆成独立文件；总索引见 `刘宇广-BOSS直聘在线简历.md`）
 - **量化口径**：`E:\notes\Marvis\output\resume\刘宇广-简历量化指标口径.md`
 
 ## 📈 职业发展定位

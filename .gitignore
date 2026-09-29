@@ -74,3 +74,8 @@ pytest-tmp-current/
 # mermaid 构建中间产物（可删，重建：python site/_build/mermaid/mmd.py --scan）
 site/_build/mermaid/cache/
 site/_build/mermaid/_tmp/
+
+# 本地一次性产物（打包 / 冒烟截图 / 生成图缓存，不进仓库）
+site.zip
+*_smoke.png
+generated-images/
