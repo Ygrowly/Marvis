@@ -483,4 +483,17 @@
     store: store, today: today, addDays: addDays, LADDER: LADDER,
     gradeCard: gradeCard,
   };
+
+  /* 云同步层（2026-10-01）：动态挂在自己旁边，165 个引用页面不用改一行。
+     用 currentScript 推出同目录，相对路径在根目录页和 modules/ 页都对。 */
+  (function () {
+    try {
+      var cur = document.currentScript;
+      if (!cur || !cur.src) return;
+      if (window.MarvisSync) return;
+      var s = document.createElement('script');
+      s.src = cur.src.replace(/marvis\.js(\?.*)?$/, 'sync.js');
+      document.head.appendChild(s);
+    } catch (e) {}
+  })();
 })();

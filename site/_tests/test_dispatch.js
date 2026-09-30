@@ -10,7 +10,7 @@ const m = html.match(/<script>\r?\n([\s\S]*?)<\/script>/);
 if (!m) throw new Error('找不到内联脚本');
 const code = m[1];
 
-global.window = {};
+global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
 require(path.join(ROOT, '_data', 'clusters.js'));
 require(path.join(ROOT, '_data', 'breaks.js'));
 

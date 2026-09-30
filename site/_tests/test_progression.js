@@ -11,7 +11,7 @@ const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
 const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
-global.window = {};
+global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
 require(path.join(ROOT, '_data', 'clusters.js'));
 require(path.join(ROOT, '_data', 'breaks.js'));
 

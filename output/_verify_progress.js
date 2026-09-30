@@ -35,7 +35,7 @@ ok('手撕进度与近 7 天合并进「进度与记录」',
 
 /* 3. 动态：跑一次 render，看今天那张清单 */
 console.log('\n【动态】首屏渲染');
-global.window = {};
+global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
 require(path.join(ROOT, '_data', 'clusters.js'));
 require(path.join(ROOT, '_data', 'breaks.js'));
 const dom = {};

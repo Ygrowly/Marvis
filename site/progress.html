@@ -74,6 +74,7 @@
         <button class="mv-btn" onclick="document.getElementById('impfile').click()">导入备份</button>
         <input type="file" id="impfile" accept=".json" hidden onchange="importJSON(this)">
         <button class="mv-btn" onclick="resetLedger()">清账重开</button> <button class="mv-btn" onclick="resetAll()">清零重来</button>
+        <button class="mv-btn" onclick="openSyncPanel()">云同步设置</button>
       </div>
       <p class="mv-note" style="margin:0">
         <b>推进单位</b>：一条主线——读完这条主线下的母题，按「完整回答骨架」讲一遍，讲得出才算过。<br>
@@ -83,7 +84,7 @@
         <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以<b>每个模块每天最多推进 1 条</b>，新学那 4~6 条来自 4~6 个不同模块。<br>
         <b>自评三档</b>：讲得出 → 进「常练」、复训间隔翻倍；卡壳 → 留在原档、明天重讲；讲不出 → 回「会了」、明天重来。卡面和弹窗会摆开上次写下的断点。<br>
         <b>抽检</b>：每 7 天一轮 5 题，每题 60 秒，连答不回头，结果直接改等级；项目线口述 90 秒。<br>
-        数据只存在本机浏览器（localStorage，键名 mv.progress.v1），换机器或清缓存前记得导出备份。
+        数据默认写在这台机器的浏览器里（键名 mv.progress.v1），<b>同时同步到仓库的 <code>data/marvis-sync.json</code></b>：断网照常能点，联网后自动合并，换机器打开就是同一份。右下角「云同步」点开填一次令牌即可，之后全自动。
       </p>
     </div>
   </details>
@@ -1342,6 +1343,13 @@ function render() {
 
 S = load();
 render();
+
+function openSyncPanel() {
+  if (window.MarvisSync) { window.MarvisSync.openPanel(); return; }
+  alert('同步组件还没加载完，刷新页面再点一次。');
+}
+/* 云端拉到更新的进度 → 用合并后的本地数据重画一遍（本地永远是离线真相） */
+window.addEventListener('mv:sync', function () { S = load(); render(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRate(); });
 </script>
 </body>

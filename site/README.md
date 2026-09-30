@@ -11,7 +11,7 @@
 ```text
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
-  progress.html       进度页（手写，数据存 localStorage）：首屏一张今日清单（类型标签）＋五个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负
+  progress.html       进度页（手写，数据本机 + 云同步到 data/marvis-sync.json）：首屏一张今日清单（类型标签）＋五个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负
   _data/clusters.js   进度页数据源：7 簇 / 49 条主线 / 手撕日课（脚本从模块卡生成，勿手改）
   projects/           项目口述页（build 生成，勿手改）：骨架 + 决策链，默认折叠
   _build/mermaid/     自带 mermaid.min.js（浏览器端渲染用；页面外链 _data/mmd-boot.js）
@@ -26,7 +26,7 @@ site/
   cards/              补充卡草稿区（::card 也可直接写进任何 md）
   figures/            图（.svg），md 里用 ::figure 引用
   _data/              构建产物 decks.json / modules.js / reviews.js（数据）+ .js（file:// 用）
-  _components/        marvis.css + marvis.js，10 个原生 Web Components
+  _components/        marvis.css + marvis.js（10 个原生 Web Components）+ sync.js（进度云同步，由 marvis.js 动态挂载）
 ```
 
 ## 页面导航（三层，双向可达）
@@ -210,7 +210,15 @@ flowchart LR
 
 **10 个封顶。要加第 11 个，说明结构设计错了。**
 
-进度存 `localStorage`（键名 `mv.`）。换机器不迁移——进度不是资产，脑子里的才是。
+## 数据存在哪
+
+进度写在浏览器本机（键名前缀 `mv.`），**同时同步到仓库根目录的 `data/marvis-sync.json`**。断网照常能点，联网后自动合并，换机器打开就是同一份。
+
+- 启用：任意页面右下角「云同步 · 未配置」→ 填 GitHub 用户名 / 仓库名 / 分支 / 文件路径 / 令牌 → 保存。**令牌只存在这台机器的浏览器里，不会进仓库。**
+- 令牌怎么开：GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token。Resource owner 选自己；Repository access 选 **Only select repositories → Marvis**；Permissions → Repository permissions → **Contents: Read and write**；Expiration 拉到最长（官方上限 366 天，默认 30 天别用）。
+- 同步规则：每个键带时间戳，新的赢；主进度 `mv.progress.v1` 额外做逐条合并（谁练得晚听谁的）。改动后 45 秒静默上传，关页前补一次。
+- 路径放在 `data/` 而不是 `site/`：Pages 的 workflow 只监听 `site/**`，放 `site/` 会导致每打一次卡就重新部署一次全站。
+- 换机器 / 清缓存：新机器开一次页面，填同一个令牌，点「立即拉取」即可。真要保险就用进度页的导出 JSON（导出/导入按钮还在）。
 
 ## 规则（违反任何一条，系统会死）
 
