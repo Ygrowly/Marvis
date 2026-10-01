@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="qZOtTd8nsY3cy8SAkKTFFl">
-<head data-page-node-id="6w9eOBPAupX09YDRd8XN24">
-<meta charset="UTF-8" data-page-node-id="LhQsASHpGAeDcdKhpnedwv">
-<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="kb8tJArUZa37h4385EVwTL">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>算法手撕 32 题 · 每日作战卡</title>
 <style>
   :root{
@@ -44,64 +44,78 @@
   }
 </style>
 </head>
-<body data-page-node-id="nVCYXhGzcNzEMZnzC5V2dq">
-<div class="wrap" data-page-node-id="01i3mTkwyztIgZxtBbvw9m">
+<body>
+<div class="wrap">
 
-  <h1 data-page-node-id="8Fp5JdzKi6Yla8LX2xC1Yc">算法手撕 32 题 · 每日作战卡</h1>
-  <div class="sub" data-page-node-id="60xkgrAJOboaTU7NKVWKrG">S15 面试必杀（闭卷 3 分钟）· A10 高频变体 · B7 笔试难题　|　每天 35 分钟，一天只推 1 道新题</div>
+  <h1>算法手撕 32 题 · 每日作战卡</h1>
+  <div class="sub">S15 面试必杀（闭卷 3 分钟）· A10 高频变体 · B9 笔试难题　|　每天 35 分钟，一天只推 1 道新题</div>
 
-  <h2 data-page-node-id="vtAmLoIycBjvGnl3Z73qcz">每天四格（35 分钟）</h2>
-  <div class="grid" data-page-node-id="p8zWxu9tyBNdAmuN2aD4QH">
-    <div class="box" data-page-node-id="k4VaBrXXftctZtupUvVdVC"><b data-page-node-id="rkIH9T84vH3c86FFZBOGUb">1 · 复现 8min</b><span data-page-node-id="foOaUPBv8CoVt4y8Rxkxb9">只看昨天 2 题的题名，闭卷写。写不出来 = 没过关</span></div>
-    <div class="box" data-page-node-id="7Zul2jTGBIUHSI7SqfhliO"><b data-page-node-id="jttW8sUyY5yAjtFCYBJUdY">2 · 新题 15min</b><span data-page-node-id="aSOGDrnRVNFemuu8k7BU6L">先说四句（模型→不变量→边界→复杂度），再写。卡住 3 分钟才准看脊柱</span></div>
-    <div class="box" data-page-node-id="nThO9ImCiMvAnDNJM8EfCb"><b data-page-node-id="l0WueW0ioXwdOEFwX3J7wX">3 · 口述 7min</b><span data-page-node-id="ITW288kNtCtsO8kB7d3HiR">对着空气讲一遍，说不顺 = 没真懂</span></div>
-    <div class="box" data-page-node-id="Ugoy2yEL6jtT83CX5lEnAB"><b data-page-node-id="6oY2JsxRe3KrVFA6S4UL9J">4 · 登记 5min</b><span data-page-node-id="xOodXrG8m4Bns8e8T66ghb">学完 5 分钟内自评打级，防遗忘</span></div>
+  <h2>每天四格（35 分钟）</h2>
+  <div class="grid">
+    <div class="box"><b>1 · 复现 8min</b><span>只看昨天 2 题的题名，闭卷写。写不出来 = 没过关</span></div>
+    <div class="box"><b>2 · 新题 15min</b><span>先说四句（模型→不变量→边界→复杂度），再写。卡住 3 分钟才准看脊柱</span></div>
+    <div class="box"><b>3 · 口述 7min</b><span>对着空气讲一遍，说不顺 = 没真懂</span></div>
+    <div class="box"><b>4 · 登记 5min</b><span>学完 5 分钟内自评打级，防遗忘</span></div>
   </div>
-  <div class="note" data-page-node-id="v5ubCUZ2T9vbi989jTjOaw"><b data-page-node-id="a0DraiSEDcxwHCKCezjT9k">铁律：</b>一天只推 1 道新题。算法补短板的失败模式永远是「一天刷 5 道，第二天全忘」。点按钮切换状态：未练 → 看过(1) → 半闭卷(2) → 闭卷稳(3)。</div>
+  <div class="note"><b>铁律：</b>一天只推 1 道新题。算法补短板的失败模式永远是「一天刷 5 道，第二天全忘」。点按钮切换状态：未练 → 看过(1) → 半闭卷(2) → 闭卷稳(3)。</div>
 
-  <h2 data-page-node-id="MDJ5aa2ORr1llWukGpNYwD">S 层 · 面试手撕必杀 15 题</h2>
-  <table data-page-node-id="kvsENiGwDECblLH7uWkLCK">
-    <thead data-page-node-id="B4MCtOsEOVwDRvluHFoRmP"><tr data-page-node-id="35KQ5vQ2X9qXDUqqpnhr7I"><th style="width:52px" data-page-node-id="TYPuufctGaE3kA7fMSejBp">状态</th><th style="width:190px" data-page-node-id="T8mppLczKHCxejUX5vWuMO">题</th><th style="width:110px" data-page-node-id="pjQP2WxVOrjTPnqR319jgL">模型</th><th data-page-node-id="DD7wybUmmXxy8tPiUJlSVs">一句话识别</th></tr></thead>
-    <tbody id="tbS" data-page-node-id="VkFFkhPfseCyByYSA3eF1K"></tbody>
+  <h2>S 层 · 面试手撕必杀 15 题</h2>
+  <table>
+    <thead><tr><th style="width:52px">状态</th><th style="width:190px">题</th><th style="width:110px">模型</th><th>一句话识别</th></tr></thead>
+    <tbody id="tbS"></tbody>
   </table>
 
-  <h2 data-page-node-id="Ofn6kTmgmlgVKDX23fOFbZ">A 层 · 高频变体 10 题</h2>
-  <table data-page-node-id="7gOIGnsEjogAQEBiIgkDV9">
-    <thead data-page-node-id="Swrb6FdvFWGUPtQVY6SOCW"><tr data-page-node-id="io8SPUVbqB1MoXay02ETSc"><th style="width:52px" data-page-node-id="AZ1By1hC9Dj5QiFeJC2ANN">状态</th><th style="width:190px" data-page-node-id="NJXVAROfPpECnVqCydOSAf">题</th><th style="width:110px" data-page-node-id="3C02HAEp2Z0HYQXec4Y6C8">模型</th><th data-page-node-id="fRNkjykfJ22yeHoQMgs0V2">一句话识别</th></tr></thead>
-    <tbody id="tbA" data-page-node-id="KRlrFetELtEXMbtF36uMdB"></tbody>
+  <h2>A 层 · 高频变体 10 题</h2>
+  <table>
+    <thead><tr><th style="width:52px">状态</th><th style="width:190px">题</th><th style="width:110px">模型</th><th>一句话识别</th></tr></thead>
+    <tbody id="tbA"></tbody>
   </table>
 
-  <h2 data-page-node-id="oUoI8ZNCDTSpy94M1lYlwF">B 层 · 笔试难题 7 题（目标：识别模型 + 能拿部分分）</h2>
-  <table data-page-node-id="3DONdqxXyAaR112FNmWoZZ">
-    <thead data-page-node-id="H9GHtsutbSu0sSBrK4MYM6"><tr data-page-node-id="vmnuxfFZQYXENbE6YbVQ1a"><th style="width:52px" data-page-node-id="8jD8qGyf4ousXicBCQUNl9">状态</th><th style="width:190px" data-page-node-id="7SxYFdSyz4AFwpAFT8n912">题</th><th style="width:110px" data-page-node-id="QwjozUHismY6tpq1O0JoIK">模型</th><th data-page-node-id="uiGt0EAgEIOJBDFTvxX5hw">为什么笔试常考</th></tr></thead>
-    <tbody id="tbB" data-page-node-id="Chk14kEFuMUwrAJ7YZXzq5"></tbody>
+  <h2>B 层 · 笔试难题 9 题（目标：识别模型 + 能拿部分分）</h2>
+  <table>
+    <thead><tr><th style="width:52px">状态</th><th style="width:190px">题</th><th style="width:110px">模型</th><th>为什么笔试常考</th></tr></thead>
+    <tbody id="tbB"></tbody>
   </table>
 
-  <h2 data-page-node-id="bxcUmI5jYBZrV8LARTWCLb">八大模型速查：看到什么 → 起手第一句</h2>
-  <table data-page-node-id="aMLj1l9xwGJZVToGWy6xdS">
-    <thead data-page-node-id="kkw3qZifGPhdPEBAJieO5n"><tr data-page-node-id="ybp10pCtV0q0IkrPp3pfa4"><th style="width:220px" data-page-node-id="eNQoQ8zA0qWQHODvaLhA87">看到</th><th style="width:150px" data-page-node-id="pcD6zrYpdRZqTotpnIN9SU">模型</th><th data-page-node-id="G2lJh06208iiXD1B8KDieR">起手第一句</th></tr></thead>
-    <tbody data-page-node-id="S0lP5u9yFt3r0BgzfWAopi">
-      <tr data-page-node-id="41VYsXkfB1vCglrH3zUZVE"><td data-page-node-id="znCAHh04Gr38j7Pw1FIWr7">凑一个值 / 计数 / 判重，要 O(n)</td><td data-page-node-id="gPbpwORH6FwiI9ugFXcArS">哈希表</td><td data-page-node-id="HGpG8xiwt3io7V57MuHCoh">先查后存，别把自己算进去</td></tr>
-      <tr data-page-node-id="brPsxuUjnBKqJktGhiSWJq"><td data-page-node-id="1we0Gp36ikbaLrFBUZ1Ccl">有序数组两头往中间夹</td><td data-page-node-id="t9Q6ZjYqzvoortTViJAcJE">相向双指针</td><td data-page-node-id="TpZ9Z9rDXnhHDoFLC6YxCa">谁矮动谁</td></tr>
-      <tr data-page-node-id="tCmnaJ6ky61R4WkXChkrFj"><td data-page-node-id="E2N9NiChaGgb6dmNZDdZ9B">连续子串 / 子数组 + 最长最短</td><td data-page-node-id="CB8UMszlgBGSXXyV5xbnYQ">滑动窗口</td><td data-page-node-id="0w2bagDQdM3NsWBnywdqvD">右扩到不满足，左收到满足</td></tr>
-      <tr data-page-node-id="59BYDMR5GSLwgYjThNjLM7"><td data-page-node-id="kIvcFkR38SVhRkfOg5Ka8c">链表要改指针</td><td data-page-node-id="BQOu9tbbxF5nMFbnOCQVg7">dummy 哑头 + 三指针</td><td data-page-node-id="5GpHOkOQbW6nDvrgNPwzEj">先接住 next，再改指针</td></tr>
-      <tr data-page-node-id="ofzHuToRDfJMZdfUnhwq4I"><td data-page-node-id="51VmleANXCSTpI1hVFUUtq">树要算高度 / 路径 / 是否</td><td data-page-node-id="TqeeAFiw2yqo2oBLyoWxlw">后序递归 + 返回值</td><td data-page-node-id="JPTYmuMXGEeTyX6TqVcLpm">返回什么 = 我要向父节点汇报什么</td></tr>
-      <tr data-page-node-id="Q36CdTToJyE8fIZs4erX1A"><td data-page-node-id="awq91VHYoVSKWu5tKlAdov">网格连成一片 / 最短几步</td><td data-page-node-id="hFYDChkzZPIqiEccfF1tUi">洪水填充 / 多源 BFS</td><td data-page-node-id="KSzdQDtoSWMnEejm43B6N4">沉岛标记访问，按层才算一轮</td></tr>
-      <tr data-page-node-id="zYMQ0Om92zEBF12S0aFYan"><td data-page-node-id="kGTH6pOO6BmzOXqFdHDNhm">前 K / 第 K / 每次取最优</td><td data-page-node-id="VVrxC3xNBnEhRHIrldqGNs">堆</td><td data-page-node-id="caoHvEuwk2k7oj5Ay0OwG4">堆顶是守门员，比它强才进门</td></tr>
-      <tr data-page-node-id="UlUIxY6ItO0ISyA2aZnLKI"><td data-page-node-id="coZ8ZYVh03GZGUiAnN1hI8">选不选 / 凑金额 / 两序列比对</td><td data-page-node-id="dM60YviVEPJuUQ1GMAeX0H">DP</td><td data-page-node-id="RCBHdAzgDIIUkYwE4VMYKj">先定义 dp[i] 是什么，再想最后一个决策</td></tr>
+  <h2>八大模型速查：看到什么 → 起手第一句</h2>
+  <table>
+    <thead><tr><th style="width:220px">看到</th><th style="width:150px">模型</th><th>起手第一句</th></tr></thead>
+    <tbody>
+      <tr><td>凑一个值 / 计数 / 判重，要 O(n)</td><td>哈希表</td><td>先查后存，别把自己算进去</td></tr>
+      <tr><td>有序数组两头往中间夹</td><td>相向双指针</td><td>谁矮动谁</td></tr>
+      <tr><td>连续子串 / 子数组 + 最长最短</td><td>滑动窗口</td><td>右扩到不满足，左收到满足</td></tr>
+      <tr><td>链表要改指针</td><td>dummy 哑头 + 三指针</td><td>先接住 next，再改指针</td></tr>
+      <tr><td>树要算高度 / 路径 / 是否</td><td>后序递归 + 返回值</td><td>返回什么 = 我要向父节点汇报什么</td></tr>
+      <tr><td>网格连成一片 / 最短几步</td><td>洪水填充 / 多源 BFS</td><td>沉岛标记访问，按层才算一轮</td></tr>
+      <tr><td>前 K / 第 K / 每次取最优</td><td>堆</td><td>堆顶是守门员，比它强才进门</td></tr>
+      <tr><td>选不选 / 凑金额 / 两序列比对</td><td>DP</td><td>先定义 dp[i] 是什么，再想最后一个决策</td></tr>
     </tbody>
   </table>
 
-  <h2 data-page-node-id="e0NSHaxFJLNgWpcCGQEfQF">笔试三条（和手撕分开练）</h2>
-  <ol data-page-node-id="DUJ48kSmGjFnFw0b8aMiIh">
-    <li data-page-node-id="2YfXBpDaiwTgDocfSYOJbW"><b data-page-node-id="EWf3GAvJxOfk99Fq5vXsVF">时间盒</b>：读题 3min → 建模 5min → 编码 15min → 边界自测 5min。超时先交能过示例的版本。</li>
-    <li data-page-node-id="PzsMpHDguyWGgvVC7x2FNR"><b data-page-node-id="tXB4Ey2CDB8gSmD1FtgFJ6">先拿部分分</b>：想不出最优就先写暴力版，主逻辑外用 <code data-page-node-id="5l03Ehmd2R2ATPOVO44XmL">if n &lt;= 100: return brute(n)</code> 兜住。完整暴力 &gt; 写崩的最优。</li>
-    <li data-page-node-id="Wx4Op7U6ZD076qpEj6bVFU"><b data-page-node-id="I3YAU526fdakFvjWzBfzQN">看输出格式反推考点</b>：要 <code data-page-node-id="kHIvdhQsS9XAWYG0XUTDfL">%lld</code> → 用 long；要输出方案本身 → 存前驱；要字典序最小 → 排序 + 贪心。题面输出格式是白送的提示。</li>
+  <h2>笔试零分防线：输入输出（白板手撕练不到，笔试栽得最多的地方）</h2>
+  <table>
+    <thead><tr><th style="width:170px">坑</th><th style="width:250px">症状</th><th>防线</th></tr></thead>
+    <tbody>
+      <tr><td>多组数据没循环</td><td>只过第一组，后面全错，自己还以为算法错了</td><td>一次读光再取：<code>data = sys.stdin.read().split()</code>，用下标指针往前推；或者 <code>while True: try: ... except EOFError: break</code></td></tr>
+      <tr><td>按行读，但一行几个数不定</td><td>读到空串 / 下标越界</td><td>别用 <code>readline().split()</code>，一律 <code>read().split()</code>，空白符统一吃掉</td></tr>
+      <tr><td>输出格式不对</td><td>答案对了但判 0 分</td><td>三看：有没有 <code>Case #i:</code> 前缀、组间要不要空行、末尾要不要换行——题面给的格式是白送的分</td></tr>
+      <tr><td>要取模 / 要 long</td><td>大数溢出或答案被判错</td><td>题面出现 <code>1e9+7</code> 就每步取模；写 C++ 一律 <code>long long</code>（题面要 <code>%lld</code> 就是明说要 long）</td></tr>
+      <tr><td>深递归爆栈</td><td>本地过了，交上去 RE</td><td>Python 开头 <code>sys.setrecursionlimit(10**6)</code>；树的深链别用递归改用栈</td></tr>
+      <tr><td>保留小数</td><td>位数不对</td><td>用 <code>f'{ans:.2f}'</code>，不要用 <code>round()</code>（会丢末尾 0）</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>为什么单独列这一块：</b>手撕练的是算法，笔试卡死的人多数不是不会写，是读错输入格式、忘了多组循环，直接零分。<b>动作：</b>国庆做 3 套 2 小时限时模拟（3 题、自己处理输入输出），每套结束把「读错格式」的题名记到本页最上面那张表里当错题。</div>
+
+  <h2>笔试三条（和手撕分开练）</h2>
+  <ol>
+    <li><b>时间盒</b>：读题 3min → 建模 5min → 编码 15min → 边界自测 5min。超时先交能过示例的版本。</li>
+    <li><b>先拿部分分</b>：想不出最优就先写暴力版，主逻辑外用 <code>if n &lt;= 100: return brute(n)</code> 兜住。完整暴力 &gt; 写崩的最优。</li>
+    <li><b>看输出格式反推考点</b>：要 <code>%lld</code> → 用 long；要输出方案本身 → 存前驱；要字典序最小 → 排序 + 贪心。题面输出格式是白送的提示。</li>
   </ol>
 
-  <div class="foot" data-page-node-id="kHu4QHjaAwCBi2GTOdfq1q">
-    正本：<code data-page-node-id="1rUtsoovGfThw7qSf9rmvp">wiki/topics/算法/算法手撕-32题闭卷清单.md</code>（代码脊柱与出处在那里）· 进度存在本机浏览器 localStorage，换设备会重置。
-    已接入派单池：<code data-page-node-id="Ile3XchVnJ4IXrdDVDOFyD">site/_data/clusters.js</code> 的「手撕算法」日课（D1–D37），派单点击直接跳到本题所在行。
+  <div class="foot">
+    正本：<code>wiki/topics/算法/算法手撕-32题闭卷清单.md</code>（代码脊柱与出处在那里）· 进度存在本机浏览器 localStorage，换设备会重置。
+    已接入派单池：<code>site/_data/clusters.js</code> 的「手撕算法」日课（D1–D39），派单点击直接跳到本题所在行。
   </div>
 </div>
 
@@ -143,7 +157,9 @@ var DATA = {
     ['994. 腐烂橘子','多源 BFS','同时扩散最短时间唯一模板'],
     ['79. 单词搜索','网格回溯','回溯在网格上的标准形态'],
     ['84. 柱状图最大矩形','单调栈','单调栈最难一档，区分度题'],
-    ['23. 合并 K 升序链表','堆·多路归并','归并思想 + 复杂度表述']
+    ['23. 合并 K 升序链表','堆·多路归并','归并思想 + 复杂度表述'],
+    ['0/1 背包（至少装满型）','一维 DP · 倒序','凑数建模器，笔试 DP 主力；上界压到 m'],
+    ['416+494 分割等和 / 目标和','0/1 背包判定与计数','一套 dp 换三种问法，一道吃三种']
   ]
 };
 

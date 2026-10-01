@@ -49,7 +49,7 @@
   </div>
 
   <div class="mv-section">
-    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">15 问 · 先看题自答，再展开标答</span></h2>
+    <h2 class="mv-section-title" id="chain">决策链 <span class="mv-topic-meta">16 问 · 先看题自答，再展开标答</span></h2>
     <p class="mv-note" style="margin-bottom:14px">
       骨架过关后才走这一节：每一问先闭卷答，答不出来的就是下次复训要带的断点。
     </p>
@@ -68,6 +68,13 @@
 <collapse-panel title="13. 如何评测？"><p class="mv-md-p mv-md-quote">不能只看 SQL 执行率。按链路分别评测意图和澄清、领域路由、Schema 召回、SemQL、SQL、安全、结果正确性、证据完整性以及最终业务任务成功率，并通过回放把失败归因到具体节点。</p></collapse-panel>
 <collapse-panel title="14. 最大的技术难点是什么？"><p class="mv-md-p mv-md-quote">第一是把企业口径变成可版本化语义资产；第二是在大 Schema 下准确找到最小相关集合；第三是让生成式模型处于确定性的权限、安全、校验和证据链控制之中。</p></collapse-panel>
 <collapse-panel title="15. 它和 BI、Text-to-SQL 有什么区别？"><p class="mv-md-p mv-md-quote">BI 擅长预定义报表，普通 Text-to-SQL 擅长一次性生成查询；数驭穹图把开放式问数、企业语义、安全执行、结果证明、在线协作和可刷新资产连成闭环。它补充分析师，而不是声称消灭所有专业分析工作。</p></collapse-panel>
+<collapse-panel title="16. 这不就是 RAG 吗？为什么不做文档 RAG、不直接向量检索？"><p class="mv-md-p mv-md-quote">检索的<strong>标的</strong>不一样。文档 RAG 检索的是「文本块」，这里检索的是「Schema 与语义资产」，而且召回之后还要过 Schema Linking 才准进上下文。三条原因：</p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">① <strong>客户的知识在库里，不在文档里。</strong> 用户问"本月华南毛利率"，这个数文档里没有，必须由生产库实时算出来——文档 RAG 给不出这个答案。</p>
+<p class="mv-md-p mv-md-quote">② <strong>向量相似不等于业务含义相同。</strong> "收入"在销售域和财务域是两回事（这也是 <code class="mv-md-code">05-领域路由</code> 里那句判断的原话）。所以一级路由用<strong>确定性规则</strong>做跨域消歧，向量相似只作为域内召回的<strong>一路信号</strong>，不是唯一依据。</p>
+<p class="mv-md-p mv-md-quote">③ <strong>错了的代价不一样。</strong> 文档 RAG 召错了顶多答非所问；这里召错表会生成一条<strong>能执行的 SQL</strong>。所以召回之后还要过三道文档 RAG 不需要的闸：权限过滤、SQL 校验、Evidence 绑定。</p>
+<p class="mv-md-p mv-md-quote"></p>
+<p class="mv-md-p mv-md-quote">一句话收口：<strong>它是"检索增强的生成"，但检索标的和验收标准都不是文档 RAG 那一套。</strong></p></collapse-panel>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>

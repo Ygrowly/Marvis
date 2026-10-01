@@ -163,7 +163,7 @@ window.MARVIS_CLUSTERS = [
    《算法手撕-32题闭卷清单》的作战卡（output/算法手撕-32题每日作战卡.html）对应行锚点。
    派单规则不变：没练过的优先，练过的排队尾，队首 = 最久没练。 */
 window.MARVIS_DRILL = {
-  id: 'drill', name: '手撕算法', goal: 37, zone: '日课',
+  id: 'drill', name: '手撕算法', goal: 39, zone: '日课',
   topics: [
     { id: 'D1', name: '两数之和', href: 'topics/算法-母题-01-两数之和.html' },
     { id: 'D2', name: '字母异位词分组', href: 'topics/算法-母题-02-字母异位词分组.html' },
@@ -204,7 +204,9 @@ window.MARVIS_DRILL = {
     { id: 'D34', name: '课程表（拓扑判环）', href: '../output/算法手撕-32题每日作战卡.html#B3' },
     { id: 'D35', name: '腐烂橘子（多源 BFS）', href: '../output/算法手撕-32题每日作战卡.html#B4' },
     { id: 'D36', name: '单词搜索', href: '../output/算法手撕-32题每日作战卡.html#B5' },
-    { id: 'D37', name: '柱状图最大矩形', href: '../output/算法手撕-32题每日作战卡.html#B6' }
+    { id: 'D37', name: '柱状图最大矩形', href: '../output/算法手撕-32题每日作战卡.html#B6' },
+    { id: 'D38', name: '0/1 背包（至少装满型）', href: '../output/算法手撕-32题每日作战卡.html#B8' },
+    { id: 'D39', name: '分割等和子集 / 目标和', href: '../output/算法手撕-32题每日作战卡.html#B9' }
   ]
 };
 
