@@ -2226,6 +2226,359 @@ def parse_interview_manual():
     return decks
 
 
+# ── 读厚卡片层（2026-10-03）：wiki/cards/ 正本 → _data/cards.js + site/cards.html ────
+# 两型卡（第二大脑重构，方案见 site/PLAN.md）：
+#   原则卡（kind: principle）——书/准则的读厚产物，核心字段是「情境 → 标准动作」，
+#     进派单簇 card/*（每日 1 条，由 progress.html 派）；掌握度存 mv.progress.v1。
+#   地基包（kind: ground）——技术模块的先修资料，核心是「必会清单 + 学习路径」，
+#     只做导航不进派单（模块本身的推进仍走主线）。
+# 正本一文件一来源，这里只抽取不改写；卡片 id（adler-1 这种）发布后不改——派单等级挂在上面。
+# 正文里的 [@模块-行号] 会替换成主线页链接（解析不到的保留原文，不丢内容）。
+
+CARDS_DIR = ROOT / "wiki" / "cards"
+BRAIN_CARD_SEC_RE = re.compile(r"^##\s+(card|ground)\s+([\w-]+)\s*·\s*(.+?)\s*$", re.M)
+LINE_REF_RE = re.compile(r"\[@(.+?)-([一二三四五六七八九十\d]+)\]")
+
+
+def _cn_line(no):
+    """主线号统一成中文数字（模块卡主线表用 一二三…；卡片里写 1 2 3 也认）"""
+    no = str(no).strip()
+    if no in CN_INDEX:
+        return no
+    d = {"1": "一", "2": "二", "3": "三", "4": "四", "5": "五",
+         "6": "六", "7": "七", "8": "八", "9": "九", "10": "十"}
+    return d.get(no, no)
+
+
+def parse_brain_cards_file(path):
+    meta, body = split_front(path.read_text(encoding="utf-8"))
+    kind = (meta.get("kind") or "").strip()
+    if kind not in ("principle", "ground"):
+        return None
+    out = {
+        "kind": kind,
+        "source": (meta.get("source") or path.stem).strip(),
+        "author": (meta.get("author") or "").strip(),
+        "source_href": (meta.get("source_href") or "").strip(),
+        "status": (meta.get("status") or "candidate").strip(),
+        "human_reviewed": (meta.get("human_reviewed") or "").strip().lower() == "true",
+        "module": (meta.get("module") or "").strip(),
+        "src": path.relative_to(ROOT).as_posix(),
+        "cards": [], "grounds": [],
+    }
+    parts = BRAIN_CARD_SEC_RE.split(body)
+    for i in range(1, len(parts) - 3, 4):
+        typ, cid, name, sec = parts[i], parts[i + 1], parts[i + 2].strip(), parts[i + 3]
+        if typ == "card":
+            out["cards"].append({
+                "id": cid, "name": name,
+                "one": grab(sec, "一句话"),
+                "scene": grab_block(sec, "情境"),
+                "action": grab_block(sec, "标准动作"),
+                "triggers": grab_list(sec, "触发器"),
+                "trap": grab_block(sec, "易错"),
+                "links": grab_list(sec, "关联"),
+            })
+        else:
+            out["grounds"].append({
+                "id": cid, "name": name,
+                "module": out["module"] or name.replace(" 地基包", "").strip(),
+                "positioning": grab(sec, "定位"),
+                "model": grab_block(sec, "心智模型"),
+                "must": grab_list(sec, "必会清单"),
+                "path": grab_list(sec, "学习路径"),
+                "gate": grab_list(sec, "验收门"),
+            })
+    return out
+
+
+def link_line_refs(html, line_href):
+    """把正文里的 [@模块-行号] 换成主线页链接（在 md_to_html 之后跑，避免被转义）"""
+    def sub(m):
+        href = line_href.get((m.group(1), CN_INDEX.get(_cn_line(m.group(2)), 0)))
+        if not href:
+            return m.group(0)
+        return ' <a class="mv-cref" href="%s" title="跳到这条主线">@%s-%s</a>' % (
+            esc(href), esc(m.group(1)), m.group(2))
+    return LINE_REF_RE.sub(sub, html)
+
+
+def _ref_list(items, line_href):
+    return "".join("<li>%s</li>" % link_line_refs(inline(x), line_href) for x in items)
+
+
+CARDS_PAGE = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>内化馆 · 读厚卡片</title>
+<link rel="stylesheet" href="_components/marvis.css">
+<style>
+  .crd, .gnd { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
+    padding: 14px 16px; margin: 12px 0; scroll-margin-top: 20px; }
+  .sum-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+  .sum-row div { border: 1px solid rgba(0,0,0,.1); border-radius: 10px; padding: 8px 12px; background: #fff; }
+  .sum-row small { display: block; color: #5F5E5A; font-size: 11px; }
+  .sum-row strong { font-size: 17px; font-weight: 500; }
+  .crd.hl, .gnd.hl { border-color: #D85A30; box-shadow: 0 0 0 3px rgba(216,90,48,.14); }
+  .crd-h, .gnd-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .crd-n { font-size: 12px; color: #888780; font-variant-numeric: tabular-nums; }
+  .crd-t { font-size: 15px; font-weight: 500; }
+  .crd-tag { font-size: 11px; padding: 1px 7px; border-radius: 20px; background: #FBE9E1; color: #993C1D; }
+  .crd-lv { font-size: 11px; padding: 1px 7px; border-radius: 20px; background: #EEEDFE; color: #534AB7; }
+  .crd-src { font-size: 11px; color: #888780; margin-left: auto; }
+  .crd-one { font-size: 14px; line-height: 1.65; margin: 0 0 10px; color: #2C2C2A; }
+  .crd-one b { font-weight: 500; color: #993C1D; }
+  .crd-scene { font-size: 14px; line-height: 1.65; color: #2C2C2A;
+    background: #fbfaf7; border-left: 3px solid #F3C1AC; border-radius: 0 8px 8px 0;
+    padding: 10px 12px; margin: 0 0 10px; }
+  .crd-scene b { font-weight: 500; color: #993C1D; }
+  details.crd-d, details.gnd-d { border-top: 1px dashed rgba(0,0,0,.12); padding-top: 8px; }
+  details.crd-d summary, details.gnd-d summary { cursor: pointer; font-size: 13px; color: #993C1D;
+    list-style: none; user-select: none; }
+  details.crd-d summary::-webkit-details-marker, details.gnd-d summary::-webkit-details-marker { display: none; }
+  details.crd-d summary::before, details.gnd-d summary::before { content: '▸ '; }
+  details.crd-d[open] summary::before, details.gnd-d[open] summary::before { content: '▾ '; }
+  .crd-sec { font-size: 14px; line-height: 1.7; margin: 8px 0 0; color: #2C2C2A; }
+  .crd-sec b { font-weight: 500; color: #5F5E5A; }
+  .crd-f { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .crd-use { font-size: 12px; color: #5F5E5A; }
+  .gnd .crd-sec ul, .gnd .crd-sec ol { margin: 6px 0 0; padding-left: 20px; }
+  .gnd .crd-sec li { margin: 4px 0; }
+  a.mv-cref { color: #185FA5; text-decoration: none; border-bottom: 1px dotted rgba(24,95,165,.5); }
+  .src-h { margin: 26px 0 4px; font-size: 16px; font-weight: 500; }
+  .src-h small { font-weight: 400; color: #5F5E5A; font-size: 12px; margin-left: 8px; }
+</style>
+</head>
+<body class="mv-page">
+<div class="mv-wrap">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h1 class="mv-h1" style="margin:0">内化馆 · 读厚卡片</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
+      <a class="mv-btn" href="brain.html" style="text-decoration:none">第二大脑</a>
+      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
+    </div>
+  </div>
+  <p class="mv-sub" style="margin-bottom:4px">
+    读过的书在这里被「读厚」：每张卡只回答一件事——<b>遇到这个情境，具体怎么做</b>。
+    概念记住不算数，真实用过一次记一笔 ⚡；等级仍只由进度页的闭卷自评推进。
+  </p>
+  <div class="sum-row" id="sum"></div>
+
+  <h2 class="mv-h2" style="margin-top:10px">原则卡 <small>书 → 情境 → 动作 · 已接进每日派单</small></h2>
+  %%PRINCIPLES%%
+
+  <h2 class="mv-h2" style="margin-top:26px">地基包 <small>先记住打底，再去主线页添砖加瓦 · 不进派单</small></h2>
+  %%GROUNDS%%
+
+  <p class="mv-note" style="margin-top:20px">
+    正本在 <code>wiki/cards/</code>（一文件一来源），本页与 <code>_data/cards.js</code> 由 <code>build.py</code> 生成，不手改。
+    以后读完一本书：写一份「原则-{书名}.md」正本 → 跑 build → 卡片自动进星系和派单。模板在 <code>templates/</code>。
+  </p>
+
+</div>
+
+<script src="_data/cards.js"></script>
+<script src="_components/marvis.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'mv.progress.v1', BKEY = 'mv.brain.v1';
+  var S = {}, B = {};
+  try { S = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+  try { B = JSON.parse(localStorage.getItem(BKEY) || '{}'); } catch (e) {}
+  if (!S.lv) S.lv = {};
+  if (!B.uses) B.uses = {};
+  function lvOf(id) { return (S.lv['card/' + id] && S.lv['card/' + id].l) || 0; }
+  function lvRec(id) { return S.lv['card/' + id] || {}; }
+  var LVW = ['未练', '会了', '常练'];
+
+  function paint() {
+    document.querySelectorAll('[data-lv]').forEach(function (el) {
+      var id = el.getAttribute('data-lv'), r = lvRec(id);
+      var t = LVW[lvOf(id)];
+      if (r.hit || r.miss) t += ' · 讲得出 ' + (r.hit || 0) + ' / 卡壳 ' + (r.miss || 0);
+      el.textContent = t;
+    });
+    document.querySelectorAll('[data-use]').forEach(function (el) {
+      var u = B.uses[el.getAttribute('data-use')] || [];
+      el.textContent = u.length ? '已真实用过 ' + u.length + ' 次' + (u.length ? ' · 最近 ' + u[u.length - 1].d : '') : '还没真实用过——读到 ≠ 用到';
+    });
+    var trained = 0, tot = 0;
+    document.querySelectorAll('[data-lv]').forEach(function (el) {
+      tot++; if (lvOf(el.getAttribute('data-lv')) >= 1) trained++;
+    });
+    var sum = document.getElementById('sum');
+    var cards = (window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || [];
+    var grounds = (window.MARVIS_CARDS && window.MARVIS_CARDS.grounds) || [];
+    var srcs = {};
+    cards.forEach(function (c) { srcs[c.source] = 1; });
+    if (sum) sum.innerHTML =
+      '<div><small>原则卡</small><strong>' + cards.length + '</strong></div>' +
+      '<div><small>来源</small><strong>' + Object.keys(srcs).length + '</strong></div>' +
+      '<div><small>地基包</small><strong>' + grounds.length + '</strong></div>' +
+      '<div><small>已内化（到「会了」）</small><strong>' + trained + ' / ' + tot + '</strong></div>';
+  }
+
+  window.cardUse = function (id) {
+    var note = prompt('在哪用上的？（一句话，可留空）', '');
+    if (note === null) return;
+    var d = new Date();
+    var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    B.uses[id] = B.uses[id] || [];
+    B.uses[id].push({ d: ds, note: (note || '').trim() });
+    try { localStorage.setItem(BKEY, JSON.stringify(B)); } catch (e) {}
+    paint();
+  };
+
+  paint();
+
+  if (location.hash) {
+    var el = document.getElementById(location.hash.slice(1));
+    if (el) {
+      el.classList.add('hl');
+      var dd = el.querySelector('details');
+      if (dd) dd.open = true;
+    }
+  }
+})();
+</script>
+</body>
+</html>
+"""
+
+
+def render_cards_page(payload, line_href):
+    def principle_html(c):
+        details = ['<details class="crd-d"><summary>先想：这个情境你会怎么做，再展开对</summary>']
+        details.append('<div class="crd-sec"><b>标准动作</b>%s</div>'
+                       % link_line_refs(md_to_html(c["action"]), line_href) if c["action"] else "")
+        if c["triggers"]:
+            details.append('<div class="crd-sec"><b>触发器</b><ul class="mv-md-ul">%s</ul></div>'
+                           % _ref_list(c["triggers"], line_href))
+        if c["trap"]:
+            details.append('<div class="crd-sec"><b>易错</b>%s</div>'
+                           % link_line_refs(md_to_html(c["trap"]), line_href))
+        if c["links"]:
+            details.append('<div class="crd-sec"><b>关联</b> %s</div>'
+                           % "　".join(esc(x.replace("[[", "").replace("]]", "")) for x in c["links"]))
+        details.append("</details>")
+        return (
+            '<div class="crd" id="card-%s">'
+            '<div class="crd-h"><span class="crd-n">%s</span>'
+            '<span class="crd-t">%s</span>'
+            '<span class="crd-lv" data-lv="%s">未练</span>'
+            '<span class="crd-src">正本 %s</span></div>'
+            '<p class="crd-one"><b>一句话</b>　%s</p>'
+            '<p class="crd-scene"><b>情境</b>　%s</p>'
+            '%s'
+            '<div class="crd-f">'
+            '<button class="mv-btn" type="button" onclick="cardUse(\'%s\')">⚡ 记一笔：真实用上了一次</button>'
+            '<span class="crd-use" data-use="%s"></span>'
+            "</div></div>"
+            % (esc(c["id"]), esc(c["id"]), esc(c["name"]), attrs(c["id"]), esc(c["src"]),
+               link_line_refs(inline(c["one"]), line_href),
+               link_line_refs(md_to_html(c["scene"]), line_href) if c["scene"] else "—",
+               "".join(details), esc(c["id"]), esc(c["id"]))
+        )
+
+    psec = ""
+    by_src, order = {}, []
+    for c in payload["principles"]:
+        if c["source"] not in by_src:
+            by_src[c["source"]] = []
+            order.append(c)
+        by_src[c["source"]].append(c)
+    for first in order:
+        src = first["source"]
+        head = '<div class="src-h">%s<small>%s</small>' % (esc(src), esc(first["author"]))
+        if first["source_href"]:
+            head += (' <a href="obsidian://open?vault=Marvis&amp;file=%s" style="font-size:12px;color:#185FA5;text-decoration:none">打开阅读闭环 →</a>'
+                     % quote(first["source_href"].replace(".md", "")))
+        head += ('　<small>%s</small></div>'
+                 % ("人已复核" if first["human_reviewed"] else "AI 读厚产出 · 待本人验证（status %s）" % first["status"]))
+        psec += head + "".join(principle_html(c) for c in by_src[src])
+
+    gsec = ""
+    for g in payload["grounds"]:
+        mod_page = "modules/%s.html" % safe_fname(g["module"])
+        inner = ['<div class="crd-sec"><b>定位</b>%s</div>'
+                 % link_line_refs(inline(g["positioning"]), line_href) if g["positioning"] else ""]
+        if g["model"]:
+            inner.append('<div class="crd-sec"><b>心智模型</b>%s</div>'
+                         % link_line_refs(md_to_html(g["model"]), line_href))
+        if g["must"]:
+            inner.append('<div class="crd-sec"><b>必会清单</b><ul>%s</ul></div>'
+                         % _ref_list(g["must"], line_href))
+        if g["path"]:
+            inner.append('<div class="crd-sec"><b>学习路径</b><ol>%s</ol></div>'
+                         % _ref_list(g["path"], line_href))
+        if g["gate"]:
+            inner.append('<details class="gnd-d"><summary>验收门（做完地基再过）</summary>'
+                         '<div class="crd-sec"><ul>%s</ul></div></details>'
+                         % _ref_list(g["gate"], line_href))
+        gsec += (
+            '<div class="gnd" id="%s">'
+            '<div class="gnd-h"><span class="crd-t">%s</span>'
+            '<span class="crd-tag">%s</span>'
+            '<a class="mv-btn" style="margin-left:auto;text-decoration:none" href="%s">%s 模块概览 →</a></div>'
+            "%s</div>"
+            % (esc(g["id"]), esc(g["name"]), esc(g["module"]), esc(mod_page), esc(g["module"]),
+               "".join(inner))
+        )
+    return CARDS_PAGE.replace("%%PRINCIPLES%%", psec or '<p class="mv-note">还没有原则卡。</p>') \
+                     .replace("%%GROUNDS%%", gsec or '<p class="mv-note">还没有地基包。</p>')
+
+
+def write_cards(modules):
+    """wiki/cards/*.md → _data/cards.js（含派单簇 MARVIS_CARD_CLUSTER）+ site/cards.html"""
+    if not CARDS_DIR.exists():
+        return None
+    line_href = {}
+    for md in modules:
+        for ln in md["lines"]:
+            line_href[(md["module"], CN_INDEX.get(_cn_line(ln["no"]), 0))] = module_line_page(md, ln["no"])
+
+    principles, grounds, seen = [], [], set()
+    for p in sorted(CARDS_DIR.glob("*.md")):
+        f = parse_brain_cards_file(p)
+        if not f:
+            continue
+        for c in f["cards"]:
+            if c["id"] in seen:
+                print("  [warn] 原则卡 id 重复，丢弃后者：%s (%s)" % (c["id"], p.name))
+                continue
+            seen.add(c["id"])
+            c.update(source=f["source"], author=f["author"], source_href=f["source_href"],
+                     status=f["status"], human_reviewed=f["human_reviewed"], src=f["src"])
+            principles.append(c)
+        for g in f["grounds"]:
+            if g["id"] in seen:
+                print("  [warn] 地基包 id 重复，丢弃后者：%s (%s)" % (g["id"], p.name))
+                continue
+            seen.add(g["id"])
+            g.update(src=f["src"], status=f["status"], human_reviewed=f["human_reviewed"])
+            grounds.append(g)
+
+    payload = {"generated": datetime.date.today().isoformat(),
+               "principles": principles, "grounds": grounds}
+    cluster = {"id": "card", "name": "原则卡 · 读厚", "zone": "准则",
+               "topics": [{"id": c["id"], "name": c["name"], "href": "cards.html#card-" + c["id"]}
+                          for c in principles]}
+    (OUT_DATA / "cards.js").write_text(
+        "window.MARVIS_CARDS = " + json.dumps(payload, ensure_ascii=False) + ";\n"
+        "window.MARVIS_CARD_CLUSTER = " + json.dumps(cluster, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+    (SITE / "cards.html").write_text(render_cards_page(payload, line_href), encoding="utf-8")
+    n_use = sum(len((g.get("must") or [])) for g in grounds)
+    print("读厚卡片：原则卡 %d 张（%d 个来源）+ 地基包 %d 份（必会 %d 条）→ cards.js + cards.html"
+          % (len(principles), len({c["source"] for c in principles}), len(grounds), n_use))
+    return payload
+
+
 # ── 问题台账（questions.md → _data/ledger.js，进度页「问题台账」抽屉用）────────────
 # 版式（2026-10-02 卡片版）：### Q-YYYY-NNN · 标题 [active|parked]，字段行
 #   - 为什么现在： / - 下一步： / - 落点： / - 重启条件： / - 触碰：YYYY-MM-DD ｜ 创建：YYYY-MM-DD
@@ -2405,6 +2758,9 @@ def main():
                 encoding="utf-8")
 
     projects = build_projects()
+
+    # 读厚卡片层：wiki/cards 正本 → cards.js（派单簇）+ cards.html 内化馆
+    write_cards(modules)
 
     # 复训牌组：2026-09-25 起不再按 md 的 integrated 过滤（状态机退场）。
     # 判据改为「这张卡有可供复述的骨架或结论」——讲没讲过由进度页的本机数据决定。

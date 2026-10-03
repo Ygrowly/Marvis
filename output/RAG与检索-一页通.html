@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 与检索 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>RAG 与检索
+    <small>六张母题 · 24 道题 · 三个项目 —— 一条线：知识怎么进来、怎么把对的证据捞回来、捞回来之后怎么证明</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：存 → 取 → 用与证<span class="src">正本 wiki/topics/RAG与检索/</span></h2>
+  <div class="h2sub">分层走一遍：<b>离线摄取 → 在线检索 → 精排与组装 → 生成与证明 → 分层评测回灌</b>。三段失败必须能分开归因。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 860" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RAG 与检索主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <marker id="mY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#86909C"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <g font-size="11" fill="#4E5969">
+      <line x1="200" y1="52" x2="224" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+      <text x="232" y="56">蓝 · 主线（存 → 取 → 用与证）</text>
+      <line x1="450" y1="52" x2="474" y2="52" stroke="#F59E0B" stroke-width="2.2" marker-end="url(#mO)"/>
+      <text x="482" y="56">橙 · 每一段的关键手段</text>
+      <line x1="700" y1="52" x2="724" y2="52" stroke="#8B5CF6" stroke-width="2.2" marker-end="url(#mP)"/>
+      <text x="732" y="56">紫 · 分层评测与归因</text>
+      <line x1="880" y1="52" x2="904" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+      <text x="912" y="56">绿 · 闭环回灌（改切分 / 改召回 / 改重排）</text>
+      <line x1="1150" y1="52" x2="1174" y2="52" stroke="#86909C" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#mY)"/>
+      <text x="1182" y="56">灰虚 · 分支 / 拒答</text>
+    </g>
+
+    <!-- L1 摄取 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="100" width="240" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <rect x="500" y="100" width="240" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <rect x="820" y="100" width="240" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <rect x="1140" y="100" width="240" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <circle cx="202" cy="122" r="10" fill="#0E42B5"/><text x="202" y="126" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">1</text>
+      <text x="220" y="126" font-size="13" font-weight="800" fill="#0E42B5">切分（按语义边界）</text>
+      <text x="196" y="150">按数据结构切：标题层级 / FAQ /</text>
+      <text x="196" y="169">代码按函数边界；条款按「条件+</text>
+      <text x="196" y="188">例外+生效时间」；表格表头与行绑定</text>
+
+      <circle cx="522" cy="122" r="10" fill="#0E42B5"/><text x="522" y="126" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">2</text>
+      <text x="540" y="126" font-size="13" font-weight="800" fill="#0E42B5">Child-Parent</text>
+      <text x="516" y="150">索引小块（语义集中、匹配准）</text>
+      <text x="516" y="169">返回父块（上下文完整）</text>
+      <text x="516" y="188" font-size="10.5" fill="#86909C">改的是「返回什么」</text>
+
+      <circle cx="842" cy="122" r="10" fill="#0E42B5"/><text x="842" y="126" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">3</text>
+      <text x="860" y="126" font-size="13" font-weight="800" fill="#0E42B5">上下文增强</text>
+      <text x="836" y="150">每块补 50–100 token 定位说明</text>
+      <text x="836" y="169">再索引；索引只涨约 12.5%</text>
+      <text x="836" y="188" font-size="10.5" fill="#B45309">失败率 5.7%→3.7%→2.9%→1.88%</text>
+
+      <circle cx="1162" cy="122" r="10" fill="#0E42B5"/><text x="1162" y="126" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">4</text>
+      <text x="1180" y="126" font-size="13" font-weight="800" fill="#0E42B5">增量与传播</text>
+      <text x="1156" y="150">Source 事件触发增量（改 1% 省 99%）</text>
+      <text x="1156" y="169">删除按 doc_id 反查全部块、清三处</text>
+      <text x="1156" y="188" font-size="10.5" fill="#86909C">撤权还要清缓存；换模型走双写影子索引</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2">
+      <line x1="300" y1="200" x2="300" y2="223"/>
+      <line x1="620" y1="200" x2="620" y2="223"/>
+      <line x1="940" y1="200" x2="940" y2="223"/>
+      <line x1="1260" y1="200" x2="1260" y2="223"/>
+      <line x1="300" y1="230" x2="1260" y2="230"/>
+    </g>
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="300" y1="230" x2="300" y2="253"/>
+      <line x1="620" y1="230" x2="620" y2="253"/>
+      <line x1="940" y1="230" x2="940" y2="253"/>
+      <line x1="1260" y1="230" x2="1260" y2="253"/>
+    </g>
+
+    <!-- L2 检索 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="260" width="240" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="500" y="260" width="240" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="820" y="260" width="240" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="1140" y="260" width="240" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <text x="196" y="284" font-size="13" font-weight="800" fill="#1D2129">BM25 关键词</text>
+      <text x="196" y="308">强在专有名词、编号、精确短语</text>
+      <text x="196" y="327">trace ID 这类编码</text>
+      <text x="196" y="346" font-size="10.5" fill="#B45309">Embedding 无能为力</text>
+
+      <text x="516" y="284" font-size="13" font-weight="800" fill="#1D2129">向量 Dense</text>
+      <text x="516" y="308">强在语义改写（连接池 ↔</text>
+      <text x="516" y="327">connection pool 配置）</text>
+      <text x="516" y="346" font-size="10.5" fill="#86909C">维度由模型定，换模型必须重建索引</text>
+
+      <text x="836" y="284" font-size="13" font-weight="800" fill="#1D2129">RRF 融合</text>
+      <text x="836" y="308">score = Σ 1/(k+r)，k 常取 60</text>
+      <text x="836" y="327">两路量纲不可比（余弦 [0,1]</text>
+      <text x="836" y="346" font-size="10.5" fill="#B45309">vs BM25 无上界）→ 用排名消掉量纲</text>
+
+      <text x="1156" y="284" font-size="13" font-weight="800" fill="#1D2129">ACL 预过滤</text>
+      <text x="1156" y="308">身份进检索层，过滤先于召回</text>
+      <text x="1156" y="327">缓存按租户 / 权限分区</text>
+      <text x="1156" y="346" font-size="10.5" fill="#B45309">（缓存会绕过 ACL）</text>
+    </g>
+
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="300" y1="360" x2="300" y2="383"/>
+      <line x1="620" y1="360" x2="620" y2="383"/>
+      <line x1="940" y1="360" x2="940" y2="383"/>
+      <line x1="1260" y1="360" x2="1260" y2="383"/>
+      <line x1="460" y1="390" x2="1000" y2="390"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)">
+      <line x1="460" y1="390" x2="460" y2="413"/>
+      <line x1="1000" y1="390" x2="1000" y2="413"/>
+    </g>
+
+    <!-- L3 精排与组装 -->
+    <g filter="url(#sh)">
+      <rect x="200" y="420" width="520" height="80" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="740" y="420" width="520" height="80" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <text x="216" y="444" font-size="13" font-weight="800" fill="#1D2129">重排 Rerank（交叉编码器）</text>
+      <text x="216" y="468">双塔看不到词级交互（结构性损失，换更大双塔补不回来）；交叉编码器把 query+doc 拼一起；不能用于召回是因为「不能预计算」</text>
+      <text x="216" y="488" font-size="10.5" fill="#B45309">延迟 5ms×N（重排 200 → 1 秒，ANN 召回约 10ms）→ 折中：召回几百 → 重排 50–100 → 进上下文 5–20</text>
+      <text x="756" y="444" font-size="13" font-weight="800" fill="#1D2129">组装进上下文</text>
+      <text x="756" y="468">候选还要过去重、预算、截断才进上下文；Recall@K 高 ≠ 答案好</text>
+      <text x="756" y="488" font-size="10.5" fill="#86909C">正确证据排第 5、前 4 条挤占预算 → context rot（检索层看 Recall@K「不漏」+ nDCG@K「排得准」）</text>
+    </g>
+
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="460" y1="500" x2="460" y2="523"/>
+      <line x1="1000" y1="500" x2="1000" y2="523"/>
+      <line x1="300" y1="530" x2="940" y2="530"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)">
+      <line x1="300" y1="530" x2="300" y2="553"/>
+      <line x1="620" y1="530" x2="620" y2="553"/>
+      <line x1="940" y1="530" x2="940" y2="553"/>
+    </g>
+
+    <!-- L4 生成与证明 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="560" width="240" height="100" rx="8" fill="#fff" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="500" y="560" width="240" height="100" rx="8" fill="#fff" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="820" y="560" width="240" height="100" rx="8" fill="#F2F3F5" stroke="#86909C" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <text x="196" y="584" font-size="13" font-weight="800" fill="#1D2129">引用绑定</text>
+      <text x="196" y="608">每句结论绑到片段，可定位到</text>
+      <text x="196" y="627">文档 / 章节 / 版本</text>
+      <text x="196" y="646" font-size="10.5" fill="#B45309">「要求引用」改概率，「验证引用」才是机制</text>
+
+      <text x="516" y="584" font-size="13" font-weight="800" fill="#1D2129">生成后验证</text>
+      <text x="516" y="608">逐条回原文找支撑，找不到撤掉</text>
+      <text x="516" y="627">成本 ≈1.9 倍（8,500 vs 4,500）</text>
+      <text x="516" y="646" font-size="10.5" fill="#86909C">只对高风险结论做：金额 / 权限 / 生效时间</text>
+
+      <text x="836" y="584" font-size="13" font-weight="800" fill="#1D2129">拒答（五条件）</text>
+      <text x="836" y="608">证据不足 / 来源冲突 / 身份不足</text>
+      <text x="836" y="627">/ 超边界 / 时间主体口径不明</text>
+      <text x="836" y="646" font-size="10.5" fill="#B45309">把「自信的错误」换成「坦白的不知道」，总代价 1/10</text>
+    </g>
+
+    <g stroke="#8B5CF6" stroke-width="2">
+      <line x1="300" y1="660" x2="300" y2="683"/>
+      <line x1="620" y1="660" x2="620" y2="683"/>
+      <line x1="940" y1="660" x2="940" y2="683"/>
+      <line x1="460" y1="690" x2="1000" y2="690"/>
+    </g>
+    <g stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)">
+      <line x1="460" y1="690" x2="460" y2="713"/>
+      <line x1="1000" y1="690" x2="1000" y2="713"/>
+    </g>
+
+    <!-- L5 评测与闭环 -->
+    <g filter="url(#sh)">
+      <rect x="200" y="720" width="520" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <rect x="740" y="720" width="520" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <circle cx="224" cy="742" r="11" fill="#8B5CF6"/><text x="224" y="746" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">5</text>
+      <text x="242" y="746" font-size="13.5" font-weight="800" fill="#6D28D9">分层指标（两层损失相乘）</text>
+      <text x="216" y="770">检索层：Recall@K / Precision@K / MRR / nDCG@K</text>
+      <text x="216" y="790">答案层：Correctness / Faithfulness / Citation completeness / Answerability</text>
+      <text x="216" y="810" font-size="10.5" fill="#86909C">95% × 90% = 85.5%：端到端既低于任何一层，又定位不了是哪层拖的</text>
+
+      <text x="756" y="746" font-size="13.5" font-weight="800" fill="#6D28D9">三岔口归因 → 回灌</text>
+      <text x="756" y="770">① 没进 TopK → 动摄取与召回（最贵）② 进了没用上 → 动精排与组装 ③ 都进了还错 → 动生成与验收</text>
+      <text x="756" y="790">100 条失败：召回 40 / 排序 25 / 生成 35 → 只换模型最多修 35%</text>
+      <text x="756" y="810" font-size="10.5" fill="#86909C">holdout 必留；150 条 ±3.4%，分辨 2 个点需约 900 条</text>
+    </g>
+
+    <path d="M 200 770 L 95 770 L 95 150 L 173 150" fill="none" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="78" y="460" font-size="11" font-weight="800" fill="#15803D" text-anchor="middle" transform="rotate(-90 78 460)">闭环回灌 · 改切分 / 改召回 / 改重排 / 改验收</text>
+  </svg>
+  </div>
+  <div class="story">
+    <b>主干叙事（一段读完）</b>：RAG 的一条线是「<b>存 → 取 → 用与证</b>」。<b>存</b>的环节要承认一个矛盾：块要小才匹配得准、要大才语义自足 —— 所以要么解耦（小块召回、父块返回），要么让块自己知道自己在说什么（Contextual Retrieval 补 50–100 token 定位说明，索引只涨约 12.5%，失败率 5.7%→1.88%）。
+    <b>取</b>的环节要承认两路检索盲区不重叠：BM25 管专有名词与编号、向量管语义改写，两路量纲不可比所以用 RRF 按排名融合；而<b>权限必须在召回前过滤</b>——进了上下文就等于已经泄露，模型说不说只是概率问题；百万级用 HNSW 做 ANN（精确 KNN 要 1.5 秒/次，用不起）。
+    <b>用与证</b>的环节：双塔看不到词级交互，所以要用交叉编码器重排（延迟 5ms×N，所以折中是「召回几百 → 重排 50–100 → 进上下文 5–20」）；然后逐条引用绑定 + 生成后验证（找不到支撑就撤稿），该拒答时拒答。
+    最后<b>分层评测</b>：检索层与答案层分开评，两层的损失是<b>相乘</b>的；出问题按三个岔路口归因 —— 没进 TopK、进了没用上、都进了还错 —— 对应完全不同的修复动作和成本。评测结果回灌到切分、召回、重排，这条绿线才是闭环。
+  </div>
+  <div class="cap"><b>读法</b>：蓝线是主线；橙线是每段的关键手段；紫线是分层评测与归因；绿线是闭环回灌；灰虚是拒答分支。<b>三段的失败必须能分开归因</b>——这是本模块与「调参式 RAG」的分水岭。</div>
+</section>
+
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：六张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">G1 切分与粒度</td><td>文档怎么切成可检索单元</td><td class="ans"><span class="a">两个矛盾需求（匹配准 vs 语义自足）→ 解耦（Child-Parent）或上下文增强；按数据结构切，不按字数</span></td><td>2–5, 21</td><td class="ans"><span class="a">RuleArena：条款按「条件 / 例外 / 生效时间」切 —— <b>按字数切会把条件与例外切散</b>，召回任一半都不完整</span></td></tr>
+      <tr><td class="k">G2 混合检索与权限</td><td>语义与关键词怎么配合、权限在哪生效</td><td class="ans"><span class="a">盲区不重叠所以两路都要；RRF 按排名融合消掉量纲；ACL 过滤先于召回 + 缓存按权限分区</span></td><td>6–11, 22, 23</td><td class="ans"><span class="a">数驭穹图：<b>权限过滤先于 Schema Linking</b>；关键词+向量+知识卡混合召回（Top-K Schema 81%→95%）</span></td></tr>
+      <tr><td class="k">G3 重排与召回质量</td><td>捞回来的怎么排得更准</td><td class="ans"><span class="a">双塔看不到词级交互（结构性损失）→ 交叉编码器精排；延迟 5ms×N，收益三个口径别混</span></td><td>12, 13, 24</td><td class="ans"><span class="a">数驭穹图：候选 Schema 按<b>权限、粒度、场景适用性、更新时间、JOIN 关系</b>重排，只把少量相关 Schema 交给生成</span></td></tr>
+      <tr><td class="k">G4 引用与可追溯</td><td>每句话怎么追溯到原文</td><td class="ans"><span class="a">引用粒度决定校验成本由谁承担；生成后验证才是机制（要求引用只改概率）；无支撑撤稿、该拒答时拒答</span></td><td>15, 16</td><td class="ans"><span class="a">数驭穹图：<b>版本跟着结果走</b>（Schema/口径改过，旧结果不能对照）；EnergyOps：日志/指标走 Artifact 引用，操作手册走 RAG —— <b>两种证据形态不能混</b></span></td></tr>
+      <tr><td class="k">G5 评测与归因</td><td>指标很好但答案差，怎么定位</td><td class="ans"><span class="a">三个岔路口（没进 TopK / 进了没用上 / 都进了还错）；两层损失相乘；检索失败率 ≠ 幻觉率</span></td><td>14, 17, 18</td><td class="ans"><span class="a">数驭穹图：<b>「召回缺失 ≠ 重排错误」</b>分两段归因；81%→95% 用 150 条问题集量出来（口径：Top-K <b>Schema</b> 召回）</span></td></tr>
+      <tr><td class="k">G6 更新与增量索引</td><td>改了删了撤权了怎么跟上</td><td class="ans"><span class="a">增量省成本；删除要反查全部块并清三处 + 索引外缓存；撤权还要清缓存；换模型走双写影子索引</span></td><td>19, 20</td><td class="ans"><span class="a">EnergyOps：<b>实时状态走 Tool / 数据库，静态手册走 RAG</b> —— 过期的实时数据比没有更危险（它带着「这是事实」的外观）</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 第二张图：算力与索引 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>为什么必须用 ANN，以及索引怎么选<span class="src">正本 母题-G2 §3 · 母题-G3 §3</span></h2>
+  <div class="h2sub">左边是「算力逼出来的」那笔账，右边是重排的延迟账 —— 两笔都是数量级问题，不是优化问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ANN 与重排的算力账">
+    <g>
+      <rect x="60" y="24" width="640" height="270" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="50" font-size="13" font-weight="800" fill="#0E42B5">精确 KNN 的算力账（O(N×D)）</text>
+      <text x="80" y="76" font-size="11.5" fill="#4E5969">100 万条向量 × 1536 维 = 15.36 亿次浮点运算</text>
+      <text x="80" y="96" font-size="11.5" fill="#4E5969">即使每次 1 纳秒 → 约 1.5 秒 / 次查询 → 在线服务用不起</text>
+      <rect x="80" y="112" width="600" height="26" rx="4" fill="#EF4444" opacity="0.85"/>
+      <text x="80" y="130" font-size="12" font-weight="800" fill="#fff">　1.5 s　精确 KNN</text>
+      <rect x="80" y="146" width="4" height="26" rx="2" fill="#22C55E"/>
+      <text x="94" y="164" font-size="12" font-weight="800" fill="#15803D">≈10 ms　ANN 召回（HNSW）</text>
+      <text x="80" y="200" font-size="12" font-weight="800" fill="#1D2129">规模 → 索引选型</text>
+      <g font-size="11.5" fill="#4E5969">
+        <rect x="80" y="214" width="190" height="30" rx="6" fill="#E8F0FF" stroke="#1664FF"/>
+        <text x="175" y="234" text-anchor="middle">百万级 → HNSW</text>
+        <rect x="282" y="214" width="190" height="30" rx="6" fill="#E8F0FF" stroke="#1664FF"/>
+        <text x="377" y="234" text-anchor="middle">千万级 → IVF</text>
+        <rect x="484" y="214" width="196" height="30" rx="6" fill="#E8F0FF" stroke="#1664FF"/>
+        <text x="582" y="234" text-anchor="middle">亿级 → DiskANN / 分片</text>
+      </g>
+      <text x="80" y="272" font-size="11" fill="#86909C">代价：拿少量召回率换两个数量级的延迟；召回率靠检索时的候选队列参数调。</text>
+
+      <rect x="740" y="24" width="650" height="270" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="50" font-size="13" font-weight="800" fill="#B45309">重排的延迟账（5ms × N）</text>
+      <text x="760" y="76" font-size="11.5" fill="#4E5969">交叉编码器每个候选都要现算一次，延迟随候选数线性增长</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">重排 20 条</text>
+        <rect x="880" y="94" width="60" height="16" rx="3" fill="#F59E0B"/><text x="950" y="106" font-weight="800">100 ms</text>
+        <text x="760" y="134">重排 100 条</text>
+        <rect x="880" y="122" width="300" height="16" rx="3" fill="#F59E0B"/><text x="1190" y="134" font-weight="800">500 ms</text>
+        <text x="760" y="162">重排 200 条</text>
+        <rect x="880" y="150" width="600" height="16" rx="3" fill="#F59E0B"/><text x="1190" y="162" font-weight="800">1000 ms</text>
+      </g>
+      <text x="760" y="200" font-size="12" font-weight="800" fill="#1D2129">所以折中是「召回几百 → 重排 50–100 → 进上下文 5–20」</text>
+      <text x="760" y="226" font-size="11.5" fill="#4E5969">而最终进上下文的条数还受 token 预算限制（context rot）</text>
+      <text x="760" y="252" font-size="11.5" fill="#B45309">重排不一定值得：精确编号、单跳事实这类查询召回本身已排得准 → 由 Eval 决定是否只在难题启用</text>
+      <text x="760" y="280" font-size="11" fill="#86909C">原理：双塔把 query 和 doc 分别编码，编码时看不到对方 →「除外」「不适用」这类否定词被平均掉。</text>
+    </g>
+  </svg>
+  </div>
+</section>
+
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 六张母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">为什么必须 ANN</div><div class="big">15.36 亿次 ≈ 1.5 s</div>
+      <div class="d">100 万 × 1536 维，O(N×D)；即使每次 1ns 也要 1.5 秒/次。所以 ANN 不是「精度优化」，是算力逼出来的。</div></div>
+    <div class="ncard o"><div class="t">上下文增强四级</div><div class="big">5.7% → 1.88%</div>
+      <div class="d">+Contextual Embeddings 3.7%（−35%）→ +Contextual BM25 2.9%（−49%）→ +Rerank 1.88%（−67%）。索引体积只涨约 12.5%；一次性成本约 $1.02/百万文档 token。</div></div>
+    <div class="ncard b"><div class="t">块太大被稀释</div><div class="big">200 / 2000 = 10%</div>
+      <div class="d">2000 字块里只有 200 字相关 → 相关占比 10%，相似度信号被稀释，关键内容排不进 Top-K；块太小又语义不自足（单块意思可能是反的）。</div></div>
+    <div class="ncard o"><div class="t">重排延迟</div><div class="big">5 ms × N</div>
+      <div class="d">重排 20→100ms、100→500ms、200→1000ms，对比 ANN 召回约 10ms —— 重排会主导整条链路延迟，所以候选数是一个必须算的成本决策。</div></div>
+    <div class="ncard o"><div class="t">重排收益三个口径</div><div class="big">1.02 点 / 35% / 67%</div>
+      <div class="d">绝对降幅 1.02 个百分点、相对前一环 35%、相对基线累计 67% —— 「重排降了 67%」是错的，67% 是累计口径。</div></div>
+    <div class="ncard b"><div class="t">验证引用的成本</div><div class="big">≈1.9 倍</div>
+      <div class="d">10 条结论逐条验证：10×(800+50)=8,500 token vs 生成本身 4,500 → 成本接近翻倍。所以只对金额 / 权限 / 生效时间这类高风险结论做。</div></div>
+    <div class="ncard b"><div class="t">拒答的收益</div><div class="big">1/10</div>
+      <div class="d">20% 查询没有足够证据：错误代价 10 单位、弃答 1 单位。把「自信的错误」换成「坦白的不知道」，总代价降到约 1/10 —— 错误越贵，拒答越值钱。</div></div>
+    <div class="ncard b"><div class="t">两层相乘</div><div class="big">95% × 90% = 85.5%</div>
+      <div class="d">Recall@20 95% × faithfulness 90% = 端到端上限 85.5%。端到端既低于任何一层，又定位不了是哪一层拖的 —— 所以必须分层评。</div></div>
+    <div class="ncard o"><div class="t">归因决定修复上限</div><div class="big">最多修 35%</div>
+      <div class="d">100 条失败里召回 40 / 排序 25 / 生成 35 —— 只换更强的模型最多修 35%。样本量：150 条标准误约 ±3.4%，分辨 2 个点需约 900 条。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」Q4/Q5 纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「统一切成 500 字一块，这是业界标准」</span><span class="v">✓ 切的是字符数不是语义边界；<b>没有通用数字</b>，要用代表性问题集测 Recall 与答案正确性来定。</span></div>
+    <div class="mrow"><span class="x">✗「块切得越小，召回肯定越好」</span><span class="v">✓ 语义不自足 —— 单个块的意思甚至可能是反的；还有块数暴涨、重叠切分重复召回挤占预算。</span></div>
+    <div class="mrow"><span class="x">✗「向量检索就够了，语义比关键词先进」</span><span class="v">✓ <b>盲区不重叠</b>：trace ID 这类编码 Embedding 无能为力。按查询类型分桶评测，由数据决定配比。</span></div>
+    <div class="mrow"><span class="x">✗「权限放在生成阶段，让模型别说就行」</span><span class="v">✓ <b>进上下文 = 已泄露</b>；模型说不说只是概率问题；未授权内容还会挤占预算、进日志与缓存。</span></div>
+    <div class="mrow"><span class="x">✗「升级更大的 Embedding，就不用重排了」</span><span class="v">✓ 双塔看不到词级交互是<b>结构性损失</b>，换更大的双塔补不回来；也不能靠「多召回几条」替代。</span></div>
+    <div class="mrow"><span class="x">✗「召回率 95%，检索这块没问题了」</span><span class="v">✓ Recall@K 高 ≠ 答案好：正确证据排第 5、前 4 条挤占预算 → context rot；且两层损失相乘。</span></div>
+    <div class="mrow"><span class="x">✗「文末列三条参考链接，可追溯就没问题」</span><span class="v">✓ 粗引用把校验成本推给读者（300 秒 vs 60 秒）；要<b>逐条绑定 + 生成后验证 + 无据撤稿</b>。</span></div>
+    <div class="mrow"><span class="x">✗「检索失败率降 49%，所以幻觉降 49%」</span><span class="v">✓ 检索失败率只是「证据缺失型幻觉」的<b>上界</b>，不充分；总幻觉率与它无必然大小关系，方向上高估。</span></div>
+  </div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+      <li><span>☐</span><div><b>闭卷 3 分钟</b>：能画出离线摄取 + 在线查询两条链路，并指出每条链路上最容易失效的一环</div></li>
+      <li><span>☐</span><div><b>必须给出数字</b>：Chunk 粒度怎么定、HNSW 什么时候换 IVF、重排涨了多少、Contextual Retrieval 降了多少失败率</div></li>
+      <li><span>☐</span><div><b>两层追问</b>：「检索指标好但答案差怎么定位」和「删除与撤权怎么传播」</div></li>
+      <li><span>☐</span><div><b>一个项目案例</b>：能用数驭穹图的 Schema 召回 81%→95% 讲一遍「改了什么、凭什么证明变好了」</div></li>
+      <li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的 RAG 设计（如「全库召回后让模型隐去无权限内容」），指出问题在哪、什么时候出事</div></li>
+      <li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：本模块只回答「证据能不能被找回来、找回来之后能不能被证明」—— 向量库部署运维、Embedding 训练与微调、GraphRAG 图谱构建细节、多模态 RAG、向量库产品横评一律不进。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.rag.v1";
+  var CARDS = {
+    G1:{t:"文档怎么切成可检索单元", q:[
+      "「我们把文档统一切成 500 字一块，这是业界标准做法。」—— 指出问题并给出正确判据。",
+      "「既然小块召回率高，那我们就把块切得尽量小。」—— 这句话错在哪？",
+      "Chunk 大小该怎么定？制度文档 / FAQ / 代码 / 条款 / 表格分别怎么切？",
+      "Child-Parent（小块召回、父块返回）解决什么？它和 Contextual Retrieval 的差别是什么？",
+      "Contextual Retrieval 怎么做、降多少失败率、代价是什么？"],
+      pts:[
+      "检索单元要同时满足两个<b>方向相反</b>的需求：能被准确匹配（块越小越好，相关占比高、相似度信号强）+ 能被模型直接使用（块越大越好，前因后果与例外都在里面）。",
+      "「切多大」没有正确答案，正确做法是<b>承认矛盾、然后在系统里解耦</b>。",
+      "太小：语义不自足 —— 一份退款规则切成「条件 / 例外 / 生效时间」三块，<b>单个块的意思甚至可能是反的</b>；另外块数暴涨、重叠切分时重复召回挤占预算。",
+      "太大：相关占比下降、相似度被稀释 —— <b>2000 字里只有 200 字相关时占比只剩 10%</b>，关键内容排不进 Top-K。",
+      "按数据结构切：制度文档按标题层级（几百字量级）、FAQ 按问答、代码按函数边界、条款按「条件 + 例外 + 生效时间」；<b>表格必须表头与行绑定</b>（拆掉表头的行是无意义的数字）。",
+      "Child-Parent：索引小块、返回父块 —— 小块保召回率，父块保上下文完整。它把「检索用的表示」和「喂给模型的表示」拆成了两份。",
+      "Contextual Retrieval：索引前先让模型给每个 chunk 补一段 <b>50–100 token 的定位说明</b>（这是哪份文档的哪一部分、在讲什么），再把「说明 + 原文」一起嵌入和索引，<b>索引体积只涨约 12.5%</b>。",
+      "实测四级：基线 5.7% → +Contextual Embeddings 3.7%（−35%）→ +Contextual BM25 2.9%（−49%）→ +Rerank 1.88%（−67%）。它解决的是「脱离文档的块不知道自己在说什么」。",
+      "一次性成本：Anthropic 测算用 prompt caching 做上下文增强约 <b>$1.02 每百万文档 token</b>（前提是缓存复用参考文档，否则要为每块重传全文）。",
+      "耦合点：块越小，上下文增强越不划算（说明的相对开销变大），所以两者要一起定。",
+      "唯一验收标准是「在你的目标问题上召回率是多少」，<b>不是是否符合某个最佳实践</b> —— Chunk 参数必须通过目标问题集评测。",
+      "RAG / 微调 / 长上下文怎么选：最新·私有·需要可引用 → RAG；稳定的行为/格式/领域表达 → 可能微调；小而稳定、无权限差异、不需溯源 → 长上下文可能更简单。顺序是<b>先用 Prompt / RAG 建 Eval，再判断是否微调</b>。"],
+      crit:"能说清「两个矛盾需求」并给出解耦方案；能算出块大小对相关内容占比的影响（10% vs 100%）；能复述 Contextual Retrieval 的 5.7%→3.7%→2.9%→1.88% 四级数据与约 12.5% 的索引成本；能说清「块越小、上下文增强越不划算」这个耦合；能按数据结构给出切分策略；且自测 5 题全对。"},
+    G2:{t:"语义与关键词怎么配合、权限在哪生效", q:[
+      "「我们用向量检索就够了，语义检索比关键词检索先进得多。」—— 给出反例并说明判据。",
+      "余弦相似度 / 欧氏距离 / 点积怎么选？归一化之后三者什么关系？",
+      "精确 KNN 和 ANN 的区别？100 万 × 1536 维的算力账怎么算？百万 / 千万 / 亿级各用什么索引？",
+      "RRF 是什么？为什么不直接把两路的分数加起来？k 取 60 起什么作用？",
+      "「权限控制放在生成阶段就行 —— 全部召回后让模型不要说出没权限的内容。」—— 指出三条理由说明为什么不行。"],
+      pts:[
+      "两路的<b>盲区不重叠</b>，所以企业知识库通常两路都要 —— 不是因为混合更先进。",
+      "BM25 强在专有名词、编号、精确短语：搜 <b>SLB-20250101-abc</b> 这种 trace ID，Embedding 模型无能为力（语义向量对专有编码不敏感），倒排索引才是正解。",
+      "向量强在语义改写：搜「数据库连接池」应命中「DB connection pool 配置」，文字完全不同、意思一样 —— BM25 匹配不上。",
+      "相似度：默认<b>余弦</b>（模型训练通常就是按余弦/归一化点积优化的）。向量归一化之后，余弦、点积、欧氏距离的<b>排序完全等价</b>（‖a−b‖² = 2 − 2·cos）；只有未归一化且要区分模长时，点积才给出不同排序。",
+      "维度由 Embedding 模型决定（主流 768 / 1024 / 1536）—— <b>换模型就换维度，整个索引必须重建</b>。",
+      "精确 KNN：O(N×D)，100 万 × 1536 = <b>15.36 亿次</b>运算，即使每次 1ns 也约 <b>1.5 秒/次</b> → 在线用不起，必须用 ANN。<b>ANN 不是精度优化，是算力逼出来的。</b>",
+      "索��选型按规模：百万级以内 <b>HNSW</b>（精度与速度平衡最好、生态成熟）；千万级 <b>IVF</b>；亿级 <b>DiskANN 或分片</b>。代价是拿少量召回率换两个数量级的延迟。",
+      "HNSW 快在两件事叠加：<b>分层</b>给出对数级搜索路径（100 万节点约 5–6 层）+ <b>图上贪心导航</b>（每层只和局部邻居比）。本质是「跳表的分层思想 + 图的近邻连接」。",
+      "RRF：score(d) = Σ 1/(k + rank_i(d))，k 通常取 60。<b>为什么不直接加分数：两路量纲不可比</b>（余弦 ∈ [0,1]，BM25 无上界且随词频/文档长度浮动），直接相加等于让量纲大的那一路说了算。",
+      "k 的作用是<b>平滑高排名的差距</b>：k 越大，第 1 名和第 2 名的贡献差越小；k 太小会让「某一路单独第一」过于强势。",
+      "权限必须在<b>检索层、先于召回</b>（ACL pre-filter）：① 未授权内容一旦进上下文就已经泄露，模型说不说只是概率问题 ② 还会挤占上下文预算 ③ 日志 / Trace / 缓存都可能把它带出去。",
+      "防越权五条：身份进检索层 + ACL 先于召回；<b>缓存按租户 / 权限分区</b>（缓存会绕过 ACL，这不是优化而是权限模型的一部分）；引用和下载再次鉴权；做跨租户与撤权测试；日志避免记录敏感原文。评测集里要专门放<b>权限攻击样本</b>。",
+      "还要测的真实事故形态：跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染。",
+      "GraphRAG：当问题必须靠<b>实体之间的关系</b>才能回答时才有增量（多跳关联）；代价是构建与维护成本高，通常作为一路召回叠加，不是替代。"],
+      crit:"能说出两路的盲区各给一个反例；能算出精确 KNN 的 15.36 亿次运算与约 1.5 秒；能算出 HNSW 的层级分布与「100 万节点约 5–6 层」；能用 RRF 公式解释它在奖励什么；能说清「权限必须在召回前」的三条理由；且自测 5 题全对。"},
+    G3:{t:"捞回来的怎么排得更准", q:[
+      "「我们把 Embedding 模型升级到了更大的版本，所以不再需要重排了。」—— 为什么这句话站不住？",
+      "「我们召回率做到 95%，说明检索这块已经没问题了。」—— 指出遗漏。",
+      "重排的延迟怎么算？为什么常见折中是「召回几百 → 重排 50–100 → 进上下文 5–20」？",
+      "重排到底涨了多少？三个口径分别是什么？",
+      "Recall@K / Precision@K / MRR / nDCG@K 各回答什么问题？什么时候看哪个？"],
+      pts:[
+      "召回和精排的<b>优化目标本来就不一样</b>：召回要在全量上快速缩小范围（可预计算），精排要在小候选上排准（可现算）。用一个模型做两件事必然有一头不划算。",
+      "双塔 vs 交叉编码器：本质差别是「<b>能不能预计算</b>」—— 双塔的文档向量可离线算好；交叉编码器要把 query+doc 拼在一起现算，<b>不能用于召回不是因为慢，是因为不能预计算</b>。",
+      "双塔的信息损失来自「<b>编码时看不到对方</b>」—— 这是结构性损失，不是模型不够大：「除外」「不适用」这类否定词会被平均掉。",
+      "重排的代价：<b>延迟随候选数线性增长</b> —— 单候选约 5ms，重排 20→100ms、100→500ms、200→1000ms，而 ANN 召回本身约 10ms。所以重排会主导整条链路延迟。",
+      "所以「重排多少条」是必须算的成本决策：候选越多召回率越高，但延迟线性上升，而最终进上下文的条数还受 token 预算限制 → 折中「召回几百 → 重排 50–100 → 进上下文 5–20」。",
+      "收益的三个口径<b>不能混</b>：绝对降幅 <b>1.02 个百分点</b>、相对前一环 <b>35%</b>、相对基线累计 <b>67%</b>。「重排降了 67%」是错的。",
+      "检索层指标：Recall@K（正确证据是否进前 K，决定上限）/ Precision@K（前 K 里多少相关，预算紧张时看）/ MRR（第一个正确来得多早，单答案场景）/ nDCG@K（多级相关性 + 排序质量，精排阶段看）。",
+      "<b>Recall@K 高不等于答案好</b>：Recall@5 = 100% 但正确那条排第 5，前 4 条相关度低 → 上下文预算有限时它被挤掉或淹没（context rot）。召回率回答「有没有捞到」，nDCG 回答「排得对不对」，两个都要看。",
+      "重排不一定值得：精确编号、单跳事实这类查询召回本身已经排得很准，重排收益很小 → 应通过 <b>Eval 判断是否只在难题启用</b>。",
+      "多跳问题（multi-hop）：<b>重排解决不了</b> —— 重排只是把已有候选重新排序，而多跳需要的候选压根不在池子里。两条路：Query Decomposition（拆成多个子查询分别检索再合成）、Multi-hop 检索（第二轮由第一轮发现的实体驱动）。本质上是<b>查询规划的问题</b>，不是检索算法的问题。"],
+      crit:"能说清召回与精排的目标差异；能说出双塔与交叉编码器的本质差别是「词级交互 / 能不能预计算」；能算出重排的延迟（5ms × N）并给出常见折中；能给出重排收益的三个口径（1.02 点 / 35% / 67%）并说清不能混；能用 Recall@20 与 Recall@5 的对比判断「该动召回还是动精排」；且自测 5 题全对。"},
+    G4:{t:"每句话怎么追溯到原文", q:[
+      "「我们在文末列出了三条参考链接，用户可以去核对，所以可追溯性没问题。」—— 问题在哪？",
+      "「我们的 RAG 要求模型必须给出引用，所以不会出现无依据的回答。」—— 为什么拦不住？",
+      "逐条验证引用的成本是多少？为什么只对高风险结论做？",
+      "什么情况下应该拒答而不是硬答？收益怎么算？",
+      "好的引用要满足哪几条标准？"],
+      pts:[
+      "引用的粒度决定「<b>校验成本由谁承担</b>」：粗引用（文末列链接）把成本全推给读者（校验约 300 秒），细引用把成本在生成时就付掉（约 60 秒）。",
+      "<b>「要求引用」不够，必须「验证引用」</b>：前者是 prompt 层，改的是概率分布；后者是机制层，是一条独立的检查步骤。模型完全可以编一个看起来像引用的东西（引一个不存在的片段编号），而 prompt 拦不住 —— 编引用和编结论是同一个机制。",
+      "Anthropic 的三段式：① 允许弃答 ② 长文档（&gt;20k token）先逐字摘出相关原文再作答 ③ <b>生成后验证</b> —— 每条结论回原文找支撑，找不到的直接撤掉。",
+      "验证的代价能算：10 条结论逐条验证 = 10 × (800 输入 + 50 输出) = 8,500 token；生成本身 4,000 输入 + 500 输出 = 4,500 → <b>≈1.9 倍，成本接近翻倍</b>。所以只对高风险结论做（金额、权限、生效时间、涉及外部副作用的结论）。",
+      "好引用的标准：① 关键结论逐条绑定片段 ② 可定位到文档 / 章节 / <b>版本</b> ③ 计算类结论还要绑定 <b>SQL AST / 运行 ID</b>（让用户能重跑）④ 引用要能支撑结论 ⑤ <b>引用不支持结论 = 这条结论失败</b>，不是打个标记继续展示。",
+      "拒答的五个条件：① 没有召回足够证据 ② 多个权威来源相互冲突 ③ 用户身份不足（权限）④ 超出知识库边界 ⑤ 时间 / 主体 / 指标口径不明确。",
+      "冲突时<b>不强行合成唯一答案</b>，而是显式返回证据（RuleArena 的做法）。",
+      "拒答的收益能算：20% 的查询没有足够证据，错误代价 10 单位 vs 弃答 1 单位 → 把「自信的错误」换成「坦白的不知道」，<b>总代价降到约 1/10</b>。错误越贵，拒答越值钱。",
+      "「拒答显得系统能力弱」是反的 —— 用户对「自信的错误」的容忍度远低于对「坦白的不知道」的容忍度。",
+      "证据有两种形态，不能混：日志 / 指标是<b>运行时产生、会变</b>的，走 Artifact 引用（绑定运行 id）；操作手册是静态的，走 RAG。混在一个索引里会让「引用」失去意义。",
+      "可追溯 = 让每句话都有据可查，<b>没据的那句不出现</b> —— 前一半靠绑定，后一半靠拒答。"],
+      crit:"能说清「引用粒度决定校验成本由谁承担」；能算出逐条验证的成本倍数（≈1.9 倍）；能算出拒答的代价比（1/10，错误越贵越值钱）；能算出粗引用与细引用的校验成本（300 秒 vs 60 秒）；能说出「要求引用 vs 验证引用」的区别并解释为什么 prompt 拦不住编引用；能背出好引用的五条标准与拒答的五条条件；且自测 5 题全对。"},
+    G5:{t:"指标很好但答案差，怎么定位", q:[
+      "「我们用了 Contextual Retrieval，检索失败率降了 49%，所以幻觉问题基本解决了。」—— 指出偷换的指标。",
+      "「我们建了 150 条评测集，跑出来准确率 78%，说明还有提升空间。」—— 这个 78% 告诉了你什么、没告诉你什么？",
+      "检索指标很好但答案还是差，按哪三个岔路口排查？各自对应什么修复动作与成本？",
+      "两层的损失是什么关系？端到端上限怎么算？",
+      "评测集怎么建？为什么要留 holdout？150 条够不够？"],
+      pts:[
+      "一个端到端的分数定位不了问题：RAG 的失败发生在<b>三个不同的地方</b> —— ① 证据没被捞到（摄取/切分/查询改写/召回）② 捞到了没进上下文（重排/去重/token 预算）③ 进了上下文还是答错（生成/Prompt/引用/模型）。",
+      "「准确率 78%」告诉不了你该动哪一段 —— 而这三段的修复动作完全不同、成本差一个数量级（改 Prompt 只是改几行字，改切分要重建索引）。",
+      "<b>分层评测</b>：检索层看 Recall@K / Precision@K / MRR / nDCG@K；答案层看 Correctness / Faithfulness / Citation completeness / Answerability。混成一个数就两个都答不了。",
+      "两层的损失是<b>相乘</b>的：Recall@20 = 95% × faithfulness 90% = <b>端到端上限 85.5%</b>。端到端既低于任何一层，又定位不了是哪一层拖的。",
+      "<b>归因决定修复的上限</b>：不做归因就动手是在赌。假设 100 条失败里召回 40、排序 25、生成 35 → 只治生成最多修 35%。",
+      "修复成本排序：③ 生成问题（改 Prompt / 加重排后的引用绑定）最便宜、可快速迭代；② 排序问题（加/调重排、调预算）中等；① 召回问题（改切分、改 Embedding、重建索引）最贵。",
+      "评测集怎么建：数据来源 = 真实高频问题 + 专家构造边界 + 线上 Bad Case + <b>权限攻击</b> + 过期/冲突样本。",
+      "两个必须注意：① <b>保留 holdout</b>（真实案例：训练集打平、held-out 差 11.9 个点）② 样本量决定分辨率 —— SE = √(p(1−p)/n)，200 条约 ±2.1% 只够抓大幅回退，<b>分辨 2 个百分点需要约 900 条</b>。",
+      "「评测集有 150 条」和「评测集能分辨 2 个点」是两件事 —— 小评测集只能告诉你「没有崩」，不能告诉你「变好了 2 个点」。",
+      "<b>检索失败率 ≠ 幻觉率</b>：检索失败是「证据缺失型幻觉」的必要条件但不充分（模型可能靠参数化知识答对），所以<b>它是上界不是下界</b>；总幻觉率还包含「有证据不依」等，与检索失败率没有必然大小关系。",
+      "所以「失败率降 49%」是检索层数字，不能说成「幻觉降低 49%」—— 方向上还是高估（真实改善一定小于这个数）。",
+      "评测的目的不是「给系统打分」，是「<b>告诉你下一步该改哪里</b>」—— 不能定位的评测，价值接近于零。"],
+      crit:"能背出三个岔路口并对应到三类修复动作；能算出两层相乘的 85.5%；能用 100 条失败的分段算出「只治生成最多修 35%」；能比较两个系统并分别指出该改哪一层；能说出评测集 schema 的关键字段与 holdout 的必要性；能说清「检索失败率 ≠ 幻觉率」是上界、不充分、方向高估；且自测 5 题全对。"},
+    G6:{t:"改了删了撤权了，索引怎么跟上", q:[
+      "「用户被撤权了没关系，下一次查询时 ACL 过滤会把他挡住的。」—— 漏了什么？",
+      "「我们要换一个更好的 Embedding 模型，直接重跑一遍索引替换掉就行。」—— 两个问题是什么？",
+      "增量更新值多少？100 万块每天改 1%，全量 vs 增量差多少？",
+      "删除为什么比新增难得多？索引之外还有哪些派生物要清？",
+      "索引滞后怎么算？为什么它必须是一个指标而不是「约数」？"],
+      pts:[
+      "索引（向量 + 倒排 + 元数据）不是事实来源，它只是源文档的<b>派生视图</b> —— 源变了它就必须变。",
+      "三种变化难度递增：新增最容易（多加一份）；删除最难（要找全所有派生物）；撤权最难（内容没变，变的是谁能看）。",
+      "增量的收益是数量级的：100 万块每天只改 1% → 全量重建要 100 万次嵌入，增量只重算 1 万次，<b>降到 1/100（省 99%）</b>。",
+      "但增量换来两个新问题：要维护变更检测与一致性，以及<b>索引滞后</b>。",
+      "删除必须按 <b>doc_id 反查它切出来的全部块</b>：一份文档切成 100 个块，每块有向量 + 倒排项 + 元数据，漏 1 个块就是「已删内容还能被搜到」的合规事故。<b>新增漏了只是「少了一条」，删除漏了是「多了一条不该在的」</b> —— 性质完全不同。",
+      "派生物有<b>两层</b>：① 索引内（向量 · 倒排 · 元数据）② 索引外（检索结果缓存 · 生成回答缓存/语义缓存 · 派生引用与摘要 · Agent 记忆）。删除传播的定义是「源没了，它的所有派生物都不能留」→ <b>删除同样必须清缓存</b>。",
+      "删除比撤权<b>更难清</b>，难在反查方向：撤权是缓存键里带 user/tenant → 从「主体」反查缓存条目，方向是顺的；删除是缓存键为 query 文本 → 要从「内容」反查，而 doc_id 与 cache_key 是多对多，缓存本身不维护这个映射。",
+      "撤权要清：主索引元数据（ACL 字段）、向量索引、倒排索引，<b>还有缓存</b> —— 缓存会绕过 ACL 过滤（有权用户查过的结果会命中给无权用户）。所以<b>缓存按租户 / 权限分区不是优化，是权限模型的一部分</b>。",
+      "新鲜度必须可观测：文档带 <b>effective_at / expires_at / source_version</b>；<b>索引滞后 = 文档变更时刻 → 可被检索到的时刻</b>。增量任务每 5 分钟跑一次 → 平均滞后约 2.5 分钟、最大滞后约 5 分钟（等于任务周期）。",
+      "为什么滞后必须是「指标」不是「约数」：它决定「回答能不能引用刚改过的规则」—— 业务承诺「规则改了 10 分钟内生效」，那滞后超过 10 分钟就是故障。",
+      "换 Embedding 模型：新旧向量不可比，必须全量重嵌入，且<b>不能原地替换</b>（没有回滚路径）。正确做法是<b>双写 / 影子索引</b>：新建一份索引 → 双写（或先切小部分流量）→ 验证指标 → 切换，切错能回滚。",
+      "这条和 MySQL 的影子表方案（pt-osc / gh-ost）是同一个模式：<b>凡是要改「正在服务的派生结构」，都用「新建一份 + 双写 + 验证 + 切换」</b>。",
+      "增量省的是成本，删除与撤权保的是正确性 —— 前者做不好是慢，后者做不好是事故。"],
+      crit:"能说出三种变化各自要处理什么；能算出增量省 99% 的嵌入调用；能算出索引滞后的最大窗口（= 任务周期）并判断是否满足业务承诺；能说清「删除漏了」与「新增漏了」的性质区别（合规事故 vs 功能缺失）；能说清派生物有索引内 / 索引外两层，删除为什么也要清缓存、以及它比撤权难在哪（缓存键是 query 不是 doc_id，反查方向是反的）；能说清「缓存按权限分区」只挡跨主体、挡不住已删内容和同主体撤权；能说出双写 / 影子索引的用意；且自测 6 题全对。"}
+  };
+  var ORDER = ["G1","G2","G3","G4","G5","G6"];
+
+  var st = { mode:"mid", cue:true, card:"G1", self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

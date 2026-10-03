@@ -237,6 +237,15 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 `wiki/topics/` 下按能力模块建子目录（现有 `算法/`、`MySQL/`、`PostgreSQL/`、`网络/`、`Redis/`、`LLM与上下文/`），承载**母题卡**：一个模块 = 一张**模块卡**（`{模块}模块卡.md`，**frontmatter 必须写 `type: study-module` 与 `module:`——`build.py` 靠这两项发现模块，与文件名无关**）+ 若干 `母题-NN-名称.md` + 可选底库（只查不练）。母题卡落点规则见〈落盘闸门〉。
 
+### `wiki/cards/`
+
+读厚卡片层（2026-10-03 起，第二大脑重构）。两型正本，**一文件一来源**，`build.py` 抽取进 `_data/cards.js` 与内化馆视图：
+
+- `原则-{书名}.md`（kind: principle）：书/准则的读厚卡，核心是「情境 → 标准动作」，进每日派单（簇 `card/*`，每天 1 条，等级走同一套闭卷自评）——读完一本书只剩概念名的问题从这里解决；模板 `templates/原则卡模板.md`。
+- `地基-{模块名}.md`（kind: ground）：技术模块的先修资料（必会清单 + 学习路径），只导航不派单（模块推进仍走主线）；模板 `templates/地基包模板.md`。
+
+卡片 id（`card/{id}`）发布后不改（派单等级挂在上面）；正文 `[@模块-行号]` 由 build 替换成主线页链接。AI 生成的卡 `human_reviewed: false`、`status: candidate`，本人验证后才可翻 true。
+
 ### `output/`
 
 面向具体使用场景的成品。简历及导出物（PDF/HTML）只放 `output/resume/`，不在 output 根目录散落；`output/evidence/` 存项目证据材料。
@@ -245,9 +254,9 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 **输出侧学习界面**（2026-09-10 起）。md 是工作台，`site/` 是它的派生视图：**不由人直接写**，一律由 `build.py` 从 md 正本生成。
 
-- `index.html`：唯一入口，调度复训 + 进入子页；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机、可选云同步到 `data/marvis-sync.json`）
+- `index.html`：唯一入口，调度复训 + 进入子页；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机，云同步到 `data/marvis-sync.json`：看免配置（公开仓库直读 raw），上传只需贴一次令牌）；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
 - `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
-- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（书架）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
+- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑星系）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
 - `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：4 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交）
 - 方案正本 `site/PLAN.md`，用法 `site/README.md`；面向 GitHub 访客的仓库说明是根目录 `README.md`（不承载规则）
 

@@ -13,6 +13,15 @@ const code = m[1];
 global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
 require(path.join(ROOT, '_data', 'clusters.js'));
 require(path.join(ROOT, '_data', 'breaks.js'));
+/* 原则卡簇是 build.py 生成在 _data/cards.js 里的；测试里给两条桩卡（card/adler-1、card/adler-2），
+   验证派单引擎对这条内化线的行为。cards.js 真数据变化不影响这里的行为断言。 */
+global.window.MARVIS_CARD_CLUSTER = {
+  id: 'card', name: '原则卡 · 读厚', zone: '准则',
+  topics: [
+    { id: 'adler-1', name: '课题分离', href: 'cards.html#card-adler-1' },
+    { id: 'adler-2', name: '目的论：理由是造出来的', href: 'cards.html#card-adler-2' },
+  ],
+};
 
 const store = {};
 const ELS = {};   /* 按 id 缓存的假 DOM，用来读弹窗里到底写了什么 */
@@ -70,7 +79,12 @@ ok('5 题互不重复', new Set(needOf('drill').map(i => i.key)).size === 5,
 ok('手撕标了序号 1/5…5/5', needOf('drill')[0].label.startsWith('手撕 1/5'), needOf('drill')[0].label);
 ok('项目线 1 条，是 EnergyOps 90 秒骨架', needOf('proj').length === 1 &&
   needOf('proj')[0].label.includes('EnergyOps 90 秒骨架'), needOf('proj').map(i => i.label).join(''));
-ok('必做共 12 条（5 新学 + 1 项目 + 5 手撕 + 1 命功）', todayItems().filter(i => i.need).length === 12,
+ok('准则 1 条（内化线 2026-10-03 接入），是 R1 机会成本门', needOf('rule').length === 1 &&
+  needOf('rule')[0].label.includes('机会成本门'), needOf('rule').map(i => i.label).join(''));
+ok('原则卡 1 条（内化线 2026-10-03 接入），是 adler-1 课题分离', needOf('card').length === 1 &&
+  needOf('card')[0].label.includes('课题分离'), needOf('card').map(i => i.label).join(''));
+ok('必做共 14 条（5 新学 + 1 项目 + 1 准则 + 1 原则卡 + 5 手撕 + 1 命功）',
+  todayItems().filter(i => i.need).length === 14,
   todayItems().filter(i => i.need).length + ' 条');
 ok('没有任何 L≥2 母题时不派抽检', needOf('exam').length === 0);
 ok('加餐给了其它 zone 的首题', extraOf('new').length > 0, extraOf('new').map(i => i.label).join(' / '));
@@ -220,6 +234,23 @@ run("S.lv['pitch/T6'].l = 2;");
 ok('六条全到 L2 后不再派项目线', g('projectNext()') === null);
 ok('没有项目条目的日子不再出现复习条目', true);
 
+console.log('\n【13b】内化线：准则/原则卡每天 1 条，簇内顺序推进');
+fresh();
+ok('准则派 R1 机会成本门', needOf('rule')[0].label.includes('机会成本门'));
+fresh("S.lv['rule/R1'].l = 2;");
+ok('R1 到 L2 后改派 R2 有限计划会', needOf('rule')[0].label.includes('有限计划会'),
+  needOf('rule').map(i => i.label).join(''));
+fresh("['rule/R1','rule/R2','rule/R3','rule/R4','rule/R5','rule/R6','rule/R7','rule/R8','rule/R9']" +
+      ".forEach(function(k){ S.lv[k].l = 2; });");
+ok('只剩 R10 时派 never miss twice', needOf('rule')[0].label.includes('never miss twice'));
+run("S.lv['rule/R10'].l = 2;");
+ok('十条全到 L2 后不再派准则', g('ruleNext()') === null);
+fresh("S.lv['card/adler-1'].l = 2;");
+ok('原则卡 1 过关后改派卡 2', needOf('card')[0].label.includes('目的论'),
+  needOf('card').map(i => i.label).join(''));
+run("S.lv['card/adler-2'].l = 2;");
+ok('两张桩卡全过后不再派原则卡', g('cardNext()') === null);
+
 console.log('\n【14】抽检：7 天一轮，从 L≥2 里抽 5 题');
 const SIX = "['mysql/1','mysql/2','mysql/3','redis/1','redis/3','llm/2'].forEach(function(k){ S.lv[k].l = 2; });";
 fresh(SIX);
@@ -356,7 +387,8 @@ run("S.days[today()] = { v:2, items:[" +
     "{type:'life',key:'life',need:true,done:true,label:'旧命功',sub:''} ], settled:false };" +
     "render();");
 ok('查出母题死 key 后重派（不再派母题）',
-  !todayItems().some(i => /\/(M|C|A|E|G|R|N|Q|L|X|O|S|P)\d+$/.test(i.key)),
+  todayItems().filter(i => i.type !== 'drill' && i.type !== 'life')
+    .every(i => g(`keySet()['${i.key}']`) === 1),
   todayItems().map(i => i.key).join(', '));
 ok('重派后全是主线 key', todayItems().filter(i => i.type !== 'life' && i.type !== 'drill')
   .every(i => !!g(`S.lv['${i.key}']`)), todayItems().map(i => i.type + ':' + i.key).join(', '));
@@ -390,9 +422,9 @@ ok('老 key 一条不留（sql/ tx/ 都没了）',
 ok('记下折算条数', g('S.unitMigrated') === 2, String(g('S.unitMigrated')));
 ok('今天的复训换成主线（不再是「索引代价与大表变更」）',
   needOf('rev').some(i => i.label.includes('索引与表设计')), needOf('rev').map(i => i.label).join(' / '));
-ok('今天清单里没有母题 key 了（母题 key 的第二段是字母+数字，主线 key 是纯数字）',
+ok('今天清单里没有死 key 了（主线/项目/准则/原则卡都是当前表的活 key）',
   !todayItems().some(i => i.type !== 'drill' && i.type !== 'life' &&
-    !/^[a-z]+\/(\d+|T\d+)$/.test(i.key)),
+    !/^[a-z]+\/(\d+|T\d+|R\d+|[a-z0-9-]+)$/.test(i.key)),
   todayItems().map(i => i.key).join(', '));
 
 console.log('\n' + (fails ? '❌ ' + fails + ' 项失败' : '✅ 全部通过'));

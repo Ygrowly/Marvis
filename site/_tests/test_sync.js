@@ -1,5 +1,7 @@
-/* 云同步层单测（2026-10-01）
-   真跑一遍 sync.js：本地存储用 Map 模拟，GitHub 用内存假 API（带 sha 校验）。
+/* 云同步层单测（2026-10-01，v0.2 更新于 2026-10-03）
+   真跑一遍 sync.js：本地存储用 Map 模拟，GitHub 用内存假服务——
+   raw.githubusercontent.com 的 GET 返回文件原文（拉取免令牌），
+   api.github.com 的 GET/PUT 走 Contents API 形状（上传要令牌 + sha 校验）。
    跑法：node site/_tests/test_sync.js
 */
 'use strict';
@@ -16,6 +18,7 @@ function ok(cond, name, extra) {
   else { fail++; console.log('  ❌ ' + name + (extra ? '  → ' + extra : '')); }
 }
 function head(s) { console.log('\n【' + s + '】'); }
+const tick = () => new Promise((r) => setTimeout(r, 0));
 
 /* ---------- 环境桩 ---------- */
 function makeLS() {
@@ -31,25 +34,30 @@ function makeLS() {
   return ls;
 }
 
-/* 内存版 GitHub Contents API：远端只有一个文件，PUT 必须带对 sha */
+/* 内存版 GitHub：远端只有一个文件。
+   raw GET（拉取）→ 文件原文；API GET（上传前取 sha）→ {sha, content}；API PUT → 校验 sha */
 function makeAPI() {
   const api = {
-    doc: null,                 // {content: base64} 的内容原文
+    doc: null,                 // 文件原文（JSON 字符串）
     sha: null,
     puts: 0,
     gets: 0,
-    nextSha: 'sha0',
     base64: (s) => Buffer.from(s, 'utf8').toString('base64'),
-    text: (b) => Buffer.from(String(b).replace(/\s/g, ''), 'base64').toString('utf8'),
   };
   api.fetch = function (u, opt) {
+    u = String(u);
+    if (u.indexOf('raw.githubusercontent') !== -1) {
+      api.gets++;
+      if (!api.doc) return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('404') });
+      return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(api.doc) });
+    }
     if (!opt || opt.method !== 'PUT') {
       api.gets++;
       if (!api.doc) return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ message: 'Not Found' }) });
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sha: api.sha, content: api.base64(api.doc) }) });
     }
     api.puts++;
-    return Promise.resolve({ json: () => Promise.resolve({}) }).then(function (r) {
+    return Promise.resolve({ json: () => Promise.resolve({}) }).then(function () {
       const body = JSON.parse(opt.body);
       if (api.sha && body.sha !== api.sha) {
         return { ok: false, status: 409, json: () => Promise.resolve({ message: "sha does not match" }) };
@@ -91,28 +99,76 @@ function boot(ls, sharedApi) {
   return { api, S: sandbox.window.MarvisSync, win, sandbox };
 }
 
-const CFG = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marvis-sync.json', token: 'tok' };
+/* 令牌之外的一切（owner/repo/branch/path）都内置在 sync.js 里，配置只剩这一项 */
+const CFG = { token: 'tok' };
 
 (async function run() {
   head('加载与配置');
   let e = boot(makeLS());
   ok(!!e.S, 'MarvisSync 暴露出来了');
-  ok(e.S.status() === 'off', '没填令牌时状态是 off', e.S.status());
+  await tick();
+  ok(e.S.status() === 'ro', '没填令牌 = 只读模式，照样去拉云端', e.S.status());
+  ok(e.S.ready() === false, '没令牌不能上传');
+  ok(e.S.cfg().owner === 'Ygrowly' && e.S.cfg().repo === 'Marvis' &&
+     e.S.cfg().branch === 'main' && e.S.cfg().path === 'data/marvis-sync.json',
+     'owner/repo/branch/path 全部内置，不用填');
   e.S.setCfg(CFG);
-  ok(e.S.ready() === true, '填完令牌后 ready');
+  ok(e.S.ready() === true, '贴一次令牌就能上传');
+
+  head('只读模式：没令牌也能看云端，写只留本地');
+  const eSrc = boot(makeLS());
+  await tick();
+  eSrc.S.setCfg(CFG);
+  localStorage_write(eSrc, 'mv.done.MySQL-01-q1', '1');
+  await eSrc.S.push(true);
+  const eR = boot(makeLS(), eSrc.api);        // 新机器，没填令牌
+  await tick();                               // 启动时的自动拉取落地
+  ok(eR.sandbox.localStorage.getItem('mv.done.MySQL-01-q1') === '1', '没令牌也拉到了云端进度');
+  ok(eR.S.status() === 'ro', '状态是只读', eR.S.status());
+  const putsBefore = eSrc.api.puts;
+  localStorage_write(eR, 'mv.done.local-only', '1');
+  await tick();
+  ok(eR.S.status() === 'ro', '只读模式写本地不上传', eR.S.status());
+  ok(eSrc.api.puts === putsBefore, '没有产生上传');
+
+  head('补令牌后：只读期攒的本地改动自动补传');
+  const eT = boot(makeLS(), eSrc.api);   // 云端已有数据；这台没令牌
+  await tick();
+  localStorage_write(eT, 'mv.done.offline-note', '1');   // 只读期的本地改动
+  eT.S.setCfg(CFG);                      // 补一次令牌
+  const putsT0 = eSrc.api.puts;
+  await eT.S.pull();
+  await tick();                          // 补传是发起后不等待的，让它落地
+  ok(eSrc.api.puts === putsT0 + 1, '补传了一次', 'puts=' + eSrc.api.puts);
+  ok(JSON.parse(eT.api.doc).data['mv.done.offline-note'] === '1', '只读期的改动进了云端');
+  ok(eT.S.status() === 'idle', '补传后已同步', eT.S.status());
+  const putsT1 = eSrc.api.puts;
+  await eT.S.pull();                     // 再真拉一次：应收敛
+  await tick();
+  ok(eSrc.api.puts === putsT1, '收敛后不产生空转 commit');
 
   head('钩子：写本地键就记脏');
   e = boot(makeLS());
+  await tick();
   e.S.setCfg(CFG);
-  e.api.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sha: 's', content: Buffer.from('{"v":1,"ts":{},"data":{}}').toString('base64') }) });
   localStorage_write(e, 'mv.done.MySQL-01-q3', '1');
   ok(e.S.status() === 'dirty', '写完 mv.* 键 → 状态 dirty', e.S.status());
   ok(JSON.parse(e.sandbox.localStorage.getItem('mv.sync.ts') || '{}')['mv.done.MySQL-01-q3'] > 0, '时间戳已记下');
   e.sandbox.localStorage.setItem('other.thing', 'x');
   ok(!JSON.parse(e.sandbox.localStorage.getItem('mv.sync.ts') || '{}')['other.thing'], '非 mv. 前缀不进同步');
 
-  head('首次推送：远端空 → 本机这份当首版');
+  head('有令牌 + 云端为空：拉取自动把本机当首版');
+  const eF = boot(makeLS());
+  await tick();
+  eF.S.setCfg(CFG);
+  localStorage_write(eF, 'mv.done.first', '1');
+  await eF.S.pull();
+  ok(eF.api.puts === 1, '自动首推了一次', 'puts=' + eF.api.puts);
+  ok(eF.S.status() === 'idle', '推送后已同步', eF.S.status());
+
+  head('首次推送：小键和主进度都进去');
   e = boot(makeLS());
+  await tick();
   e.S.setCfg(CFG);
   localStorage_write(e, 'mv.progress.v1', JSON.stringify({ lv: { 'mysql/1': { l: 2, last: '2026-10-01' } }, days: {} }));
   localStorage_write(e, 'mv.done.MySQL-01-q1', '1');
@@ -124,10 +180,9 @@ const CFG = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marv
   ok(!!doc1.meta && !!doc1.meta.device, 'meta 记了设备');
 
   head('换一台机器：拉下来就是同一份');
-  const e2 = boot(makeLS(), e.api);   // 共用同一个远端
-  e2.S.setCfg(CFG);
-  const changed = await e2.S.pull();
-  ok(changed === true, 'pull 报告有更新');
+  const e2 = boot(makeLS(), e.api);   // 共用同一个远端；启动时的自动拉取就是换机同步
+  await tick();
+  e2.S.setCfg(CFG);                   // 这台机器也要上传，补一次令牌
   ok(e2.sandbox.localStorage.getItem('mv.done.MySQL-01-q1') === '1', '小键同步过来');
   ok(JSON.parse(e2.sandbox.localStorage.getItem('mv.progress.v1')).lv['mysql/1'].l === 2, '主进度同步过来');
 
@@ -144,6 +199,7 @@ const CFG = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marv
 
   head('主进度逐条合并：谁练得新听谁的');
   const eA = boot(makeLS()), eB = boot(makeLS(), eA.api);
+  await tick(); await tick();
   eA.S.setCfg(CFG); eB.S.setCfg(CFG);
   const pA = { lv: { 'mysql/1': { l: 2, last: '2026-10-01', hit: 3, miss: 0 }, 'redis/1': { l: 1, last: '2026-09-20', hit: 1, miss: 0 } }, days: {}, drill: [], extra: {}, exam: {}, resetAt: null };
   const pB = { lv: { 'mysql/1': { l: 1, last: '2026-09-25', hit: 1, miss: 1 }, 'redis/1': { l: 2, last: '2026-09-29', hit: 2, miss: 0 } }, days: {}, drill: [], extra: {}, exam: {}, resetAt: null };
@@ -157,14 +213,15 @@ const CFG = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marv
   ok(fin.lv['mysql/1'].hit === 3, '命中次数取最大值且不翻倍', String(fin.lv['mysql/1'].hit));
 
   head('空转不产生 commit');
-  const putsBefore = eA.api.puts;
+  const puts0 = eA.api.puts;
   await eA.S.pull();
   await eA.S.push(true);
   await eA.S.push(true);
-  ok(eA.api.puts === putsBefore, '内容没变就不提交', '新增 puts=' + (eA.api.puts - putsBefore));
+  ok(eA.api.puts === puts0, '内容没变就不提交', '新增 puts=' + (eA.api.puts - puts0));
 
   head('sha 冲突自动重试');
   const eC = boot(makeLS());
+  await tick();
   eC.S.setCfg(CFG);
   const realFetch = eC.api.fetch;
   let first = true;
@@ -179,26 +236,34 @@ const CFG = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marv
 
   head('断网不丢：本地时间戳记着，下次拉的时候本地赢');
   const eD = boot(makeLS());
+  await tick();
   eD.S.setCfg(CFG);
   localStorage_write(eD, 'mv.progress.v1', JSON.stringify({ lv: { 'net/1': { l: 1, last: '2026-10-01' } }, days: {} }));
   eD.api.fetch = () => Promise.reject(new Error('offline'));
   await eD.S.push(true);
   ok(eD.S.status() === 'error', '上传失败 → 报 error', eD.S.status());
   const good = boot(makeLS());
-  good.S.setCfg(CFG);
+  await tick();
   const remoteDoc = { v: 1, ts: { 'mv.progress.v1': 1 }, data: { 'mv.progress.v1': JSON.stringify({ lv: {}, days: {} }) } };
   good.api.doc = JSON.stringify(remoteDoc);
   good.api.sha = 'old';
-  good.api.fetch = () => Promise.resolve({
-    ok: true, status: 200,
-    json: () => Promise.resolve({ sha: 'old', content: Buffer.from(JSON.stringify(remoteDoc)).toString('base64') })
-  });
+  good.api.fetch = function (u, o) {
+    if (String(u).indexOf('raw.githubusercontent') !== -1) {
+      return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(good.api.doc) });
+    }
+    return Promise.resolve({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ sha: 'old', content: Buffer.from(JSON.stringify(remoteDoc)).toString('base64') })
+    });
+  };
+  good.S.setCfg(CFG);
   localStorage_write(good, 'mv.progress.v1', JSON.stringify({ lv: { 'net/1': { l: 1, last: '2026-10-01' } }, days: {} }));
   await good.S.pull();
   ok(JSON.parse(good.sandbox.localStorage.getItem('mv.progress.v1')).lv['net/1'], '远端的空进度没吃掉本地数据');
 
   head('中文与编码往返');
   const e5 = boot(makeLS());
+  await tick();
   e5.S.setCfg(CFG);
   localStorage_write(e5, 'mv.note', '中文 ✦ 断点：长事务会撑爆连接数');
   await e5.S.push(true);

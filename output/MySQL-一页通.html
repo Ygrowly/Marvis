@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>MySQL
+    <small>17 张母题 · 46 道题 · 3 个项目 —— 一条线：怎么存 → 怎么读得快 → 怎么写得稳与恢复 → 业务怎么落地</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：怎么存 → 怎么读得快 → 怎么写得稳 → 业务怎么落地<span class="src">正本 wiki/topics/MySQL/</span></h2>
+  <div class="h2sub">七条主线压成四段：<b>存（M1–M5）→ 读（M6–M7）→ 写得稳（M8–M13）→ 治理与落地（M14–M17）</b>。三段失败必须能分开归因。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 1010" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MySQL 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <g font-size="11" fill="#4E5969">
+      <line x1="230" y1="52" x2="254" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+      <text x="262" y="56">蓝 · 主线（存 → 读 → 写得稳与恢复 → 落地）</text>
+      <line x1="590" y1="52" x2="614" y2="52" stroke="#F59E0B" stroke-width="2.2" marker-end="url(#mB)"/>
+      <text x="622" y="56">橙 · 关键手段与数字账</text>
+      <line x1="820" y1="52" x2="844" y2="52" stroke="#8B5CF6" stroke-width="2.2" marker-end="url(#mB)"/>
+      <text x="852" y="56">紫 · 并发与恢复</text>
+      <line x1="990" y1="52" x2="1014" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+      <text x="1022" y="56">绿 · 治理回灌（删索引 / 冷热分离 / 分批）</text>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="90" y="100" width="230" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">表设计基本盘（M5）</text>
+    <text x="106" y="146" font-size="11.5" fill="#4E5969">引擎 InnoDB：并发写+不丢</text>
+    <text x="106" y="165" font-size="11.5" fill="#4E5969">主键自增；UUID 扇出→390</text>
+    <text x="106" y="186" font-size="10.5" font-weight="700" fill="#B45309">页数翻倍 → 缓存减半</text>
+    <rect x="350" y="100" width="230" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="366" y="124" font-size="13" font-weight="800" fill="#0E42B5">B+ 树（M1）</text>
+    <text x="366" y="146" font-size="11.5" fill="#4E5969">16KB 页 → 扇出 ≈1170</text>
+    <text x="366" y="165" font-size="11.5" fill="#4E5969">3 层装 2000 万行 = 3 次 IO</text>
+    <text x="366" y="186" font-size="10.5" font-weight="700" fill="#B45309">哈希无范围；红黑树 IO 多</text>
+    <rect x="610" y="100" width="230" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="626" y="124" font-size="13" font-weight="800" fill="#0E42B5">联合索引（M2）</text>
+    <text x="626" y="146" font-size="11.5" fill="#4E5969">字典序连续区间 → 最左前缀</text>
+    <text x="626" y="165" font-size="11.5" fill="#4E5969">顺序不同，扫描量差 30 倍</text>
+    <text x="626" y="186" font-size="10.5" font-weight="700" fill="#B45309">ICP 省回表，不省扫描</text>
+    <rect x="870" y="100" width="230" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="886" y="124" font-size="13" font-weight="800" fill="#0E42B5">聚簇 / 回表（M3）</text>
+    <text x="886" y="146" font-size="11.5" fill="#4E5969">二级叶子 = 主键 → 必回表</text>
+    <text x="886" y="165" font-size="11.5" fill="#4E5969">回表随命中行数线性涨</text>
+    <text x="886" y="186" font-size="10.5" font-weight="700" fill="#B45309">覆盖索引：Using index</text>
+    <rect x="1130" y="100" width="230" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="1146" y="124" font-size="13" font-weight="800" fill="#0E42B5">索引代价 / DDL（M4）</text>
+    <text x="1146" y="146" font-size="11.5" fill="#4E5969">读的快照、写的负债</text>
+    <text x="1146" y="165" font-size="11.5" fill="#4E5969">每次写要维护 N 棵 B+ 树</text>
+    <text x="1146" y="186" font-size="10.5" font-weight="700" fill="#B45309">DDL 危险 = 不可控等待；影子表</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2">
+      <line x1="205" y1="200" x2="205" y2="223"/><line x1="465" y1="200" x2="465" y2="223"/><line x1="725" y1="200" x2="725" y2="223"/><line x1="985" y1="200" x2="985" y2="223"/><line x1="1245" y1="200" x2="1245" y2="223"/>
+      <line x1="205" y1="230" x2="1245" y2="230"/>
+    </g>
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="400" y1="230" x2="400" y2="253"/><line x1="1050" y1="230" x2="1050" y2="253"/>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="90" y="260" width="620" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="106" y="284" font-size="13" font-weight="800" fill="#1D2129">SQL 执行五层（M6）</text>
+    <text x="106" y="306" font-size="11.5" fill="#4E5969">连接器 → 分析器 → 优化器 → 执行器 → 引擎层；五层里只有优化器在做决定</text>
+    <text x="106" y="325" font-size="11.5" fill="#4E5969">SQL 慢的第一嫌疑人 = 优化器估算错（一次可放大 50 倍）——先查统计信息再动手</text>
+    <text x="106" y="346" font-size="10.5" font-weight="700" fill="#B45309">查询缓存死于「以表为粒度失效」——写多的表上任何整体失效缓存都不成立</text>
+    <rect x="740" y="260" width="620" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="756" y="284" font-size="13" font-weight="800" fill="#1D2129">慢查询优化（M7）</text>
+    <text x="756" y="306" font-size="11.5" fill="#4E5969">少扫（最左前缀 / 避开大偏移）· 少回（覆盖 / ICP）· 少排（索引序匹配 ORDER BY）</text>
+    <text x="756" y="325" font-size="11.5" fill="#4E5969">深分页代价 = 偏移量线性涨：第 100 万页是第 1 页的 10 万倍</text>
+    <text x="756" y="346" font-size="10.5" font-weight="700" fill="#B45309">有时全表扫是优化器的正确决定——先分清「写法问题」还是「成本判断」</text>
+    </g>
+
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="400" y1="360" x2="400" y2="383"/><line x1="1050" y1="360" x2="1050" y2="383"/>
+      <line x1="290" y1="390" x2="1140" y2="390"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="290" y1="390" x2="290" y2="413"/><line x1="715" y1="390" x2="715" y2="413"/><line x1="1140" y1="390" x2="1140" y2="413"/>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="90" y="420" width="400" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="106" y="444" font-size="13" font-weight="800" fill="#6D28D9">隔离级别与 ACID（M8）</text>
+    <text x="106" y="466" font-size="11.5" fill="#4E5969">谱系单调：RU → RC → RR → 串行化</text>
+    <text x="106" y="485" font-size="11.5" fill="#4E5969">A=undo · D=redo · I=锁+MVCC · C 是结果</text>
+    <text x="106" y="506" font-size="10.5" font-weight="700" fill="#B45309">MVCC 把读摘出冲突：冲突面 ≈1%；串行化还回 19%</text>
+    <rect x="515" y="420" width="400" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="531" y="444" font-size="13" font-weight="800" fill="#6D28D9">MVCC（M9）</text>
+    <text x="531" y="466" font-size="11.5" fill="#4E5969">undo 版本链 + ReadView 判可见性</text>
+    <text x="531" y="485" font-size="11.5" fill="#4E5969">RC / RR 只差生成时机（每语句 / 首次）</text>
+    <text x="531" y="506" font-size="10.5" font-weight="700" fill="#B45309">回收看最老 ReadView → 长事务让全库回收停摆</text>
+    <rect x="940" y="420" width="400" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="956" y="444" font-size="13" font-weight="800" fill="#6D28D9">锁与死锁（M10）</text>
+    <text x="956" y="466" font-size="11.5" fill="#4E5969">锁的可寻址对象只有索引项——无索引 = 锁全表</text>
+    <text x="956" y="485" font-size="11.5" fill="#4E5969">Record → Gap → Next-Key（防插入+护已有）</text>
+    <text x="956" y="506" font-size="10.5" font-weight="700" fill="#B45309">死锁 = 顺序不一致成环；InnoDB 回滚代价小者，报错 ≠ 挂库</text>
+    </g>
+
+    <g stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="290" y1="520" x2="290" y2="573"/><line x1="715" y1="520" x2="715" y2="573"/><line x1="1140" y1="520" x2="1140" y2="573"/>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="90" y="580" width="400" height="100" rx="8" fill="#fff" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="106" y="604" font-size="13" font-weight="800" fill="#6D28D9">三日志与 2PC（M11）</text>
+    <text x="106" y="626" font-size="11.5" fill="#4E5969">WAL：随机页写 → 顺序日志写（差 2–3 个数量级）</text>
+    <text x="106" y="645" font-size="11.5" fill="#4E5969">redo 环形 + checkpoint；binlog 管复制/回档（Row）</text>
+    <text x="106" y="666" font-size="10.5" font-weight="700" fill="#B45309">redo+binlog 分属两组件 → 2PC 捆成原子，否则崩溃窗口造主从不一致</text>
+    <rect x="515" y="580" width="400" height="100" rx="8" fill="#fff" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="531" y="604" font-size="13" font-weight="800" fill="#6D28D9">崩溃恢复（M12）</text>
+    <text x="531" y="626" font-size="11.5" fill="#4E5969">崩溃瞬间三态，日志痕迹决定动作</text>
+    <text x="531" y="645" font-size="11.5" fill="#4E5969">先 redo 重放（幂等）再 undo 回滚——反了丢已提交</text>
+    <text x="531" y="666" font-size="10.5" font-weight="700" fill="#B45309">prepare 态由 2PC 裁决：恢复与主从一致在同一处收口</text>
+    <rect x="940" y="580" width="400" height="100" rx="8" fill="#fff" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="956" y="604" font-size="13" font-weight="800" fill="#6D28D9">长事务（M13）</text>
+    <text x="956" y="626" font-size="11.5" fill="#4E5969">按住两样：全库 undo 回收边界（只读也按）+ 锁</text>
+    <text x="956" y="645" font-size="11.5" fill="#4E5969">72 ms：只读事务让别人读一行慢 72ms</text>
+    <text x="956" y="666" font-size="10.5" font-weight="700" fill="#B45309">分批同时治锁 / undo / 主从延迟 / 数据增长</text>
+    </g>
+
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="290" y1="680" x2="290" y2="703"/><line x1="715" y1="680" x2="715" y2="703"/><line x1="1140" y1="680" x2="1140" y2="703"/>
+      <line x1="290" y1="710" x2="1140" y2="710"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="525" y1="710" x2="525" y2="733"/><line x1="1125" y1="710" x2="1125" y2="733"/>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="250" y="740" width="550" height="100" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+    <text x="266" y="764" font-size="13" font-weight="800" fill="#15803D">主从复制（M14）</text>
+    <text x="266" y="786" font-size="11.5" fill="#4E5969">复制的是 binlog 变更流，不是数据页</text>
+    <text x="266" y="805" font-size="11.5" fill="#4E5969">主写 &gt; 从放 → 延迟结构性累积（并行按库 → WRITESET）</text>
+    <text x="266" y="826" font-size="10.5" font-weight="700" fill="#B45309">半同步治「丢不丢」（RPO），不治「读到旧」</text>
+    <rect x="850" y="740" width="550" height="100" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+    <text x="866" y="764" font-size="13" font-weight="800" fill="#15803D">数据增长（M15）</text>
+    <text x="866" y="786" font-size="11.5" fill="#4E5969">「8000 万行」先定位症状再动手</text>
+    <text x="866" y="805" font-size="11.5" fill="#4E5969">索引 → 冷热分离 → 归档 → 读写分离 → 分表（贵且难回头放最后）</text>
+    <text x="866" y="826" font-size="10.5" font-weight="700" fill="#B45309">分片键 = 查询形状的属性——整套设计里最难改的决定</text>
+    </g>
+
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="525" y1="840" x2="525" y2="893"/><line x1="1125" y1="840" x2="1125" y2="893"/>
+    </g>
+
+    <g filter="url(#sh)">
+    <rect x="250" y="900" width="550" height="90" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="266" y="922" font-size="13" font-weight="800" fill="#1D2129">乐观 vs 悲观锁（M16）</text>
+    <text x="266" y="942" font-size="11.5" fill="#4E5969">第一句报冲突频率，第二句才谈机制</text>
+    <text x="266" y="960" font-size="11.5" fill="#4E5969">高冲突：乐观 N² vs 悲观 N——差 N 倍</text>
+    <text x="266" y="978" font-size="10.5" font-weight="700" fill="#B45309">影响行数 0 = 业务分支：读权威快照再判定，不无脑重试</text>
+    <rect x="850" y="900" width="550" height="90" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="866" y="922" font-size="13" font-weight="800" fill="#1D2129">排行榜 / 防超卖（M17）</text>
+    <text x="866" y="942" font-size="11.5" fill="#4E5969">ZSet 把排名内建进结构：O(logN) vs MySQL O(N)</text>
+    <text x="866" y="960" font-size="11.5" fill="#4E5969">防超卖 = 判断下推进原子操作（条件更新）</text>
+    <text x="866" y="978" font-size="10.5" font-weight="700" fill="#B45309">强一致（钱）走 DB 原子更新；高并发 Redis 前置 + DB 兜底</text>
+    </g>
+
+    <path d="M 250 790 L 48 790 L 48 150 L 83 150" fill="none" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="38" y="470" font-size="11" font-weight="800" fill="#15803D" text-anchor="middle" transform="rotate(-90 38 470)">治理回灌 · 删无用索引 / 冷热分离 / 分批</text>
+  </svg>
+  </div>
+  <div class="story">
+    <b>主干叙事（一段读完）</b>：这一模块的一条线是「<b>怎么存 → 怎么读得快 → 怎么写得稳与恢复 → 业务怎么落地</b>」。
+    <b>存</b>：引擎与主键是被「并发写 + 不能丢」逼出来的 —— InnoDB、自增主键（UUID 让扇出 1170→390，总页数约翻倍、缓存减半）；但<b>树矮只保证定位便宜，真实成本 = 扫描行数 + 回表次数</b>，索引设计全部围绕少扫 / 少回 / 少排。
+    <b>读</b>：一条 SQL 走五层，五层里<b>只有优化器在做决定</b> —— 慢的第一嫌疑人是它估算错了（一次可放大 50 倍），先查统计信息再动手；有时全表扫是优化器的正确决定。
+    <b>写得稳</b>：A 靠 undo、D 靠 redo、I 靠锁 + MVCC，C 是结果不是机制；RR 的快照读靠 ReadView、当前读靠 next-key lock；崩溃恢复<b>先 redo 再 undo（顺序不能反）</b>，redo 与 binlog 分属两个组件，靠 2PC 捆成原子。
+    拖垮系统的是<b>长事务</b>：它按住全库的 undo 回收边界（只读也按）和锁 —— <b>分批</b>同时治锁、undo、主从延迟、数据增长四个问题。
+    <b>落地</b>：先报冲突频率再选乐观 / 悲观锁（高冲突乐观 N² vs N）；排行榜把计算内建进 ZSet（O(logN)），防超卖把判断下推进原子操作 —— <b>同一条原理的两个应用</b>。
+  </div>
+  <div class="cap"><b>读法</b>：蓝线是主线；橙框是执行与优化（数字账最密的一层）；紫框是并发与恢复（面试最容易被追问的一层）；绿框是治理；绿线是治理回灌。<b>读慢先问优化器、写挂先问锁与日志、拖垮全库先问长事务</b>——三段失败分开归因。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：17 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">M1 B+ 树</td><td>为什么不用别的树</td><td class="ans"><span class="a">唯一指标是「定位一行几次 IO」：16KB 页 → 扇出 ≈1170 → 2000 万行 3 层 3 次 IO；哈希不支持范围、红黑树扇出小 IO 多；「矮」只省定位，回表才是大头</span></td><td>1</td><td class="ans"><span class="a">未使用 —— 原理题不挂项目，别编</span></td></tr>
+      <tr><td class="k">M2 最左前缀</td><td>联合索引怎么设计</td><td class="ans"><span class="a">索引按字典序连续存放，缺最左列 = 满足条件的行散落在每段里、无连续区间可扫；顺序不同扫描量差 30 倍；范围列后的列失「缩小扫描」不失「过滤」（ICP 省回表不省扫描）</span></td><td>11、13</td><td class="ans"><span class="a">EnergyOps：索引按「等值在前、时间范围在后」设计（device_id, energy_type, stat_date）</span></td></tr>
+      <tr><td class="k">M3 回表 / 覆盖</td><td>为什么覆盖索引快</td><td class="ans"><span class="a">二级索引叶子 = 索引列 + 主键 → 命中后回聚簇树取整行，回表次数随命中行数线性涨；覆盖索引 = 索引自己答完（Using index）；真实成本 = 扫描行数 + 回表次数</span></td><td>10、12</td><td class="ans"><span class="a">EnergyOps：先修范围与 JOIN 再建联合索引——判断一条 SQL 看回表，不只看 EXPLAIN 的 rows</span></td></tr>
+      <tr><td class="k">M4 索引代价 / DDL</td><td>加索引为什么能搞挂库</td><td class="ans"><span class="a">索引是读的快照、写的负债：每次写维护 N 棵 B+ 树；大表 DDL 的危险是「不可控的等待」（MDL 排队被并发放大）；影子表（pt-osc / gh-ost）= 新建 + 双写 + 验证 + 切换</span></td><td>14、15</td><td class="ans"><span class="a">未使用 —— 判据记牢：没有查询在用的索引是纯负债，只在写入时收费</span></td></tr>
+      <tr><td class="k">M5 引擎 / 主键 / 类型</td><td>表怎么建才不埋雷</td><td class="ans"><span class="a">「并发写 + 不丢数据」逼出 InnoDB（MyISAM 叶子存地址、无事务）；主键 UUID(36B) → 扇出 1170→390、总页数约翻倍、缓存减半；char 只用于长度真固定的字段</span></td><td>2–9</td><td class="ans"><span class="a">未使用 —— 代价讲不出 = 没选过：引擎 / 主键 / 类型都在回答「写入顺不顺、以后改不改得动」</span></td></tr>
+      <tr><td class="k">M6 SQL 执行五层</td><td>一条 SQL 怎么走、慢在哪</td><td class="ans"><span class="a">连接器 → 分析器 → 优化器 → 执行器 → 引擎层，五层里只有优化器在做决定 → SQL 慢第一嫌疑人是估算错（一次可放大 50 倍）；查询缓存死于「以表为粒度失效」</span></td><td>16、17</td><td class="ans"><span class="a">EnergyOps：慢的根因不是单条 SQL，是先展开归属与事实再过滤园区——先修范围与 JOIN，不是先换库</span></td></tr>
+      <tr><td class="k">M7 慢查询优化</td><td>优化手段怎么归类</td><td class="ans"><span class="a">一切手段归三类：少扫（最左前缀 / 避开大偏移）· 少回（覆盖 / ICP）· 少排（索引序匹配 ORDER BY）；先分清「写法问题」还是「成本判断」——有时全表扫是优化器的正确决定</span></td><td>18–23</td><td class="ans"><span class="a">EnergyOps：修范围与 JOIN → 联合索引 → 消 N+1 → 最后才缓存（P95 20.4s→2.8s，待验证口径，先说口径）</span></td></tr>
+      <tr><td class="k">M8 隔离级别 / ACID</td><td>并发为什么不会乱</td><td class="ans"><span class="a">并发只有两种冲突关系；隔离谱系单调 RU→RC→RR→串行化；ACID 有分工：A 靠 undo、D 靠 redo、I 靠锁+MVCC，C 是结果不是机制；MVCC 把读摘出冲突（1%）</span></td><td>24、25</td><td class="ans"><span class="a">RuleArena：权威状态在同一个事务内提交——事务边界即业务边界（A 的范围）</span></td></tr>
+      <tr><td class="k">M9 MVCC</td><td>读为什么不用加锁</td><td class="ans"><span class="a">读看旧版本：undo 版本链 + ReadView 判可见性；RC/RR 只差生成时机（每语句 / 首次快照）；旧版本回收由最老 ReadView 决定——一个长事务就能让全库回收停摆</span></td><td>26、27</td><td class="ans"><span class="a">未使用 —— 机制题；但「回收边界」这条直接连到 M13 长事务与 PG 的 idle in transaction</span></td></tr>
+      <tr><td class="k">M10 锁与死锁</td><td>锁什么时候会变大</td><td class="ans"><span class="a">锁的可寻址对象只有索引项——条件无索引可用时锁全表（1 条 → 100 万条，差 6 个数量级）；RR 默认 Next-Key = 间隙 + 记录（防插入 + 护已有）；死锁 = 顺序不一致成环</span></td><td>28–30</td><td class="ans"><span class="a">RuleArena：条件更新替代 SELECT … FOR UPDATE，避开 RR 下 next-key lock 的范围放大</span></td></tr>
+      <tr><td class="k">M11 三日志 / 2PC</td><td>断电为什么不丢</td><td class="ans"><span class="a">WAL：随机页写 → 顺序日志写（机械盘差 2–3 个数量级）；redo 环形 + checkpoint 推进；binlog 管复制与回档（Row 主流）；redo+binlog 分属两组件 → 2PC 捆成原子</span></td><td>31–35</td><td class="ans"><span class="a">数驭穹图：接入 MySQL 源优先用 Binlog（CDC 的前提）；「双一」才是断电不丢的配置</span></td></tr>
+      <tr><td class="k">M12 崩溃恢复</td><td>重启后数据怎么回来</td><td class="ans"><span class="a">崩溃瞬间事务三态、各有日志痕迹：先 redo 重放（幂等：做前判是否做过）再 undo 回滚——顺序反了会丢已提交；prepare 态由 2PC 裁决</span></td><td>36、37</td><td class="ans"><span class="a">未使用 —— 恢复时长能算：≈ checkpoint 落后的 redo 量 ÷ 重放速度</span></td></tr>
+      <tr><td class="k">M13 长事务</td><td>它凭什么拖垮全库</td><td class="ans"><span class="a">按住两样东西：全库 undo 回收边界（由最老 ReadView 决定，只读也按）+ 锁——两条独立链；外部系统的响应时间绑进事务 = 事故；分批同时治四个问题</span></td><td>38</td><td class="ans"><span class="a">RuleArena：事务只包数据库操作、Checkpoint 不当业务事实——动作与 Checkpoint 间永远有崩溃窗口</span></td></tr>
+      <tr><td class="k">M14 主从复制</td><td>延迟为什么是结构性的</td><td class="ans"><span class="a">复制的是 binlog 变更流不是数据页 → 主写 &gt; 从放则延迟累积（结构如此，不是故障）；并行度按库 → WRITESET；无主键表 Row 回放拖慢从库；半同步治丢不治旧</span></td><td>39、40</td><td class="ans"><span class="a">数驭穹图：SNAPSHOT / LIVE_READ 按新鲜度选访问模式——「哪些读可以旧」是业务决策</span></td></tr>
+      <tr><td class="k">M15 数据增长</td><td>数据大了先做什么</td><td class="ans"><span class="a">「8000 万行」先定位症状（慢 / 大 / 贵）再动手；五步按复杂度递增：索引 → 冷热分离（量降 1/10、树高 4→3）→ 归档 → 读写分离 → 分库分表（最难回头）</span></td><td>41–43</td><td class="ans"><span class="a">EnergyOps：Raw → 可信聚合 → hourly → daily 分层，热查询不打冷数据；数驭穹图：快照 + 位点 + 校验换生产隔离</span></td></tr>
+      <tr><td class="k">M16 乐观 vs 悲观</td><td>冲突频率决定选型</td><td class="ans"><span class="a">先报冲突频率再谈机制：乐观 = 期望值进 WHERE（CAS），高冲突时总工作量 N² vs 悲观 N（p→1 发散）；影响行数 0 是业务分支：读权威快照 → 判定，不无脑重试</span></td><td>44</td><td class="ans"><span class="a">RuleArena：version 条件更新 + UNIQUE(run_id, action_type, idempotency_key) 兜底——理由是权威性，不是「低频写」</span></td></tr>
+      <tr><td class="k">M17 排行榜 / 防超卖</td><td>场景题怎么拿分</td><td class="ans"><span class="a">第一动作是澄清（榜单范围 / 更新频率 / 历史榜 / 防作弊——9.9 没问的四个）；MySQL O(N) vs ZSet O(logN) 随榜单长度拉开；防超卖 = 判断下推进原子操作</span></td><td>45、46</td><td class="ans"><span class="a">RuleArena：资金正确性靠数据库唯一约束兜底，不靠内存锁或 Redis 锁；「榜单挂了不能影响主链路」是底线</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：主键怎么改写 B+ 树，乐观锁怎么在高冲突下发散<span class="src">正本 母题-M1/M5 · 母题-M16</span></h2>
+  <div class="h2sub">左边是空间与缓存的账，右边是冲突与重试的账——都是数量级问题，不是优化问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MySQL 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">主键的扇出账（BIGINT vs UUID）</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">非叶节点每条 = 键长 + 6B 页号；页 16KB：BIGINT 8+6=14B → 扇出 ≈1170；UUID 36+6=42B → ≈390</text>
+      <rect x="80" y="92" width="420" height="24" rx="4" fill="#1664FF" opacity="0.85"/>
+      <text x="88" y="108" font-size="12" font-weight="800" fill="#fff">　扇出 ≈1170（BIGINT 自增）</text>
+      <rect x="80" y="124" width="140" height="24" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="230" y="140" font-size="12" font-weight="800" fill="#B45309">≈390（UUID）</text>
+      <text x="80" y="180" font-size="12" font-weight="800" fill="#1D2129">二级索引叶子 = 索引列 + 主键 → 每个二级索引一起变胖</text>
+      <text x="80" y="204" font-size="11.5" fill="#4E5969">5000 万行 × 5 个二级索引：每条索引项 8B→36B，总页数约翻倍</text>
+      <text x="80" y="228" font-size="11.5" fill="#B45309">buffer pool 装的页减半 → 读也变慢；扇出 390 下 2000 万行要 4 层（多一次 IO）</text>
+      <text x="80" y="262" font-size="11.5" fill="#4E5969">树高别背「都是 3 层」：小表根页即叶（高 1），2000 万行才到 3 层</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">雪花 ID 是权衡不是破例：趋势递增保住「大致有序」，代价是跨节点时钟回拨可能插到中间</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">乐观锁的成本发散（9.9 一面原题）</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">期望尝试次数 E = 1/(1−p)：p=0.05→1.05 · 0.3→1.4 · 0.7→3.3 · 0.9→10（p→1 发散）</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">10 并发 — 乐观≈50 · 悲观≈10 · 差 5 倍</text>
+        <rect x="760" y="112" width="100" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="140">50 并发 — 乐观≈1250 · 悲观≈50 · 差 25 倍</text>
+        <rect x="760" y="146" width="260" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="174">100 并发 — 乐观≈5000 · 悲观≈100 · 差 50 倍</text>
+        <rect x="760" y="180" width="420" height="12" rx="3" fill="#F59E0B"/>
+      </g>
+      <text x="760" y="204" font-size="12" font-weight="800" fill="#1D2129">所以第一句话报冲突频率，第二句才谈机制——没有 p 就没有选型</text>
+      <text x="760" y="228" font-size="11.5" fill="#4E5969">「影响行数 0」是业务分支：读权威快照 → 判定 → 决定，不写 while(true) 重试（要退避、抖动、上限）</text>
+      <text x="760" y="252" font-size="11.5" fill="#B45309">RuleArena：version 条件更新 + UNIQUE(run_id, action_type, idempotency_key) 兜底资金正确性</text>
+      <text x="760" y="286" font-size="10.5" fill="#86909C">别说满「不用锁」：项目文档原话是「在事务中锁定订单行，或使用乐观版本条件更新」——锁留到真实高竞争再评估</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">一张 B+ 树多高</div><div class="big">2000 万 = 3 次 IO</div>
+      <div class="d">16KB 页，非叶 14B/条 → 扇出 1170；1170² × 16 ≈ 2000 万行，定位一行 3 次 IO；小表根页即叶（高 1）。</div></div>
+    <div class="ncard o"><div class="t">UUID 主键的账</div><div class="big">扇出 1170 → 390</div>
+      <div class="d">36B+6B=42B/条；二级索引每条也带主键 → 总页数约翻倍，buffer pool 能装的页减半——读跟着变慢。</div></div>
+    <div class="ncard b"><div class="t">索引顺序的账</div><div class="big">30 倍</div>
+      <div class="d">同样的字段、同样的条件，只是列顺序不同，扫描量差约 30 倍——字段顺序不是风格问题，是成本问题。</div></div>
+    <div class="ncard o"><div class="t">深分页的账</div><div class="big">10 万倍</div>
+      <div class="d">LIMIT 1000000,20 的扫描与回表量 = 偏移量，线性涨：第 100 万页是第 1 页的 10 万倍；解法方向是把「翻页」变成「按上次位置继续」。</div></div>
+    <div class="ncard b"><div class="t">串行化的代价</div><div class="big">1% → 19%</div>
+      <div class="d">MVCC 把读摘出冲突（冲突面 ≈1%）；串行化把读也拉回排队（≈19%）——把 MVCC 挣来的并发又还回去。</div></div>
+    <div class="ncard o"><div class="t">锁的膨胀</div><div class="big">1 条 → 100 万条</div>
+      <div class="d">同样是「更新 pending 任务」：走唯一索引锁 1 条；条件无索引可用时锁全表 100 万条——差 6 个数量级。</div></div>
+    <div class="ncard o"><div class="t">长事务的账</div><div class="big">72 ms</div>
+      <div class="d">一个「什么都没干」的只读事务按住回收边界，别人读那一行要沿 undo 链回溯、慢 72ms——链是别人造成的。</div></div>
+    <div class="ncard o"><div class="t">乐观锁发散</div><div class="big">p=0.9 → 10 次</div>
+      <div class="d">期望尝试次数 E=1/(1−p)：0.05→1.05、0.9→10；N 个并发写同一行总工作量 N² vs N——高冲突差 N 倍。</div></div>
+    <div class="ncard b"><div class="t">榜单内存</div><div class="big">1/100</div>
+      <div class="d">2000 万 DAU 全量 vs 每关只存 Top 1000（1000 关）→ 内存差 100 倍；头部精确 O(logN)、长尾近似 O(1)。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「B+ 树因为矮所以快」</span><span class="v">✓ 矮只保证「定位到索引项」便宜；要取整行还得回表（二级索引场景），那才是大头。</span></div>
+    <div class="mrow"><span class="x">✗「树高 3 层，所以这条查询一定快」</span><span class="v">✓ 树高对任何查询都一样，解释不了差异；差异在扫了多少行、回了多少次表。</span></div>
+    <div class="mrow"><span class="x">✗「RR 已经完全解决了幻读」</span><span class="v">✓ 快照读靠 MVCC、当前读靠间隙锁，各不幻读；混用时仍会「看起来像幻读」。</span></div>
+    <div class="mrow"><span class="x">✗「RR 下普通 SELECT 也会加锁」</span><span class="v">✓ 普通 SELECT 是快照读，不加锁；只有当前读（FOR UPDATE / 写条件）才加锁。</span></div>
+    <div class="mrow"><span class="x">✗「有 redo 就不需要 binlog 了」</span><span class="v">✓ 职责不同：redo 只服务崩溃恢复、用完即弃；binlog 服务复制与时间点恢复，必须长期保留。</span></div>
+    <div class="mrow"><span class="x">✗「重放和回滚谁先谁后无所谓」</span><span class="v">✓ 必须先 redo 重放再 undo 回滚；反过来会在「已提交但页未落盘」时丢掉已提交数据。</span></div>
+    <div class="mrow"><span class="x">✗「长事务危险就是持锁久」</span><span class="v">✓ 它还按住全库的 undo 回收边界——只读长事务照样拖慢别人（72ms 那条链）。</span></div>
+    <div class="mrow"><span class="x">✗「乐观锁比悲观锁先进，尽量用乐观」</span><span class="v">✓ 没有冲突频率就没有选型：高冲突时乐观 N²、悲观 N——差 N 倍；影响行数 0 是业务分支。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div>17 个母题全部：闭卷 3 分钟 + 追问</div></li>
+<li><span>☐</span><div>每个母题能给一个<b>真实</b>项目案例（给不出的降级为「了解」）</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的方案（AI 生成的），能说出问题在哪、会怎么炸</div></li>
+<li><span>☐</span><div>第 4 节题单「必背」项全部能背说，未覆盖项已明确降级并写明理由</div></li>
+<li><span>☐</span><div>七处 MySQL / PG 差异能脱口而出（隔离级别 / MVCC / 旧版本回收 / 幻读防护 / 索引组织 / 日志 / 连接模型）</div></li>
+<li><span>☐</span><div>全量快速召回：空白纸画出本模块知识树（按七条主线分支），红色断点回炉</div></li>
+<li><span>☐</span><div>复训日全部执行，无跳票</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：- 包含：MySQL 8.0 / InnoDB 的存储引擎与表设计基础、索引、事务与锁、SQL 优化、日志与崩溃恢复、复制与高可用基础、游戏服务端高频场景（排行榜、防超卖） —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.MySQL.v1";
+  var CARDS = {"M1": {"t": "为什么 InnoDB 用 B+ 树", "q": ["InnoDB 一页 16KB，非叶节点每条「键 + 页号」按 14B 算，扇出约 1170。如果换成 36 字节的 UUID 作主键，非叶节点每条记录变成多少字节？扇出约变成多少？", "接着 Q1——扇出从 1170 降到 390，树高会不会变高？", "一张只有 100 行的表，B+ 树树高是几层？"], "pts": ["1. 前提：真正的约束是磁盘 IO，不是比较速度｜几种访问的延迟量级：", "1. 前提：真正的约束是磁盘 IO，不是比较速度｜索引结构的设计目标 = 让定位一条记录所需的 IO 次数最少。", "3. 逐个淘汰（统一指标：定位一行需要几次 IO）｜所以哈希在 InnoDB 里只作为内部优化存在（自适应哈希索引，加速热点等值查询），不是用户可选的主索引类型。", "3. 逐个淘汰（统一指标：定位一行需要几次 IO）｜但这不等于\"红黑树差\"——它有个隐含前提：假设节点分散在不同页。把整棵树放进内存，红黑树就够了（Redis 的 ZSet 用跳表正是这个道理）。", "3. 逐个淘汰（统一指标：定位一行需要几次 IO）｜：范围查询本身只需要向右；但 ORDER BY ... DESC 这类反向扫描、以及部分优化器路径需要向左。双向的代价只是每个叶子多 6 字节，换来的是与扫描方向无关。", "4. 量化验证（把结论算出来，而不是背下来）｜查 2000 万行 = 3 次 IO（根 → 第二层 → 叶子，定位到那一行所在的页，再在页内二分）。", "5. 边界与常见误解（不写这段最容易背成口诀）｜它是在\"一次 IO 效率\"与\"扇出不足会树高\"之间选的。太大则一次读进大量当前用不到的数据，太小则扇出不够 | | \"B+ 树因为矮所以快\"", "5. 边界与常见误解（不写这段最容易背成口诀）｜树矮只保证定位到索引项便宜。要取整行还要回表（二级索引场景），那才是大头 | | \"红黑树不适合数据库\"", "5. 边界与常见误解（不写这段最容易背成口诀）｜准确说法是不适合做磁盘索引。内存场景（Redis ZSet 用跳表、Java TreeMap 用红黑树）完全合理 | | \"B+ 树是唯一答案\""], "crit": "能算出扇出 1170→390 与 3 层 2000 万 = 3 次 IO；能逐个淘汰哈希 / 红黑树 / 跳表并说清适用边界（内存里跳表合理）；能反驳「矮 = 快」（回表才是大头）。"}, "M2": {"t": "联合索引与最左前缀", "q": ["1000 万行，status 高度倾斜（DONE 约 99%（990 万行），PENDING 约 1% = 10 万行）。next_retry_time 在两段里分布不均：PENDING 段约 1/3 已到期（≈ 3.3 万行），DONE 段约 10% 在过去（≈ 99 万行），", "索引 (a, b, c)，查询 SELECT id FROM t WHERE a = 1 AND c = 3（id 是主键）。三列各自能起什么作用？", "索引 (a, b, c)，下面哪个 ORDER BY 可以免掉 filesort？"], "pts": ["1. 前提：索引的价值只有一个——少扫｜一条查询的成本 = 扫过的索引项数 + 回表次数。 这两个数都是「行数」的函数，不是「树高」的函数。", "2. 联合索引是一片什么形状的数据｜同样的字段、同样的条件，只是顺序不同，扫描量差约 30 倍。 字段顺序不是风格问题，是成本问题。", "2. 联合索引是一片什么形状的数据｜单独用 next_retry_time 查，找不到任何连续区间——满足条件的记录散落在每一个 status 段里，只能逐段扫（或者干脆全索引扫描）。", "3. 最左前缀：把结论一条条推出来｜范围列之后的列，失去的是\"缩小扫描范围\"的能力，没有失去\"过滤\"的能力。", "3. 最左前缀：把结论一条条推出来｜ICP 能省回表，但省不掉扫描——b > 5 范围内的每个索引项还是要读一遍。所以\"扫描量\"永远是第一位的，ICP 是第二位的优化。", "4. 字段顺序怎么定（围绕执行路径，不围绕字段热度）｜判据不是\"有没有范围列\"，而是\"扫描结果在索引顺序上是不是单调的\"。 范围列本身不破坏排序，范围列之后的列被 ORDER BY 单独使用才破坏排序。", "4. 字段顺序怎么定（围绕执行路径，不围绕字段热度）｜这里没有完美解，只能在两种代价里选：", "5. 失效场景（含\"优化器主动放弃\"）｜所以\"为什么这条 SQL 没走索引\"的第一问不是\"写法有什么问题\"，而是\"这个条件的区分度够不够\"。", "6. 边界与常见误解｜准确说是失去缩小扫描范围的能力，但仍可通过 ICP 在索引层过滤、减少回表 | | \"WHERE 的条件顺序会影响索引匹配\"", "6. 边界与常见误解｜不会。优化器重排条件，看的是列集合 | | \"索引列越多越好\"", "6. 边界与常见误解｜每加一列都会让索引变宽、写入变慢（见 母题-M4-索引代价与大表变更）。联合索引的收益来自\"一条索引服务多条查询\"，不是来自列多 | | \"建了索引优化器就会用\""], "crit": "能用「字典序连续区间」推出最左前缀；能算同条件换顺序的扫描量差（30 倍）；能说清 ICP 省回表不省扫描、范围列后的列失缩小不失过滤。"}, "M3": {"t": "聚簇索引与回表", "q": ["一条查询命中 1000 行，需要的 priority 列不在二级索引里。请拆开算：「二级索引 + 回表」和「覆盖索引」的成本差在哪一步、差多少？", "一张表有 5 个二级索引，主键从 BIGINT（8B）换成 UUID（36B）。二级索引的空间会怎么变？", "EXPLAIN 显示 rows = 10，type = ref，但这条 SQL 实测很慢。可能是什么原因？"], "pts": ["2. 两种索引的叶子装什么｜为什么必须带主键：索引项要能回答\"这一项对应哪一行\"。堆表里这个答案是\"物理地址\"；InnoDB 里没有独立物理地址，主键就是那行的地址。所以二级索引的叶子 = 索引列 + 主键。", "3. 回表：把它算出来，而不是当名词记住｜步骤 ③ 是唯一随命中行数线性增长的项。", "3. 回表：把它算出来，而不是当名词记住｜判断一条查询快不快，不能只看 EXPLAIN 里扫了多少行，还要看这些行有多少需要回表。", "4. 覆盖索引：让索引自己把答案答完｜这里有个容易混淆的点：Using index 表示\"覆盖\"，key 有值表示\"走了索引\"，两件事不同。走了索引 ≠ 不回表。", "4. 覆盖索引：让索引自己把答案答完｜判据是\"读的频率 × 命中行数\"是否显著大于\"写的频率\"。", "5. EXPLAIN 只先看四个字段｜这四个字段的阅读顺序是有逻辑的：type → 有没有走索引 → key → 走了哪条 → rows → 要扫多少 → Extra → 还要不要排序/临时表/回表。按这个顺序读，就不会看到 ALL 还在纠结 Extra。", "6. 边界与常见误解｜索引只保证定位便宜。真实成本 = 扫描行数 + 回表次数，后者可能才是大头 | | \"树高 3 层所以很快\"", "6. 边界与常见误解｜树高对任何查询都一样，解释不了差异。差异在扫了多少行、回了多少次表 | | \"Extra 里没有 filesort 就说明优化到位了\"", "6. 边界与常见误解｜只能说明排序免掉了。回表次数和扫描行数可能仍然很差 | | \"只要覆盖索引就免回表，所以越宽越好\""], "crit": "能说清二级叶子 = 主键所以必须回表；能算回表次数随命中行数线性涨；能区分 Using index（覆盖）与 key 有值（走了索引）两件事。"}, "M4": {"t": "索引代价与大表变更", "q": ["一次写入要维护几棵 B+ 树？每秒总共多少次 B+ 树插入？如果删掉 2 个从没被查询用过的索引，写入侧省多少？", "这 30 秒里积压了多少个请求？", "主键是 BIGINT（8B）和 UUID（36B）两种情况下，这个索引各占多大空间（5000 万行）？差多少倍？"], "pts": ["1. 前提：索引是读的快照，写的负债｜所以判据是一句可执行的话：这个索引有没有高频查询真的在用它？ 没有任何查询用得上的索引，是纯负债——它只在写入时收费。", "2. 大表 DDL 的危险到底来自哪里｜危险被放大的方式：", "2. 大表 DDL 的危险到底来自哪里｜DDL 的等待时间被\"并发度\"放大了——所以真正要控制的不是 DDL 有多快，是它等待的时间。", "4. 逐个淘汰（统一指标：对线上流量的最坏影响）｜另外 ALGORITHM=INPLACE 也不是万能的：改列类型、重建聚簇索引这类操作做不到 INPLACE。", "4. 逐个淘汰（统一指标：对线上流量的最坏影响）｜三个方案的差别在代价放在哪：Online DDL 简单但等待不可控；影子表可控但要多一倍空间、还要运维工具。没有\"最安全\"的方案，只有\"这次变更最适合\"的方案。", "4. 逐个淘汰（统一指标：对线上流量的最坏影响）｜顺带一个 MySQL / PG 的方言差异：PG 的对应手段是 CREATE INDEX CONCURRENTLY，它同样有个容易踩的点——建索引过程中失败会留下一个 invalid 索引，需要手动 DROP 再重建（母题-P4-索引代价与在线建索引）。", "5. 边界与常见误解｜读成一句话：索引的代价是\"每一次写\"，DDL 的危险是\"不可控的等待\"——这两件事都不是靠\"表大不大\"决定的，是靠\"有没有人用、有没有人挡\"决定的。"], "crit": "能算一次写维护几棵 B+ 树；能说清 DDL 危险在「不可控的等待」并给出影子表三步；能判断哪些索引是纯负债。"}, "M5": {"t": "引擎与表设计基本盘", "q": ["两种情况下各占多少页？差多少倍？", "改成 varchar(10) 能省多少空间？", "它能表示到哪一年？"], "pts": ["2. 候选方案一：MyISAM vs InnoDB｜\"业务表一律 InnoDB\"不是偏好，是被\"并发写 + 不能丢数据\"这两条需求逼出来的。", "2. 候选方案一：MyISAM vs InnoDB｜顺带一个高频追问：「MyISAM 和 InnoDB 的 B+ 树实现差在哪？」——答上表第四行：MyISAM 叶子存地址（还要再去数据文件捞一次），InnoDB 主键叶子存整行、二级索引叶子存主键。这一条正是 母题-M3-聚簇索引与回表 的起点。", "3. 候选方案二：主键选什么｜同一份数据，主键选错就多占一倍页。而且影响不止磁盘——缓存能装下的页数减半，读也会跟着变慢。", "3. 候选方案二：主键选什么｜什么时候可以不用自增？ 当业务没有天然自增键、且需要分布式唯一时（比如分库分表要全局唯一 ID），用雪花算法这类趋势递增的 ID——它保住了\"大致有序\"，比纯随机的 UUID 好得多。这是权衡，不是破例，而且要主动说出它的两个代价：① 趋势递增不是严格递增，跨节点时钟回拨仍可能插到中间；② 64 位", "4. 候选方案三：字段类型｜判断标准只有一句：长度是不是真的固定。 只要长度不确定，char 就是白扔空间。", "4. 候选方案三：字段类型｜一个坑：char 尾部会补空格，比较时可能表现出 'a' 与 'a ' 的差异——别用 char 存会被拼接或比较的值。", "4. 候选方案三：字段类型｜\"为什么不用 TIMESTAMP 存所有时间\"这个问题，答案是可以当场算给面试官看的。", "5. 边界与常见误解｜读成一句话：引擎、主键、字段类型这三类选择，都只在回答\"写入顺不顺、存储紧不紧凑、以后改不改得动\"——答不出付了什么代价，就等于没选过。"], "crit": "能算 UUID 的页数与缓存损失；能说清 InnoDB 是被哪两条需求逼出来的；能给 char/varchar 与 DATETIME/TIMESTAMP 的判断句（长度定不定 / 2038）。"}, "M6": {"t": "一条 SQL 的执行链路", "q": ["A 驱动 B 和 B 驱动 A 分别要多少次索引查找？差多少倍？", "这条 SQL 的缓存命中率大约是多少？为什么？", "如果统计信息是准的，优化器应该选全表扫描还是走 status 索引？"], "pts": ["1. 前提：五层链路，每层一句话｜这五层里只有一层在\"做决定\"——优化器。连接器和分析器是固定动作，执行器只是照计划执行，引擎层负责\"怎么取\"。所以\"SQL 慢\"的第一嫌疑人永远是\"优化器做错了决定\"。 而它做错的原因通常只有一个：估算不准（这条直接连到 母题-M7-慢查询与SQL优化手段）。", "2. 查询缓存为什么被移除【推导】｜\"查一次缓存白拿\"的收益 < \"每次更新都要清一堆缓存\"的成本。 这就是它被移除的量化理由。", "2. 查询缓存为什么被移除【推导】｜这条能推出一个通用结论：任何\"以表为粒度整体失效\"的缓存，都会在写多的表上失效。 这正是 EnergyOps 里缓存一致性那部分的设计依据——事务内写 Outbox / 用版本号做缓存键，而不是\"提交完顺手清缓存\"（母题-R3-缓存一致性与三类事故）。", "3. 优化器在做哪三个决定【事实】｜外层循环次数 = 驱动表的行数。 所以\"小表驱动大表\"不是一个口诀，是把循环次数按数量级压下来。", "3. 优化器在做哪三个决定【事实】｜优化器一次估算错误，可以把代价放大近 50 倍。 所以\"加索引\"之前应该先问：统计信息是不是准的？", "4. 怎么判断是\"哪一层\"慢｜EXPLAIN 的字段与三种慢源的对应关系（M7 展开）：", "4. 怎么判断是\"哪一层\"慢｜怎么判断\"优化器选错了\"：看 key（实际用的索引）与 rows（估算扫描行数）——估算行数和实际差很远时，就是统计信息/选择性出了问题。", "5. 边界与常见误解｜读成一句话：先用 rows 估算 vs 实际 的差距判断\"是不是优化器的问题\"，再用三种慢源判断\"是哪一类问题\"——顺序不能反。"], "crit": "能背五层并指出只有优化器在做决定；能用 rows 估算 vs 实际定位「是不是优化器问题」；能解释查询缓存被移除的量化理由。"}, "M7": {"t": "慢查询与 SQL 优化手段", "q": ["这条 SQL 实际扫描多少行？", "没有 ICP 和有 ICP 分别要回表多少次？", "这是 bug 吗？"], "pts": ["1. 前提：所有优化都在做同一件事｜每一种优化手段都能归到这两类里——归不进去的，说明你还没搞清它在治什么。这也是后面那份清单的组织方式（少扫 / 少回 / 少排）。", "3. 优化手段清单（按\"少扫 / 少回 / 少排\"归类）｜ICP 治的是\"回表次数\"，不是\"扫描量\"——扫过的索引项没变，变的是\"哪些需要回表\"。关键词永远是\"回表次数\"。", "4. 深分页为什么慢【推导】｜扫描与回表量 = 偏移量，所以越翻越慢——而且这是线性增长，第 100 万页的代价是第 1 页的 10 万倍。", "5. 优化器主动放弃索引（最容易被漏掉的一类）【推导】｜排查顺序不能反：先看是不是\"写法问题\"（照 M2 的失效清单过一遍），再看是不是\"成本判断\"。后者的改法不是改 SQL，而是：", "5. 优化器主动放弃索引（最容易被漏掉的一类）【推导】｜这一条把\"索引失效\"从\"背清单\"升级成\"理解优化器的成本模型\"。 面试里能主动说出\"有时候全表扫是优化器的正确决定\"，比背出十条失效场景更能证明你懂原理。", "6. 优化优先级（收口）｜EnergyOps 的实际顺序就是这条：修范围与 JOIN → 建联合索引 → 消 N+1 → 才谈缓存。反过来做（先上缓存）是典型的\"在错误的链路上加速\"——缓存只是把慢查询挡住，慢查询本身还在那里，而且会随着数据增长变得更慢。", "7. 边界与常见误解｜读成一句话：先分类再动手——用 rows 估算 vs 实际判断\"是不是优化器的问题\"，用三种慢源判断\"是哪一类问题\"，最后才落到具体手段。"], "crit": "能把任一手段归进少扫 / 少回 / 少排；能算深分页的线性代价；能说清「优化器主动弃索引」与「写法失效」的排查顺序不能反。"}, "M8": {"t": "隔离级别与 ACID", "q": ["一个服务的负载里读占 90%、写占 10%。分别估算\"读加锁\"和\"读靠 MVCC 不加锁\"两种情况下，并发请求互相阻塞的比例。", "事务 A 依次执行：① BEGIN ② SELECT balance FROM account WHERE id=1（读到 100）③ 事务 B 执行 UPDATE account SET balance=80 WHERE id=1 并 COMMIT ④ A 再执行一次同样的 S", "要同时满足\"回滚能撤销\"和\"提交后断电不丢\"，最少需要哪几个日志组件？各自记的是\"改之前\"还是\"改成什么\"？"], "pts": ["1. 前提：事务只有一句话｜部分成功必须能退回去，所以写入之前要记下\"改之前是什么样\"。这就是 undo log 的职责。", "1. 前提：事务只有一句话｜事务说\"提交成功\"，但数据页可能还在内存里。此时断电，需要一个\"改成什么样\"的记录，重启后重放补上。这是 redo log 的职责。", "1. 前提：事务只有一句话｜并发只分两种关系：", "2. 并发会出什么问题｜这个区分不是文字游戏：不可重复读可以用\"锁住那一行\"解决；幻读锁不住——因为要防的是\"还不存在的行\"，所以它必须靠另一套机制（间隙锁，见 M10）。", "2. 并发会出什么问题｜所以解决思路只有两条：", "3. 四个级别：一条单调的取舍谱系｜MVCC 的价值不是\"更快\"，是\"把读从冲突里摘出去\"。 读占比越高，收益越大——报表型、列表型负载收益最明显。", "3. 四个级别：一条单调的取舍谱系｜串行化的代价，本质是把 MVCC 挣来的那 18 个百分点又还回去了。", "4. RR 下的幻读：一半靠 MVCC，一半靠锁｜幻读的准确说法，靠这一对概念分开讲：", "5. 边界与常见误解｜C 是结果：A（undo）+ D（redo）+ I（锁+MVCC）+ 约束共同得到，没有独立的一致性机制 | | \"RR 完全解决了幻读\"", "5. 边界与常见误解｜快照读靠 MVCC、当前读靠间隙锁，两种读都不幻读，但混用时会出现\"看起来像幻读\"；说\"完全解决\"是漏了机制 | | \"隔离级别越高越好\"", "5. 边界与常见误解｜串行化把读也拉进排队，冲突面从约 1% 回到约 19%（3.2 的估算） | | \"MVCC 是 RR 专属\""], "crit": "能给四级谱系与各自解决的读现象；能背 ACID 分工并指出 C 是结果；能算 MVCC 摘走的冲突面（1% vs 19%）。"}, "M9": {"t": "MVCC", "q": ["一行数据每秒被修改 100 次。某个长事务持有了 ReadView 整整 1 小时。问：这条行的版本链上大约有多少节？至少有哪两个后果？", "事务 T 生成 ReadView 时：m_ids = [98, 102, 105]、min_trx_id = 98、max_trx_id = 106、creator_trx_id = 101。", "事务 B（trx_id = 98）在事务 A 拍快照之前就已经 BEGIN 了，但在 A 拍完快照之后才 COMMIT。RR 下 A 能看到 B 的修改吗？为什么？"], "pts": ["1. 前提：读为什么需要\"多版本\"｜最朴素的并发控制只有锁：读加共享锁（S），写加排他锁（X）。S 与 X 互斥，于是读会挡住写，写会挡住读。", "1. 前提：读为什么需要\"多版本\"｜这两个要求直接推出\"多版本\"——如果读不去看正在被改的那份数据，就只剩一种选择：让它看这份数据在某个过去时刻的样子。", "2. 实现\"快照\"的两条路线（先各自介绍，再比较）｜理由：A 的成本随\"数据量\"增长，B 的成本随\"修改量\"增长。 数据库的真实场景是\"数据多、每次只改几行\"——B 的成本模型正好匹配。", "3. 版本链：旧版本存在哪、怎么串起来｜有了 roll_pointer，一行数据的所有历史版本就串成了一条链：", "3. 版本链：旧版本存在哪、怎么串起来｜版本链的长度 = 这条行被修改的次数（在被保留的时间窗内）。", "4. ReadView：可见性怎么判｜因为\"开始得早\"不等于\"已提交\"。", "5. RC 与 RR：只差一个时机｜\"可重复读\"的全部实现就是这一句：快照不再刷新。 不是靠锁，不是靠别的东西。", "6. 快照读 vs 当前读｜幻读的准确说法（M8 已给结论，这里给机制来源）：", "7. 边界与常见误解｜InnoDB 走的是保留旧版本 + 判定可见性（路线 B），没有拷贝整份数据 | | \"MVCC 只在 RR 生效\"", "7. 边界与常见误解｜RC 下同样生效，只是 ReadView 每条语句重新生成。MVCC 是 InnoDB 的基础能力 | | \"旧版本可以立刻删\"", "7. 边界与常见误解｜只有当没有任何快照还需要它时才能清。所以一个长事务就能让整条链的回收停摆（3.3） | | \"undo log 只用于回滚\""], "crit": "能画版本链 + ReadView 判定；能说清 RC/RR 只差生成时机；能推出「回收看最老 ReadView」并连到长事务危害。"}, "M10": {"t": "锁与死锁", "q": ["一张 100 万行的表，status = 'PENDING' 占 20%（约 20 万行）。比较下面三种写法各自会锁住多少：", "事务 A 按顺序更新 id=1、id=2；事务 B 按顺序更新 id=2、id=1。两者几乎同时执行。会发生什么？InnoDB 会怎么处理？", "N = 20 个 Worker 同时从同一张任务表里抢占待处理任务，每次取 1 条。"], "pts": ["1. 前提：读的问题已经被解决了，剩下的是写｜母题-M9-MVCC 已经把读从冲突里摘出去了：普通 SELECT 走快照读，不加锁。", "1. 前提：读的问题已经被解决了，剩下的是写｜为什么？因为 InnoDB 是索引组织表（母题-M3-聚簇索引与回表）——\"行\"这个概念在存储层就是\"某个索引上的一条记录\"。锁必须有一个\"可寻址的对象\"，能寻址的只有索引项。", "2. 三种锁（先各自介绍，再比较）｜：因为幻读要防的不是\"已有的行\"，而是\"还不存在的行\"。", "2. 三种锁（先各自介绍，再比较）｜：如果只用 Gap Lock，那么已被命中的那几条记录本身就没被保护（别人还能改）。所以 RR 下的默认加锁单位是\"间隙 + 记录\"的组合——既防插入，也保护已有记录。", "2. 三种锁（先各自介绍，再比较）｜官方的原话有一个常被漏掉的例外：", "3. 锁为什么会变大：把它算出来｜同样是\"更新 pending 任务\"这件事，锁的量可以从 1 条膨胀到 100 万条——差 6 个数量级。", "4. 死锁：从\"循环等待\"推出来｜关键不是\"锁太多\"，而是\"顺序不一致\"。同样的两个资源，只要所有事务按同一顺序拿，就不会成环。", "4. 死锁：从\"循环等待\"推出来｜所以死锁的表现通常是\"某次请求报 Deadlock found\"，而不是系统整体卡死——这一点要说清，很多人以为死锁 = 数据库挂了。", "5. 怎么避免，怎么排查｜这本质上是用\"查询语义\"替代了\"等待\"：", "5. 怎么避免，怎么排查｜：先看\"谁在等谁\"，再回溯\"事务的加锁顺序\"——最终答案几乎总是两条之一：顺序不一致，或事务太大（扫得太宽）。回到 5.1 的 ① 和 ④。", "6. 边界与常见误解｜锁的是扫描到的索引记录范围。非唯一索引 + 范围条件能锁到万级；没有索引时锁全表 | | \"RR 下一个普通 SELECT 也会加锁\"", "6. 边界与常见误解｜不会。它是快照读（M9），不加锁。只有当前读才加锁 | | \"死锁说明数据库有问题\""], "crit": "能说清锁对象 = 索引项、无索引锁全表（1 条 → 100 万条）；能背 Record/Gap/Next-Key 的叠加逻辑；能从死锁日志回溯加锁顺序。"}, "M11": {"t": "三日志与两阶段提交", "q": ["单条连接串行提交", "数据库在下面两个时刻断电，重启后分别是什么结果？对主从一致性各有什么影响？", "多久会绕满一圈？"], "pts": ["1. 前提：为什么不能\"改完直接写磁盘\"｜磁盘的两种访问方式成本差得很远：", "1. 前提：为什么不能\"改完直接写磁盘\"｜机械盘上两者差 2–3 个数量级。而\"把刚改的那一页写回去\"是随机写（那一页在磁盘上的位置是散的）。", "2. 三条日志：先各自介绍，再比较｜不能。 两个理由：", "3. redo 的环形结构｜因为 redo 只服务于\"崩溃恢复到最新状态\"这一个目的——一旦它记录的改动已经落到数据页上，这条 redo 就再也没用了，占的位置可以复用。", "3. redo 的环形结构｜如果 check point 长期不推进（脏页没刷出去），write pos 会绕上来追上 check point——此时没有空闲区域可写了。", "3. redo 的环形结构｜生产上要金融级一致，就是「双一」：innodb_flush_log_at_trx_commit=1 + sync_binlog=1。这意味着接口返回\"提交成功\"时，两份日志都已经真的在磁盘上了——这才是\"断电不丢\"的前提。", "4. binlog 的三种格式｜现在主流是 Row——数据安全优先于日志体积。Statement 只在\"日志体积敏感 + SQL 确定\"时才考虑。", "5. 两阶段提交：为什么非它不可｜现在有两份都要写的日志：redo（InnoDB）和 binlog（Server）。它们不在一个组件里，没法用一个本地事务包住。", "5. 两阶段提交：为什么非它不可｜假设不做两阶段提交，只是简单地把两次写按某个顺序做：", "5. 两阶段提交：为什么非它不可｜两阶段提交把两份日志\"捆绑\"成一个原子操作：要么都成功，要么都失败。 这是它唯一的存在理由——不是\"规范要求这么做\"，而是不做就一定会在崩溃窗口里造出主从不一致。", "6. 边界与常见误解｜不能。它不在 InnoDB 内、不记物理页变化，必须靠 2PC 与 redo 配合 | | \"redo 是无限的，会一直追加\"", "6. 边界与常见误解｜固定大小循环写，会覆盖；边界靠 check point 推进 | | \"有 redo 就不需要 binlog\""], "crit": "能算随机写与顺序写的数量级差；能说清 redo 环形与 checkpoint 推进；能推出不做 2PC 的崩溃窗口后果（主从不一致）。"}, "M12": {"t": "崩溃恢复", "q": ["redo 生成速率约 100 MB/s，崩溃时 check point 落后 30 秒。重放（顺序读 + 应用）速度按 300 MB/s 估。", "重启后，日志里发现三个事务：", "恢复进行到一半，又断电了。再次重启时会不会出问题？为什么？"], "pts": ["2. redo 重放：幂等从哪里来｜崩溃可能发生在恢复过程中（比如重放到一半又断电）。如果重放不是幂等的，第二次恢复就会把某些改动应用两遍——某些操作（比如\"在某个位置追加\"）做两遍就错了。", "2. redo 重放：幂等从哪里来｜幂等不是\"不去做\"，而是\"做之前能判断是否已做过\"。", "3. undo 回滚，以及顺序为什么不能反｜—— 反过来会出问题：", "4. 题眼：prepare 状态怎么裁决｜这是\"崩溃恢复\"和\"主从一致性\"在同一处收口的地方——不是两套逻辑，是一套。", "5. 恢复要多久（把成本算出来）｜恢复时间 ≈ 需要重放的 redo 量 ÷ 重放速度。而\"需要重放的量\"由 check point 的位置决定：", "6. 生产配置：为什么主库都配「双一」｜两个都为 1，事务的\"提交成功\"才算真的落到磁盘——这才是\"接口返回成功之后断电也不丢\"的前提。", "7. 边界与常见误解｜靠日志状态。崩溃瞬间每个事务只有三种状态，每种状态都有明确的日志痕迹，动作由痕迹决定 | | \"已提交的事务肯定已经在磁盘上了\"", "7. 边界与常见误解｜不一定。WAL 只保证日志落盘，数据页可能还在内存里 —— 这正是要 redo 重放的原因 | | \"重放和回滚的顺序无所谓\"", "7. 边界与常见误解｜必须先 redo 重放再 undo 回滚。反过来会在\"已提交但页未落盘\"时丢掉已提交的数据 | | \"恢复中断（又崩了）会出问题\""], "crit": "能给三态 - 动作表；能论证先 redo 后 undo 的顺序不能反；能估恢复时长（checkpoint 落后的 redo 量 ÷ 重放速度）。"}, "M13": {"t": "长事务为什么危险", "q": ["这条行的版本链上大约有多少节？一次快照读在这一行上的回溯开销是多少？", "单事务提交和每 1000 行分批提交，分别在\"锁持有时间\"和\"undo 峰值\"上差多少？", "下面三种连接，哪些会拖住 undo 回收？请说明理由。"], "pts": ["1. 前提：长事务按住的是两样东西｜一个事务只要没结束，它就同时按住两样东西：", "1. 前提：长事务按住的是两样东西｜所以\"长事务危险\"不是一个原因，是两条独立的链。 而它们只在有写操作时才同时出现——这一点决定了只读事务的地位（第 3 节）。", "2. 危害一：拖住旧版本清理（从 M9 直接推导）｜母题-M9-MVCC 讲过：快照读要沿 undo 版本链回溯找可见版本。", "2. 危害一：拖住旧版本清理（从 M9 直接推导）｜原始素材的一句话点破了本质：它不是\"慢\"，是\"按住资源的柄\"。", "2. 危害一：拖住旧版本清理（从 M9 直接推导）｜一个\"什么都没干\"的只读事务，能让别人读这一行慢 72 毫秒——而这条链是别人造成的。 这就是\"长事务拖慢别人\"的机制版本：不是抽象地说\"它占资源\"，而是它让全库的 undo 回收停摆。", "3. 危害二：持锁久【推导】｜注意这两条危害的来源不同：一条来自 MVCC（对读的影响），一条来自锁（对写的影响）——长事务是两条路同时变坏。 面试里能分开说，比笼统说\"长事务不好\"高一个层次。", "4. 只读事务为什么也危险（最容易被忽略）｜因为回收看的是 ReadView，不是\"这个事务做了什么\"。", "4. 只读事务为什么也危险（最容易被忽略）｜这种连接在监控上很不起眼（CPU 低、几乎无查询），但它在按住回收边界。 PG 那边对应的形态是 idle in transaction（母题-P14-长事务与表膨胀）——两边是同一类事故，只是监控指标不同。", "5. 工程规避清单｜五条纪律（原始素材的五条，全部照背）：", "5. 工程规避清单｜第 ② ③ 条是同一类错误：把\"外部系统的响应时间\"绑进了\"事务的持有时间\"——外部一抖，事务就长。RuleArena 里\"事务只包数据库操作、Checkpoint 不当业务事实\"是同一个纪律。", "5. 工程规避清单｜\"分批\"是 M10（锁）、M13（undo）、M14（主从）、M15（数据增长）四张卡的公共答案——它同时解决四个问题。这个判断要能自己说出来，而不是记住\"批量更新要分批\"这句话。", "6. 怎么监控｜面试加分点：能说出\"我盯的是最老事务的 trx_started，因为回收边界由最老的 ReadView 决定\"——这和 PG 侧\"盯最老事务的 xmin\"（母题-P14-长事务与表膨胀）是同一句话。两套数据库，同一条原理。"], "crit": "能拆出两条独立危害链（回收边界 + 锁）；能解释只读长事务为何拖人（72ms）；能把「分批」连到锁 / undo / 主从 / 增长四张卡。"}, "M14": {"t": "主从复制与延迟", "q": ["按库并行（4 个库）和按 WRITESET 并行（32 路）分别能提供多少回放能力？", "这段时间里从库的延迟是多少？", "表有主键和表没有主键，从库分别要做多少 IO？差多少倍？"], "pts": ["1. 前提：复制的是\"变更\"，不是数据页｜复制的对象是 binlog（变更流），不是数据页——这个前提直接推出一件事：", "1. 前提：复制的是\"变更\"，不是数据页｜所以\"追不上\"是结构性的，不是故障。 只要主库的写入速度超过从库的重放速度，延迟就会累积。任何\"让从库更实时\"的手段，本质上都是在提高重放速度——而不是消除这个结构。", "2. 延迟的三类来源｜\"按库并行\"的天花板就是库的数量。 所以从\"按库\"升级到\"按 WRITESET\"（行级判断冲突）不是为了更快，是为了把并行度从\"库数\"这个硬上限里解放出来。", "2. 延迟的三类来源｜这正好是 母题-M13-长事务为什么危险 \"批量要分批\"的另一个理由——同一个动作，同时治了锁持有、undo 峰值、主从延迟三个问题。", "2. 延迟的三类来源｜\"每张表都要有主键\"不只是规范，是复制性能问题。 面试里能说出\"无主键表在 Row 格式下会拖慢从库回放\"，说明你真的理解复制在做什么（而不是背了三步流程）。", "3. 缓解手段｜注意 ⑥ 解决的不是延迟：半同步解决的是\"主库挂了丢不丢\"（RPO），不解决\"从库读到旧数据\"。 这两件事经常被混为一谈——能主动分开说，是这道题的加分点。PG 侧对应的是 synchronous_commit / synchronous_standby_names（母题-P12-流复制与逻辑复制）", "4. 读到旧数据：三层解法（按优先级）【事实】｜这三条合起来说明：sleep 不是\"简单方案\"，是\"把正确性交给运气\"。 面试里主动说清这一点，比背出三层解法更能体现你想过。", "4. 读到旧数据：三层解法（按优先级）【事实】｜先把\"哪些读必须强一致\"定义清楚，再谈路由——这个顺序不能反。反过来做（先上读写分离，再到处打补丁）会得到一个到处都是例外的路由规则。数驭穹图里\"新鲜度要求决定访问模式\"就是这个思路的现成表达。", "6. 边界与常见误解｜读成一句话：复制是\"至少存在延迟的\"——所以\"哪些读可以走从库\"是业务决策，不是技术默认值。"], "crit": "能背三步复制流程并指出复制的是变更流；能比较按库与 WRITESET 并行；能分开「半同步治丢」与「读到旧」两件事。"}, "M15": {"t": "数据增长治理", "q": ["这张表的索引是几层？", "一次性 DELETE 和每批 1 万行分批删除，undo 峰值各是多少？", "大约多少比例的数据需要跨分片迁移？"], "pts": ["1. 前提：先定问题，\"大\"本身不构成动作的理由｜\"8000 万行\"是三种完全不同的问题，对应完全不同的手段：", "1. 前提：先定问题，\"大\"本身不构成动作的理由｜所以第一动作是定位症状，而不是拆表——\"8000 万行\"本身不构成任何动作的理由。", "2. 五步顺序（必须背，而且要能解释为什么）｜为什么是这个顺序：每一步的复杂度递增，且后面的步骤会改变前面步骤的优化对象——比如先分了表，再优化索引，索引设计会复杂一倍（每个分片都要建、且要考虑分片键）。", "2. 五步顺序（必须背，而且要能解释为什么）｜判据是一句话：便宜且可逆的先做，贵且难回头的后做。 而分库分表恰好是最贵、最难回头的那一步（见第 5 节）。", "3. 冷热分离：让热查询只打热数据｜原始素材的例子：最近 7 天的任务日志经常查，半年前的几乎只在审计时查。", "3. 冷热分离：让热查询只打热数据｜数据量降到 1/10，索引层数从 4 层降到 3 层——同样的点查，IO 次数少一次。而且这还没算冷数据把热数据挤出 buffer pool 的那部分损失（那部分是无条件的）。", "4. 归档：从在线主链路移走（不等于删除）｜特别适合归档的：执行日志、状态流转记录、任务事件流水——保留要求长，但在线查询需求低。", "4. 归档：从在线主链路移走（不等于删除）｜\"归档\"这个动作本身也是数据治理的一部分——用错方法的归档，会把长事务问题原样引入一遍。", "5. 分库分表：最后一步，四项代价要背｜换分片键或扩分片数 = 一次全量级别的数据迁移。 所以分片键是整套设计里最难改的决定——这也是\"能不能用范围分片 / 一致性哈希做局部迁移\"值得提前想的原因。", "5. 分库分表：最后一步，四项代价要背｜所以分片键不是\"数据本身的属性\"，而是\"你的查询形状的属性\"——这句话是分片设计的核心。选型时必须基于真实的查询分布（哪些字段出现在 WHERE 里、频率多少），而不是\"字段看起来像 ID\"。这一条和 母题-P16-分区表 的\"分区键必须进大部分查询条件\"是同一个原则。", "5. 分库分表：最后一步，四项代价要背｜顺带一条：MySQL 生态里有成熟中间件（ShardingSphere 之类），但本模块边界里明确写了\"不深入它的源码\"——面试里说\"知道选型与代价，未深入源码\"是诚实且合格的回答。", "6. 边界与常见误解｜读成一句话：\"'数据量大'本身不是问题，'热查询背着冷数据跑'才是问题\"——所以治理的第一动作永远是\"把热和冷分开\"，而不是\"把大表拆开\"。两者听起来像，做的完全是不同的事。"], "crit": "能把「8000 万行」拆成三种问题；能背五步顺序并解释为什么（复杂度递增、后步改变前步对象）；能说清分片键 = 查询形状的属性。"}, "M16": {"t": "乐观锁与悲观锁", "q": ["p 分别为 0.05 / 0.3 / 0.7 / 0.9 时，期望尝试次数各是多少？", "乐观锁和悲观锁的总工作量各是多少？差多少倍？", "总更新尝试次数是多少？"], "pts": ["1. 前提：它们是对冲突概率的两种假设｜\"哪个更好\"这个问题本身就是错的——没有冲突概率，选型就是空谈。", "1. 前提：它们是对冲突概率的两种假设｜所以回答的第一句话永远是\"冲突频率\"，第二句才是机制。 这正是 9.9 那次缺的东西。", "2. 悲观锁：先拿锁，再操作【事实】｜实现上的一个坑：SELECT ... FOR UPDATE 在 RR 下会带出 next-key lock，锁范围可能比预期大（母题-M10-锁与死锁）——这正是\"悲观锁代价\"的具体体现。", "3. 乐观锁：不加锁，提交时校验【事实】｜核心是\"期望值进 WHERE\"：用 version、用状态、用时间戳都行，本质是 CAS 思想。version 字段的好处是自带 ABA 防护（下一节）。", "4. ABA 问题：CAS 的固有缺陷【推导】｜CAS 只比较\"值是否相等\"，不比较\"中间有没有变过\"：", "4. ABA 问题：CAS 的固有缺陷【推导】｜什么时候有害、什么时候无害：", "4. ABA 问题：CAS 的固有缺陷【推导】｜解法：版本号 / 时间戳一起比——Java 里 AtomicStampedReference（带 stamp）；数据库里 version 字段本质就是\"自带 ABA 防护的 CAS\"。", "5. 判据：两条成本曲线的交点（本题的落点）｜为什么要画曲线而不是背结论——因为两种方案的成本函数形状完全不同：", "5. 判据：两条成本曲线的交点（本题的落点）｜这就是\"高冲突时乐观锁崩掉\"的数学表达——它不是\"慢一点\"，是在 p→1 时成本发散。", "5. 判据：两条成本曲线的交点（本题的落点）｜高冲突时乐观锁的总工作量是 N²，悲观锁是 N——差一个 N 倍。 10 个并发就差 10 倍，100 个并发差 100 倍。", "6. 选了乐观锁，就必须把重试当成方案的一部分【推导】｜\"影响行数 0\"是正常业务分支，不是异常：正确的处理是读权威状态 → 判定 → 决定，而不是无脑重试。不要写 while(true) retry——要有退避、抖动和上限（母题-P9-序列化失败与重试 的四条要求）。", "7. 结合自己的项目（这条是你的差异化）｜RuleArena 的退款与任务认领用的是乐观锁（条件更新），理由（母题-P18-乐观并发控制 已展开）："], "crit": "能先报冲突频率再谈机制；能算 1/(1−p) 与 N² vs N；能把 RuleArena 的条件更新讲成「权威性理由」，并说出「不用锁」哪里说满了。"}, "M17": {"t": "排行榜与防超卖", "q": ["MySQL 和 Redis 分别要多少次操作？差多少倍？", "全量存要多少内存？只存每关 Top 1000（假设 1000 个关卡）呢？", "分数上限是多少时才安全？"], "pts": ["1. 前提：场景题的第一动作是澄清，不是给方案｜9.9 那次丢分的一半在\"没问够\"——另一半才是技术。技术选型（MySQL vs Redis）反而是这张卡里最容易的部分。", "1. 前提：场景题的第一动作是澄清，不是给方案｜9.9 的澄清对照（复盘里的 ✅/❌ 清单）：问了排名依据、展示字段、规模；没问榜单范围、更新频率、历史榜、防作弊——把这张清单背下来，下次第一分钟就不会空白。", "2. 排行榜选型：为什么必须是 Redis ZSet｜这不是\"Redis 快一点\"，是数量级的差别——而且它随榜单长度增长：MySQL 是 O(N)，Redis 是 O(logN)。所以榜单越大，差距越大。", "2. 排行榜选型：为什么必须是 Redis ZSet｜这样做避免了两级排序（先按分数排、同分再按时间排）——一次比较就定出唯一顺序。", "2. 排行榜选型：为什么必须是 Redis ZSet｜Redis 的 score 是 IEEE 754 双精度浮点，只有 2⁵³ 以内的整数能被精确表示。", "3. 2000 万 DAU 下的工程问题（答到这层才像服务端）｜\"只存 Top N\"是内存控制的关键手段，量级上直接差 100 倍。", "3. 2000 万 DAU 下的工程问题（答到这层才像服务端）｜这是把 O(logN) 的精确查询留给头部、用 O(1) 的近似服务长尾的取舍。 \"花更少的代价满足绝大多数人的真实需求\"是这类题的通用解法，值得单独背。", "4. 游戏特性（乐元素面试官最想听的）｜\"防作弊没提\"是 9.9 那次被明确点名的缺口——游戏公司的场景题里这是必答项。", "5. 防超卖三条路｜为什么能防超卖：判断和写入在一条语句里原子完成——不存在\"查到还剩 1，两个人都扣\"的窗口。", "5. 防超卖三条路｜这和 母题-M16-乐观锁与悲观锁 的条件更新、母题-P18-乐观并发控制 是同一个原理：把判断下推到数据库的原子操作里，而不是在应用层先查后写。", "5. 防超卖三条路｜判据：强一致（钱）→ 数据库原子更新；高并发（秒杀、体力）→ Redis 前置 + DB 兜底。", "6. 指标与降级【事实】｜\"排行榜挂了不能影响游戏本体\"是这一题的底线判断——依赖服务的可用性必须低于主链路，这条原则可以迁移到任何\"附加功能\"上。"], "crit": "能背 9.9 澄清清单（范围 / 频率 / 历史榜 / 防作弊）；能算 ZSet O(logN) 与全量内存 1/100；能给出防超卖三条路与「不拖主链路」底线。"}};
+  var ORDER = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "M17"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

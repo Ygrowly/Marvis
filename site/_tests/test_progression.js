@@ -14,6 +14,14 @@ const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
 require(path.join(ROOT, '_data', 'clusters.js'));
 require(path.join(ROOT, '_data', 'breaks.js'));
+/* 与 test_dispatch 相同的原则卡桩（真数据由 build.py 生成在 _data/cards.js） */
+global.window.MARVIS_CARD_CLUSTER = {
+  id: 'card', name: '原则卡 · 读厚', zone: '准则',
+  topics: [
+    { id: 'adler-1', name: '课题分离', href: 'cards.html#card-adler-1' },
+    { id: 'adler-2', name: '目的论：理由是造出来的', href: 'cards.html#card-adler-2' },
+  ],
+};
 
 /* 假时钟：sandbox 里的 new Date() / Date.now() 都跟着 NOW 走 */
 const START = new Date(2026, 8, 14, 9, 0, 0);   // 2026-09-14
@@ -77,7 +85,7 @@ for (let d = 0; d < DAYS; d++) {
   run('render();');
   const items = g('JSON.parse(JSON.stringify(S.days[today()].items))');
   const need = items.filter(i => i.need);
-  const fresh = items.filter(i => i.need && (i.type === 'new' || i.type === 'proj'));
+  const fresh = items.filter(i => i.need && ['new', 'proj', 'rule', 'card'].includes(i.type));
   fresh.forEach(it => { if (!firstSeen[it.key]) firstSeen[it.key] = ds; });
   if (items.some(i => i.type === 'exam')) examDays.push(ds);
   newByDay.push({ ds, new: fresh.map(i => i.label.replace(/^(新母题|项目)：/, '')), rev: need.filter(i => i.type === 'rev').length, n: need.length });

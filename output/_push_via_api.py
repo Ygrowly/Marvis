@@ -30,21 +30,25 @@ def sh(args, binary=False, check=True):
 
 
 def api(method, path, payload=None):
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
-    req = urllib.request.Request(API_ROOT + path, data=data, method=method)
-    req.add_header("Authorization", "Bearer " + TOKEN)
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("X-GitHub-Api-Version", "2022-11-28")
-    req.add_header("User-Agent", "marvis-push")
-    if data is not None:
-        req.add_header("Content-Type", "application/json; charset=utf-8")
-    opener = urllib.request.build_opener()
+    """传输层走 curl：本机 git 的 schannel 和 Python 的 urllib 都可能 TLS 握手失败，
+       而 curl 直连是通的（2026-10-02 实测）。"""
+    cmd = ["curl", "-sS", "-m", "90", "-X", method, API_ROOT + path,
+           "-H", "Authorization: Bearer " + TOKEN,
+           "-H", "Accept: application/vnd.github+json",
+           "-H", "X-GitHub-Api-Version: 2022-11-28",
+           "-H", "User-Agent: marvis-push"]
+    if payload is not None:
+        cmd += ["-H", "Content-Type: application/json; charset=utf-8", "--data-binary", "@-"]
+        r = subprocess.run(cmd, input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        sys.exit("curl %s %s 失败：%s" % (method, path, r.stderr.decode("utf-8", "replace")[:300]))
     try:
-        with opener.open(req, timeout=90) as r:
-            raw = r.read()
-            return json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as e:
-        sys.exit("API %s %s 失败 %s：%s" % (method, path, e.code, e.read().decode("utf-8", "replace")[:400]))
+        return json.loads(r.stdout) if r.stdout.strip() else {}
+    except ValueError:
+        sys.exit("返回不是 JSON：%s" % r.stdout.decode("utf-8", "replace")[:200])
 
 
 def ident(raw, kind):
@@ -64,7 +68,8 @@ def ident(raw, kind):
 
 TOKEN = sh(["gh", "auth", "token"])
 local_head = sh(["git", "rev-parse", "HEAD"])
-remote = sh(["git", "ls-remote", "origin", "refs/heads/" + BRANCH]).split()[0]
+# git 的网络可能是坏的（schannel 握手失败），所以远端位置一律走 API 问
+remote = api("GET", "/repos/%s/git/ref/heads/%s" % (REPO, BRANCH))["object"]["sha"]
 if remote == local_head:
     print("远端已经是最新，不用推")
     sys.exit(0)

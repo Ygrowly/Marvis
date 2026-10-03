@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>并发与锁 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05/06 手写，02 机制与判据人工校订 -->
+<div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>并发与锁
+    <small>3 张母题 · 20 道题 · 3 个项目 —— 一条线：要不要加锁 → 锁画多大 → 跨机怎么办（顺序即决策顺序）</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：要不要加锁 → 锁画多大 → 跨机怎么办<span class="src">正本 wiki/topics/并发与锁/</span></h2>
+  <div class="h2sub">三条主线就是<b>三步决策，顺序即依赖</b>：先判断要不要付这个代价，再决定怎么付得少，最后才考虑把范围扩到多台机器。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="并发与锁 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <g font-size="11" fill="#4E5969">
+      <line x1="280" y1="52" x2="304" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+      <text x="312" y="56">蓝 · 决策主线（要不要 → 画多大 → 跨机怎么办）</text>
+      <line x1="720" y1="52" x2="744" y2="52" stroke="#F59E0B" stroke-width="2.2" marker-end="url(#mB)"/>
+      <text x="752" y="56">橙 · 判据与算式</text>
+      <line x1="890" y1="52" x2="914" y2="52" stroke="#8B5CF6" stroke-width="2.2" marker-end="url(#mB)"/>
+      <text x="922" y="56">紫 · 失效与边界</text>
+      <line x1="1060" y1="52" x2="1084" y2="52" stroke="#22C55E" stroke-width="2.2" marker-end="url(#mB)"/>
+      <text x="1092" y="56">绿 · 项目落地与共享原则</text>
+    </g>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="100" width="1270" height="112" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">① 要不要加锁（L1）—— 悲观 = 排队不白干；乐观 = 条件更新，可能白干重试</text>
+      <text x="106" y="146" font-size="11.5" fill="#4E5969">第一句话报冲突频率，第二句才谈机制——判据是 1/(1−p)：p 过半，白干的工作量就超过省下的排队</text>
+      <text x="106" y="166" font-size="11.5" fill="#4E5969">数据库乐观锁 = 条件更新（version / 状态进 WHERE）+ 失败重试，不是「不加锁」；影响 0 行是业务分支</text>
+      <text x="106" y="186" font-size="11.5" fill="#B45309">重试必须显式定参：退避 + 抖动 + 上限——重试的请求又回到竞争池，无限重试 = 正反馈成重试风暴</text>
+      <text x="1344" y="204" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">RuleArena：version 条件更新 + UNIQUE 兜底 · EnergyOps：租约版本条件抢占（一条 UPDATE 完成锁+判断+推进）</text>
+    </g>
+    <line x1="725" y1="212" x2="725" y2="245" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="252" width="1270" height="130" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <text x="106" y="276" font-size="13" font-weight="800" fill="#B45309">② 锁画多大（L2）—— 锁有三笔账：获取、等待 + 记账、对吞吐的影响；前两笔随临界区反向变化</text>
+      <text x="106" y="298" font-size="11.5" fill="#4E5969">外部调用绝不进临界区：50ms 的 HTTP 把 0.5ms 的临界区放大 100 倍——先在锁外拿好数据，进锁只做计算与写回</text>
+      <text x="106" y="318" font-size="11.5" fill="#4E5969">分段锁的前提是访问能均匀分散：热键照样打爆一段——热点要换方案（本地聚合 / 队列串行 / 每节点累加器）</text>
+      <text x="106" y="338" font-size="11.5" fill="#4E5969">自旋还是睡眠看比值：两次切换 ≈2μs；「先自旋一会儿再睡」是临界区长度不可预知时的工程折中</text>
+      <text x="106" y="358" font-size="11.5" fill="#8B5CF6">读写锁只在「读多写少 + 长临界区」划算；CAS 无锁快但有三个边界：ABA（版本号 / stamp）、循环重试、单变量</text>
+      <text x="1344" y="376" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图：并发配额代替锁——「争资源」用限流排队，「争状态」才用锁或条件更新，两件事不能混</text>
+    </g>
+    <line x1="725" y1="382" x2="725" y2="415" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="422" width="1270" height="130" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <text x="106" y="446" font-size="13" font-weight="800" fill="#6D28D9">③ 跨机怎么办（L3）—— 三种实现：Redis SET NX PX + 唯一值 + Lua 原子释放 / ZK 临时顺序节点 / DB 唯一约束</text>
+      <text x="106" y="468" font-size="11.5" fill="#4E5969">失效根因只有一个：「锁是否被持有」由锁服务按时间判，「我还在跑」只有客户端知道——GC / 时钟 / 分区 → 两个持有者</text>
+      <text x="106" y="488" font-size="11.5" fill="#4E5969">TTL 是无解的两难：设短了 GC 期间过期（互斥破）、设长了挂了白等；看门狗续期能缓解，不解决根因</text>
+      <text x="106" y="508" font-size="11.5" fill="#4E5969">Redis 锁的天然弱点：主从复制异步——写入主还没同步到从时主挂，锁「没存在过」（Redlock 为此而生，也有争议）</text>
+      <text x="106" y="528" font-size="11.5" font-weight="700" fill="#B45309">锁只给「大概互斥」：fencing token 让资源侧校验单调递增 token 才是保证——而能幂等就不用锁</text>
+      <text x="1344" y="546" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">RuleArena：稳定幂等键 + 唯一约束，「谁先写进唯一约束谁生效」· EnergyOps：租约挡不住已发出的外部调用</text>
+    </g>
+    <line x1="725" y1="552" x2="725" y2="585" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="592" width="1270" height="72" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="622" font-size="14.5" font-weight="800" fill="#15803D" text-anchor="middle">共享原则：并发控制的目标不是「不出错」，而是「给出错定价」</text>
+      <text x="725" y="646" font-size="11.5" fill="#4E5969" text-anchor="middle">乐观锁接受「重试」 · CAS 接受「失败重来」 · 分布式锁接受「可能失效所以再校验一次」——每种方案都在给定错价，而不是消灭它</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+    <b>主干叙事（一段读完）</b>：这一模块的一条线是三步决策「<b>要不要加锁 → 锁画多大 → 跨机怎么办</b>」，共享同一个前提：<b>并发控制的目标不是不出错，而是给出错定价</b>。
+    <b>要不要</b>：悲观 = 排队不白干、乐观 = 条件更新可能白干重试 —— 先报冲突频率再谈机制，判据是 <b>1/(1−p)</b>（p 过半就该换悲观）；重试必须显式定参（退避 / 抖动 / 上限），否则重试回竞争池、正反馈成风暴。
+    <b>画多大</b>：锁有三笔账且随临界区反向变化 —— <b>外部调用绝不进临界区</b>（50ms HTTP 把 0.5ms 临界区放大 100 倍，单锁吞吐只剩 ≈20 QPS）；分段锁前提是访问能均匀分散；自旋还是睡眠看 2μs 的比值；CAS 无锁快但有 ABA，用版本号兜住。
+    <b>跨机</b>：Redis / ZK / DB 三种实现各有一个软肋，失效根因只有一个 —— <b>「锁是否被持有」由锁服务按时间判，「我还在跑」只有客户端知道</b>；TTL 设多少都错（GC 3s vs P99 200ms），看门狗只缓解，<b>fencing token 让资源侧校验单调 token 才是保证</b>；而能幂等就不用锁 —— 幂等只依赖自己的数据库。
+  </div>
+  <div class="cap"><b>读法</b>：三个大框就是决策顺序，从上往下走；橙字是判据与算式（要能现场算），紫字是失效与边界（要能举反例），绿字是三个项目各自的落点。<b>底部一句是全模块的母题</b>：每种方案都在给定错定价。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：3 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">L1 要不要加锁</td><td>乐观 vs 悲观怎么选</td><td class="ans"><span class="a">先报冲突频率再谈机制：悲观 = 排队不白干，乐观 = 条件更新 + 可能白干重试；判据 1/(1−p)，p 过半换悲观；乐观锁不是「不加锁」——同样拿行锁，只是持锁从整个业务压到一条 UPDATE；重试显式定参防重试风暴</span></td><td>1–6</td><td class="ans"><span class="a">RuleArena：version 条件更新 + UNIQUE(run_id, action_type, idempotency_key) 兜底；EnergyOps：租约版本条件抢占——一个原子 UPDATE 完成加锁、判断、推进三件事</span></td></tr>
+      <tr><td class="k">L2 锁画多大</td><td>粒度 / 临界区 / 自旋 / CAS</td><td class="ans"><span class="a">锁有三笔账且随临界区反向变化；外部调用不进临界区（50ms HTTP 放大 100 倍、单锁吞吐 ≈20 QPS）；分段锁前提 = 访问能均匀分散，热键照样打爆一段；自旋 vs 睡眠看 2μs 比值；读写锁只在读多写少 + 长临界区划算；CAS 有 ABA，用版本号 / stamp</span></td><td>7–12</td><td class="ans"><span class="a">数驭穹图：并发配额代替锁——多租户查询之间没有共享状态要保护，只是争资源：争资源限流，争状态才锁</span></td></tr>
+      <tr><td class="k">L3 跨机互斥</td><td>分布式锁与它的边界</td><td class="ans"><span class="a">三实现（Redis SET NX PX + Lua 原子释放 / ZK 临时顺序节点 / DB 唯一约束）；失效根因 = 锁服务按时间判 vs 客户端只有自己知道（GC / 时钟 / 分区 → 两个持有者）；TTL 两难无解 → fencing token 资源侧校验才给保证；能幂等就不用锁</span></td><td>13–20</td><td class="ans"><span class="a">RuleArena：稳定幂等键 + 唯一约束，「谁先写进唯一约束谁生效」——比分布式锁简单且不依赖锁服务；EnergyOps：租约挡不住已发出的外部调用，那要靠幂等键 + 权威状态查询</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：临界区被外部调用放大 100 倍，TTL 设多少都错<span class="src">正本 母题-L2 · 母题-L3</span></h2>
+  <div class="h2sub">左边是「锁里面塞了什么」的账，右边是「锁服务凭什么判断」的账——都是数量级问题，不是调参问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="并发与锁 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">临界区的放大账（外部调用进了锁里）</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">临界区本该 0.5 ms（计算 + 写库），里面塞了一次 50 ms 的外部 HTTP → 锁持有 50.5 ms</text>
+      <rect x="80" y="92" width="6" height="24" rx="2" fill="#22C55E"/>
+      <text x="94" y="108" font-size="12" font-weight="800" fill="#15803D">0.5 ms（纯计算 + 写库）</text>
+      <rect x="80" y="124" width="560" height="24" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="140" font-size="12" font-weight="800" fill="#fff">　50.5 ms（含外部调用）—— 放大 100 倍</text>
+      <text x="80" y="180" font-size="12" font-weight="800" fill="#1D2129">单把锁的吞吐 = 1s ÷ 50.5ms ≈ 20 QPS——应用层并发再高也没用</text>
+      <text x="80" y="206" font-size="11.5" fill="#4E5969">自旋还是睡眠：一次往返切换 ≈2μs，临界区 500μs ≫ 2μs → 直接睡；「先自旋再睡」留给长度不可预知的锁</text>
+      <text x="80" y="232" font-size="11.5" fill="#4E5969">读写锁反例：读占 99%、读写临界区各 1ms——额外记账可能比省下的等待还贵，还有写者饥饿</text>
+      <text x="80" y="264" font-size="11.5" font-weight="700" fill="#B45309">外部调用 / IO / 远程调用一律放锁外：先在锁外把数据拿好，进锁只做计算与写回</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">数驭穹图同构：多租户查询没有共享状态、只是争资源 → 用并发配额，不用锁</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">TTL 的两难（P99 200ms vs GC 3s）</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">业务 P99 = 200 ms；同进程（大堆 JVM）实测最长 GC 停顿 3 s——TTL 设多少都错：</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">TTL = 300ms（&gt; P99）→ GC 3s 期间锁过期 → 第二个客户端进入 → 两个持有者，互斥已破</text>
+        <rect x="760" y="114" width="60" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="146">TTL = 5s（&gt; GC）→ 持有者真挂了 → 其他客户端白等 5s，可用性买单</text>
+        <rect x="760" y="152" width="600" height="12" rx="3" fill="#F59E0B"/>
+      </g>
+      <text x="760" y="196" font-size="12" font-weight="800" fill="#1D2129">根因：锁是否被持有 = 锁服务按时间判；我还在跑 = 只有客户端自己知道——必然脱节</text>
+      <text x="760" y="222" font-size="11.5" fill="#4E5969">看门狗续期缓解不解决根因（客户端整体挂掉时，续期线程跟着没了的是「锁还在」的假象）</text>
+      <text x="760" y="246" font-size="11.5" font-weight="700" fill="#B45309">fencing token：资源侧校验单调递增 token，旧的写入直接拒绝——这才是互斥的保证</text>
+      <text x="760" y="270" font-size="11.5" fill="#4E5969">RuleArena 的答案更进一步：能幂等就不用锁——幂等键只依赖自己的数据库，不新增可用性依赖</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">EnergyOps 的对应坑：租约挡住了本地旧写，撤不回旧 Worker 已发出的外部调用——副作用要靠幂等键兜</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard o"><div class="t">冲突 60% 的账</div><div class="big">2.5 次 ≈ 12.5ms</div>
+      <div class="d">单次尝试 5ms、冲突率 60% → 期望尝试 E=1/(1−p)=2.5 次、期望耗时 12.5ms——p 过半，悲观锁开始占优。</div></div>
+    <div class="ncard o"><div class="t">高冲突发散</div><div class="big">N² vs N</div>
+      <div class="d">乐观锁 N 个并发写同一行总工作量 ≈N²/2，悲观锁 ≈N：10 并发差 10 倍、100 并发差 100 倍——p→1 时发散。</div></div>
+    <div class="ncard b"><div class="t">临界区放大</div><div class="big">100 倍</div>
+      <div class="d">0.5ms 的临界区塞进一次 50ms 外部 HTTP → 持锁 50.5ms：外部调用 / IO 一律放锁外。</div></div>
+    <div class="ncard b"><div class="t">单锁吞吐</div><div class="big">≈ 20 QPS</div>
+      <div class="d">1s ÷ 50.5ms ≈ 19.8——锁住的资源每秒只能过 20 个请求，应用层并发再高也白搭。</div></div>
+    <div class="ncard b"><div class="t">自旋判据</div><div class="big">2 μs</div>
+      <div class="d">抢不到锁睡下去再唤醒 ≈ 两次上下文切换 ≈2μs；临界区远大于 2μs 就直接睡——先自旋再睡是折中。</div></div>
+    <div class="ncard b"><div class="t">TTL 两难</div><div class="big">15 倍</div>
+      <div class="d">GC 最长 3s ÷ 业务 P99 200ms ≈ 15：TTL 盖住 P99 会被 GC 打穿（两个持有者），盖住 GC 就得接受挂了白等。</div></div>
+    <div class="ncard o"><div class="t">看门狗的边界</div><div class="big">缓解 ≠ 解决</div>
+      <div class="d">续期把 TTL 顶回去能缓解「活着的持有者」，但客户端整体挂掉 / 长暂停时根因仍在——所以还需要 fencing token。</div></div>
+    <div class="ncard o"><div class="t">Redis 的定位</div><div class="big">256–512MB</div>
+      <div class="d">RuleArena 给 Redis 只配 256~512MB：队列与限流走 Redis，权威状态在 PostgreSQL——不把正确性押在锁服务上。</div></div>
+    <div class="ncard b"><div class="t">幂等的收益</div><div class="big">少一个依赖</div>
+      <div class="d">锁要引入锁服务的可用性依赖；幂等只依赖自己的数据库——「能幂等就不用锁」是 L3 最后一条追问的答案。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「乐观锁就是不加锁」</span><span class="v">✓ 数据库里同样拿行锁，只是持锁时间从「整个业务」压缩到「一条 UPDATE」；代价变成「可能白干」。</span></div>
+    <div class="mrow"><span class="x">✗「乐观锁一定比悲观锁快」</span><span class="v">✓ 看冲突率：p 过半时白干的工作量超过省下的排队（期望尝试 2 次以上）；判据是 1/(1−p)，不是感觉。</span></div>
+    <div class="mrow"><span class="x">✗「悲观锁慢，高并发要避免」</span><span class="v">✓ 悲观是把不确定性换成排队；临界区短、冲突高时反而更稳——慢是因为临界区长，不是锁本身。</span></div>
+    <div class="mrow"><span class="x">✗「库存扣减先查再改就行」</span><span class="v">✓ 查和改之间有窗口：判断必须下推进原子操作（条件更新 / 原子扣减），否则高并发下超卖。</span></div>
+    <div class="mrow"><span class="x">✗「分段锁能解决热点问题」</span><span class="v">✓ 分段按 key 分派，热键始终在同一段；热点要换方案：本地聚合、队列串行、每节点累加器。</span></div>
+    <div class="mrow"><span class="x">✗「读多写少就上读写锁」</span><span class="v">✓ 临界区极短时记账比省下的等待还贵，还有写者饥饿；长临界区的读多写少才明显划算。</span></div>
+    <div class="mrow"><span class="x">✗「分布式锁保证了互斥」</span><span class="v">✓ 它给的是「大概互斥」：GC / 时钟 / 分区能造出两个持有者；资源侧校验 fencing token 才是保证。</span></div>
+    <div class="mrow"><span class="x">✗「用 Redis 锁就够了」</span><span class="v">✓ 主从异步切换时锁会丢（还没同步主就挂）；且引入新的可用性依赖——Redis 挂了业务卡住。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能讲清"要不要加锁 → 画多大 → 跨机怎么办"三步决策，并各给一个项目例子</div></li>
+<li><span>☐</span><div><b>准确纠错</b>：能当场说清 <b>乐观锁不是"不加锁"而是"条件更新 + 失败重试"</b>、<b>锁过期不代表别的持有者一定停下了（GC / 时钟 / 分区）</b>、<b>"锁粒度越小越好"是错的</b> 这三处</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能算"冲突率多高该换悲观锁"，能说清"为什么 fencing token 是分布式锁的必要补充"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 <b>EnergyOps 的条件抢占</b> 讲乐观并发，用 <b>RuleArena 的幂等键</b> 讲"为什么有时不需要锁"</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的结论（例："高并发下把 synchronized 换成 CAS 就一定更快" / "分布式锁加个超时时间就安全了"），能指出错在哪</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：该不该加锁（乐观与悲观的选择判据、冲突率与重试代价）、锁画多大（粒度、临界区、自旋与互斥的取舍、读写锁、分段锁、CAS 与 ABA）、跨机器怎么互斥（分布式锁的三种实现、各自的失效场景、fencing token、租约与续期）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.并发与锁.v1";
+  var CARDS = {"L1": {"t": "乐观锁还是悲观锁，冲突率多高才该换", "q": ["某接口对同一行做\"读出 → 计算 → 写回\"，单次尝试耗时 5 ms，实测冲突率 60%。", "下面这段扣库存的代码有什么问题？高并发下会看到什么现象？", "某服务峰值 2000 QPS 都在抢同一行，冲突率 50%，代码里失败就无限重试（每次重试不打散）。"], "pts": ["1. 前提：并发控制的目标不是\"不出错\"，是\"给出错定价\"｜两者不是\"快慢\"的关系，是\"把代价花在哪\"的关系：", "1. 前提：并发控制的目标不是\"不出错\"，是\"给出错定价\"｜所以合适的问法不是\"哪个快\"，而是：\"这段并发里，冲突发生得有多频繁？\"——下一节把这个问题变成了一个算式。", "1. 前提：并发控制的目标不是\"不出错\"，是\"给出错定价\"｜\"乐观锁就是不加锁\"是错的。以数据库为例：", "2. 判据：冲突率多高才该换（本卡的核心算式）｜把几个 p 代进去，判据就出来了：", "2. 判据：冲突率多高才该换（本卡的核心算式）｜这个表就是本卡最重要的判据：", "2. 判据：冲突率多高才该换（本卡的核心算式）｜两者的分界不是\"哪个快\"，而是：", "3. 乐观锁的重试：不处理就会变成风暴｜上游在重试时，冲突率会自己变大——因为重试的请求又回到了同一个竞争池里，形成正反馈：", "3. 乐观锁的重试：不处理就会变成风暴｜\"重试几次\"是个必须显式定的参数，不能默认无限重试——无限重试 = 把冲突率放大成请求量。", "3. 乐观锁的重试：不处理就会变成风暴｜UPDATE 影响 0 行有两种含义，混在一起会误导：", "4. 边界与常见误解｜错。数据库里乐观锁同样要拿行锁，只不过只有那一条 UPDATE 持锁；真正的区别是持锁时间从\"整个业务处理\"压缩到\"一条语句\"，代价变成\"可能白干\" | | \"乐观锁一定比悲观锁快\"", "4. 边界与常见误解｜看冲突率。p 超过一半时，乐观锁\"白干的工作量\"就超过了它省下的排队时间（期望尝试 2 次以上）。判据是 1/(1−p)，不是感觉 | | \"悲观锁慢，高并发要避免\"", "4. 边界与常见误解｜悲观锁把不确定性换成了排队——如果临界区很短、冲突率很高，它反而更稳。\"慢\"是因为临界区太长，不是因为锁本身 | | \"库存扣减先查再改就行\""], "crit": "能先报冲突频率再谈机制；能算 1/(1−p) 并给出 p=50% 分界（60% → 2.5 次）；能把「影响 0 行」讲成业务分支而不是异常；能给出重试三参数并解释重试风暴的正反馈。"}, "L2": {"t": "锁要画多大，自旋还是睡眠，CAS 无锁强在哪", "q": ["某计数器被并发更新，单锁下冲突率 40%，单次尝试耗时 2 ms。", "某临界区里有一段外部 HTTP 调用，平均 50 ms；其余计算与写库共 0.5 ms。", "某服务读操作占 99%，读与写的临界区都是 1 ms，QPS 1000。有人提议把互斥锁换成读写锁，说\"读能并行，吞吐能翻几倍\"。"], "pts": ["1. 前提：锁的成本有三笔，别只算\"获取\"那一笔｜任何一把锁都有三笔账：", "1. 前提：锁的成本有三笔，别只算\"获取\"那一笔｜①和③都随\"临界区长度\"变化，但方向相反：", "1. 前提：锁的成本有三笔，别只算\"获取\"那一笔｜最常见的错误是把这些放进临界区：", "2. 粒度：在\"冲突率\"和\"记账开销\"之间选｜锁的粒度越大，覆盖的范围越大，冲突概率越高：", "2. 粒度：在\"冲突率\"和\"记账开销\"之间选｜这就是\"分段锁 / 锁条带化（lock striping）\"的全部内容——把一把锁变成 N 把，按 key 分派：", "2. 粒度：在\"冲突率\"和\"记账开销\"之间选｜收益看起来巨大，但它有前提，而且前提很容易被违反：", "3. 抢不到的时候：自旋还是睡眠｜判据只有一个比值：", "3. 抢不到的时候：自旋还是睡眠｜代进量级算一遍（切换成本取 母题-O1-上下文切换与死锁 的量级 ~1 μs，两次约 2 μs）：", "3. 抢不到的时候：自旋还是睡眠｜\"先自旋一会儿再睡\"是工程上最常见的折中——因为现实中\"临界区到底多长\"很难预知，用一小段自旋去赌\"马上就好了\"，赌输再睡。", "4. 不加锁：CAS 与它的三个边界｜它把 母题-L1-乐观锁与悲观锁 的\"乐观\"下沉到了指令层：", "4. 不加锁：CAS 与它的三个边界｜CAS 的典型用法是\"循环重试\"：", "4. 不加锁：CAS 与它的三个边界｜ABA 的解法不是\"记住更多信息\"这么简单，常见三档："], "crit": "能算临界区被外部调用放大的倍数与吞吐损失（100 倍 / ≈20 QPS）；能给出自旋 / 睡眠的比值判据（2μs）；能说清分段锁的前提与热点的正确解法；能讲 CAS 三边界与 ABA 解法（版本号 / stamp）。"}, "L3": {"t": "分布式锁：三种实现、三大失效场景与 fencing token", "q": ["某定时批处理需要分布式锁保护。已知：业务处理 P99 = 200 ms，但该进程用的是大堆 JVM，实测最长 GC 停顿 3 s。", "某服务用 Redis 锁保护一个\"每秒 100 次、单次 1 ms\"的操作，锁用\"加锁 + 业务 + 释放 + 看门狗续期\"。", "下面这段\"释放锁\"的代码有什么问题？会出现什么现象？"], "pts": ["1. 前提：锁怎么跨过进程边界｜单机锁（mutex / synchronized / 行锁）的可见范围止于一个进程——因为它本质上是同一块内存里的一个标记，而两个进程各有自己的地址空间（母题-O1-上下文切换与死锁 1.1）。", "1. 前提：锁怎么跨过进程边界｜要跨机器，就必须把\"锁的状态\"放到一个两个进程都能访问的地方——于是有三种选择：", "1. 前提：锁怎么跨过进程边界｜分布式锁是并发控制里最重的方案，因为它引入了一个新的可用性依赖：锁服务挂了，业务就卡住了。所以顺序应该是：", "2. 三种实现：各自解决什么、代价是什么｜Redis 做锁的核心是一条原子命令：", "2. 三种实现：各自解决什么、代价是什么｜三个必须做对的地方：", "2. 三种实现：各自解决什么、代价是什么｜Redis 锁的天然弱点：主从复制是异步的——写进主节点、还没同步到从节点时主挂了，从节点被提升为新主，那把锁就\"没存在过\"，另一个人可以立刻拿到。Redlock（向多个独立 Redis 实例加锁）就是为了缓解这个问题而提出的（它也有公开争议，见 3.4）。", "3. 失效的根因：锁服务的判断 ≠ 客户端的事实｜所有失效都来自同一个根因：\"锁是否还被持有\"这件事，由锁服务根据时间判断；而\"我是不是还在跑\"这件事，只有客户端自己知道——两者会脱节。", "3. 失效的根因：锁服务的判断 ≠ 客户端的事实｜所以 TTL 的设置是一个无解的两难（自测 Q1 会完整算）：", "3. 失效的根因：锁服务的判断 ≠ 客户端的事实｜\"看门狗\"式续期（后台线程定期把 TTL 顶回去）能缓解，但缓解不了根因：", "4. 边界与常见误解｜过期时间只能解决\"持有者挂了锁不释放\"，解决不了\"持有者还活着但锁过期了\"。后者会直接产生两个持有者（GC / 分区 / 时钟三种成因） | | \"分布式锁保证了互斥\"", "4. 边界与常见误解｜严格说：不能。它给的是\"大概互斥\"——除非被保护的资源自己校验单调递增的 token。锁降低概率，资源侧的校验才给保证 | | \"用 Redis 锁就够了\"", "4. 边界与常见误解｜单实例 Redis 锁在主从切换时会丢（异步复制）。而且它引入了一个新的可用性依赖：Redis 挂了，业务也卡住 | | \"先加锁再说，锁总归是保险的\""], "crit": "能背三种实现与各自失效场景（Redis 主从异步丢锁 / ZK 重 / DB 慢）；能解释 TTL 两难为何无解（3s vs 200ms）；能说清 fencing token 为什么是必要补充；能论证「能幂等就不用锁」。"}};
+  var ORDER = ["L1", "L2", "L3"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
-/* Marvis 云同步 v0.1（2026-10-01）
+/* Marvis 云同步 v0.2（2026-10-03）
    把整个 mv.* 命名空间打包成一个 JSON，存到 GitHub 仓库根目录下的 data/marvis-sync.json。
-   认证用细粒度令牌（只对该仓库 Contents 读写），令牌只存在本机浏览器，绝不进仓库。
+
+   v0.2 起配置只剩一项：拉取永远免令牌（仓库公开，直接读 raw.githubusercontent.com），
+   令牌只用于把本机改动写回仓库（相当于密码，只存本机浏览器，绝不进仓库）。
 
    设计要点：
    1. localStorage 降为离线层——断网照样能点，页面不等网络。
@@ -19,7 +21,10 @@
   INTERNAL[CFG_KEY] = 1; INTERNAL[TS_KEY] = 1; INTERNAL[DEV_KEY] = 1;
   var DEBOUNCE_MS = 45000;
   var API = 'https://api.github.com';
-  var DEF_PATH = 'data/marvis-sync.json';
+  var RAW = 'https://raw.githubusercontent.com';
+  /* 本仓库的固定指向（与 output/_push_via_api.py 的 REPO/BRANCH 同源）。
+     内置后设置面板只剩令牌一项；万一换仓库，改这里和面板「高级」都行。 */
+  var DEF = { owner: 'Ygrowly', repo: 'Marvis', branch: 'main', path: 'data/marvis-sync.json' };
 
   /* ---------- 基础读写（走原始 setItem，不触发钩子） ---------- */
   /* 拿的是装钩子之前的原始引用，不依赖 Storage.prototype 存在（测试环境里没有） */
@@ -32,8 +37,7 @@
   function cfg() {
     var o = null;
     try { o = JSON.parse(rawGet(CFG_KEY) || '{}'); } catch (e) { o = {}; }
-    if (!o.branch) o.branch = 'main';
-    if (!o.path) o.path = DEF_PATH;
+    for (var k in DEF) if (!o[k]) o[k] = DEF[k];
     return o;
   }
   function setCfg(patch) {
@@ -42,10 +46,9 @@
     rawSet(CFG_KEY, JSON.stringify(c));
     return c;
   }
-  function ready() {
-    var c = cfg();
-    return !!(c.token && c.owner && c.repo);
-  }
+  function hasToken() { return !!cfg().token; }
+  /* 令牌只决定「能不能上传」；拉取公开仓库永远可以，无需任何配置 */
+  function ready() { return hasToken(); }
 
   /* ---------- 时间戳影子表 ---------- */
   function tsAll() { try { return JSON.parse(rawGet(TS_KEY) || '{}') || {}; } catch (e) { return {}; } }
@@ -199,6 +202,11 @@
     return API + '/repos/' + encodeURIComponent(c.owner) + '/' + encodeURIComponent(c.repo) +
            '/contents/' + c.path.split('/').map(encodeURIComponent).join('/');
   }
+  /* 拉取走 raw：免令牌、无 API 限流；仓库须公开（本站本来就发布在 Pages 上） */
+  function rawUrl(c) {
+    return RAW + '/' + encodeURIComponent(c.owner) + '/' + encodeURIComponent(c.repo) + '/' +
+           encodeURIComponent(c.branch) + '/' + c.path.split('/').map(encodeURIComponent).join('/');
+  }
   function getFile(c) {
     return fetch(url(c) + '?ref=' + encodeURIComponent(c.branch), {
       headers: hdrs(c), cache: 'no-store'
@@ -219,7 +227,7 @@
   }
 
   /* ---------- 拉取 / 推送 ---------- */
-  var status = 'off';      // off | idle | dirty | busy | error
+  var status = 'ro';       // ro（只读，没填令牌）| idle | dirty | busy | error
   var lastMsg = '';
   var timer = null;
   var inflight = null;
@@ -234,23 +242,32 @@
   function localDoc() { return { ts: tsAll(), data: snapshot() }; }
 
   function pull() {
-    if (!ready()) { setStatus('off', '还没填令牌'); return Promise.resolve(false); }
     if (inflight) return inflight;
     setStatus('busy', '拉取中');
     var c = cfg();
-    inflight = getFile(c).then(function (cur) {
-      var doc;
-      try { doc = cur ? JSON.parse(dec(cur.content)) : null; } catch (e) { doc = null; }
-      if (!doc) doc = { v: 1, ts: {}, data: {} };
-      /* 远端还没有内容 → 把本机这份当作首版推上去，省得手动点一次「立即上传」 */
-      if (!cur || !Object.keys(doc.data || {}).length) {
-        return push(true).then(function () { return true; });
+    inflight = fetch(rawUrl(c) + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+      if (r.status === 404) return null;          // 云端还没有这个文件
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).then(function (txt) {
+      var doc = null;
+      try { doc = txt ? JSON.parse(txt) : null; } catch (e) { doc = null; }
+      if (!doc || !Object.keys(doc.data || {}).length) {
+        /* 远端还没有内容：有令牌就把本机这份当作首版推上去；没有就保持只读。
+           先把 inflight 放掉再推——push 靠它防并发，不放掉会返回 pull 自己这条链，死锁 */
+        if (hasToken()) { inflight = null; return push(true).then(function () { return true; }); }
+        setStatus('ro', '云端还没有进度');
+        inflight = null;
+        return false;
       }
       var merged = merge(localDoc(), doc);
       var changed = restore(merged);
-      setStatus('idle', '已同步');
+      setStatus(hasToken() ? 'idle' : 'ro', hasToken() ? '已同步' : '已看云端 · 本机改动不上传');
       inflight = null;
       if (changed.length) emit('pull');
+      /* 本机有云端没有的内容（比如补令牌前只读期攒的本地改动）→ 立即补传。
+         sameDoc 判同收敛：没有增量就不会真的 PUT，不会产生空转 commit */
+      if (hasToken() && !sameDoc(merged, doc)) push();
       return changed.length > 0;
     }).catch(function (e) {
       inflight = null;
@@ -261,7 +278,7 @@
   }
 
   function push(force) {
-    if (!ready()) { setStatus('off', '还没填令牌'); return Promise.resolve(false); }
+    if (!hasToken()) { setStatus('ro', '填令牌后才能上传'); return Promise.resolve(false); }
     var c = cfg(), attempt = 0;
 
     function once() {
@@ -304,7 +321,7 @@
   }
 
   function markDirty() {
-    if (!ready()) return;
+    if (!hasToken()) { setStatus('ro', '有本地改动 · 填令牌后上传'); return; }
     setStatus('dirty', '有改动待上传');
     if (timer) clearTimeout(timer);
     timer = setTimeout(function () { timer = null; push(); }, DEBOUNCE_MS);
@@ -343,7 +360,7 @@
   /* ---------- 界面：右下角状态徽章 + 设置面板 ---------- */
   var badge = null, panel = null;
   var TONE = {
-    off:    ['#888780', '未配置'],
+    ro:     ['#888780', '只读'],
     idle:   ['#0F6E56', '已同步'],
     dirty:  ['#BA7517', '待上传'],
     busy:   ['#185FA5', '同步中'],
@@ -351,7 +368,7 @@
   };
   function paint() {
     if (!badge) return;
-    var t = TONE[status] || TONE.off;
+    var t = TONE[status] || TONE.ro;
     badge.style.borderColor = t[0];
     badge.textContent = '云同步 · ' + t[1] + (lastMsg && status !== 'idle' ? ' · ' + lastMsg : '');
     badge.title = lastMsg || t[1];
@@ -379,18 +396,24 @@
       'font:13px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif;color:#2C2C2A">' +
         '<div style="font-size:14px;font-weight:500;margin-bottom:4px">云同步设置</div>' +
         '<div style="color:#5F5E5A;font-size:12px;margin-bottom:12px">' +
-          '进度写回仓库的 <code>data/marvis-sync.json</code>。令牌只存在这台机器的浏览器里，不会进仓库。' +
-          '建议只对这一个仓库开 Contents 读写。' +
+          '打开任何页面都会自动拉取云端进度，<b>看不用配置</b>。这里的令牌只用于把本机改动写回仓库的 ' +
+          '<code>' + DEF.path + '</code>，相当于一个密码：只存在这台机器的浏览器里，不进仓库。' +
+          '获取：GitHub → Settings → Developer settings → Personal access tokens → ' +
+          'Fine-grained tokens → 只对 Marvis 开 Contents 读写（<a target="_blank" rel="noopener" ' +
+          'href="https://github.com/settings/personal-access-tokens/new" style="color:#185FA5">去建一个</a>），' +
+          '生成后粘贴到下面即可。' +
         '</div>' +
-        row('GitHub 用户名', 'owner', c.owner || '') +
-        row('仓库名', 'repo', c.repo || '') +
-        row('分支', 'branch', c.branch || 'main') +
-        row('文件路径', 'path', c.path || DEF_PATH) +
-        row('访问令牌', 'token', c.token || '', true) +
+        row('令牌（相当于密码）', 'token', c.token || '', true) +
+        '<details style="margin:0 0 8px"><summary style="cursor:pointer;font-size:12px;color:#5F5E5A">高级：仓库指向（默认不用动）</summary>' +
+          row('GitHub 用户名', 'owner', c.owner || '') +
+          row('仓库名', 'repo', c.repo || '') +
+          row('分支', 'branch', c.branch || '') +
+          row('文件路径', 'path', c.path || '') +
+        '</details>' +
         '<div id="mv-sync-msg" style="min-height:1.6em;font-size:12px;color:#0F6E56"></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
-          btn('保存配置', 'save') + btn('立即拉取', 'pull') + btn('立即上传', 'push') +
-          btn('清除配置', 'clear') + btn('关闭', 'close') +
+          btn('保存', 'save') + btn('立即拉取', 'pull') + btn('立即上传', 'push') +
+          btn('清除令牌', 'clear') + btn('关闭', 'close') +
         '</div>' +
       '</div>';
     panel.onclick = function (e) { if (e.target === panel) panel.style.display = 'none'; };
@@ -422,8 +445,8 @@
       return;
     }
     if (a === 'clear') {
-      setCfg({ owner: '', repo: '', branch: 'main', path: DEF_PATH, token: '' });
-      setStatus('off', '已清除'); msg('配置已清除'); return;
+      setCfg({ token: '' });
+      setStatus('ro', '已清除'); msg('令牌已清除，回到只读模式'); return;
     }
     if (a === 'pull') {
       setCfg(vals); msg('拉取中…');
@@ -441,8 +464,7 @@
   function boot() {
     installHook();
     buildBadge();
-    if (!ready()) { setStatus('off', '还没填令牌'); return; }
-    // 先渲染本地（秒开），再后台拉；拉到新的就通知页面重绘
+    // 拉取不需要任何配置（公开仓库直读 raw）；先渲染本地（秒开），再后台拉，拉到新的就通知页面重绘
     pull();
     window.addEventListener('pagehide', function () { flush(); });
     document.addEventListener('visibilitychange', function () {

@@ -232,11 +232,12 @@ flowchart LR
 
 进度写在浏览器本机（键名前缀 `mv.`），**同时同步到仓库根目录的 `data/marvis-sync.json`**。断网照常能点，联网后自动合并，换机器打开就是同一份。问题台账的行为数据（触碰 / 闭环 / 巡检日期，`mv.ledger.v1`）也在这个命名空间里，一并同步。
 
-- 启用：任意页面右下角「云同步 · 未配置」→ 填 GitHub 用户名 / 仓库名 / 分支 / 文件路径 / 令牌 → 保存。**令牌只存在这台机器的浏览器里，不会进仓库。**
-- 令牌怎么开：GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token。Resource owner 选自己；Repository access 选 **Only select repositories → Marvis**；Permissions → Repository permissions → **Contents: Read and write**；Expiration 拉到最长（官方上限 366 天，默认 30 天别用）。
-- 同步规则：每个键带时间戳，新的赢；主进度 `mv.progress.v1` 额外做逐条合并（谁练得晚听谁的）。改动后 45 秒静默上传，关页前补一次。
+- **看免配置**：仓库公开，打开任何页面自动从 `raw.githubusercontent.com` 拉云端进度，不用填任何东西；没填令牌时是只读模式，本机改动只存本地。
+- 要上传：任意页面右下角「云同步 · 只读」→ 贴一次令牌（相当于密码）→ 保存。仓库指向（owner/repo/branch/path）已内置在 `sync.js` 的 `DEF` 常量里，面板「高级」里可改。**令牌只存在这台机器的浏览器里，不会进仓库。**
+- 令牌怎么开：GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token。Resource owner 选自己；Repository access 选 **Only select repositories → Marvis**；Permissions → Repository permissions → **Contents: Read and write**；Expiration 拉到最长（官方上限 366 天，默认 30 天别用）。面板里也有直达链接。
+- 同步规则：每个键带时间戳，新的赢；主进度 `mv.progress.v1` 额外做逐条合并（谁练得晚听谁的）。改动后 45 秒静默上传，关页前补一次；拉取时发现本机有云端没有的内容（如补令牌前的只读期改动）会立即补传，没增量不会产生空 commit。
 - 路径放在 `data/` 而不是 `site/`：Pages 的 workflow 只监听 `site/**`，放 `site/` 会导致每打一次卡就重新部署一次全站。
-- 换机器 / 清缓存：新机器开一次页面，填同一个令牌，点「立即拉取」即可。真要保险就用进度页的导出 JSON（导出/导入按钮还在）。
+- 换机器 / 清缓存：新机器开一次页面就能看到云端进度；要在这台机器上传改动，贴同一个令牌一次即可。真要保险就用进度页的导出 JSON（导出/导入按钮还在）。
 
 ## 规则（违反任何一条，系统会死）
 

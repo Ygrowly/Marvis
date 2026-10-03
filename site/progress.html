@@ -85,11 +85,11 @@
         <b>推进单位</b>：一条主线——读完这条主线下的母题，按「完整回答骨架」讲一遍，讲得出才算过。<br>
         <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以每个模块每天最多推进 1 条。<br>
         <b>两档串行</b>：一档十个模块 35 条主线（两周内必须能讲）走完，才派二档三个模块 14 条（PostgreSQL / 操作系统 / 数据存储选型）。一档没走完，不派二档。<br>
-        <b>派单量（2026-09-28 主人定）</b>：<b>复训 5 条</b>（只派今天到期的，1-3-7-14 阶梯，逾期久的先做，超出的进加餐、不计欠账）；<b>新学保底 5 条</b>（昨天全交 → 6 条，连交两天 → 7 条；再往上受模块数限制，因为每模块每天最多推进 1 条）；<b>算法日课 5 题</b>（每题 10 分钟限时）；项目线每天 1 条；命功 1 条。<b>当天总条数不封顶</b>，做完为止；加餐（可选，不做不算欠账）也不封顶。<b>减负模式</b>（连欠 2 天自动触发）只降复训（5→2）和新学（→0），<b>日课 5 题不压</b>。<br>
+        <b>派单量（2026-09-28 主人定）</b>：<b>复训 5 条</b>（只派今天到期的，1-3-7-14 阶梯，逾期久的先做，超出的进加餐、不计欠账）；<b>新学保底 5 条</b>（昨天全交 → 6 条，连交两天 → 7 条；再往上受模块数限制，因为每模块每天最多推进 1 条）；<b>算法日课 5 题</b>（每题 10 分钟限时）；项目线每天 1 条；<b>准则 1 条 + 原则卡 1 条</b>（2026-10-03 接入的内化线：情境 → 动作，书和行事准则从这里可训练）；命功 1 条。<b>当天总条数不封顶</b>，做完为止；加餐（可选，不做不算欠账）也不封顶。<b>减负模式</b>（连欠 2 天自动触发）只降复训（5→2）和新学（→0），<b>日课 5 题不压</b>。<br>
         <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以<b>每个模块每天最多推进 1 条</b>，新学那 4~6 条来自 4~6 个不同模块。<br>
         <b>自评三档</b>：讲得出 → 进「常练」、复训间隔翻倍；卡壳 → 留在原档、明天重讲；讲不出 → 回「会了」、明天重来。卡面和弹窗会摆开上次写下的断点。<br>
         <b>抽检</b>：每 7 天一轮 5 题，每题 60 秒，连答不回头，结果直接改等级；项目线口述 90 秒。<br>
-        数据默认写在这台机器的浏览器里（键名 mv.progress.v1），<b>同时同步到仓库的 <code>data/marvis-sync.json</code></b>：断网照常能点，联网后自动合并，换机器打开就是同一份。右下角「云同步」点开填一次令牌即可，之后全自动。
+        数据默认写在这台机器的浏览器里（键名 mv.progress.v1），<b>同时同步到仓库的 <code>data/marvis-sync.json</code></b>：打开页面自动拉云端（看不用配置），断网照常能点，联网后自动合并，换机器打开就是同一份；要把本机改动写回去，右下角「云同步」贴一次令牌（相当于密码）即可，之后全自动。
       </p>
     </div>
   </details>
@@ -105,6 +105,7 @@
 </div>
 
 <script src="_data/clusters.js"></script>
+<script src="_data/cards.js"></script>
 <script src="_data/breaks.js"></script>
 <script src="_data/ledger.js"></script>
 <script src="_components/marvis.js"></script>
@@ -137,6 +138,17 @@ var EXTRA_REV_MAX = 0; // 加餐里复训溢出条数；0 = 不封顶，溢出�
 var DAY_CAP = 0;       // 当天总条数封顶；0 = 不封顶（2026-09-28 主人：都不需要封顶）
 
 var PROJECT_CID = 'pitch'; // 项目线：这个簇不参与 zone 轮转，单开板块每天 1 条
+var RULE_CID = 'rule';     // 行事准则簇：同上（2026-10-03 接入，题面在 rules.js）
+var CARD_CID = 'card';     // 原则卡簇：读厚卡片，同上（2026-10-03 接入，题面在 cards.js）
+/* 两条内化线上链（幂等）：准则簇定义在 clusters.js 底部（此前一直挂着未接入），
+   原则卡簇由 build.py 生成在 cards.js。都照 PROJECT_CID 的方式单开板块，
+   不参与 zone 轮转与配额，由 ruleNext() / cardNext() 每天各派 1 条。 */
+[window.MARVIS_RULE_CLUSTER, window.MARVIS_CARD_CLUSTER].forEach(function (c) {
+  if (!c || !window.MARVIS_CLUSTERS) return;
+  var dup = window.MARVIS_CLUSTERS.some(function (x) { return x.id === c.id; });
+  if (!dup) window.MARVIS_CLUSTERS.push(c);
+});
+function isSideCluster(id) { return id === PROJECT_CID || id === RULE_CID || id === CARD_CID; }
 var EXAM_GAP = 7;      // 抽检间隔（天）
 var EXAM_N = 5;        // 每轮抽检题数
 var EXAM_SEC = 60;     // 抽检每题限时（秒）
@@ -366,7 +378,7 @@ function completion(c) {
    项目线（PROJECT_CID）不参与轮转——它由 projectNext() 单独派。 */
 function clusterOrder() {
   var all = (window.MARVIS_CLUSTERS || []).slice();
-  var cs = all.filter(function (c) { return c.id !== PROJECT_CID; });
+  var cs = all.filter(function (c) { return !isSideCluster(c.id); });
   var rate = {};
   cs.forEach(function (c) { rate[c.id] = completion(c); });
   var zi = {}, zones = [];
@@ -429,7 +441,7 @@ function scanClusters() {
      档位名从 clusters.js 里按首次出现顺序取（现在是一档 → 二档），不再写死。 */
   var zs = [], i, sub;
   (window.MARVIS_CLUSTERS || []).forEach(function (c) {
-    if (c.id !== PROJECT_CID && zs.indexOf(c.zone) < 0) zs.push(c.zone);
+    if (!isSideCluster(c.id) && zs.indexOf(c.zone) < 0) zs.push(c.zone);
   });
   for (i = 0; i < zs.length; i++) {
     sub = ready.filter(function (x) { return x.zone === zs[i]; });
@@ -441,6 +453,21 @@ function scanClusters() {
 /* 项目线：每天派 pitch 簇的下一条 */
 function projectNext() {
   var c = clusterById(PROJECT_CID);
+  if (!c) return null;
+  var r = scanOne(c);
+  return r && r.ready ? r.cand : null;
+}
+
+/* 准则 / 原则卡：每天各派 1 条。簇内顺序推进——前一条到「会了」才解锁下一条，
+   和主线同一套门控；等级与复训也走同一套 1-3-7-14 闭卷自评。 */
+function ruleNext() {
+  var c = clusterById(RULE_CID);
+  if (!c) return null;
+  var r = scanOne(c);
+  return r && r.ready ? r.cand : null;
+}
+function cardNext() {
+  var c = clusterById(CARD_CID);
   if (!c) return null;
   var r = scanOne(c);
   return r && r.ready ? r.cand : null;
@@ -569,6 +596,20 @@ function mkProj(c, need) {
          (preStr(c.pre) ? ' · ' + preStr(c.pre) : '') + bpLine(c)
   };
 }
+function mkRule(c, need) {
+  return {
+    type: 'rule', key: c.key, need: need, done: false, link: c.link, pages: [],
+    label: '准则：' + c.name,
+    sub: (c.cname || '行事准则') + ' · 先想这个情境你会怎么做，再点开对照标准动作'
+  };
+}
+function mkCard(c, need) {
+  return {
+    type: 'card', key: c.key, need: need, done: false, link: c.link, pages: [],
+    label: '原则卡：' + c.name,
+    sub: (c.cname || '读厚卡片') + ' · 情境 → 动作：先说你会怎么做，再对读厚卡'
+  };
+}
 function mkExam(x, need) {
   var s = S.lv[x.key];
   return {
@@ -600,6 +641,13 @@ function buildDay() {
   /* ③ 项目线：每天 1 条（EnergyOps / 数驭穹图 / RuleArena 各 2 条，骨架先于决策链） */
   var pj = projectNext();
   if (pj) { used[pj.key] = 1; items.push(mkProj(pj, true)); }
+
+  /* ③b 内化线：准则 1 条 + 原则卡 1 条（2026-10-03 接入）。
+     书和行事准则从这里开始可训练——书架上不再有恒灰的书。 */
+  var ru = ruleNext();
+  if (ru) { used[ru.key] = 1; items.push(mkRule(ru, true)); }
+  var cd = cardNext();
+  if (cd) { used[cd.key] = 1; items.push(mkCard(cd, true)); }
 
   /* ④ 抽检：7 天一轮，从已到 L2 的母题里抽 5 条 */
   var examN = 0;
@@ -686,6 +734,12 @@ function addOne(type) {
   } else if (type === 'proj') {
     var p = nextProj(d);
     if (p) it = mkProj(p, false);
+  } else if (type === 'rule') {
+    var ru = ruleNext();
+    if (ru && !dayUsed(d)[ru.key]) it = mkRule(ru, false);
+  } else if (type === 'card') {
+    var cc = cardNext();
+    if (cc && !dayUsed(d)[cc.key]) it = mkCard(cc, false);
   } else if (type === 'drill') {
     var dr = nextDrill(d);
     if (dr) it = {
@@ -809,10 +863,15 @@ function rate(ds, idx) {
   if (!s) return;
   RATE_DS = ds; RATE_IDX = idx;
   var nextHit = Math.min(2, s.l + 1);
+  var isSit = (it.type === 'rule' || it.type === 'card');
   document.getElementById('ratebody').innerHTML =
     '<p style="margin:0 0 .375rem;font-size:1.0625rem;font-weight:600">' +
-      it.label.replace(/^(复训|新主线|项目|抽检)：/, '') + '</p>' +
-    '<p class="mv-note" style="margin:0 0 1rem">凭记忆<b>按骨架讲一遍</b>（不看材料，说出顺序和关键数字），讲完再点开下面核对。讲不出就如实点讲不出。</p>' +
+      it.label.replace(/^(复训|新主线|项目|准则|原则卡|抽检)：/, '') + '</p>' +
+    '<p class="mv-note" style="margin:0 0 1rem">' +
+      (isSit
+        ? '先不看材料：<b>说出口</b>——遇到这个情境，你会怎么做（具体动作，不是概念）。说完再点开对照。'
+        : '凭记忆<b>按骨架讲一遍</b>（不看材料，说出顺序和关键数字），讲完再点开下面核对。讲不出就如实点讲不出。') +
+    '</p>' +
     (it.link ? '<p style="margin:0 0 .5rem"><a href="' + it.link + '" target="_blank" style="color:var(--mv-accent)">打开材料</a></p>' : '') +
     '<div class="mv-bd" style="margin:0 0 1rem;font-size:.875rem;color:var(--mv-muted)">' +
       (ds === today() ? '' : '<b>' + ds + '</b> 的补评 · ') +
@@ -1076,10 +1135,10 @@ function segs(cnt, total) {
   return out;
 }
 
-/* 类型标签：必做区合成一张平清单后，靠它区分复训 / 新学 / 项目线 / 日课 / 抽检 */
-var TYPE_TAG = { rev: '复训', new: '主线新学', proj: '项目线', exam: '抽检', drill: '日课', life: '命功' };
-var TYPE_CLS = { rev: 't-rev', new: 't-new', proj: 't-proj', exam: 't-exam', drill: 't-daily', life: 't-life' };
-var TYPE_ORD = { rev: 0, exam: 1, new: 2, proj: 3, drill: 4, life: 5 };
+/* 类型标签：必做区合成一张平清单后，靠它区分复训 / 新学 / 项目线 / 内化线 / 日课 / 抽检 */
+var TYPE_TAG = { rev: '复训', new: '主线新学', proj: '项目线', rule: '准则', card: '原则卡', exam: '抽检', drill: '日课', life: '命功' };
+var TYPE_CLS = { rev: 't-rev', new: 't-new', proj: 't-proj', rule: 't-rule', card: 't-card', exam: 't-exam', drill: 't-daily', life: 't-life' };
+var TYPE_ORD = { rev: 0, exam: 1, new: 2, proj: 3, rule: 3.5, card: 3.6, drill: 4, life: 5 };
 
 function taskRow(ds, i, it) {
   var sn = it.type === 'drill' ? DRILL_SCOREN : SCOREN;
@@ -1089,7 +1148,7 @@ function taskRow(ds, i, it) {
   var clickable = !it.done && (it.type !== 'exam' || ds !== today());
   var ro = clickable ? ' onclick="rate(\'' + ds + '\',' + i + ')"' : '';
   var tag = TYPE_TAG[it.type] || '';
-  var name = it.label.replace(/^(复训|新主线|新母题|项目|抽检|手撕)：/, '');
+  var name = it.label.replace(/^(复训|新主线|新母题|项目|准则|原则卡|抽检|手撕)：/, '');
   /* 手撕行的行首 ✓ 是真正的「标记完成」：点它不跳材料、不弹窗，确认后按「闭卷写出来」记。
        其余类型不许走这里——等级只能由弹窗自评推进，✓ 纯装饰。 */
   var box = (it.type === 'drill' && !it.done)
@@ -1195,7 +1254,8 @@ function render() {
   h += '<div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">' +
     '<select class="mv-ask-in" id="addpick" style="width:auto;padding:.25rem .5rem">' +
       '<option value="new">主线新学</option><option value="rev">复训</option>' +
-      '<option value="proj">项目线</option><option value="drill">日课</option></select>' +
+      '<option value="proj">项目线</option><option value="rule">准则</option>' +
+      '<option value="card">原则卡</option><option value="drill">日课</option></select>' +
     '<button class="mv-btn" style="padding:.25rem .625rem" onclick="addPick()">+ 补一条</button>' +
     (scan.locked.length
       ? ' <button class="mv-btn" style="padding:.25rem .625rem" onclick="forceUnlock()">强行解锁下一条</button>'
@@ -1333,7 +1393,8 @@ function render() {
   /* ── 副标题与抽屉小计 ── */
   document.getElementById('needsum').textContent =
     '保底 ' + needItems.length + ' 条 · 复训 ' + nOf('rev') + ' / 新学 ' + nOf('new') +
-    ' / 项目 ' + nOf('proj') + ' / 日课 ' + nOf('drill') +
+    ' / 项目 ' + nOf('proj') + ' / 准则 ' + nOf('rule') + ' / 原则卡 ' + nOf('card') +
+    ' / 日课 ' + nOf('drill') +
     (nOf('exam') ? ' / 抽检 ' + nOf('exam') : '') +
     (nOf('life') ? ' / 命功 ' + nOf('life') : '');
   document.getElementById('clustersum').textContent =

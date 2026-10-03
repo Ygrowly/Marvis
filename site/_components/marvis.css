@@ -161,6 +161,8 @@ timer-ring { display: block; }
 .mv-tag.t-proj  { color: var(--mv-warn);    background: var(--mv-warn-soft); }
 .mv-tag.t-exam  { color: var(--mv-danger);  background: var(--mv-danger-soft); }
 .mv-tag.t-life  { color: #185FA5;         background: #E6F1FB; }
+.mv-tag.t-rule  { color: #534AB7;         background: #EEEDFE; }  /* 准则：紫，同行事准则厅色 */
+.mv-tag.t-card  { color: #993C1D;         background: #FBE9E1; }  /* 原则卡：赭，同书架厅色 */
 
 /* ---------- 3. check-list 待办 ---------- */
 check-list { display: block; }
