@@ -11,13 +11,18 @@
 ```text
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
-  progress.html       进度页（手写，数据本机 + 云同步到 data/marvis-sync.json）：首屏一张今日清单（类型标签）＋五个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负
+  progress.html       进度页（手写，数据本机 + 云同步到 data/marvis-sync.json）：首屏一张今日清单（类型标签）＋六个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负 + 问题台账（闲置天数 / 本周闭环计数 / 公开模式开关）
+  brain.html          书架页（手写）：three.js 全库导航，吃 clusters / projects / rules 三份数据
+  rules.html          行事准则页（手写）：情境 → 标准动作派单，数据 _data/rules.js
+  interactive/        外部工具产物（archify），build 特意跳过清理
   _data/clusters.js   进度页数据源：7 簇 / 49 条主线 / 手撕日课（脚本从模块卡生成，勿手改）
+  _data/rules.js      行事准则派单池（手写）：题面正本在 wiki/thinking/，此处只放派单题面，不复制正文
   projects/           项目口述页（build 生成，勿手改）：骨架 + 决策链，默认折叠
   _build/mermaid/     自带 mermaid.min.js（浏览器端渲染用；页面外链 _data/mmd-boot.js）
                       另有可选的构建期预渲染器 mmd.py + cache/（默认不跑）
   _data/breaks.js     断点回流数据（build 生成）：母题页路径 → 上次断点 / 一句话结论 / 恢复关键词 / 追问
-  _tests/             派单引擎回归测试（手跑，build 不管）：node site/_tests/test_dispatch.js 等三个
+  _data/ledger.js     问题台账数据（build 生成）：questions.md 当前战役 / 冷却区 / 已闭环 → 进度页台账抽屉 + 首页提醒条
+  _tests/             回归测试（手跑，build 不管）：node site/_tests/test_dispatch.js 等四个（dispatch / render / progression / sync）+ python site/_tests/test_ledger.py（台账解析器）
   modules/            模块学习页（build 生成，勿手改）：{模块}.html 概览 + {模块}-NN-{主线}.html 子页
   topics/             母题页（build 生成，勿手改）
   reviews/            诊断页（build 生成，勿手改）
@@ -25,7 +30,7 @@ site/
   build.py            构建器：按格式选 adapter → 视图 + 牌组数据
   cards/              补充卡草稿区（::card 也可直接写进任何 md）
   figures/            图（.svg），md 里用 ::figure 引用
-  _data/              构建产物 decks.json / modules.js / reviews.js（数据）+ .js（file:// 用）
+  _data/              构建产物 decks.json / modules.js / reviews.js / breaks.js / projects.js（数据）+ .js（file:// 用）；例外：clusters.js 与 rules.js 是手写数据源
   _components/        marvis.css + marvis.js（10 个原生 Web Components）+ sync.js（进度云同步，由 marvis.js 动态挂载）
 ```
 
@@ -193,6 +198,19 @@ flowchart LR
 
 **用标题找节的原因**：硬编码「第 N 节」在章节顺序调整后会静默取空——不报错，只是悄悄失效，很难发现。
 
+### 7. 问题台账 —— questions.md → ledger.js（2026-10-02）
+
+`questions.md`（正本）由 `build.py` 解析出 `_data/ledger.js`：进度页「问题台账」抽屉显示当前战役（**下一步 / 落点 / 闲置天数**，>14 天标黄）+ 冷却区 + 本周闭环计数（唯一指标「每周闭环 ≥1」由此显示）；首页 `index.html` 在周一 / 巡检超期 / 周中未闭环时出提醒条。
+
+版式契约（改版式先改 `site/_tests/test_ledger.py` 再改 build）：
+
+- 问题标题：`### Q-YYYY-NNN · 标题 [active|parked]`（状态标记缺省时跟随所在节）
+- 字段行：`- 为什么现在：` / `- 下一步：` / `- 落点：` / `- 重启条件：`（parked 必填）/ `- 触碰：YYYY-MM-DD ｜ 创建：YYYY-MM-DD`
+- 已闭环节一行一条：`- YYYY-MM-DD · Q-YYYY-NNN · 产出说明`（本周计数只数周一及以后）
+- **md 是正本**：下一步 / 落点 / 触碰 / 重启条件都改 md，重新 build；本机只记行为（`mv.ledger.v1`：触碰 / 闭环 / 巡检日期），随 `mv.*` 云同步走。页面标了闭环后要回 md 已闭环节落一行，两边对上才算完
+- **公开模式**：抽屉里的开关（存本机），给别人看时藏「为什么现在」/ 冷却原因 / 闭环明细
+- active 上限 7 条、模块闭环类不进台账（由进度页派单接管）——规则正文见 `questions.md` 头部
+
 ## 组件（10 个，已封顶）
 
 | 标签 | 用途 | 关键属性 |
@@ -212,7 +230,7 @@ flowchart LR
 
 ## 数据存在哪
 
-进度写在浏览器本机（键名前缀 `mv.`），**同时同步到仓库根目录的 `data/marvis-sync.json`**。断网照常能点，联网后自动合并，换机器打开就是同一份。
+进度写在浏览器本机（键名前缀 `mv.`），**同时同步到仓库根目录的 `data/marvis-sync.json`**。断网照常能点，联网后自动合并，换机器打开就是同一份。问题台账的行为数据（触碰 / 闭环 / 巡检日期，`mv.ledger.v1`）也在这个命名空间里，一并同步。
 
 - 启用：任意页面右下角「云同步 · 未配置」→ 填 GitHub 用户名 / 仓库名 / 分支 / 文件路径 / 令牌 → 保存。**令牌只存在这台机器的浏览器里，不会进仓库。**
 - 令牌怎么开：GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token。Resource owner 选自己；Repository access 选 **Only select repositories → Marvis**；Permissions → Repository permissions → **Contents: Read and write**；Expiration 拉到最长（官方上限 366 天，默认 30 天别用）。

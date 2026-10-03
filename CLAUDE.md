@@ -31,6 +31,7 @@ AI 总结不代表用户已经掌握。只有经过阅读、验证、讨论并�
 - `summaries/` 单篇摘要默认停更：仅当活跃问题需要快速了解某单篇时才生成，且要点必须并入该问题的闭环产出。
 - 闭环标准：产出（可复述的表达、项目决策或行动规则）落盘到 `wiki/` 或 `output/`，双链回来源素材，台账状态改为 `closed`。
 - 唯一指标：每周至少闭环 1 个问题。处理了多少文章不是指标。
+- **2026-10-02 改版**：台账只记**派单系统覆盖不了的问题**（表达 / 决策 / 修正 / 战役类）——模块学习由 `site/progress.html` 派单接管，不在台账重复登记；**active 上限 7 条**，每条必带「下一步（45 分钟内可启动）/ 触碰 / 落点」；每周一次 15 分钟巡检（更新触碰，>14 天没碰的当场动或 park）；指标由进度页「问题台账」抽屉与首页提醒条显示（`build.py` 解析台账生成 `site/_data/ledger.js`）。
 
 ## 唯一入口
 
@@ -244,10 +245,11 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 **输出侧学习界面**（2026-09-10 起）。md 是工作台，`site/` 是它的派生视图：**不由人直接写**，一律由 `build.py` 从 md 正本生成。
 
-- `index.html`：唯一入口，调度复训 + 进入子页
-- `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`reviews/`：诊断页（面试复盘）；`deliver/`：交付页（对外成品）
-- `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物）
-- 方案正本 `site/PLAN.md`，用法 `site/README.md`
+- `index.html`：唯一入口，调度复训 + 进入子页；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机、可选云同步到 `data/marvis-sync.json`）
+- `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
+- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（书架）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
+- `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：4 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交）
+- 方案正本 `site/PLAN.md`，用法 `site/README.md`；面向 GitHub 访客的仓库说明是根目录 `README.md`（不承载规则）
 
 三条边界：**html 永不回写 md**；只有 `status: integrated` 的正本才生成视图；视图必须增加**编码通道**（图 / 动 / 交互）或**提取动作**，只改排版不做。
 

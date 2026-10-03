@@ -18,6 +18,11 @@
   <h2 class="mv-h2">今天 <small id="needsum"></small></h2>
   <div id="needbox"></div>
 
+  <details class="mv-dr" id="ledger">
+    <summary>问题台账 <em id="ledsum"></em></summary>
+    <div class="mv-dr-body" id="ledgerbox"></div>
+  </details>
+
   <details class="mv-dr">
     <summary>加餐 <em id="extrasum"></em></summary>
     <div class="mv-dr-body"><div id="extrabox"></div></div>
@@ -101,6 +106,7 @@
 
 <script src="_data/clusters.js"></script>
 <script src="_data/breaks.js"></script>
+<script src="_data/ledger.js"></script>
 <script src="_components/marvis.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════
@@ -1341,8 +1347,138 @@ function render() {
   save();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   问题台账（questions.md → _data/ledger.js，2026-10-02）
+   md 是正本：下一步 / 落点 / 触碰 / 重启条件都改 md；本机只记行为
+   （触碰 / 闭环 / 巡检日期，存 mv.ledger.v1，随 mv.* 云同步走）。
+   ══════════════════════════════════════════════════════════════ */
+var LKEY = 'mv.ledger.v1';
+var L = window.MARVIS_LEDGER || null;
+var LS = loadLedgerState();
+
+function loadLedgerState() {
+  try { return JSON.parse(localStorage.getItem(LKEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveLedgerState() { localStorage.setItem(LKEY, JSON.stringify(LS)); }
+
+function ledTouchOf(q) {          /* 生效触碰 = max(md 触碰, 本机触碰) */
+  var a = q.touched || '', b = (LS.touch && LS.touch[q.id]) || '';
+  return a > b ? a : b;
+}
+function ledAgeDays(q) {          /* 未记触碰 → null（当过期处理） */
+  var t = ledTouchOf(q);
+  return t ? dayGap(t, today()) : null;
+}
+function ledWeekStart() {         /* 本周一（客户端现算，不用 build 时的快照） */
+  var d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return dstr(d);
+}
+function ledMdClosedIds() {
+  var s = {};
+  ((L && L.closed) || []).forEach(function (c) { s[c.id] = 1; });
+  return s;
+}
+function ledWeekClosed() {        /* md 已闭环 + 本机已标闭环（id 未落 md 的） */
+  if (!L) return 0;
+  var ws = ledWeekStart(), md = ledMdClosedIds(), n = 0;
+  (L.closed || []).forEach(function (c) { if (c.date >= ws) n++; });
+  Object.keys(LS.done || {}).forEach(function (id) {
+    if (!md[id] && LS.done[id] >= ws) n++;
+  });
+  return n;
+}
+
+function renderLedger() {
+  var box = document.getElementById('ledgerbox');
+  var sum = document.getElementById('ledsum');
+  if (!box) return;
+  if (!L || !L.active || !L.active.length) {
+    if (sum) sum.textContent = '无数据';
+    box.innerHTML = '<div class="mv-note" style="margin:0">没有台账数据——跑一次 <code>python site/build.py</code>，或确认 questions.md 还是 2026-10-02 卡片版式。</div>';
+    return;
+  }
+  var pub = !!LS.pub;
+  var wc = ledWeekClosed(), wt = L.weekTarget || 1;
+  var staleN = L.active.filter(function (q) {
+    var a = ledAgeDays(q);
+    return a === null || a > 14;
+  }).length;
+  if (sum) sum.textContent = L.active.length + ' 活跃' +
+    (staleN ? ' · ' + staleN + ' 条超 14 天' : '') +
+    ' · 本周闭环 ' + wc + '/' + wt + (L.parked.length ? ' · 冷却 ' + L.parked.length : '');
+
+  var h = '';
+  /* 头部：本周指标 + 公开开关 + 巡检 */
+  h += '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.875rem">' +
+    '<span class="mv-ms-value ' + (wc >= wt ? 'ok' : 'warn') + '" style="font-size:1.25rem">本周闭环 ' + wc + '<small>/' + wt + '</small></span>' +
+    '<label style="font-size:.8125rem;color:var(--mv-muted);display:flex;gap:.375rem;align-items:center;cursor:pointer">' +
+    '<input type="checkbox" ' + (pub ? 'checked ' : '') + 'onchange="ledTogglePub(this.checked)">公开模式<small>（给别人看时藏弱点 / 冷却原因 / 闭环明细）</small></label>' +
+    '<span style="flex:1"></span>' +
+    '<button class="mv-btn" style="padding:.25rem .625rem" onclick="ledCheck()">记一次巡检</button>' +
+    '<span class="mv-note" style="margin:0">上次巡检：' + (LS.check || '没记过') + '</span></div>';
+
+  /* 当前战役 */
+  h += '<div class="mv-cl">';
+  L.active.forEach(function (q) {
+    var age = ledAgeDays(q);
+    var stale = age === null || age > 14;
+    var doneAt = (LS.done || {})[q.id];
+    var mdClosed = ledMdClosedIds()[q.id];
+    h += '<div style="padding:.625rem .75rem;border:1px solid ' + (stale ? 'var(--mv-warn)' : 'var(--mv-border)') +
+      ';border-radius:var(--mv-radius-sm);margin-bottom:.5rem;background:' + (stale ? 'var(--mv-warn-soft)' : 'var(--mv-surface)') + '">' +
+      '<div style="display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap">' +
+      '<b style="font-size:.9375rem">' + q.title + '</b>' +
+      '<span class="mv-note" style="margin:0">' + q.id + '</span>' +
+      (stale ? '<span style="font-size:.75rem;color:var(--mv-danger);font-weight:600">' +
+        (age === null ? '没记触碰' : '闲置 ' + age + ' 天') + ' · 该动或该 park</span>' : '') +
+      (doneAt && !mdClosed ? '<span style="font-size:.75rem;color:var(--mv-ok);font-weight:600">本机已标闭环 ' + doneAt + '</span>' : '') +
+      '</div>' +
+      (pub ? '' : (q.why ? '<div class="mv-note" style="margin:.375rem 0 0">为什么现在：' + q.why + '</div>' : '')) +
+      (q.next ? '<div style="margin:.375rem 0 0;font-size:.9375rem"><b>下一步</b>　' + q.next + '</div>' : '') +
+      (q.target ? '<div class="mv-note" style="margin:.25rem 0 0">落点：' + q.target + '</div>' : '') +
+      (doneAt && !mdClosed
+        ? '<div class="mv-note" style="margin:.5rem 0 0">闭环要落正本：questions.md 已闭环节加一行「' + doneAt + ' · ' + q.id + ' · 产出」，然后 <a href="#" onclick="ledUndo(\'' + q.id + '\');return false" style="color:var(--mv-accent)">撤销本机标记</a></div>'
+        : '<div style="display:flex;gap:.5rem;margin-top:.5rem">' +
+          '<button class="mv-btn" style="padding:.125rem .625rem" onclick="ledTouch(\'' + q.id + '\')">今天碰过</button>' +
+          '<button class="mv-btn" style="padding:.125rem .625rem" onclick="ledDone(\'' + q.id + '\')">闭环 ✓</button>' +
+          '<span class="mv-note" style="margin:0;align-self:center">触碰：' + (ledTouchOf(q) || '没记') + '（创建 ' + (q.created || '?') + '）</span></div>') +
+      '</div>';
+  });
+  h += '</div>';
+
+  /* 冷却区（公开模式不显示） */
+  if (!pub && L.parked.length) {
+    h += '<div class="mv-ms-label" style="margin-top:1rem;margin-bottom:.375rem">冷却区 <span style="font-weight:400">· 重启条件必填</span></div>';
+    L.parked.forEach(function (q) {
+      h += '<div class="mv-note" style="margin:0 0 .375rem"><b>' + q.title + '</b>（' + q.id + '）→ 重启条件：' + (q.restart || '没写') + '</div>';
+    });
+  }
+
+  /* 巡检清单（公开模式不显示） */
+  if (!pub) {
+    h += '<div class="mv-ms-label" style="margin-top:1.25rem;margin-bottom:.375rem">周巡检 · 15 分钟</div>' +
+      '<div class="mv-note" style="margin:0;line-height:1.7">① 逐条更新「触碰」，>14 天没碰的当场二选一：今天动，或 park<br>' +
+      '② 本周闭环 ≥ 1？没到就挑最小的一条今天关掉<br>' +
+      '③ 冷却区每条都有重启条件；active 超 7 条先收敛再干活<br>' +
+      '④ 这周真实场景冒出的新缺口，带「下一步」记进 questions.md</div>';
+  }
+  box.innerHTML = h;
+}
+function ledTogglePub(v) { LS.pub = v ? 1 : 0; saveLedgerState(); renderLedger(); }
+function ledTouch(id) {
+  LS.touch = LS.touch || {}; LS.touch[id] = today(); saveLedgerState(); renderLedger();
+}
+function ledDone(id) {
+  LS.done = LS.done || {}; LS.done[id] = today(); saveLedgerState(); renderLedger();
+}
+function ledUndo(id) { delete (LS.done || {})[id]; saveLedgerState(); renderLedger(); }
+function ledCheck() { LS.check = today(); saveLedgerState(); renderLedger(); }
+
 S = load();
 render();
+renderLedger();
 
 function openSyncPanel() {
   if (window.MarvisSync) { window.MarvisSync.openPanel(); return; }

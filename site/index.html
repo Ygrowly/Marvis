@@ -20,6 +20,11 @@
   </div>
   <p class="mv-sub" style="margin-bottom:20px">先闭卷，再翻面。忘了归零重来。</p>
 
+  <div class="mv-bd" id="ledger-remind" hidden style="margin-bottom:20px;border-left:3px solid var(--mv-warn)">
+    <b id="lr-title"></b>　<span id="lr-text" style="color:var(--mv-muted)"></span>
+    <a href="progress.html#ledger" style="color:var(--mv-accent);text-decoration:none">打开问题台账 →</a>
+  </div>
+
   <palace-map vault="Marvis" layout="bar">
     <ul>
       <li data-icon="规" data-name="规则" data-file="CLAUDE" data-desc="全库宪法：四状态、目录职责、连接规则"></li>
@@ -82,6 +87,7 @@
 <script src="_data/modules.js"></script>
 <script src="_data/reviews.js"></script>
 <script src="_data/projects.js"></script>
+<script src="_data/ledger.js"></script>
 <script src="_components/marvis.js"></script>
 <script>
   function mvOpen(id) { document.getElementById(id).hidden = false; }
@@ -127,6 +133,34 @@
         '<div class="mv-modcard-name">' + p.name + '</div>' +
         '<div class="mv-modcard-meta">' + p.lead + '</div></a>';
     }).join('');
+  })();
+
+  /* 问题台账提醒条（写入与解决的提示载体，2026-10-02）：
+     周一 → 巡检；巡检超 7 天 → 补巡检；周中还没闭环 → 指标提醒。优先级从高到低。 */
+  (function () {
+    var el = document.getElementById('ledger-remind');
+    if (!el) return;
+    var LS = {};
+    try { LS = JSON.parse(localStorage.getItem('mv.ledger.v1')) || {}; } catch (e) {}
+    var wd = new Date().getDay();                      // 周日=0 … 周六=6
+    var gap = LS.check ? Math.round((Date.now() - new Date(LS.check)) / 86400000) : null;
+    var Lg = window.MARVIS_LEDGER || null;
+    var wc = 0, ws;
+    if (Lg) {                                          // 本周一（客户端现算）
+      var d = new Date();
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      ws = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      (Lg.closed || []).forEach(function (c) { if (c.date >= ws) wc++; });
+    }
+    var wt = (Lg && Lg.weekTarget) || 1;
+    function show(t, x) {
+      document.getElementById('lr-title').textContent = t;
+      document.getElementById('lr-text').textContent = x;
+      el.hidden = false;
+    }
+    if (gap === null || gap > 7) show('台账该巡检了', (gap === null ? '从没记过巡检' : '上次巡检 ' + LS.check + '，已隔 ' + gap + ' 天') + ' · 15 分钟逐条过一遍。');
+    else if (wd === 1) show('周一巡检', '15 分钟过一遍台账：更新触碰、该关的关、该 park 的 park。');
+    else if (Lg && wc < wt && wd >= 3) show('本周还没闭环问题（' + wc + '/' + wt + '）', '挑台账里最小的一条，今天关掉。');
   })();
 </script>
 </body>

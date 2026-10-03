@@ -19,6 +19,7 @@ md 里的约定：
 import json
 import os
 import re
+import datetime
 from urllib.parse import quote
 import sys
 from pathlib import Path
@@ -56,6 +57,7 @@ TOPIC_DIRS = ["wiki/topics"]          # 母题卡
 REVIEW_DIRS = ["wiki/interview"]      # 面试复盘（诊断页）
 MODULE_DIRS = ["wiki/topics"]         # 模块深挖卡（学习页）
 CARD_DIRS = ["site/cards", "output/算法", "study", "wiki/interview", "wiki/thinking", "projects"]
+LEDGER_SRC = ROOT / "questions.md"    # 问题台账（唯一加工驱动源）→ _data/ledger.js
 
 CARD_RE = re.compile(r"^::card\s+id=(?P<id>\S+)(?:\s+tag=(?P<tag>\S+))?\s*$")
 FIGURE_RE = re.compile(r"^::figure\s+(?P<file>\S+)\s*(?:\|(?P<rest>.*))?$")
@@ -2224,6 +2226,87 @@ def parse_interview_manual():
     return decks
 
 
+# ── 问题台账（questions.md → _data/ledger.js，进度页「问题台账」抽屉用）────────────
+# 版式（2026-10-02 卡片版）：### Q-YYYY-NNN · 标题 [active|parked]，字段行
+#   - 为什么现在： / - 下一步： / - 落点： / - 重启条件： / - 触碰：YYYY-MM-DD ｜ 创建：YYYY-MM-DD
+# 已闭环节一行一条：- YYYY-MM-DD · Q-YYYY-NNN · 说明。
+# 纯函数拆出来是给 _tests/test_ledger.py 喂固定文本用的；解析不了的字段一律空串，不报错。
+def parse_questions_text(text, today=None):
+    today = today or datetime.date.today()
+    out = {"active": [], "parked": [], "closed": [],
+           "weekStart": (today - datetime.timedelta(days=today.weekday())).isoformat()}
+    section, cur, last_key = None, None, None
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if re.match(r"^##\s", line):
+            sec = line.lstrip("# ").strip()
+            section = ("active" if ("当前战役" in sec or "活跃" in sec)
+                       else "parked" if "冷却" in sec
+                       else "closed" if "已闭环" in sec else None)
+            cur, last_key = None, None
+            continue
+        mh = re.match(r"^###\s+(Q-\d{4}-\d{3})\s*·\s*(.+?)\s*(?:\[(active|parked)\])?\s*$", line)
+        if mh and section in ("active", "parked"):
+            # 状态标记缺省时跟随所在节——宁可默认也不让字段串进上一条问题
+            cur = {"id": mh.group(1), "title": mh.group(2),
+                   "status": mh.group(3) or section,
+                   "why": "", "next": "", "target": "", "restart": "",
+                   "touched": "", "created": ""}
+            out[section].append(cur)
+            last_key = None
+            continue
+        if cur is None:
+            ml = re.match(r"^-\s+(\d{4}-\d{2}-\d{2})\s*·\s*(Q-\d{4}-\d{3})\s*·?\s*(.*)$", line)
+            if section == "closed" and ml:
+                out["closed"].append(
+                    {"date": ml.group(1), "id": ml.group(2), "note": ml.group(3)})
+            continue
+        mf = re.match(r"^-\s*(为什么现在|下一步|落点|重启条件)\s*[：:]\s*(.*)$", line)
+        if mf:
+            key = {"为什么现在": "why", "下一步": "next", "落点": "target",
+                   "重启条件": "restart"}[mf.group(1)]
+            cur[key] = mf.group(2).strip()
+            last_key = key
+            continue
+        mt = re.match(r"^-\s*触碰\s*[：:]\s*(\d{4}-\d{2}-\d{2})?", line)
+        if mt:
+            cur["touched"] = mt.group(1) or ""
+            mc = re.search(r"创建\s*[：:]\s*(\d{4}-\d{2}-\d{2})", line)
+            cur["created"] = mc.group(1) if mc else ""
+            last_key = None
+            continue
+        if line.strip() and last_key:                    # 字段折行并回上一个字段
+            cur[last_key] += " " + line.strip()
+    return out
+
+
+def write_ledger():
+    """questions.md → _data/ledger.js。文件不存在就跳过，不卡构建。"""
+    if not LEDGER_SRC.exists():
+        return
+    led = parse_questions_text(LEDGER_SRC.read_text(encoding="utf-8"))
+    week_closed = sum(1 for c in led["closed"] if c["date"] >= led["weekStart"])
+    stale_line = (datetime.date.today()
+                  - datetime.timedelta(days=14)).isoformat()
+    stale = [q["id"] for q in led["active"]
+             if not q["touched"] or q["touched"] <= stale_line]
+    payload = {
+        "generated": datetime.date.today().isoformat(),
+        "weekStart": led["weekStart"],
+        "weekTarget": 1,
+        "weekClosed": week_closed,
+        "active": led["active"],
+        "parked": led["parked"],
+        "closed": led["closed"][-20:],
+    }
+    (OUT_DATA / "ledger.js").write_text(
+        "window.MARVIS_LEDGER = " + json.dumps(payload, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+    print("台账 %d 活跃 / %d 冷却 / 已闭环 %d · 本周 %d/%d · 超 14 天未触碰：%s"
+          % (len(led["active"]), len(led["parked"]), len(led["closed"]),
+             week_closed, payload["weekTarget"], " ".join(stale) or "无"))
+
+
 def main():
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     OUT_TOPICS.mkdir(parents=True, exist_ok=True)
@@ -2394,6 +2477,8 @@ def main():
         encoding="utf-8")
     _nbp = sum(1 for v in breaks.values() if v["bp"])
     print("断点回流 %d 张卡（其中 %d 张有真断点原文）" % (len(breaks), _nbp))
+
+    write_ledger()
 
     inject_mermaid_runtime()
 
