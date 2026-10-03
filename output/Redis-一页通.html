@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redis · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>Redis
+    <small>5 张母题 · 24 道题 · 3 个项目 —— 一条线：它是什么 → 它怎么活着 → 怎么把它用坏 → 哪些活不该派给它</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：它是什么 → 它怎么活着 → 怎么把它用坏 → 哪些活不该派给它<span class="src">正本 wiki/topics/Redis/</span></h2>
+  <div class="h2sub">四段即依赖：<b>单线程是前提（R1）→ 自己先活着（R2）→ 再谈怎么用（R3）→ 最后划边界（R4/R5）</b>。慢命令、丢数据、DB 被打穿，三段失败分开归因。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 810" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Redis 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <line x1="224" y1="52" x2="248" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+    <text x="258" y="56" font-size="11" fill="#4E5969">蓝 · 主线（是什么 → 怎么活着 → 怎么用坏 → 不该派的活）</text>
+    <line x1="499" y1="52" x2="523" y2="52" stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)"/>
+    <text x="533" y="56" font-size="11" fill="#4E5969">橙 · 手段与数字</text>
+    <line x1="774" y1="52" x2="798" y2="52" stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)"/>
+    <text x="808" y="56" font-size="11" fill="#4E5969">紫 · 事故与失效</text>
+    <line x1="1049" y1="52" x2="1073" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="1083" y="56" font-size="11" fill="#4E5969">绿 · 边界与项目落点</text>
+
+    <g filter="url(#sh)">
+        <rect x="90" y="100" width="290" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">为什么快（R1）</text>
+    <text x="106" y="146" font-size="11.5" fill="#4E5969">内存 100ns vs 磁盘 10ms</text>
+    <text x="106" y="165" font-size="11.5" fill="#4E5969">差 5 个数量级 → 单线程</text>
+    <text x="106" y="184" font-size="11.5" fill="#4E5969">才成立；慢命令卡全局</text>
+    <text x="106" y="186" font-size="10.5" font-weight="700" fill="#B45309">命令执行单线程；IO 6.0 后多线程</text>
+    <rect x="410" y="100" width="290" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="426" y="124" font-size="13" font-weight="800" fill="#0E42B5">五种基础结构</text>
+    <text x="426" y="146" font-size="11.5" fill="#4E5969">String/Hash/List/Set/ZSet</text>
+    <text x="426" y="165" font-size="11.5" fill="#4E5969">差别 = 形状 + 有无分数</text>
+    <text x="426" y="184" font-size="11.5" fill="#4E5969">Set 存成员，ZSet 存成员+分</text>
+    <text x="426" y="186" font-size="10.5" font-weight="700" fill="#B45309">每个结构配一个自己的场景</text>
+    <rect x="730" y="100" width="290" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="746" y="124" font-size="13" font-weight="800" fill="#0E42B5">ZSet 双结构</text>
+    <text x="746" y="146" font-size="11.5" fill="#4E5969">跳表：排名 / TopN / 区间</text>
+    <text x="746" y="165" font-size="11.5" fill="#4E5969">哈希表：O(1) 查分数</text>
+    <text x="746" y="184" font-size="11.5" fill="#4E5969">跳表不旋转、范围查询天然</text>
+    <text x="746" y="186" font-size="10.5" font-weight="700" fill="#B45309">B+ 树优势在磁盘，内存用不上</text>
+    <rect x="1050" y="100" width="290" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="1066" y="124" font-size="13" font-weight="800" fill="#0E42B5">四种扩展结构</text>
+    <text x="1066" y="146" font-size="11.5" fill="#4E5969">Bitmap / Geo / Stream</text>
+    <text x="1066" y="165" font-size="11.5" fill="#4E5969">HyperLogLog：接受误差</text>
+    <text x="1066" y="184" font-size="11.5" fill="#4E5969">1 亿 UV ≈ 十几 KB</text>
+    <text x="1066" y="186" font-size="10.5" font-weight="700" fill="#B45309">用精度换空间</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2">
+      <line x1="235" y1="200" x2="235" y2="223"/><line x1="555" y1="200" x2="555" y2="223"/><line x1="875" y1="200" x2="875" y2="223"/><line x1="1195" y1="200" x2="1195" y2="223"/>
+      <line x1="235" y1="230" x2="1195" y2="230"/>
+    </g>
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="280" y1="230" x2="280" y2="253"/><line x1="720" y1="230" x2="720" y2="253"/><line x1="1160" y1="230" x2="1160" y2="253"/>
+    </g>
+
+    <g filter="url(#sh)">
+        <rect x="90" y="260" width="380" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="106" y="284" font-size="13" font-weight="800" fill="#1D2129">持久化（R2）</text>
+    <text x="106" y="306" font-size="11.5" fill="#4E5969">RDB 快照 vs AOF 追加——没有优劣，只有更怕哪个</text>
+    <text x="106" y="325" font-size="11.5" fill="#4E5969">怕丢选 AOF（everysec 最多丢 1s），怕恢复慢选 RDB</text>
+    <text x="106" y="346" font-size="10.5" font-weight="700" fill="#B45309">混合 = 全量 + 增量；bgsave 写时复制 → 内存峰值</text>
+    <rect x="530" y="260" width="380" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="546" y="284" font-size="13" font-weight="800" fill="#1D2129">过期删除</text>
+    <text x="546" y="306" font-size="11.5" fill="#4E5969">惰性（访问时查）+ 定期（抽样扫）</text>
+    <text x="546" y="325" font-size="11.5" fill="#4E5969">接受「暂未清」，换主线程不被清理长期占住</text>
+    <text x="546" y="346" font-size="10.5" font-weight="700" fill="#B45309">过期由 TTL 决定；淘汰由内存决定——两件事</text>
+    <rect x="970" y="260" width="380" height="100" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    <text x="986" y="284" font-size="13" font-weight="800" fill="#1D2129">内存淘汰</text>
+    <text x="986" y="306" font-size="11.5" fill="#4E5969">8+2 种策略；近似 LRU 抽样 5 个——省掉全量链表</text>
+    <text x="986" y="325" font-size="11.5" fill="#4E5969">volatile- 只在设了 TTL 的 key 里挑（无 allkeys-ttl）</text>
+    <text x="986" y="346" font-size="10.5" font-weight="700" fill="#B45309">留余量：maxmemory ≤ 物理内存 1/2–2/3</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="280" y1="360" x2="280" y2="413"/><line x1="720" y1="360" x2="720" y2="413"/><line x1="1160" y1="360" x2="1160" y2="413"/>
+    </g>
+
+    <g filter="url(#sh)">
+        <rect x="90" y="420" width="380" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="106" y="444" font-size="13" font-weight="800" fill="#0E42B5">权威定位（R3）</text>
+    <text x="106" y="466" font-size="11.5" fill="#4E5969">缓存 = 派生数据，DB = 权威</text>
+    <text x="106" y="485" font-size="11.5" fill="#4E5969">强一致不可能：两个系统没有共同事务</text>
+    <text x="106" y="506" font-size="10.5" font-weight="700" fill="#B45309">目标 = 最终一致 + 可容忍的不一致窗口</text>
+    <rect x="530" y="420" width="380" height="100" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    <text x="546" y="444" font-size="13" font-weight="800" fill="#0E42B5">Cache Aside</text>
+    <text x="546" y="466" font-size="11.5" fill="#4E5969">先写 DB 再删缓存（不是更新缓存）</text>
+    <text x="546" y="485" font-size="11.5" fill="#4E5969">删比更新好：不把旧值长期写回缓存</text>
+    <text x="546" y="506" font-size="10.5" font-weight="700" fill="#B45309">必须配 TTL 或对账兜底，否则是埋雷</text>
+    <rect x="970" y="420" width="380" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="986" y="444" font-size="13" font-weight="800" fill="#6D28D9">三类事故</text>
+    <text x="986" y="466" font-size="11.5" fill="#4E5969">穿透：查不存在 → 布隆 / 空值缓存</text>
+    <text x="986" y="485" font-size="11.5" fill="#4E5969">击穿：热 key 过期 → 互斥 / 逻辑过期</text>
+    <text x="986" y="504" font-size="11.5" fill="#4E5969">雪崩：同刻失效 / 缓存挂 → 错峰 + 限流</text>
+    <text x="986" y="506" font-size="10.5" font-weight="700" fill="#6D28D9">共同点：缓存没接住的流量全部倒向 DB</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="280" y1="520" x2="280" y2="573"/><line x1="720" y1="520" x2="720" y2="573"/><line x1="1160" y1="520" x2="1160" y2="573"/>
+    </g>
+
+    <g filter="url(#sh)">
+        <rect x="90" y="580" width="380" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="106" y="604" font-size="13" font-weight="800" fill="#6D28D9">大 key（R4）</text>
+    <text x="106" y="626" font-size="11.5" fill="#4E5969">不止占内存：DEL 同步释放阻塞全局</text>
+    <text x="106" y="645" font-size="11.5" fill="#4E5969">200 万 field ≈ 200ms；网络与迁移同样受伤</text>
+    <text x="106" y="666" font-size="10.5" font-weight="700" fill="#6D28D9">UNLINK 异步回收 / HSCAN 分批删</text>
+    <rect x="530" y="580" width="380" height="100" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    <text x="546" y="604" font-size="13" font-weight="800" fill="#6D28D9">热 key</text>
+    <text x="546" y="626" font-size="11.5" fill="#4E5969">单 key 3 万 QPS 集中在一个分片</text>
+    <text x="546" y="645" font-size="11.5" fill="#4E5969">加节点摊不开——一个 key 只属于一个分片</text>
+    <text x="546" y="666" font-size="10.5" font-weight="700" fill="#6D28D9">读热复制打散；写热聚合 / 队列 / 换结构</text>
+    <rect x="970" y="580" width="380" height="100" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+    <text x="986" y="604" font-size="13" font-weight="800" fill="#15803D">什么不该放（R5）</text>
+    <text x="986" y="626" font-size="11.5" fill="#4E5969">参与判断的数据不进缓存</text>
+    <text x="986" y="645" font-size="11.5" fill="#4E5969">TTL 只给「最多旧多久」的上限，不给正确性</text>
+    <text x="986" y="666" font-size="10.5" font-weight="700" fill="#B45309">挂了回源放大 1/(1−命中率)，要预设降级</text>
+    </g>
+
+    <g stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)">
+      <line x1="280" y1="680" x2="280" y2="703"/><line x1="720" y1="680" x2="720" y2="703"/><line x1="1160" y1="680" x2="1160" y2="703"/>
+    </g>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="710" width="1270" height="72" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="740" font-size="14" font-weight="800" fill="#15803D" text-anchor="middle">项目落点：缓存只在「丢了不致命」的地方当差</text>
+      <text x="725" y="764" font-size="11.5" fill="#4E5969" text-anchor="middle">EnergyOps：Outbox 把「删缓存」变成事务内事实 · 数驭穹图：行级权限不作缓存值，召回前重新求值 · RuleArena：256–512MB 只做队列 / 限流 / lease，权威状态在 PG</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+<b>主干叙事（一段读完）</b>：Redis 的一条线是「<b>它是什么 → 它怎么活着 → 怎么把它用坏 → 哪些活不该派给它</b>」。
+    <b>是什么</b>：内存比磁盘快 5 个数量级，所以<b>命令执行敢单线程</b>（代价：慢命令卡全局；6.0 后只是网络 IO 多线程）；五种结构的差别 = 形状 + 有无分数，ZSet 用跳表管排名、哈希表管查分 —— <b>跳表 vs B+ 树是设计域之争，不是快慢</b>（B+ 树的优势在磁盘，内存里用不上）。
+    <b>怎么活着</b>：过期删除（惰性 + 定期抽样）由 TTL 决定、内存淘汰（8+2 种，近似 LRU 抽 5 个）由内存决定，两件事别混；持久化没有优劣只有更怕哪个 —— 怕丢选 AOF（everysec 最多丢 1s）、怕恢复慢选 RDB，bgsave 的写时复制会拉高内存峰值。
+    <b>怎么用坏</b>：先定权威（DB），强一致不可能（没有共同事务）；Cache Aside 先写 DB 再删缓存、必须配 TTL 或对账兜底；穿透 / 击穿 / 雪崩的共同点是<b>缓存没接住的流量全部倒向 DB</b>。
+    <b>不该派的活</b>：参与判断的数据进缓存，是把「慢」升级成「错」；大 key 的 DEL 同步阻塞全局，热 key 加节点摊不开。
+  </div>
+  <div class="cap"><b>读法</b>：蓝线主线；橙字判据与数字；紫框事故与失效；绿横幅是三个项目的落点。<b>三段失败分开归因</b>：慢命令查结构与大 key、丢数据查持久化与主从、DB 被打穿查三类事故与回源放大。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：5 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">R1 结构与选型</td><td>它是什么、凭什么快</td><td class="ans"><span class="a">内存随机访问比磁盘快 5 个数量级 → 命令执行单线程成立；五种结构差别 = 形状 + 有无分数；ZSet = 跳表（排名 / TopN / 区间）+ 哈希表（O(1) 查分）；跳表不旋转、范围天然——B+ 树优势在磁盘，内存里用不上</span></td><td>1–9</td><td class="ans"><span class="a">未使用 —— 9.9 的缺口是「没给自己的场景」：每个结构配一个项目场景才不像背书</span></td></tr>
+      <tr><td class="k">R2 数据怎么不丢</td><td>断电 / 过期 / 满内存</td><td class="ans"><span class="a">三件事分开：过期删除（惰性 + 定期抽样）由 TTL 决定，内存淘汰（8+2 种、近似 LRU 抽 5 个）由内存决定；RDB 与 AOF 没有优劣只有更怕哪个（everysec 最多丢 1s）；bgsave 写时复制拉高内存峰值；主从切换丢的是没同步那段</span></td><td>10–13</td><td class="ans"><span class="a">未使用 —— 判据：所有「不丢」手段都是拿一致性、内存或性能换的，没有免费的</span></td></tr>
+      <tr><td class="k">R3 缓存一致性</td><td>和 DB 怎么不出事</td><td class="ans"><span class="a">先定权威（DB）→ 强一致不可能（无共同事务）→ Cache Aside：先写 DB 再删缓存（删比更新好），必须配 TTL 或对账兜底；穿透防不存在（布隆 / 空值）、击穿防热 key 过期（互斥 / 逻辑过期）、雪崩防同时失效（错峰 TTL + 限流降级）</span></td><td>14–16、18、20</td><td class="ans"><span class="a">EnergyOps：Outbox 把「删缓存」变成事务内事实（PG 提交与 Redis 删除不可能同一事务）；数驭穹图：权限数据可缓存但必须有即时失效路径；RuleArena：限流 / 短期去重可放 Redis，最终裁决必须 DB</span></td></tr>
+      <tr><td class="k">R4 大 key / 热 key</td><td>怎么发现、怎么拆</td><td class="ans"><span class="a">结构性根源 = 单线程 + key 归属单分片：大 key 的 DEL 同步阻塞全局（200 万 field ≈ 200ms → UNLINK / HSCAN 分批）；热 key 加节点摊不开（一个 key 只属于一个分片）——读热复制打散、写热聚合 / 队列 / 换结构</span></td><td>17</td><td class="ans"><span class="a">未使用 —— 判据：普通高负载水平扩展能解，热 key 不能（违背「请求均匀分布」的前提）</span></td></tr>
+      <tr><td class="k">R5 什么不该放</td><td>缓存与权威的边界</td><td class="ans"><span class="a">正确问法是「权威来源在哪、参不参与判断」：参与判断的数据进缓存 = 把「慢」升级成「错」（余额 + TTL = 60 秒窗口里照样做错决定）；缓存挂了回源放大 1/(1−命中率)；Redis 持久化是尽力而为，不能当数据库</span></td><td>21–24</td><td class="ans"><span class="a">RuleArena：Redis 256–512MB 只做队列 / 限流 / lease，权威状态在 PG；数驭穹图：行级权限不作缓存值、召回前重新求值；EnergyOps：缓存放元数据不放业务事实</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：单线程的阻塞账，缓存失效的回源放大账<span class="src">正本 母题-R1/R4 · 母题-R3/R5</span></h2>
+  <div class="h2sub">左边是「单线程下一次大操作全体买单」，右边是「缓存失效时 DB 面对的倍数」——都是数量级问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Redis 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">单线程的阻塞账（慢命令卡全局）</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">DEL 一个 200 万 field 的 Hash：2,000,000 × 100ns ≈ 200ms——整个实例同步阻塞</text>
+      <rect x="80" y="92" width="8" height="22" rx="2" fill="#22C55E"/>
+      <text x="96" y="108" font-size="12" font-weight="800" fill="#15803D">普通命令 ~100μs</text>
+      <rect x="80" y="124" width="480" height="22" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="140" font-size="12" font-weight="800" fill="#fff">　DEL 大 key ≈ 200ms（×2000）</text>
+      <text x="80" y="180" font-size="12" font-weight="800" fill="#1D2129">单线程下没有「只是慢一点」：一次大操作 = 全体请求排队</text>
+      <text x="80" y="206" font-size="11.5" fill="#4E5969">同类：KEYS * 全扫、big value 的网络往返、bgsave 的写时复制（写入越多内存越涨）</text>
+      <text x="80" y="232" font-size="11.5" fill="#4E5969">热 key 补一刀：10 分片扛 10 万 QPS，一个 key 独占 3 万——单分片 3 倍超载</text>
+      <text x="80" y="264" font-size="11.5" font-weight="700" fill="#B45309">删大 key 用 UNLINK（异步回收）或 HSCAN 分批；maxmemory 留 1/2–2/3 余量</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">加节点解决不了热 key：一个 key 只属于一个分片——读热复制打散，写热聚合 / 队列</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">缓存失效的回源放大账</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">某读接口 5000 QPS、命中率 95%：平时 DB 只承接 5%；缓存全挂 → 回源放大 1/(1−0.95) = 20 倍</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="108">平时 250 QPS</text>
+        <rect x="920" y="98" width="23" height="14" rx="2" fill="#22C55E"/>
+        <text x="760" y="136">全挂 5000 QPS（×20）</text>
+        <rect x="920" y="126" width="450" height="14" rx="2" fill="#F59E0B"/>
+      </g>
+      <text x="760" y="172" font-size="11.5" fill="#4E5969">本例 DB 上限 8000：单个服务全挂 ≈ 62% 利用率，尚可；叠加写流量或第二个缓存域失效就打穿</text>
+      <text x="760" y="198" font-size="11.5" fill="#4E5969">击穿更极端：热 key 10 万 QPS 过期 → 瞬间 10 万未命中 vs DB 上限 5000 = 20 倍</text>
+      <text x="760" y="224" font-size="11.5" fill="#4E5969">雪崩：10 万 key 同刻创建、同 TTL → 同刻过期——TTL 加随机抖动错峰</text>
+      <text x="760" y="256" font-size="11.5" font-weight="700" fill="#B45309">对策：互斥重建（只放一个请求回源）+ 逻辑过期（后台异步刷新）+ 限流降级预案</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">「缓存挂了大不了回源」这句话的代价 = 1/(1−命中率) 倍——必须提前设计，不是出事后再说</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">内存 vs 磁盘</div><div class="big">100ns / 10ms</div>
+      <div class="d">差 5 个数量级——这是「命令执行敢单线程」的前提；单线程换来简单，代价是慢命令卡全局。</div></div>
+    <div class="ncard o"><div class="t">HyperLogLog</div><div class="big">1 亿 UV ≈ 十几 KB</div>
+      <div class="d">用「接受误差」换「固定的小内存」——用精度换空间的典型取舍。</div></div>
+    <div class="ncard o"><div class="t">AOF everysec</div><div class="big">最多丢 1 秒</div>
+      <div class="d">5000 QPS 写入时最坏丢约 5000 条命令——用「最多丢 1s」换回一整个数量级的吞吐。</div></div>
+    <div class="ncard b"><div class="t">近似 LRU</div><div class="big">抽样 5 个</div>
+      <div class="d">精确 LRU 要全量链表、每次访问挪节点；随机采样 5 个挑最久没用——又是用近似换开销。</div></div>
+    <div class="ncard o"><div class="t">DEL 大 key</div><div class="big">≈ 200 ms</div>
+      <div class="d">200 万 field × 100ns 的同步释放，整个实例阻塞——用 UNLINK 或 HSCAN 分批。</div></div>
+    <div class="ncard b"><div class="t">热 key 集中</div><div class="big">3 万 vs 1 万</div>
+      <div class="d">10 分片扛 10 万 QPS、单 key 3 万：单分片 3 倍超载；加节点摊不开，key 不跨分片。</div></div>
+    <div class="ncard o"><div class="t">回源放大</div><div class="big">95% → 20 倍</div>
+      <div class="d">1/(1−0.95)=20：缓存全挂时 DB 面对的流量倍数——限流降级必须提前设计。</div></div>
+    <div class="ncard b"><div class="t">击穿的账</div><div class="big">10 万 vs 5000</div>
+      <div class="d">热 key 10 万 QPS 过期瞬间全部未命中，DB 上限 5000——互斥重建只放一个请求回源。</div></div>
+    <div class="ncard b"><div class="t">死 key 的账</div><div class="big">99% 没被访问</div>
+      <div class="d">100 万 key 只有 1% 被访问过：99% 是纯负债——占内存、拖慢淘汰、还稀释命中率。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「跳表比 B+ 树快」</span><span class="v">✓ 不是快慢问题：B+ 树为磁盘 IO 设计，优势在内存里用不上；跳表实现更简单、范围查询更自然。</span></div>
+    <div class="mrow"><span class="x">✗「单线程所以没有并发问题」</span><span class="v">✓ 单条命令原子，命令组合不原子（GET 完再 SET 之间会插队）——用 INCR / Lua / SET NX 这类原子操作。</span></div>
+    <div class="mrow"><span class="x">✗「Redis 什么都能缓存」</span><span class="v">✓ 参与判断的数据不进缓存：TTL 只给「最多旧多久」的上限，60 秒窗口里的错误决定照样发生。</span></div>
+    <div class="mrow"><span class="x">✗「先删缓存再写 DB，保证一致」</span><span class="v">✓ 更糟：中间的读会把旧值写回缓存长期保留；Cache Aside 是先写 DB 再删，还要配 TTL / 对账。</span></div>
+    <div class="mrow"><span class="x">✗「缓存和 DB 可以用事务保证强一致」</span><span class="v">✓ 两个独立系统没有共同事务；目标是最终一致 + 可容忍的不一致窗口。</span></div>
+    <div class="mrow"><span class="x">✗「大 key 的问题就是占内存」</span><span class="v">✓ 还有 DEL 同步阻塞全局（200 万 field ≈200ms）、网络往返、迁移卡顿——UNLINK / 分批删。</span></div>
+    <div class="mrow"><span class="x">✗「集群加节点就能解决热 key」</span><span class="v">✓ 一个 key 只属于一个分片，压力不会摊开；读热复制打散，写热要聚合 / 队列 / 换结构。</span></div>
+    <div class="mrow"><span class="x">✗「缓存挂了大不了回源」</span><span class="v">✓ 回源放大 1/(1−命中率)：95% 命中 → 20 倍流量；限流降级必须提前设计。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能讲清"五种基础结构 + 典型场景"和"三类缓存事故 + 对策"，不看资料</div></li>
+<li><span>☐</span><div><b>必须给出自己的场景</b>（<b>9.9 的缺口就在这一条</b>）：每一种数据结构至少能说一个<b>自己项目里用过或用得上的场景</b>，不能只报名字</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能回答"为什么用跳表不用 B+ 树"和"缓存一致性为什么做不到强一致"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 EnergyOps 的"Outbox 而不是顺手删缓存"讲一遍取舍</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的缓存方案（例："先删缓存再写 DB，保证一致"），能指出问题在哪、什么时候会不一致</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：五种基础结构 + 四种扩展结构各自的场景与底层实现、为什么快（内存 + 单线程 + IO 多路复用）、数据怎么不丢（持久化 / 过期删除 / 内存淘汰）、缓存怎么用不出事故（一致性策略 + 穿透 / 击穿 / 雪崩 + 热 key / big value）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.Redis.v1";
+  var CARDS = {"R1": {"t": "Redis 的数据结构与选型", "q": ["内存随机访问约 100 纳秒，一次磁盘随机 IO 约 10 毫秒。", "下面五个需求分别该用哪个结构？", "Redis 的哈希表要扩容。假设表里有 100 万个键，扩容需要把键重新分布到更大的表里。"], "pts": ["1. 前提：Redis 为什么快｜把量级摆出来（母题-M1-为什么用B+树 用过同一张表）：", "1. 前提：Redis 为什么快｜差 5 个数量级。这一条推出一件很关键的事：", "1. 前提：Redis 为什么快｜Redis 的\"单线程\"指的是：命令的执行是单线程的。", "2. 五种基础结构：各自是什么形状、解决什么｜五种结构的差别可以归纳成两个问题：", "2. 五种基础结构：各自是什么形状、解决什么｜Set 只存成员，ZSet 存成员 + 分数。", "2. 五种基础结构：各自是什么形状、解决什么｜ZSet 多出来的那个\"分数\"，是它一切能力的来源：能排序、能取 Top N、能按分数区间捞。所以排行榜必须用 ZSet，用 Set 做不到。", "3. 四种扩展结构（知道场景就够了）｜HyperLogLog 最值得记的一点：它用\"接受误差\"换\"固定的小内存\"——统计 1 亿 UV，内存也就十几 KB。这是\"用精度换空间\"的典型取舍。", "4. ZSet 的底层：跳表 + 哈希表，以及为什么不用 B+ 树｜ZSet 内部同时用了两样东西：", "4. ZSet 的底层：跳表 + 哈希表，以及为什么不用 B+ 树｜两个结构是为了支撑两类完全不同的查询。这也解释了为什么\"ZSet 既能查某个人的分数，又能取 Top 100\"——两件事走两条路径。", "4. ZSet 的底层：跳表 + 哈希表，以及为什么不用 B+ 树｜这说明它不需要重平衡——而平衡树（AVL / 红黑树）在插入删除后必须旋转来维持平衡。这是跳表\"实现简单\"的根本原因。", "5. 怎么答才拿分：每个结构配一个你的场景｜9.9 这道题丢分的关键不是\"漏了哪个结构\"，而是\"没有给出任何一个自己用过的场景\"——听起来像背书。", "6. 边界与常见误解｜准确说法：命令执行单线程，网络 IO 在 6.0 后是多线程。 只说\"单线程\"是旧答案 | | \"跳表比 B+ 树快\""], "crit": "能背五种结构并各配一个自己的场景（9.9 的缺口）；能说清 ZSet = 跳表 + 哈希表的两条查询路径；能从内存 / 磁盘 5 个数量级推出单线程的前提；能把「跳表 vs B+ 树」答成设计域之争。"}, "R2": {"t": "Redis 的数据怎么不丢", "q": ["峰值内存可能到多少？会发生什么？", "appendfsync 三种策略下，各最多丢多少数据？如果这个实例的写入是 5000 QPS，everysec 时最多可能丢多少条命令？", "每秒总共检查多少个 key？"], "pts": ["1. 前提：先把三件「数据消失」的事拆开｜为什么必须分开？因为触发源不同：前者由数据自己的属性（有没有设 TTL、到没到期）决定；后者由实例的状态（内存够不够）决定。一个 key 完全没用过期时间，也可能被淘汰；一个设了 TTL 的 key，也可能在被淘汰前就自然过期。", "2. 持久化：RDB 与 AOF｜这两条路线没有优劣，只有你更怕哪个：怕丢数据选 AOF，怕恢复慢 / 文件大选 RDB。生产上通常两个都开——RDB 做冷备份和快速恢复，AOF 保证最多丢 1 秒（4.0 之后还有混合持久化：RDB 全量 + 后续 AOF 增量，写在同一个文件里）。", "2. 持久化：RDB 与 AOF｜所以生产上选 everysec 不是因为\"不重要的数据可以丢\"，而是用\"最多丢 1 秒\"换回整整 1 个数量级的吞吐。", "2. 持久化：RDB 与 AOF｜这是 RDB 最容易被忽略的代价：快照期间写越多，内存涨得越多。如果实例已经接近 maxmemory，一次 bgsave 就可能触发淘汰甚至 OOM。这也是为什么大实例上要留出余量（常见做法是让 maxmemory 不超过物理内存的一半到 2/3）。", "3. 过期删除：惰性 + 定期｜定期删除用的是\"抽样\"而不是\"全扫\"——它接受\"有些过期 key 暂时没被清掉\"，换\"主线程永远不会被清理工作长时间占住\"。", "4. 内存淘汰：8 种策略｜注意 ttl 只有 volatile- 版——没有 allkeys-ttl（\"所有 key 里挑最快过期的\"没有意义，因为没设 TTL 的 key 没有\"最快过期\"这个属性）。这也是为什么是 1 + 4 + 3 而不是 1 + 5 + 5。", "4. 内存淘汰：8 种策略｜面试时怎么答：先把经典的 8 种列全（这是标准答案），再补一句\"较新版本还加了 lrm（只按修改时间算，读不算），所以现在是 10 种\"——既答到点上，又显示你不是背的旧资料。", "4. 内存淘汰：8 种策略｜：它随机采样 N 个 key（默认 5），淘汰其中\"最久没用\"的那个。为什么不做精确 LRU？——精确 LRU 要维护一条全量链表，每次访问都要移动节点，内存和操作开销都上来了。又是同一个思路：用近似的抽样，换掉一个 O(n) 或重开销的结构。", "5. 复制与集群：它们为什么也不能保证「不丢」｜很多\"Redis 丢数据\"的真实原因不是持久化没配，而是这里——持久化保证的是\"同一台机器重启能恢复\"，故障转移走的是另一条路，那条路上没同步的部分就丢了。", "6. 边界与常见误解｜把这张表读成一句话：Redis 的所有\"不丢\"手段都是用一致性、内存或性能换来的，没有一个能同时做到\"快、省、不丢\"。"], "crit": "能拆开过期删除与内存淘汰（触发源不同）；能给出 RDB / AOF 的选择判据与混合持久化；能算 everysec 的丢失上限；能解释近似 LRU 抽样为什么够用。"}, "R3": {"t": "缓存一致性与三类经典事故", "q": ["10 万个 key 在同一时刻被创建，TTL 都设 3600 秒。", "下面三个现象分别属于穿透、击穿还是雪崩？各自的直接对策是什么？", "一个热点 key 承载 10 万 QPS。某时刻它过期了，此时并发请求全部未命中。后端 DB 的上限是 5000 QPS。"], "pts": ["1. 前提：先定\"谁是权威\"｜这个定位直接推出三件事：", "1. 前提：先定\"谁是权威\"｜要强一致，就得让\"改 DB\"和\"改缓存\"一起成功或一起失败——也就是一个事务。", "1. 前提：先定\"谁是权威\"｜你允许多大的不一致窗口？窗口里读到旧数据，会不会造成业务事故？", "2. 写路径的几种写法（先各自介绍，再比较）｜为什么它比 A 好：把\"写 DB\"放在前面，并发读最坏也只是读到旧值一次，而不是把旧值写进缓存长期保留。", "2. 写路径的几种写法（先各自介绍，再比较）｜所以必须配一条兜底：要么给 TTL（让脏数据自己过期），要么有重试/对账（发现不一致能修回来）。没有 TTL 又没有对账的 Cache Aside，就是埋雷。", "2. 写路径的几种写法（先各自介绍，再比较）｜为什么\"删\"比\"更新\"好：", "3. 三类经典事故｜三类事故的共同根因是一句话：", "5. 边界与常见误解｜错的，而且比反过来更糟：中间的读会把旧值写回缓存长期保留（2.1） | | \"缓存和 DB 可以用事务保证强一致\"", "5. 边界与常见误解｜不可能——两个独立系统没有共同事务。目标是\"最终一致 + 可接受的不一致窗口\" | | \"有了缓存就不怕 DB 挂了\"", "5. 边界与常见误解｜缓存平时替你挡住了流量；一旦缓存整体故障，全部流量会瞬间倒向 DB —— 这正是雪崩的第二种成因。所以必须准备限流降级 | | \"给所有 key 设一样的 TTL 最省事\""], "crit": "能先定权威再谈一致性；能说清 Cache Aside 为什么「删」不「更新」、为什么必须兜底；能区分三类事故的根因与对策；能论证强一致不可能（无共同事务）。"}, "R4": {"t": "大 key 与热 key：怎么发现、怎么拆、为什么会同时打穿三样东西", "q": ["某 Redis 里有一个 Hash，包含 200 万个 field。运维执行 DEL 删它。已知逐个释放 field 的成本约 100 ns。", "集群有 10 个分片，单分片能扛 1 万 QPS。总请求 10 万 QPS，其中一个 key 独占 3 万 QPS。", "某服务在应用进程内加了一层\"本地缓存\"（TTL 50 ms）来挡一个热 key。"], "pts": ["1. 前提：两个维度，两种打法｜这两个问题经常被混着讲，但它们的解法完全不同：", "1. 前提：两个维度，两种打法｜为什么这两个问题在 Redis 里特别严重，取决于两个结构性事实：", "1. 前提：两个维度，两种打法｜这两条合起来就是本卡的全部逻辑：", "2. 大 key：把大操作拆成小操作｜大 key 不止\"占内存\"这一个问题：", "2. 大 key：把大操作拆成小操作｜第 ① 条最能说明\"单线程\"的代价：", "2. 大 key：把大操作拆成小操作｜三种手段，按成本从低到高：", "3. 热 key：让请求分散到多个点｜热 key 的危害只有一个，但很硬：", "3. 热 key：让请求分散到多个点｜这就是热 key 与\"普通高负载\"的本质区别：普通高负载靠水平扩展能解决，热 key 不能——因为它违背了\"水平扩展假设请求能均匀分布\"这个前提。", "3. 热 key：让请求分散到多个点｜选哪个看是\"读热\"还是\"写热\"：", "4. 边界与常见误解｜不一样。DEL 是同步释放——删一个 200 万元素的 Hash 会让整个实例阻塞约 200 ms。要用 UNLINK（异步回收）或 HSCAN 分批删 | | \"集群加节点就能解决热 key\"", "4. 边界与常见误解｜不能。集群里一个 key 只属于一个分片，热 key 的压力不会因为加节点而摊开——这正是热 key 与普通高负载的本质区别 | | \"热 key 打散一下就行了\"", "4. 边界与常见误解｜只对读有效。一次写会变成 N 份写，写热打散反而更糟；写热要靠\"本地聚合 / 队列串行 / 换结构\" | | \"大 key 的问题就是占内存\""], "crit": "能算 DEL 200 万 field 的阻塞时长；能说清热 key 为什么加节点没用；能分开读热与写热的解法；能给出大 key 的发现与拆除手段。"}, "R5": {"t": "什么数据不该放 Redis：缓存与权威状态的边界", "q": ["某读接口 5000 QPS，缓存命中率 95%。数据库实测能扛 8000 QPS 的读。", "某服务把 100 万个 key 放进 Redis，每个约 1 KB（合计约 1 GB）。监控显示只有 1% 的 key 被访问过。", "某服务用 Redis 缓存\"用户余额\"，TTL 60 秒，读路径直接读缓存。"], "pts": ["1. 前提：\"缓存\"这个词掩盖了两类东西｜\"要不要加缓存\"这个问题问错了。正确的问法是：这份数据的\"权威来源\"在哪？", "1. 前提：\"缓存\"这个词掩盖了两类东西｜关键区别在\"它参不参与判断\"：", "1. 前提：\"缓存\"这个词掩盖了两类东西｜任何一份数据要不要进缓存，问三个问题就够：", "2. 放错的代价：从\"慢\"升级成\"错\"｜按\"后果严重程度\"排：", "2. 放错的代价：从\"慢\"升级成\"错\"｜第 ② 类最难发现，因为它在低并发下完全正常：", "2. 放错的代价：从\"慢\"升级成\"错\"｜这是必须先算清楚的数（自测 Q1）：", "3. 一致性这件事，先说清\"上限\"再谈方案｜缓存的一致性问题分两种时机，各自的上限不同：", "3. 一致性这件事，先说清\"上限\"再谈方案｜所以一致性的选择是一个\"能容忍多久\"的问题，而不是\"有没有问题\"的问题：", "3. 一致性这件事，先说清\"上限\"再谈方案｜EnergyOps 里有一个必须讲清的点：\"数据库提交\"与\"Redis 删除\"无法组成一个普通的数据库事务——所以它不用\"假装同一个事务\"，而是用 Outbox（失效消息与业务同事务落库，再由 Worker 执行删除）（02-aggregation-and-recovery.md、03-query-", "4. 边界与常见误解｜TTL 只给\"最多旧多久\"这个上限（60 秒 TTL = 最多旧 60 秒），它不保证正确性。如果这份数据参与判断，那 60 秒里的错误决定照样发生 | | \"缓存挂了大不了回源\"", "4. 边界与常见误解｜回源压力会放大 1/(1−命中率) 倍：命中率 95% 时全挂 → 数据库要扛 20 倍流量，大概率打穿。\"缓存挂了怎么办\"必须提前设计限流 / 降级 | | \"Redis 很可靠，可以当数据库用\"", "4. 边界与常见误解｜不可以。它的持久化是\"尽力而为\"（AOF 默认每秒刷盘，最坏丢 1 秒；RDB 丢更多），定位就是缓存（母题-R2-持久化与内存淘汰）。权威状态不能只放它 | | \"余额可以缓存，加个 TTL 就行\""], "crit": "能用「权威来源在哪 / 参不参与判断」划边界；能算回源放大 1/(1−命中率)；能把「余额 + TTL」讲成 60 秒窗口里的真实错误；能给 Redis 的定位（缓存 / 队列 / 限流，不是数据库）。"}};
+  var ORDER = ["R1", "R2", "R3", "R4", "R5"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

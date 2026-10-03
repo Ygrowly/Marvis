@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作系统 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>操作系统
+    <small>3 张母题 · 30 道题 · 3 个项目 —— 一条线：三笔成本（切换 → 内存 → IO），反向解释整个后端基本盘</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：切换 → 内存 → IO（高并发服务端的三笔成本）<span class="src">正本 wiki/topics/操作系统/</span></h2>
+  <div class="h2sub">三个大框各是一笔成本，<b>每笔都要能现场算出数量级</b>；这个模块是唯一能「反向解释整个后端基本盘」的模块——9.9 计算机基础 12.4 分的根。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="操作系统 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <line x1="224" y1="52" x2="248" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+    <text x="258" y="56" font-size="11" fill="#4E5969">蓝 · 三笔成本（切换 → 内存 → IO）</text>
+    <line x1="499" y1="52" x2="523" y2="52" stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)"/>
+    <text x="533" y="56" font-size="11" fill="#4E5969">橙 · 判据与数字</text>
+    <line x1="774" y1="52" x2="798" y2="52" stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)"/>
+    <text x="808" y="56" font-size="11" fill="#4E5969">紫 · 失效与坑</text>
+    <line x1="1049" y1="52" x2="1073" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="1083" y="56" font-size="11" fill="#4E5969">绿 · 项目落点与总判据</text>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="100" width="1270" height="112" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">① 切换：谁在跑（O1）—— Linux 里没有「线程」：线程和进程都是 task_struct，线程 = 共享更多的进程</text>
+      <text x="106" y="146" font-size="11.5" fill="#4E5969">切换六步，进程 / 线程唯一差别 = 换页表那步（线程共享页表整步跳过）；一次切换 1.3–4μs（lmbench lat_ctx 量级）</text>
+      <text x="106" y="166" font-size="11.5" fill="#B45309">线程栈 8MB 是 ulimit 虚拟预留（64 位 128TB 不是瓶颈）；真实常驻 ~25KB（task_struct + 内核栈）——先撞 pid_max / pids.max</text>
+      <text x="106" y="186" font-size="11.5" fill="#6D28D9">共享地址空间 = 竞态根源；死锁四条件缺一不可——所有解法都是从「破坏一个条件」出发；线程过拐点总吞吐反而下降</text>
+      <text x="1344" y="204" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">EnergyOps：受控并发 + 并发配额（拐点依据）· 数驭穹图：IO 等待换上换下都要付切换成本 · RuleArena：进程崩 = 内存清零</text>
+    </g>
+    <line x1="725" y1="212" x2="725" y2="245" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="252" width="1270" height="130" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <text x="106" y="276" font-size="13" font-weight="800" fill="#1D2129">② 内存：它看到的内存是什么（O2）—— 虚拟内存把「申请」和「占用」变成两件事</text>
+      <text x="106" y="298" font-size="11.5" fill="#4E5969">两个内存分开：虚拟（宽敞、会缺页）vs 物理（真实、有限）——overcommit 让 malloc 成功 ≠ 有内存，OOM 爆在运行中不在启动时</text>
+      <text x="106" y="318" font-size="11.5" fill="#B45309">缺页两档：次缺页（分配物理页）vs 主缺页（要读盘）——差两个数量级；量级表从寄存器到网络横跨五个数量级</text>
+      <text x="106" y="338" font-size="11.5" fill="#4E5969">8GB 程序跑在 4GB 机器：能不能跑不取决于「要多少」，取决于「实际碰了多少」——free 看 available，进程看 RSS 不是 VSZ</text>
+      <text x="106" y="358" font-size="11.5" fill="#6D28D9">OOM 在所有回收手段用尽后触发：oom_badness 按 RSS 打分杀最高——容器里先分清整机 OOM 还是 cgroup OOM</text>
+      <text x="1344" y="376" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">RuleArena：Redis 容器被 cgroup 限制（256–512MB）——cgroup 级 OOM 杀容器内进程，排查方向与整机 OOM 完全不同</text>
+    </g>
+    <line x1="725" y1="382" x2="725" y2="415" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="422" width="1270" height="130" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <text x="106" y="446" font-size="13" font-weight="800" fill="#6D28D9">③ IO：慢在哪、内核能省什么（O3）—— 一次 IO 分两段：「等就绪」+「拷数据」，所有 IO 模型都在说改造了哪一段</text>
+      <text x="106" y="468" font-size="11.5" fill="#4E5969">epoll_wait 通知「可读」后，read 仍阻塞在拷贝段——按 POSIX 判据多路复用也是同步 IO（异步要看拷贝段是否内核代劳）</text>
+      <text x="106" y="488" font-size="11.5" fill="#B45309">select O(n)：每次拷全量 fd 集 + 全遍历 → poll 只解了数量上限 → epoll：注册一次（interest list）+ 只返回就绪（ready list）= O(k)</text>
+      <text x="106" y="508" font-size="11.5" fill="#4E5969">零拷贝：传统读+写拷 4 次（磁盘→页缓存→用户缓冲→socket 缓冲→网卡）；sendfile 一个系统调用省掉 2 次「白干」的用户态搬运</text>
+      <text x="106" y="528" font-size="11.5" fill="#4E5969">一次系统调用 ~105ns：每秒 100 万次小 IO ≈ 0.1 秒纯系统调用开销——io_uring 的动机是批量提交</text>
+      <text x="1344" y="546" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">EnergyOps / 数驭穹图：IO 等待为主 → 事件循环 + 异步；Kafka / Nginx 的零拷贝 = 数据根本没进用户态</text>
+    </g>
+    <line x1="725" y1="552" x2="725" y2="585" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="592" width="1270" height="72" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="622" font-size="14.5" font-weight="800" fill="#15803D" text-anchor="middle">这个模块反向解释整个后端基本盘——所有模块的追问最终都落到这里</text>
+      <text x="725" y="646" font-size="11.5" fill="#4E5969" text-anchor="middle">Redis 单线程快（IO 密集 + 事件循环）· Kafka 用零拷贝（省 2 次拷贝）· MySQL 连接不能无限开（每连接一线程）· 容器 Java 被 OOM（cgroup + oom_score）—— 9.9「计算机基础」12.4 分的根就在这</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+<b>主干叙事（一段读完）</b>：操作系统的一条线是高并发服务端的三笔成本：「<b>切换（谁在跑）→ 内存（它看到什么）→ IO（等的时候干什么）</b>」。
+    <b>切换</b>：Linux 里线程和进程都是 task_struct，<b>线程 = 共享更多的进程</b> —— 切换六步里唯一差别是换页表那步；一次切换 1.3–4μs，<b>线程过拐点总吞吐反而下降</b>（EnergyOps「受控并发」的依据）；线程栈 8MB 是虚拟预留，真实常驻 ~25KB，先撞 pid 上限。
+    <b>内存</b>：虚拟内存把「申请」和「占用」变成两件事 —— malloc 成功 ≠ 有内存（overcommit），8GB 程序跑在 4GB 机器取决于<b>实际碰了多少</b>；OOM 在所有回收手段用尽后按 RSS 打分杀最高，<b>容器里先分清整机 OOM 还是 cgroup OOM</b>（排查方向完全不同）。
+    <b>IO</b>：一次 IO 分「等就绪」+「拷数据」两段 —— epoll 的强是<b>注册一次 + 只返回就绪（O(k)）</b>，但 read 仍阻塞在拷贝段，多路复用还是同步 IO；零拷贝省的是「内核 → 用户 → 内核」两次白干搬运（sendfile）。
+    这个模块<b>反向解释整个后端基本盘</b>：Redis 单线程、Kafka 零拷贝、MySQL 连接上限、容器 OOM，追问到最后都落到这里（9.9 计算机基础 12.4 分的根）。
+  </div>
+  <div class="cap"><b>读法</b>：三个大框就是三笔成本；橙字是判据与数字（要能现场算），紫字是失效与坑（毒教材高发区都在这）；绿字是三个项目的落点。<b>底部横幅是本模块存在的理由</b>：反向解释整个后端基本盘。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：3 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">O1 CPU 与切换</td><td>进程线程差在哪、为什么线程不是越多越好</td><td class="ans"><span class="a">Linux 无「线程」概念——都是 task_struct，线程 = 共享更多的进程；切换六步、唯一差别 = 换页表；一次切换 1.3–4μs；线程栈 8MB 是虚拟预留（真实常驻 ~25KB，先撞 pid_max / pids.max）；共享地址空间 = 竞态根源，死锁四条件缺一不可；线程过拐点总吞吐下降</span></td><td>1–11</td><td class="ans"><span class="a">EnergyOps：受控并发 + 并发配额（拐点的量化判据）；数驭穹图：IO 等待换上换下都付切换成本——IO 密集别用线程池硬扛；RuleArena：进程崩 = 内存清零，状态必须落库</span></td></tr>
+      <tr><td class="k">O2 内存与 OOM</td><td>8GB 怎么跑在 4GB 上、OOM 杀谁</td><td class="ans"><span class="a">两个内存分开：虚拟（申请）vs 物理（占用）——overcommit 让 malloc 成功 ≠ 有内存；缺页两档（次 / 主）差两个数量级；能不能跑取决于「实际碰了多少」，爆在运行中；OOM 在回收手段用尽后按 oom_badness（RSS 打分）杀最高；VSZ 无参考价值看 RSS / anon-rss；free 看 available</span></td><td>12–21</td><td class="ans"><span class="a">RuleArena：Redis 容器被 cgroup 限制——cgroup 级 OOM 杀容器内进程，与整机 OOM 的排查方向完全不同</span></td></tr>
+      <tr><td class="k">O3 IO 模型与零拷贝</td><td>IO 为什么慢、内核省了什么</td><td class="ans"><span class="a">一次 IO 两段（等就绪 + 拷数据），所有模型都在说改造哪段——epoll_wait 后 read 仍阻塞拷贝段，多路复用是同步 IO；select O(n)（全量拷 fd 集 + 全遍历）→ epoll 注册一次 + 只返回就绪（O(k)）；零拷贝省「内核→用户→内核」两次白干搬运（sendfile）；一次系统调用 ~105ns（io_uring 批量提交）</span></td><td>22–30</td><td class="ans"><span class="a">EnergyOps / 数驭穹图：IO 等待为主 → 事件循环 + 异步（N3 的底层依据）；Kafka / Nginx 零拷贝 = 数据没进用户态</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：线程开多了反而慢的账，epoll 与零拷贝的账<span class="src">正本 母题-O1 · 母题-O3</span></h2>
+  <div class="h2sub">左边是「并发单元不是越多越好」的量化依据，右边是「IO 就绪通知与拷贝省在哪」——都是数量级问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="操作系统 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">「线程开多了反而慢」的账</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">vmstat 显示每秒 50 万次上下文切换，绝大多数是非自愿（时间片被抢）：</text>
+      <rect x="80" y="92" width="470" height="22" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="108" font-size="12" font-weight="800" fill="#fff">　500,000 次/s × ~2μs ≈ 每秒 1 秒 CPU —— 全花在切换上，业务没跑</text>
+      <text x="80" y="150" font-size="12" font-weight="800" fill="#1D2129">内存的算法错在哪：10 万线程 × 8MB = 800GB？</text>
+      <text x="80" y="176" font-size="11.5" fill="#4E5969">8MB 是 ulimit -s 的虚拟预留，64 位有 128TB——不是瓶颈；真实常驻 = 10 万 × ~25KB ≈ 2.5GB（内核侧，不计 RSS）</text>
+      <text x="80" y="202" font-size="11.5" fill="#6D28D9">先撞的是 pid_max / threads-max / 容器的 pids.max——不是内存，所以报错形态是「创建失败」不是「变慢」</text>
+      <text x="80" y="228" font-size="11.5" fill="#4E5969">过了拐点总吞吐下降：切换 + 缓存失效吃掉有效算力——EnergyOps「受控并发」的量化依据</text>
+      <text x="80" y="260" font-size="11.5" font-weight="700" fill="#B45309">判据：并发单元数按「CPU 核数 × 等待比」配，不是按任务数开</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">RuleArena 对应：进程崩 = 内存清零——所以状态落库、Checkpoint 只是恢复线索不是事实</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">epoll 的账与零拷贝的账</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">10000 个连接、每秒 1000 次事件、每次平均 10 个就绪——两种就绪通知的工作量：</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">select / poll：1000 × 10000 = 1000 万次检查（O(n)）</text>
+        <rect x="1105" y="96" width="255" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="132">epoll：1000 × 10 = 1 万次（O(k)，只与就绪数有关）</text>
+        <rect x="1105" y="122" width="18" height="12" rx="3" fill="#22C55E"/>
+      </g>
+      <text x="760" y="166" font-size="11.5" fill="#4E5969">省的是两件事：每次拷全量 fd 集 → 注册一次；每次遍历全部 fd → 只返回就绪。连接少时差别不大</text>
+      <text x="760" y="192" font-size="11.5" fill="#4E5969">零拷贝：1GB 文件传统读+写拷 4 次，sendfile 省 2 次用户态搬运——1000 并发下载每次省 2GB 的白干搬运</text>
+      <text x="760" y="218" font-size="11.5" fill="#6D28D9">注意：epoll_wait 仍要把就绪事件拷回用户数组——省的是「全量」，不是「拷贝本身」（毒教材高发区）</text>
+      <text x="760" y="244" font-size="11.5" fill="#4E5969">一次系统调用 ~105ns：每秒 100 万次小 IO ≈ 10% CPU 纯开销——io_uring 批量提交的动机</text>
+      <text x="760" y="270" font-size="11.5" font-weight="700" fill="#B45309">判据：IO 密集（等待为主）→ 事件循环；连接多且就绪稀疏 → epoll 的优势才显现</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">数驭穹图 / EnergyOps：IO 等待为主 → 异步 + 事件循环（N3 的操作系统层依据）</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">一次上下文切换</div><div class="big">1.3–4 μs</div>
+      <div class="d">lmbench lat_ctx 与公开基准的量级；50 万次/s ≈ 每秒 1 秒 CPU——切换风暴下业务没跑。</div></div>
+    <div class="ncard o"><div class="t">线程真实常驻</div><div class="big">~25 KB/线程</div>
+      <div class="d">task_struct + 内核栈，不计入 RSS；10 万线程 ≈ 2.5GB——先撞 pid_max / pids.max，不是内存。</div></div>
+    <div class="ncard b"><div class="t">线程栈 8MB</div><div class="big">虚拟预留</div>
+      <div class="d">ulimit -s 默认 8192KB；64 位 128TB 虚拟空间根本不缺——毒教材「10 万线程 800GB」错在这。</div></div>
+    <div class="ncard b"><div class="t">缺页两档</div><div class="big">差两个数量级</div>
+      <div class="d">次缺页（分配物理页）vs 主缺页（读盘）；全量级表从寄存器到网络横跨五个数量级。</div></div>
+    <div class="ncard o"><div class="t">malloc 成功 ≠ 有内存</div><div class="big">overcommit</div>
+      <div class="d">8GB 申请在 4GB 机器返回成功：物理页首次访问才分配——OOM 爆在运行中，不在启动时。</div></div>
+    <div class="ncard b"><div class="t">select vs epoll</div><div class="big">1000 万 vs 1 万</div>
+      <div class="d">10000 连接、10 就绪：O(n) 全遍历 vs O(k) 只看就绪——差 1000 倍，连接少时差别不大。</div></div>
+    <div class="ncard o"><div class="t">零拷贝</div><div class="big">4 次 → 2 次</div>
+      <div class="d">省掉「内核→用户→内核」两次白干搬运；1GB 文件 × 1000 并发 = 每次省 2GB 搬运。</div></div>
+    <div class="ncard b"><div class="t">一次系统调用</div><div class="big">~105 ns</div>
+      <div class="d">每秒 100 万次小 IO ≈ 0.1 秒纯系统调用开销——io_uring 批量提交的动机。</div></div>
+    <div class="ncard o"><div class="t">OOM 打分</div><div class="big">按 RSS</div>
+      <div class="d">oom_badness 杀分最高者；容器里先分清整机 OOM 还是 cgroup OOM——排查方向完全不同。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「10 万线程要 800GB 内存（8MB×10万）」</span><span class="v">✓ 8MB 是虚拟预留；真实 ~25KB/线程 ≈ 2.5GB——先撞 pid_max / threads-max，报错形态是创建失败。</span></div>
+    <div class="mrow"><span class="x">✗「进程切换贵是因为寄存器多」</span><span class="v">✓ 寄存器是小头：贵在换页表（进程间）与缓存失效；线程共享页表，正好跳过那一步。</span></div>
+    <div class="mrow"><span class="x">✗「malloc 成功就有内存了」</span><span class="v">✓ 只拿到虚拟地址空间，物理页首次访问（缺页）才分配——OOM 发生在运行中，不在申请时。</span></div>
+    <div class="mrow"><span class="x">✗「top 里 VSZ 很大，肯定内存泄漏了」</span><span class="v">✓ VSZ 含 mmap 文件与地址预留，基本没参考价值；看 RSS，排查 OOM 更看 anon-rss。</span></div>
+    <div class="mrow"><span class="x">✗「free 显示内存用满 90%，要爆了」</span><span class="v">✓ 其中很多是可随时回收的页缓存；看 available / MemAvailable，不是 used。</span></div>
+    <div class="mrow"><span class="x">✗「被 OOM 杀了就是内存不够，加内存」</span><span class="v">✓ 先分清整机 OOM 还是 cgroup OOM（容器内超限）——两者排查方向完全不同。</span></div>
+    <div class="mrow"><span class="x">✗「epoll 用 mmap 共享内存，实现零拷贝」</span><span class="v">✓ man-page：interest / ready 列表都在内核态，epoll_wait 仍拷就绪事件——省的是全量拷贝与全遍历。</span></div>
+    <div class="mrow"><span class="x">✗「epoll 通知后不阻塞，所以是异步 IO」</span><span class="v">✓ read 仍阻塞在「内核→用户」拷贝段——按 POSIX 判据多路复用是同步 IO；异步要看拷贝段是否内核代劳。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能讲清"一次切换花了什么 + 虚拟内存为什么撑得住 + IO 为什么慢以及内核省了什么"，不看资料</div></li>
+<li><span>☐</span><div><b>准确纠错</b>：能当场说清 <b>线程栈是虚拟地址空间预留、不能按"1MB"背</b>、<b>malloc 成功不等于有物理内存（overcommit）</b>、<b>epoll 不是"用 mmap 零拷贝"而是"注册只拷一次 + 只返回就绪的"</b> 这三处（三处都是毒教材高发区）</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能回答"为什么线程不是越多越好"（要能算）和"epoll 的时间复杂度为什么是 O(1)"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 <b>RuleArena 的 Worker 进程崩溃恢复 + 容器内存限制</b> 讲一遍，含"进程内存不可信"这条底层理由</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的排查结论（例："服务变慢就是线程不够，加线程池就行" / "top 里内存占用不高，肯定不是内存问题"），能指出错在哪、真因该怎么查</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：CPU 侧（进程与线程在操作系统里的真实差别、一次上下文切换花了什么、调度器在做什么、共享地址空间带来的竞态与死锁）、内存侧（虚拟地址空间、页表、缺页、overcommit、OOM 归谁杀）、IO 侧（五种 IO 模型、select/poll/epoll 的就绪通知、零拷贝省掉的到底是什么）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.操作系统.v1";
+  var CARDS = {"O1": {"t": "进程和线程差在哪，一次切换花了什么，为什么线程开多了反而更慢", "q": ["某服务收到用户投诉变慢。vmstat 显示该系统每秒 50 万次上下文切换，其中绝大多数是非自愿切换（时间片被抢）。", "某服务开了 1000 个线程，每个线程的栈实际只用了 2 页（8KB）。", "两个线程，共享两个锁 A 和 B。代码是："], "pts": ["1. 前提：Linux 其实不区分\"线程\"和\"进程\"｜关键的一层事实：Linux 内核里没有\"线程\"这个独立概念——线程和进程都是 task_struct（内核里叫\"任务\"），区别只在创建时传了哪些共享标志：", "1. 前提：Linux 其实不区分\"线程\"和\"进程\"｜所以\"线程是轻量级进程\"这个说法在 Linux 上是字面成立的——它就是\"共享得更多的进程\"。从这一句话，下面所有差异都能推出来：", "1. 前提：Linux 其实不区分\"线程\"和\"进程\"｜这一节的标题是\"线程开多了会更慢\"，那就必须先说清\"开销\"指什么。执行单元的开销分三块，面试时能分开说就已经赢一半：", "2. 一次上下文切换到底做了什么（量化）｜以 Linux 为例，完整过程六步：", "2. 一次上下文切换到底做了什么（量化）｜第 ⑥ 步是进程切换和线程切换唯一的直接差别——同进程的线程共享页表，这一步被整个跳过。记住\"差别只有一步\"，比背一堆\"线程更轻\"要有用得多。", "2. 一次上下文切换到底做了什么（量化）｜用。多个独立来源（lmbench 的 lat_ctx、以及公开的 token 传递基准）给的是1.3–4 μs。已按下表改写，并明确标注数据的性质。", "3. 内存开销：线程到底吃掉多少（这是被讲错最多的一节）｜先纠正一个几乎每份资料都写错的地方：", "3. 内存开销：线程到底吃掉多少（这是被讲错最多的一节）｜那\"8MB × 线程数\"这个算法错在哪：", "3. 内存开销：线程到底吃掉多少（这是被讲错最多的一节）｜在 64 位系统上虚拟地址空间有 128TB，8GB 预留根本不算问题——所以\"8MB 栈\"在 64 位下不是线程数的限制因素。限制它的是下面这个。", "4. 共享的代价：从竞态到死锁｜线程最方便的地方就是最危险的地方：地址空间共享意味着同一个变量是同一块内存。", "4. 共享的代价：从竞态到死锁｜加锁解决了正确性，但引入两个新成本：", "4. 共享的代价：从竞态到死锁｜死锁发生必须同时满足四个条件（缺一个就不会死锁——这就是所有解法的出发点）："], "crit": "能说出「线程 = 共享更多的进程」并推出全部差异；能背切换六步并指出进程/线程唯一差别；能算切换风暴的 CPU 占比；能纠正线程栈的虚拟预留误区；能用死锁四条件给解法分类。"}, "O2": {"t": "为什么 8GB 的程序能跑在 4GB 的机器上，OOM 又杀谁", "q": ["把这一节的两个算式都算一遍。", "某程序启动时 malloc(8GB) 成功，测试机只有 4GB 物理内存 + 0 swap。", "某 16GB 机器（totalpages 按 4KB 页算 = 4194304 页）上有两个进程："], "pts": ["1. 前提：一开始就要把\"两个内存\"分开｜为什么要多这一层——三个理由，按重要性排序：", "1. 前提：一开始就要把\"两个内存\"分开｜第 ② 条是这一整张卡的主线：虚拟内存让\"申请内存\"和\"占用内存\"变成两件事。 这句话直接解释了三件事——为什么 malloc 返回成功不等于有内存、为什么 8GB 的程序能在 4GB 机器上跑、为什么\"内存泄漏\"有时会拖很久才爆。", "1. 前提：一开始就要把\"两个内存\"分开｜翻译过程要走过几级：以 x86-64 的 4 级页表为例，48 位虚拟地址被切成 5 段：", "2. 缺页：一句\"按需分配\"背后的五种代价｜分两类，代价差两个数量级（下表是量级参考，随硬件、内核版本、负载变化）：", "2. 缺页：一句\"按需分配\"背后的五种代价｜把不同操作的量级放在一起看，差距有五个数量级：", "2. 缺页：一句\"按需分配\"背后的五种代价｜这张表能推出三条实用结论：", "3. 量化：8GB 程序怎么跑在 4GB 机器上｜\"8GB 程序跑在 4GB 机器上\"的答案就在这张表里：", "3. 量化：8GB 程序怎么跑在 4GB 机器上｜所以准确的回答是：*能不能跑不取决于程序\"要多少\"，取决于它实际碰了多少。虚拟内存把\"要\"和\"用\"解耦了，代价就是爆的时候是在运行中爆，不是在启动时爆。*", "3. 量化：8GB 程序怎么跑在 4GB 机器上｜Linux 会主动把读过的文件缓存在内存里（页缓存 / page cache）。这部分被算进\"已用内存\"，但它随时可以被回收——free 里的 available 才是\"真正还能用的\"。", "4. OOM：谁被杀，怎么算的｜OOM 在内核把所有回收手段都用完之后才发生：物理内存 + swap 都耗尽，页缓存、可回收匿名页、内存规整都试过了，仍然无法满足一次分配请求 → 触发 OOM killer。", "4. OOM：谁被杀，怎么算的｜内核用 oom_badness() 给每个任务打分，杀分数最高的那个：", "4. OOM：谁被杀，怎么算的｜逐项读这个公式，能读出四条规则："], "crit": "能分开「申请」与「占用」并解释 overcommit；能区分次 / 主缺页的量级；能解释 OOM 的触发时机与打分公式；能用 RSS / available 纠正 VSZ / used 的误读。"}, "O3": {"t": "为什么要 IO 多路复用，epoll 强在哪，零拷贝省了什么", "q": ["某服务要同时监控 10000 个连接，每秒有 1000 次\"有事件可处理\"的时刻，每次平均只有 10 个连接就绪。", "一台服务器要做文件下载服务。单文件 1GB，平均并发 1000 个连接同时在下载。", "某服务每秒要做 100 万次小的 IO 操作，每次都调用一次系统调用。已知一次系统调用跨越约 105 ns。"], "pts": ["1. 前提：一次 IO 其实分两段｜一次网络读取，钱花在两个地方：", "1. 前提：一次 IO 其实分两段｜这个\"两段\"的分法非常重要，因为几乎所有 IO 概念都在说\"我改造了哪一段\"：", "1. 前提：一次 IO 其实分两段｜记住这张表，五道 IO 模型题就都变成了\"你说的是哪一段\"。", "2. 五种 IO 模型：用同一把尺子排队｜必须讲清一个概念：\"同步 / 异步\"的准确判据是第二段——", "2. 五种 IO 模型：用同一把尺子排队｜按这个判据，前四个（包括 IO 多路复用）都是\"同步 IO\"——因为 epoll_wait 通知你\"连接可读了\"之后，你调 read() 时仍然要阻塞在\"拷贝\"那一段上。", "2. 五种 IO 模型：用同一把尺子排队｜一个\"一次问一批\"的机制必须回答三件事，而三个版本的差别正好就是\"它们怎么回答这三件事\"：", "3. select → poll → epoll：优势是算出来的｜poll 只解决了\"数量上限\"这一个问题，没解决\"每次都白遍历一遍\"这个更贵的问题。", "3. select → poll → epoll：优势是算出来的｜按 man-page 原文，epoll 在内核里的核心是\"两个列表\"：", "3. select → poll → epoll：优势是算出来的｜这里有一个必须纠正的流行错说法：", "4. 零拷贝：省掉的是哪几次拷贝｜把一个大文件从磁盘发到网络，传统写法要拷 4 次：", "4. 零拷贝：省掉的是哪几次拷贝｜看清楚浪费在哪里：数据从内核 → 用户 → 又回内核，而应用程序很可能一个字都没看（比如 Nginx 发静态文件、Kafka 把消息发给消费者）。这就像快递员把包裹从仓库搬到你的办公桌，你看都没看就说\"发货\"，他又搬回仓库——两次搬运完全是白干。", "4. 零拷贝：省掉的是哪几次拷贝｜sendfile(out_fd, in_fd, offset, count) 一个系统调用直接把文件发到 socket："], "crit": "能用「两段」框架归类五种 IO 模型并说清多路复用为何是同步 IO；能算 select 与 epoll 的检查次数差；能说出零拷贝省的是哪两次拷贝；能解释一次系统调用的开销与 io_uring 的动机。"}};
+  var ORDER = ["O1", "O2", "O3"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>
