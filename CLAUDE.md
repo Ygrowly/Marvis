@@ -195,6 +195,14 @@ AI 先读取用户的阅读笔记，再进行：
 
 至少形成一种可复用资产，才标记为 `integrated`。
 
+## 回答形态（2026-10-04 起）
+
+复杂问题默认用一页 HTML 回答，skill：`answer-me-with-html`（装在 `~/.agents/skills/answer-me-with-html/`，单文件 CLI：`node ~/.agents/skills/answer-me-with-html/scripts/am.mjs`）。模型只写 Markdown 稿（frontmatter + `##` 面板 + flow / sequence / tree / timeline / kv / callout 组件），排版、主题、图形坐标由 CLI 确定性渲染，**不手写 HTML / CSS / SVG**；渲染自带 STE 受控写作检查（一句一事、句长上限、中文禁虚动词与套话）。
+
+- 出页判据：≥3 个关联概念、流程 / 协议 / 状态迁移、≥3 维对比取舍、层级或时间演进，或主人明说「画个图 / 用 HTML 讲」；一句话能答的照常一句话答。
+- 落点：正式留档 `output/answers/YYYY-MM-DD-<slug>.html`（稿件 md 同名同存）；随手答不留在库里（skill 默认存 `~/.answer-me-with-html/pages/`）。改单面板用 `am patch`，不整页重写。
+- 边界：页面是呈现层，不替代正本——值得长期记住的结论要回流 `wiki/` 正本；页面内容按 AI 生成对待（candidate 心态），主人过目才算数。
+
 ## 目录职责
 
 ### `raw/`
@@ -250,7 +258,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 ### `output/`
 
-面向具体使用场景的成品。简历及导出物（PDF/HTML）只放 `output/resume/`，不在 output 根目录散落；`output/evidence/` 存项目证据材料。
+面向具体使用场景的成品。简历及导出物（PDF/HTML）只放 `output/resume/`，不在 output 根目录散落；`output/evidence/` 存项目证据材料；`output/answers/` 存「一页答」（复杂问题的可视化回答：自包含单文件 HTML + 同名稿件 md，2026-10-04 起，约定见〈回答形态〉）。
 
 ### `site/`
 

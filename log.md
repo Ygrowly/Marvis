@@ -414,3 +414,12 @@
 - 视觉顺修：书脊书名改楷体 + 烫金渐变 + 深描边（白色不醒目问题），区牌改铜木铭牌（金色字深木底），虚影书位改虚线描边空位
 - 测试：build.py 改动后五个套件全绿（dispatch / progression / render / sync 36 项 / ledger）
 - 提交前审查（review）修正三处：① 书页遮罩 `display:flex` 压掉 `[hidden]` 默认值——遮罩永远盖页，补 `#bookmask[hidden]{display:none}`；② openBook 前序兜底里 `contents` 在声明前使用（var 提升、赋值不提升）——无地基包的 9 本书翻开即炸，声明前移；③ clusters 显示名（Redis 与缓存）≠ 模块卡 module 字段（Redis），概览页链接与 modules.js/地基包查找落空——用主线页 href 反推正本模块名（canon）统一挂到节点上；验收矩阵补全：普通态 + 打开态 + 五类书深链各验一次
+
+## 2026-10-04（回答形态升级：复杂问题用一页 HTML 答——answer-me-with-html 入库）
+
+- 主人指路：参考 QingYunA/answer-me-with-html 等 skill，让 AI Agent 用一页 HTML 回答复杂问题
+- 已核一手：README + SKILL.md（v0.4.6）。机制 = 模型只写扩展 Markdown 稿（面板 + flow/sequence/tree/timeline/kv/callout 组件），skill 自带单文件 CLI 确定性渲染，不手写 HTML/CSS/SVG；出页判据 = ≥3 关联概念 / 流程协议 / ≥3 维对比 / 层级演进；内置 STE 受控写作检查（禁虚动词与套话，与文风治理同路）
+- 安装：真身在 `~/.agents/skills/answer-me-with-html`，`~/.zcode/skills/` 建软链被系统拒绝（Operation not permitted），退回复制一份；下个会话起自动进技能列表
+- 约定入宪：CLAUDE.md 新增〈回答形态〉节（触发条件 / 落点 `output/answers/YYYY-MM-DD-<slug>.html` 稿件同存 / 页面是呈现层不替代正本、AI 产出按 candidate 对待）；`output/` 目录职责同步补 answers
+- 首个样例：`output/answers/2026-10-04-mysql-redo-vs-binlog.html`——redo log vs binlog 面试题（分工对照 + 双反事实 + 两阶段提交时序图 + 30 秒答法），sequence 自环 / 表格徽章 / callout 三组件与 STE 检查一次通过（0 警告）
+- 登记：盘点文档 `wiki/sources/2026-09-26-网站设计参考与图表界面skills盘点.md` 增补第七节；MAP 登记待主人另一条线（简历/项目说明改动）落定后一并补
