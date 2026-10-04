@@ -34,7 +34,11 @@ def api(method, path, payload=None):
        而 curl 直连是通的（2026-10-02 实测）。
        --ssl-no-revoke（2026-10-04 增补）：schannel 的证书吊销检查可能因吊销服务器
        不可达而失败（CRYPT_E_REVOCATION_OFFLINE），跳过它——GitHub 的证书链不受影响。"""
-    cmd = ["curl", "-sS", "--ssl-no-revoke", "-m", "90", "-X", method, API_ROOT + path,
+    cmd = ["curl", "-sS", "--ssl-no-revoke",
+           "-x", "http://127.0.0.1:7897",   # 2026-10-04 起 GitHub 走 Clash 代理（直连时通时断）
+           "-m", "90",
+           "--retry", "4", "--retry-all-errors", "--retry-delay", "2",
+           "-X", method, API_ROOT + path,
            "-H", "Authorization: Bearer " + TOKEN,
            "-H", "Accept: application/vnd.github+json",
            "-H", "X-GitHub-Api-Version: 2022-11-28",
