@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM 与上下文 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<nav style="max-width:1440px;margin:0 auto;padding:14px 28px 0;font:12.5px/1.6 -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:center"><a href="../brain.html" style="color:#185FA5;text-decoration:none">← 第二大脑书架</a><a href="../modules/LLM与上下文.html" style="color:#185FA5;text-decoration:none">LLM与上下文 · 模块概览与主线详情</a><span style="color:#9AA4AE">一页总览 · 从书架点书可回到本页</span></nav><div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>LLM 与上下文
+    <small>六张母题 · 24 道题 · 三个项目 —— 一条线：模型为什么不可靠、上下文该放什么、输出怎么接住、钱花在哪</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：一次调用的钱和可靠性怎么被管住<span class="src">正本 wiki/topics/LLM与上下文/</span></h2>
+  <div class="h2sub">分层走一遍：<b>前提（不可靠）→ 窗口（预算）→ 四种手段（装配）→ 三层约束（接住输出）→ 成本与闭环</b>。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LLM 与上下文主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <marker id="mY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#86909C"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+
+    <!-- 图例 -->
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <g font-size="11" fill="#4E5969">
+      <line x1="200" y1="52" x2="224" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+      <text x="232" y="56">蓝 · 主线（一次调用从头到尾）</text>
+      <line x1="450" y1="52" x2="474" y2="52" stroke="#F59E0B" stroke-width="2.2" marker-end="url(#mO)"/>
+      <text x="482" y="56">橙 · 四种手段 / 三层约束</text>
+      <line x1="700" y1="52" x2="724" y2="52" stroke="#8B5CF6" stroke-width="2.2" marker-end="url(#mP)"/>
+      <text x="732" y="56">紫 · 回归验收</text>
+      <line x1="880" y1="52" x2="904" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+      <text x="912" y="56">绿 · 闭环回灌（调 Prompt/effort/选型）</text>
+      <line x1="1150" y1="52" x2="1174" y2="52" stroke="#86909C" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#mY)"/>
+      <text x="1182" y="56">灰虚 · 分支 / 人工兜底</text>
+    </g>
+
+    <!-- L1 前提 -->
+    <rect x="180" y="100" width="1100" height="80" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6" filter="url(#sh)"/>
+    <circle cx="204" cy="122" r="11" fill="#8B5CF6"/><text x="204" y="126" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">1</text>
+    <text x="222" y="126" font-size="13.5" font-weight="800" fill="#6D28D9">前提 · 模型为什么不可靠（不消除，只收敛）</text>
+    <text x="200" y="148" font-size="11.5" fill="#4E5969">生成是逐 token 采样：合法结构只是「概率上更可能」，不是保证；Temperature=0 只是挑概率最高的那个，那个本身还受版本 / 浮点 / 上下文影响</text>
+    <text x="200" y="168" font-size="11.5" fill="#4E5969">幻觉不是 bug，是四件事叠加：训练统计结构（没有真假标签）· 评测激励（猜 &gt; 弃答）· 上下文里没有 · 给了没用上</text>
+
+    <line x1="300" y1="180" x2="300" y2="233" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <!-- L2 窗口 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="240" width="240" height="110" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <rect x="500" y="240" width="240" height="110" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <rect x="820" y="240" width="240" height="110" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <circle cx="202" cy="262" r="10" fill="#0E42B5"/><text x="202" y="266" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">2</text>
+      <text x="220" y="266" font-size="13" font-weight="800" fill="#0E42B5">窗口里装什么</text>
+      <text x="196" y="292">系统提示 · 工具定义（Schema 全文）</text>
+      <text x="196" y="311">全部历史（含工具结果、图片）</text>
+      <text x="196" y="330">输出也占（含 thinking）</text>
+      <text x="196" y="345" font-size="10.5" fill="#86909C">缓存命中的前缀照样占窗口</text>
+
+      <circle cx="522" cy="262" r="10" fill="#0E42B5"/><text x="522" y="266" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">3</text>
+      <text x="540" y="266" font-size="13" font-weight="800" fill="#0E42B5">n² → 注意力预算</text>
+      <text x="516" y="292">每个 token 要和其余每个算关系</text>
+      <text x="516" y="311">token 越多，预算越被摊薄</text>
+      <text x="516" y="330">表现＝context rot（越长越难</text>
+      <text x="516" y="345" font-size="10.5" fill="#86909C">准确回忆）。容量 ≠ 质量</text>
+
+      <circle cx="842" cy="262" r="10" fill="#0E42B5"/><text x="842" y="266" font-size="10.5" font-weight="800" fill="#fff" text-anchor="middle">4</text>
+      <text x="860" y="266" font-size="13" font-weight="800" fill="#0E42B5">成本按平方增长</text>
+      <text x="836" y="292">每轮都要把历史原样重发</text>
+      <text x="836" y="311">累计 = k·n(n+1)/2</text>
+      <text x="836" y="330">＝最后一轮的 (n+1)/2 倍</text>
+      <text x="836" y="345" font-size="10.5" fill="#B45309">40 轮×15K = 12.3M，20.5×</text>
+    </g>
+
+    <!-- 干线 → 四种手段 -->
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="300" y1="350" x2="300" y2="373"/>
+      <line x1="620" y1="350" x2="620" y2="373"/>
+      <line x1="940" y1="350" x2="940" y2="373"/>
+      <line x1="300" y1="380" x2="1260" y2="380"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)">
+      <line x1="300" y1="380" x2="300" y2="403"/>
+      <line x1="620" y1="380" x2="620" y2="403"/>
+      <line x1="940" y1="380" x2="940" y2="403"/>
+      <line x1="1260" y1="380" x2="1260" y2="403"/>
+    </g>
+    <text x="1272" y="368" font-size="10.5" font-weight="700" fill="#B45309">预算有限 → 四种手段同时在用，不是四选一</text>
+
+    <!-- L3 四种手段 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="410" width="240" height="120" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="500" y="410" width="240" height="120" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="820" y="410" width="240" height="120" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="1140" y="410" width="240" height="120" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <text x="196" y="434" font-size="13" font-weight="800" fill="#1D2129">选择 Selection</text>
+      <text x="196" y="458">只放当前步骤真正需要的</text>
+      <text x="196" y="477">检索片段而非全库</text>
+      <text x="196" y="496">只暴露当前角色允许的工具</text>
+      <text x="196" y="515" font-size="10.5" fill="#86909C">分阶段加载，不全量注入</text>
+
+      <text x="516" y="434" font-size="13" font-weight="800" fill="#1D2129">压缩 Compression</text>
+      <text x="516" y="458">摘要必留六项（目标/事实+来源 ID</text>
+      <text x="516" y="477">/完成情况/决策/副作用/未决项）</text>
+      <text x="516" y="496">先保 recall，再提 precision</text>
+      <text x="516" y="515" font-size="10.5" fill="#86909C">原文外部持久化，摘要只留指针</text>
+
+      <text x="836" y="434" font-size="13" font-weight="800" fill="#1D2129">隔离 Isolation</text>
+      <text x="836" y="458">子任务独立窗口，只回传结论</text>
+      <text x="836" y="477">子 Agent 烧几万 token，</text>
+      <text x="836" y="496">只回 1,000–2,000 token</text>
+      <text x="836" y="515" font-size="10.5" fill="#86909C">大产物写对象存储，只留引用</text>
+
+      <text x="1156" y="434" font-size="13" font-weight="800" fill="#1D2129">缓存 Caching</text>
+      <text x="1156" y="458">稳定内容放前面、动态追加在后</text>
+      <text x="1156" y="477">写 1.25×（1h TTL 2×）</text>
+      <text x="1156" y="496">读 0.1×</text>
+      <text x="1156" y="515" font-size="10.5" fill="#B45309">只改价格，不改占用</text>
+    </g>
+
+    <!-- 干线 → 三层约束 -->
+    <g stroke="#F59E0B" stroke-width="2">
+      <line x1="300" y1="530" x2="300" y2="553"/>
+      <line x1="620" y1="530" x2="620" y2="553"/>
+      <line x1="940" y1="530" x2="940" y2="553"/>
+      <line x1="1260" y1="530" x2="1260" y2="553"/>
+      <line x1="300" y1="560" x2="1260" y2="560"/>
+    </g>
+    <g stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)">
+      <line x1="300" y1="560" x2="300" y2="583"/>
+      <line x1="620" y1="560" x2="620" y2="583"/>
+      <line x1="940" y1="560" x2="940" y2="583"/>
+      <line x1="1260" y1="560" x2="1260" y2="583"/>
+    </g>
+    <text x="1272" y="548" font-size="10.5" font-weight="700" fill="#B45309">进去的管完 → 管出来的</text>
+
+    <!-- L4 输出与验收 -->
+    <g filter="url(#sh)">
+      <rect x="180" y="590" width="240" height="120" rx="8" fill="#fff" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="500" y="590" width="240" height="120" rx="8" fill="#fff" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="820" y="590" width="240" height="120" rx="8" fill="#fff" stroke="#F59E0B" stroke-width="1.6"/>
+      <rect x="1140" y="590" width="240" height="120" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <text x="196" y="614" font-size="13" font-weight="800" fill="#1D2129">提示约束</text>
+      <text x="196" y="638">降低出错概率</text>
+      <text x="196" y="657">免费，但不保证</text>
+      <text x="196" y="676">对新一代模型，示例反而</text>
+      <text x="196" y="695" font-size="10.5" fill="#86909C">限制探索空间（先改接口设计）</text>
+
+      <text x="516" y="614" font-size="13" font-weight="800" fill="#1D2129">解码约束</text>
+      <text x="516" y="638">把非法 token 概率压成 0</text>
+      <text x="516" y="657">这才是「保证」</text>
+      <text x="516" y="676">上限：20 strict 工具 / 24 可选</text>
+      <text x="516" y="695" font-size="10.5" fill="#B45309">参数 / 16 union；编译成本指数增长</text>
+
+      <text x="836" y="614" font-size="13" font-weight="800" fill="#1D2129">事后校验</text>
+      <text x="836" y="638">拦语义错误（枚举是否存在、</text>
+      <text x="836" y="657">ID 是否有效、权限、前置条件）</text>
+      <text x="836" y="676">1–2 次重试且只对结构错误</text>
+      <text x="836" y="695" font-size="10.5" fill="#B45309">refusal / max_tokens 会绕过 schema</text>
+
+      <text x="1156" y="614" font-size="13" font-weight="800" fill="#6D28D9">版本与回归</text>
+      <text x="1156" y="638">Prompt 是控制层不是配置</text>
+      <text x="1156" y="657">快筛 → 全量 → held-out</text>
+      <text x="1156" y="676">消融问「多了什么」</text>
+      <text x="1156" y="695" font-size="10.5" fill="#86909C">200 条评测集标准误 ±2.1%</text>
+    </g>
+
+    <!-- 干线 → 成本 -->
+    <g stroke="#8B5CF6" stroke-width="2">
+      <line x1="300" y1="710" x2="300" y2="733"/>
+      <line x1="620" y1="710" x2="620" y2="733"/>
+      <line x1="940" y1="710" x2="940" y2="733"/>
+      <line x1="1260" y1="710" x2="1260" y2="733"/>
+      <line x1="300" y1="740" x2="1260" y2="740"/>
+    </g>
+    <g stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)">
+      <line x1="460" y1="740" x2="460" y2="763"/>
+      <line x1="1000" y1="740" x2="1000" y2="763"/>
+    </g>
+
+    <!-- L5 成本与闭环 -->
+    <g filter="url(#sh)">
+      <rect x="200" y="770" width="520" height="100" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <rect x="740" y="770" width="520" height="100" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+    </g>
+    <g font-size="11.5" fill="#4E5969">
+      <circle cx="224" cy="792" r="11" fill="#22C55E"/><text x="224" y="796" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">5</text>
+      <text x="242" y="796" font-size="13.5" font-weight="800" fill="#15803D">同一个 token 四种价钱</text>
+      <text x="216" y="820">输入 1× · 缓存写 1.25×（1h TTL 2×）· 缓存读 0.1× · 输出 5×</text>
+      <text x="216" y="842">写了不读比不缓存还贵 25%；降本四层：提命中率（无损）→ 去拐杖（双赢）</text>
+      <text x="216" y="860" font-size="10.5" fill="#86909C">→ 减用量（有损，留指针）→ 调 effort（换质量）。压缩是最后手段</text>
+
+      <text x="760" y="796" font-size="13.5" font-weight="800" fill="#15803D">统一尺子 + 闭环</text>
+      <text x="756" y="820">每个正确结果的全成本 =（单次成本 + 失败率 × 失败代价）÷ 成功率</text>
+      <text x="756" y="842">必须用 held-out 验收 —— 训练集饱和后是无效信号（天花板效应）</text>
+      <text x="756" y="860" font-size="10.5" fill="#86909C">实测：训练集 98.9% 打平，held-out 90.5% vs 78.6%</text>
+    </g>
+
+    <!-- 闭环回灌 -->
+    <path d="M 200 820 L 95 820 L 95 140 L 173 140" fill="none" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="78" y="480" font-size="11" font-weight="800" fill="#15803D" text-anchor="middle" transform="rotate(-90 78 480)">闭环回灌 · 评测驱动：改 Prompt / 调 effort / 重选型</text>
+  </svg>
+  </div>
+  <div class="story">
+    <b>主干叙事（一段读完）</b>：这一模块的一条线是 —— <b>先承认模型不可靠</b>（生成是逐 token 采样，合法结构只是概率上更可能；幻觉是训练统计结构、评测激励、上下文缺失、信息没用上四件事的叠加），
+    <b>再承认上下文是有限预算</b>（窗口是容量不是质量，注意力 n² 让每个新 token 都在摊薄预算；而历史每轮重发让成本按平方增长）。于是每一次调用都要做三件事：
+    ① <b>装配</b> —— 用选择 / 压缩 / 隔离 / 缓存四种手段，在有限窗口里放下「最小的那组高信号 token」；
+    ② <b>约束</b> —— 输出用提示 / 解码 / 事后校验三层，语法靠解码封死、语义靠校验拦住，改动走版本与回归；
+    ③ <b>记账</b> —— 同一个 token 有四种价钱，先做无损的（提命中率），再做双赢的（去拐杖），最后才做有损的（压缩）。
+    而这三件事都用同一把尺子量：<b>每个正确结果的全成本 =（单次成本 + 失败率 × 失败代价）÷ 成功率</b>，并且必须用没参与调优的 held-out 验收。评测结果反过来改 Prompt、调 effort、重选型 —— 这条绿色的回灌线才是闭环。
+  </div>
+  <div class="cap"><b>读法</b>：蓝线是一次调用的主线；橙线是两套控制手段（进去的四种、出来的三层）；紫线是回归验收；绿线是闭环回灌。顺序不能反 —— 不理解第 1 层（不可靠是前提），就会把工程问题当成换模型问题。</div>
+</section>
+
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：六张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:108px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:60px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">C1 上下文组装</td><td>窗口有限，每一步该放什么</td><td class="ans"><span class="a">窗口装什么 + n² 注意力 + 平方成本；四种手段（选择/压缩/隔离/缓存）是同时在用的组合</span></td><td>1–7</td><td class="ans"><span class="a">数驭穹图：<b>只装当前领域 Schema（权限过滤后）+ 关键样例</b>，大结果外置 Artifact；EnergyOps：30 个工具定义占上下文 → 延迟加载</span></td></tr>
+      <tr><td class="k">C2 结构化输出</td><td>怎么保证输出程序能用</td><td class="ans"><span class="a">三层叠加：提示降概率（不保证）→ 解码约束消灭语法错（保证，有上限）→ 事后校验拦语义（必须）</span></td><td>12–15</td><td class="ans"><span class="a">EnergyOps：工具参数走<b>严格 Schema + 枚举 + Validator</b>，权限上下文由服务端注入</span></td></tr>
+      <tr><td class="k">C3 Prompt 版本与回归</td><td>改了怎么证明变好还是变坏</td><td class="ans"><span class="a">Prompt 是控制层不是配置；分层验证（快筛→全量→held-out）+ 消融问「多了什么」</span></td><td>16–18</td><td class="ans"><span class="a">数驭穹图：<b>版本跟着结果走</b> —— 口径/Prompt/Schema 改过，旧结果不能再拿来对照</span></td></tr>
+      <tr><td class="k">C4 幻觉与可控性</td><td>幻觉哪来的，什么真能压住</td><td class="ans"><span class="a">四来源分层各治各的；错误与弃答不能同价 —— 汇报用错误率不用准确率</span></td><td>19–21</td><td class="ans"><span class="a">RuleArena：<b>摘要是「意图」，Receipt/Snapshot 才是「事实」</b>；恢复先查权威状态，不用旧摘要续跑</span></td></tr>
+      <tr><td class="k">C5 选型与降级</td><td>模型怎么选、降级怎么设计</td><td class="ans"><span class="a">在「模型 × effort」二维空间里，用每个正确结果的全成本搜；降级 = 换已验证过的配置</span></td><td>22–24</td><td class="ans"><span class="a" style="color:#B42318">暂无项目落点</span></td></tr>
+      <tr><td class="k">C6 成本与截断</td><td>钱花在哪、怎么降不伤质量</td><td class="ans"><span class="a">四种价钱 + 缓存三机制（断点/回看窗口/TTL）；降本四层按是否有损排序</span></td><td>8–11</td><td class="ans"><span class="a" style="color:#B42318">暂无项目落点</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 成本账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>同一场景的三笔账：不做 / 开缓存 / 缓存＋压缩<span class="src">正本 母题-C1 §4 · 母题-C6 §4</span></h2>
+  <div class="h2sub">统一场景：40 轮会话、每轮新增 15K、Opus 5（输入 $5、缓存写 $6.25、缓存读 $0.5 每 MTok）。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="成本三策略对比">
+    <defs>
+      <marker id="mY2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#86909C"/></marker>
+    </defs>
+    <g>
+      <!-- 四种价钱 -->
+      <rect x="60" y="24" width="1330" height="52" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="46" font-size="11.5" font-weight="800" fill="#4E5969">同一个 token，四种价钱（Opus 5）</text>
+      <g font-size="11.5" fill="#4E5969">
+        <rect x="80" y="56" width="10" height="10" rx="2" fill="#1664FF"/><text x="98" y="66">普通输入 1×（$5/MTok）</text>
+        <rect x="330" y="56" width="10" height="10" rx="2" fill="#F59E0B"/><text x="348" y="66">缓存写 1.25×（1h TTL 2×）</text>
+        <rect x="620" y="56" width="10" height="10" rx="2" fill="#22C55E"/><text x="638" y="66">缓存读 0.1×（$0.5/MTok）</text>
+        <rect x="900" y="56" width="10" height="10" rx="2" fill="#EF4444"/><text x="918" y="66">输出 5×（$25/MTok）</text>
+        <text x="1140" y="66" font-size="11" fill="#B42318">写了不读 → 比不缓存还贵 25%</text>
+      </g>
+
+      <!-- 三条策略 -->
+      <g font-size="12" fill="#4E5969">
+        <rect x="60" y="104" width="230" height="52" rx="8" fill="#F2F3F5" stroke="#CDD0D6"/>
+        <text x="78" y="126" font-size="12.5" font-weight="800" fill="#1D2129">A 什么都不做</text>
+        <text x="78" y="146" font-size="11" >累计 12.3M，全按 1× 计价</text>
+        <rect x="300" y="118" width="880" height="24" rx="4" fill="#EF4444" opacity="0.85"/>
+        <text x="1192" y="135" font-size="13" font-weight="800" fill="#B42318">$61.5</text>
+
+        <rect x="60" y="170" width="230" height="52" rx="8" fill="#F2F3F5" stroke="#CDD0D6"/>
+        <text x="78" y="192" font-size="12.5" font-weight="800" fill="#1D2129">B 开 prompt caching</text>
+        <text x="78" y="212" font-size="11">占用一点没少（第 40 轮仍 600K）</text>
+        <rect x="300" y="184" width="880" height="24" rx="4" fill="#F59E0B" opacity="0.9"/>
+        <text x="1192" y="201" font-size="13" font-weight="800" fill="#B45309">≈ $9.6（约 1/6.4）</text>
+
+        <rect x="60" y="236" width="230" height="52" rx="8" fill="#F2F3F5" stroke="#CDD0D6"/>
+        <text x="78" y="258" font-size="12.5" font-weight="800" fill="#1D2129">C B + compaction</text>
+        <text x="78" y="278" font-size="11">prompt 在 20K↔150K 锯齿，均约 85K</text>
+        <rect x="300" y="250" width="243" height="24" rx="4" fill="#22C55E" opacity="0.9"/>
+        <text x="555" y="267" font-size="13" font-weight="800" fill="#15803D">累计 ≈ 3.4M（占用与成本同时降）</text>
+      </g>
+      <text x="60" y="318" font-size="12" fill="#1D2129" font-weight="700">缓存 = 让重复的内容变便宜（无损，只对稳定前缀有效，不改占用）　·　压缩 = 让重复的内容消失（有损，必须留指针）　·　降 effort = 打输出那一块　→　三个杠杆打的是不同成本项，不能互相替代。</text>
+    </g>
+  </svg>
+  </div>
+</section>
+
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 六张母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">平方增长</div><div class="big">12.3M = 20.5×</div>
+      <div class="d">40 轮 × 15K：累计 = 15K×(40×41/2) = 12.3M，是最后一轮 prompt 的 (n+1)/2 = 20.5 倍 —— 这个倍数只跟轮数有关，跟每轮多大无关。</div></div>
+    <div class="ncard o"><div class="t">全命中能压到多少</div><div class="big">$100.5 → $11.2</div>
+      <div class="d">100 轮、稳定前缀 100K、每轮 2K：不开缓存 20.1M → $100.5；全命中 2.24M → $11.2，降 89%（约 1/9），而模型看到的 token 一个没变。</div></div>
+    <div class="ncard o"><div class="t">一行时间戳值多少</div><div class="big">$28.75</div>
+      <div class="d">系统提示 50K 里放个动态时间戳 → 前缀哈希每轮都变 → 永不命中：100 轮多付 5.75M 等价 token。它<b>不报错</b>，你只会看到账单偏高。</div></div>
+    <div class="ncard b"><div class="t">重试的尾部</div><div class="big">6.4% → 0.1%</div>
+      <div class="d">最多 3 次尝试，转人工率 = p³：p=40% → 期望 1.56 次、转人工 6.4%；p=10% → 1.11 次、0.1%。失败率降 75%，尾部风险降 64 倍。</div></div>
+    <div class="ncard"><div class="t">评测集要多大</div><div class="big">200 条 ≈ ±2.1%</div>
+      <div class="d">SE = √(p(1−p)/n)，p≈0.9、n=200 → 2.1%。要分辨 2 个点需要约 900 条。所以小集合只能抓大幅回退。</div></div>
+    <div class="ncard o"><div class="t">去掉拐杖值多少</div><div class="big">错误率腰斩</div>
+      <div class="d">清掉六类拐杖：成本 −14.6%、准确率 +5.3% → 换算成错误率 10% → 5.2%（相对）或 4.7%（绝对）。删掉 80% 系统提示：40 轮省 256K token（无缓存 $1.28 / 有缓存 $0.128）。</div></div>
+    <div class="ncard b"><div class="t">幻觉账（别看准确率）</div><div class="big">38%</div>
+      <div class="d">SimpleQA：A 弃答 52%/准确 22%/错误 26%，B 弃答 1%/准确 24%/错误 75%。每天 1 万次、弃答 $0.5、错误 $10 → $28,600 vs $75,050。<b>准确率低的那个总成本只有 38%。</b></div></div>
+    <div class="ncard o"><div class="t">选型账</div><div class="big">$0.336 → $0.116</div>
+      <div class="d">客服案例：每个正确结果的全成本（含失败代价 $1）从 $0.336 降到 $0.116（34.5%），而<b>单价只降到 1/5</b> —— 失败代价吃掉了大部分收益。</div></div>
+    <div class="ncard"><div class="t">effort 曲线是凸的</div><div class="big">$0.465 vs $0.704</div>
+      <div class="d">FrontierCode：low 11.5% @ $5.35、max 30.9% @ $19.00 → 低档平均每分 $0.465、边际每分 $0.704（贵 50%）。HLE 最后一档多 0.5 分多花 46%，<b>落在噪声里</b>。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」Q4/Q5 纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「窗口 1M 了，不用管上下文」</span><span class="v">✓ 容量 ≠ 质量（context rot）；且历史重发让成本<b>平方增长</b>。</span></div>
+    <div class="mrow"><span class="x">✗「开了缓存，历史消息就不再占窗口了」</span><span class="v">✓ 缓存<b>只改价格不改占用</b>，命中的前缀照样占窗口、照样消耗注意力。</span></div>
+    <div class="mrow"><span class="x">✗「压缩就是把历史总结一下，越短越好」</span><span class="v">✓ 顺序是<b>先保 recall 再提 precision</b>；压太狠会丢掉「当时看不出、后来才关键」的信息，且<b>不可逆</b>。</span></div>
+    <div class="mrow"><span class="x">✗「用了 JSON Schema，下游可以直接信任」</span><span class="v">✓ 只保证结构与类型；枚举是否存在、ID 是否有效、权限、前置条件 schema 全管不了，<b>refusal / max_tokens 还会绕过</b>。</span></div>
+    <div class="mrow"><span class="x">✗「Temperature 设成 0 就确定了」</span><span class="v">✓ 只是挑概率最高的那个，而它本身受模型版本、浮点非确定性、上下文影响 —— <b>确定性要从系统设计里要</b>。</span></div>
+    <div class="mrow"><span class="x">✗「换了新模型，prompt 先别动」</span><span class="v">✓ 反了：升级恰是重估 prompt 的最佳时机（为 Claude 5 代<b>删掉 80%+ 系统提示</b>，编码评测无损失）。</span></div>
+    <div class="mrow"><span class="x">✗「接了 RAG，幻觉就解决了」</span><span class="v">✓ 只治来源三（没给信息），<b>可能加重来源四</b>（给了没用上），来源一、二完全不治；检索失败率 ≠ 幻觉率。</span></div>
+    <div class="mrow"><span class="x">✗「effort 拉满最保险 / 降本就压缩上下文」</span><span class="v">✓ 前者最后一档多 0.5 分多 46% 成本且落在噪声里；后者顺序反了 —— 先提命中率（无损）再去拐杖（双赢），<b>压缩是最后手段</b>。</span></div>
+  </div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+      <li><span>☐</span><div><b>闭卷 3 分钟</b>：能从「注意力是有限预算」讲到四种控制手段，并给出成本平方增长的算式</div></li>
+      <li><span>☐</span><div><b>必须给出算术</b>：40 轮 × 15K 会话的累计输入与倍数，现场手算</div></li>
+      <li><span>☐</span><div><b>两层追问</b>：缓存和压缩分别解决什么 · 压缩时该保什么、丢什么</div></li>
+      <li><span>☐</span><div><b>一个项目案例</b>：能用 RuleArena 的「权威状态 vs 上下文视图」讲一遍</div></li>
+      <li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的上下文方案（如「历史太长就全量摘要成一段话」），指出问题在哪、什么时候出事</div></li>
+      <li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：本模块只回答「模型为什么这样、上下文该放什么、输出怎么被约束住、钱花在哪」—— 训练侧、注意力数学推导、各家跑分横评、向量库/框架选型、提示词写作技巧大全一律不进。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.llm.v1";
+  var CARDS = {
+    C1:{t:"窗口有限，每一步该放什么", q:[
+      "40 轮会话、每轮新增 15K → 累计输入多少？是最后一轮 prompt 的多少倍？这个倍数跟什么有关？",
+      "同样场景开 prompt caching（前缀稳定、每轮只有新增 15K 是新内容）→ 成本多少？窗口占用变了吗？",
+      "再加 compaction（150K 触发、压到约 20K）→ 累计输入多少？它和缓存的分工是什么？",
+      "纠错：「我们开了 prompt caching，所以历史消息不再占用上下文窗口了，等于把窗口容量变大了。」",
+      "纠错：「上下文压缩就是把历史总结一下，总结得越短越好，这样能塞更多新内容进去。」"],
+      pts:[
+      "Prompt Engineering 管「一条指令怎么写」（局部文本设计）；Context Engineering 管「这次调用能看到什么」（系统级信息架构）—— 后者是主线，因为循环每转一圈都在生成没人写过的上下文。",
+      "窗口里装的：系统提示 + 工具定义（JSON Schema 全文）+ 全部消息历史（含工具结果/图片/文档）+ **你的输出（含 thinking）** + 缓存命中的前缀（照样占窗口）。",
+      "窗口是容量不是质量：注意力 n² 关系 → attention budget 被摊薄 → context rot（越长越难准确回忆，所有模型共有）。",
+      "成本平方增长：n 轮每轮 k → 累计 = k·n(n+1)/2，是最后一轮的 (n+1)/2 倍；40 轮 × 15K = 12.3M，20.5 倍。一般化的倍数只跟轮数有关。",
+      "四种手段是一套<b>同时用</b>的组合，不是四选一：选择 / 压缩 / 隔离 / 缓存。",
+      "选择：只放当前步骤所需 —— 检索片段而非全库、只暴露当前角色允许的工具、分阶段加载。",
+      "压缩：摘要必留六项（目标与约束 / 已确认事实<b>及其来源 ID</b> / 已完成未完成步骤 / 关键决策与原因 / <b>副作用执行记录</b> / 未决问题与剩余预算）；最贵的一类丢失是副作用记录 → 恢复时重复执行写操作。",
+      "压缩调法有顺序：<b>先把 recall 拉满，再迭代提 precision</b>；顺序反过来丢的信息找不回来。摘要不是审计记录，原始内容必须外部持久化，摘要只放指针。",
+      "隔离：子任务独立窗口只回传结构化结论；子 Agent 烧几万 token 只回传 1,000–2,000 token；大产物写对象存储只留摘要与引用。",
+      "缓存：稳定内容放前面且不变、动态内容一律追加在后；写 1.25×（1 小时 TTL 2×）、读 0.1×（Fable 5.1 是 0.025×；Mythos 5.1 官方标注「发布时未定」，不要说满）。",
+      "最短可缓存长度按模型不同：Opus 5 / Fable 5.1 是 512，Sonnet 5 是 1,024，Haiku 4.5 是 4,096（<b>不是单调的</b>，Opus 4.6/4.5 是 4,096）。",
+      "混合策略（Claude Code）：CLAUDE.md 预注入 + 其余按需取（glob / grep / 读文件）；模型维护的是<b>轻量引用</b>（路径 / 查询语句），而引用本身的元数据（文件名、目录、时间戳）就是信号。",
+      "平台内建项：context editing 单独 +29%、叠加 memory tool +39%；100 轮 web search 评测少用 84% token；compaction 默认触发 150,000 输入 token（可配，最小 50,000）。",
+      "Context / State / Memory 三分：Context 是一次调用的可见 token（视图）；State 是运行过程的结构化状态（运行权威）；Memory 是跨会话复用且获准保存的信息（派生、需治理）。"],
+      crit:"能说出 n² 与 attention budget 的因果关系；能列出窗口里到底装了什么（含输出、thinking、缓存前缀）；能算出 40 轮 × 15K 会话的累计输入 12.3M 与 20.5 倍；能讲清缓存（改价格）与压缩（改占用）的分工并给出算式；能说出压缩「先 recall 后 precision」的顺序和摘要必须保留的指针；能讲出 Claude Code 的混合策略与子 Agent 的 1–2K 回传；且自测 5 题全对。"},
+    C2:{t:"怎么保证输出程序能用", q:[
+      "一次结构化抽取，输入 3K、输出 500（Opus 5）→ 单次成本多少？",
+      "最多尝试 3 次（首次 + 重试 2 次）：p=10% 与 p=40% → 期望尝试次数、成本放大、转人工比例各是多少？为什么尾部这么敏感？",
+      "四种失败形态（语法错 / 缺字段 / 类型不对 / 枚举越界·语义错）→ 哪几种解码约束能防住？哪一种谁都防不住？",
+      "纠错：「我们用了 JSON Schema 约束模型的输出，所以下游可以直接信任这个结果。」",
+      "纠错：「结构化输出会让模型变笨，所以我们只在最后一步才用它。」"],
+      pts:[
+      "生成是<b>逐 token 采样</b>：从整个词表按概率分布挑一个 —— 合法结构只是「概率上更可能」，不是保证。",
+      "越到后面越容易崩：输出越长，条件越多；长 JSON 的尾部（闭合括号、最后一个字段）是失败高发区。",
+      "提示只能降低概率、不能消除概率 —— 写十遍「必须返回合法 JSON」改的是分布，不是采样规则。",
+      "Temperature = 0 不承诺确定：它只是把「随机挑一个」换成「挑概率最高的那个」，而后者本身受模型版本、浮点非确定性、上下文影响。<b>「我把 temperature 调成 0 所以稳定」是会被追问倒的话。</b>",
+      "四种失败形态：语法错 / 缺字段 / 类型不对（<b>解码约束能防</b>）vs 枚举越界、语义错（<b>谁都防不住，只能业务校验</b>）—— 这条分界线就是主线。",
+      "三层约束各管一段：提示约束（降概率，免费不保证）→ 解码约束（strict / json_schema 把非法 token 概率压成 0，这才是保证）→ 事后校验（拦语义，必须）。",
+      "解码约束的三个硬上限：每请求 <b>20 个</b> strict 工具、<b>24 个</b>可选参数、<b>16 个</b> union 类型；超出返回 400 或 180 秒编译超时。",
+      "编译成本随 schema 复杂度<b>指数增长</b> → 处理顺序：只把关键工具标 strict → 可选改必填（每个大致减半状态空间）→ 简化嵌套 → 拆多个请求或子 Agent。",
+      "编译结果缓存 24 小时：改 name / description 不会失效，改结构会；改 output_config.format 会让该会话线程的 prompt cache 失效 → schema 要版本化、别中途反复改。",
+      "stop_reason 会绕过 schema：<b>refusal</b>（拒答消息优先于约束）和 <b>max_tokens</b>（被截断）。",
+      "枚举大小写会静默偏离（期望 conversation topic 3 → 得到 Conversation Topic 3），不报错、无特殊 stop_reason → 要大小写不敏感比较，避免只靠大小写区分的枚举。",
+      "重试：通常 1–2 次且<b>只对解析/结构错误</b>；业务错误由程序直接拒绝（不让模型绕过约束）；连续失败换模型 / 简化 / 转人工，每次都进 Trace。",
+      "重试的账：p=40% → 期望 1.56 次、转人工 6.4%；p=10% → 1.11 次、0.1%。转人工率是 <b>p³</b>，尾部对 p 极敏感 → 解码约束买的是把 p 压到接近 0，不是「少重试几次」。"],
+      crit:"能说出「生成是逐 token 采样」并推出为什么长输出尾部易崩；能分清四种失败形态并指出语法/语义的分界线；能说出三层约束各管的范围与代价；能算出重试的期望尝试次数（1+p+p²）与转人工率（p³）并解释为什么尾部对 p 敏感；能说出 refusal / max_tokens 绕过 schema 和枚举大小写的坑；能说出 grammar 编译成本的来源与三个上限；且自测 5 题全对。"},
+    C3:{t:"改了怎么证明变好还是变坏", q:[
+      "评测集 200 条、p≈0.9 → 标准误多少？要分辨 2 个百分点的差异需要多少条？",
+      "系统提示 8,000 token，删掉 80% → 40 轮会话省多少 token？有缓存和无缓存各值多少钱？注意力上的收益呢？",
+      "准确率 +5.3%（基线 90%）→ 换算成错误率是多大变化？两种读法分别怎么算？",
+      "纠错：「我们换了新模型，prompt 先保持不动，跑一段时间看看效果再决定要不要调整。」",
+      "纠错：「我们在评测集上把准确率从 88% 调到了 92%，所以这次 prompt 改动是成功的。」"],
+      pts:[
+      "Prompt 不是配置文件，是<b>针对当时那个模型写的控制层</b>：prompt 的效果 = f(模型能力, 任务分布)，模型换了 → 函数变了 → 同一份 prompt 的收益和代价全变。",
+      "所以「模型升级后 prompt 先不动」本身就是一次<b>未经评估的变更</b>。",
+      "一条指令的生命周期：写下（补当时模型的一个失败模式）→ 沉淀 → 模型升级（它补的弱点消失）→ 变成负担 → 消融判定。",
+      "拐杖 = 曾经有效、现在只在增加成本的指令；六类典型：验证仪式、强调型助推、强制流程与草稿纸、过时示例、互相矛盾的规则、过期配置。",
+      "消融 = <b>删掉一段</b>，其余不动，跑同一套 Eval：指标没掉 → 冗余；变好 → 拐杖；变差 → 保留并记下它现在还在补偿什么。<b>问的是「多了什么」，不是「少了什么」。</b>",
+      "分层验证：抽样快筛（便宜快，只筛明显坏改动）→ 全量回归（发布门禁）→ 训练/测试分离（held-out 验收）。四层不能互相替代。",
+      "样本量：SE = √(p(1−p)/n)。200 条 @ p≈0.9 → ±2.1%；要分辨 2 个点需约 900 条。<b>单次观察在概率系统里没有信息量。</b>",
+      "全量回归的问题在频率不在正确性：200 条 × $0.03 = $6/次，一天改 10 次 = $60/天 —— 不贵但慢，证据强度与迭代速度有张力。",
+      "held-out 案例：训练集 98.9% vs 98.9% 打平，held-out 90.5% vs 78.6% —— <b>训练集饱和后是无效信号</b>（天花板效应）。",
+      "去拐杖实测：为 Claude 5 代<b>删掉 80%+ 系统提示</b>，编码评测无可测量损失；清掉六类拐杖后成本降 14.6%、准确率升 5.3%。",
+      "换算：基线 90% 准确率，+5.3% 相对 → 错误率 10%→5.2%；绝对 → 4.7%。两种读法结论一致：<b>错误率腰斩</b>。汇报用错误率。",
+      "消融成本：200 条 × 2 次 × $0.03 = $12，换来年化 $32,000–$320,000 → 「做消融太贵」站不住，<b>是习惯问题不是成本问题</b>。",
+      "加规则的三重代价：稀释注意力预算、制造规则冲突（模型得先花推理化解）、升级后变成负担 → 先问「能不能删」再问「要不要加」。",
+      "示例给多反而限制探索空间（新一代模型）→ 优先改接口设计（枚举、参数命名、默认值），别堆示例。"],
+      crit:"能说出「prompt 是控制层、和模型耦合」并推出为什么换模型要重估；能画出指令生命周期并列出至少四类拐杖；能算出 200 条评测集的标准误与所需样本量；能说清消融的三个判定分支；能讲出 held-out 90.5% vs 78.6% 这个案例；能把「准确率 +5.3%」换算成「错误率腰斩」；能说出消融成本与年化节省的量级差；且自测 5 题全对。"},
+    C4:{t:"幻觉哪来的，什么真能压住", q:[
+      "SimpleQA：A 弃答 52%/准确 22%/错误 26%，B 弃答 1%/准确 24%/错误 75% → 每天 1 万次查询、弃答 $0.5、错误 $10，总成本各是多少？",
+      "1000 道题、明确会 600 道、其余完全不会（按 1/365 蒙）→ 弃答模型与猜测模型的准确率差多少？错误数差多少？",
+      "「检索失败率降了 49%，所以幻觉降了 49%」→ 这句话错在哪？",
+      "纠错：「等模型再大一点、再强一点，幻觉就自然解决了。」",
+      "纠错：「我们给系统接了 RAG，检索到的资料都会进上下文，所以幻觉问题基本解决了。」"],
+      pts:[
+      "幻觉 = 模型<b>自信地</b>生成了一个不成立的陈述 —— 关键词是「自信」和「不成立」。",
+      "来源一 预训练的统计结构：只见过流畅语言的正例、没有一句被标注为假 → <b>有规律的错误（拼写、括号）随规模消失，无规律的事实错误永远出错</b>（宠物生日类比）。",
+      "来源二 评测口径的激励：只看准确率时，猜的期望收益 &gt; 0 &gt; 弃答的 0 → 模型被训成应试高手。",
+      "SimpleQA 实证：gpt-5-thinking-mini 弃答 52% / 准确 22% / 错误 26%；o4-mini 弃答 1% / 准确 24% / 错误 75% —— <b>按准确率排名会挑到错误率近 3 倍的模型</b>。",
+      "来源三 上下文根本没有这条信息 → 要么说不知道，要么用训练分布里相近的知识补上（<b>看起来完全合理</b>）。",
+      "来源四 信息给了没用上：被长历史稀释（context rot）、两份材料互相冲突、结论对但引用对不上原文。",
+      "对策按来源分层：给证据（治三）· 改评分允许弃答（治二）· 检索+装配+先摘录再作答（治三）· 上下文管理+引用绑定+生成后自查撤稿（治四）。",
+      "<b>错误和弃答不能同价</b>：弃答成本 = 转人工兜底；错误成本 = 客诉 / 返工 / 回滚 / 信任损失，通常贵一个数量级。",
+      "业务账：每天 1 万次、弃答 $0.5、错误 $10 → $28,600 vs $75,050 → <b>准确率低的那个总成本只有 38%</b>。",
+      "猜 vs 弃答：1000 题会 600 → 准确率 60.00% vs 60.11%（差 0.11 点），但错误数 0 vs ≈399 条（差 399 倍）→ 排行榜看不见这 400 条，业务方付的正是这 400 条的钱。",
+      "<b>「校准比准确便宜」</b>：完全不懂毛利语的小模型可以直接说不会；懂一点的反而必须先判断置信度（Being calibrated requires much less computation than being accurate）。",
+      "让模型敢说「不知道」两层：prompt 层给许可（改措辞）；<b>评分层把自信的错误罚得更重、给恰当弃答部分分</b>（这层才改激励）。",
+      "自校验的代价：Best-of-N 成本 ×N 且 N 次不一致还要仲裁策略；链式校验增加输出 token（输出贵 5×）；迭代精炼容易收敛到自我确认 → 只适合高价值低频判定。",
+      "口径：汇报用错误率不用准确率；RAG <b>必要不充分</b>（只治三，可能加重四；检索失败率是「证据缺失型幻觉」的上界，不是换算关系）。"],
+      crit:"能说出四类来源并各给一个例子；能解释「拼写错误消失、事实错误不消失」的统计原因；能算出「猜 vs 弃答」在 1000 题上的准确率差（0.11 点）与错误数差（≈399 条）；能用 SimpleQA 数据算出两模型的业务成本比（38%）；能说清「检索失败率 ≠ 幻觉率」并解释方向上是高估还是低估；能说出「校准比准确便宜」这个反直觉结论；且自测 5 题全对。"},
+    C5:{t:"模型怎么选、降级怎么设计", q:[
+      "客服案例：原始 held-out 78.6% @ 5¢，最终 90.5% @ 1¢，一次失败代价 $1 → 每个正确结果的全成本各多少？比值？",
+      "FrontierCode：low 11.5% @ $5.35、max 30.9% @ $19.00 → 低档平均每分成本 vs 边际每分成本？说明什么？",
+      "HLE：从次高档升到 max，只多约 0.5 分、成本多 46% → 该怎么判断要不要加这一档？",
+      "纠错：「选型就是挑跑分最高的那个模型，选完上线就不用管了。」",
+      "纠错：「effort 越高越保险，所以生产上直接拉满。」"],
+      pts:[
+      "四个维度：能力 / 延迟（<b>首 token 延迟和总时长是两件事</b>）/ 单价（输入与输出差 5 倍）/ effort（<b>最容易被当成不存在的维度</b>）。",
+      "输出比输入贵 5 倍 → 「话多」比「上下文长」更贵；减少输出是最直接的省钱手段，但和「详细推理能提高准确率」冲突 → <b>effort 就是这个冲突的旋钮</b>。",
+      "统一指标：<b>每个正确结果的全成本 =（单次成本 + 失败率 × 失败代价）÷ 成功率</b> —— 缺任何一项都没法选型。",
+      "存在「够用」门槛：门槛以下能力不足 → 付失败代价；门槛以上能力过剩 → 边际收益很低却一直在付高价。问题是「我的任务在哪个档位跨过门槛」。",
+      "effort 曲线是<b>凸的</b>：FrontierCode low 11.5% @ $5.35、max 30.9% @ $19.00 → 低档平均每分 $0.465，边际每分 $0.704（贵 50%）。",
+      "HLE：从次高档到 max，多约 0.5 分多花 46%，<b>落在 run-to-run 噪声里</b> → 高端的问题不只是贵，是「贵了却看不出差别」。",
+      "低 effort 的失败模式同样真实：少调工具、困难步骤少想、跳过本来会做的检查 —— <b>最危险的是答案看起来是完整的</b>。",
+      "反直觉：强模型 + 低 effort 可能压过弱模型 + 高 effort（Fable 5.1 low ≈ Fable 5 high，成本约 1/3）→ <b>模型代际和 effort 不是同一个旋钮</b>，应在「模型 × effort」二维空间里搜。",
+      "缓存读价会改变成本排序：Fable 5.1 读价 $0.25 vs Fable 5 的 $1.00 → 「哪个更便宜」在长会话和短会话下答案不同。",
+      "选型不是一次性决策：模型迭代、缓存定价变化、effort 参数引入都会让最优解移动。",
+      "降级三个要求：<b>① 已验证</b>（备用配置在 held-out 上过过门禁）<b>② 有明确的质量底线</b>（目标是保可用性不是保质量）<b>③ 可观测</b>（降级本身要打点 —— 不知道自己在降级比降级更危险）。",
+      "降级要连 prompt 一起调（便宜模型配好 prompt 反而可能更准）；切换时机选在缓存本来就要失效的时刻（如 compaction 之后）。",
+      "多模型路由的代价：维护多套 prompt 与评测、路由判错两头不讨好、排障复杂度上升。",
+      "调参路径：在训练集上搜「模型 × effort × prompt」，<b>读失败的训练样本</b>决定改哪一项，最后用 held-out 验收。"],
+      crit:"能列出四个维度并说出 effort 为什么最容易被忽略；能写出「每个正确结果的全成本」公式并说明每一项的作用；能算出客服案例的两个全成本（$0.336 / $0.116）与比值；能算出 FrontierCode 的平均与边际每分成本并解释凸性；能说出 HLE 最后一档「多 0.5 分多 46% 成本且落在噪声里」；能讲出「强模型+低 effort 压过弱模型+高 effort」的实测与两个原因；能说出训练集饱和后失去分辨力；能说出降级链路的三个要求；且自测 5 题全对。"},
+    C6:{t:"钱花在哪、怎么降不伤质量", q:[
+      "100 轮、稳定前缀 100K、每轮新增 2K → 不开缓存 vs 全命中，各多少钱？降幅多少？",
+      "系统提示 50K，其中第 3 个 block 放了一个动态时间戳 → 100 轮会多花多少？为什么它不报错？",
+      "Turn1 有 10 个 block、Turn2 有 15、Turn3 有 35 → 哪一轮会完全未命中？为什么？怎么补？",
+      "纠错：「我们开了 prompt caching，所以模型成本会降 90%。」",
+      "纠错：「要降本，最直接的就是把上下文压缩一下，历史砍短就省了。」"],
+      pts:[
+      "同一个 token 四种价钱：普通输入 1×、缓存写 1.25×（1 小时 TTL 2×）、缓存读 <b>0.1×</b>、输出 <b>5×</b>。",
+      "<b>写了不读比不缓存还贵 25%</b> —— 缓存不是「开了就省」，是「命中了才省」。",
+      "账单两块：每轮新增（线性）+ 每轮重发的历史（平方）。缓存打第二块（变便宜）、压缩打第二块（直接删）、降 effort 打输出那一块 → <b>三个杠杆打的是不同成本项，不互相替代</b>。",
+      "缓存机制① 断点：只在断点处写入，哈希是<b>累积的</b> —— 断点之前任何一处变了，命中就没了。",
+      "缓存机制② 回看窗口：找不到就往前一个 block 一个 block 找，<b>最多 20 个位置</b>；找的是「之前的请求写过的条目」，不是「稳定内容」。",
+      "缓存机制③ TTL 与最短长度：默认 5 分钟（命中免费续期），1 小时 TTL 写价翻倍；最短可缓存长度 Opus 5 / Fable 5.1 是 512、Sonnet 5 是 1,024、Haiku 4.5 是 4,096，<b>不够长静默不缓存（两个 cache 字段都是 0，不报错）</b>。",
+      "命中要同时满足六个条件：前缀逐字节相同 · 之前请求写过 · 同一模型同一 effort · 在 TTL 内 · 达到最短长度 · 落在 20-block 回看窗口内。",
+      "全命中能压到多少：100 轮、前缀 100K、每轮 2K → 不开缓存 $100.5，全命中 $11.2（降 89% ≈ 1/9），<b>而模型看到的 token 一个没变</b>。",
+      "一行时间戳值多少钱：系统提示 50K 里放动态时间戳 → 永不命中 → 100 轮多花 <b>$28.75</b>，而且不报错，只会看到账单偏高 → 用 cache diagnostics 定位「两个请求在哪里分叉」。",
+      "20-block 失效场景：Turn3 从 35 检查到 16，Turn2 写在 block 15 的条目恰好落在窗口外一格 → 完全未命中；补法是<b>额外加显式断点（最多 4 个）</b>。",
+      "反直觉：一轮里<b>连续的工具调用块算 1 个位置</b>（连续 tool_use 算一个、连续 tool_result 算一个）→ 20 个并行工具调用不会把上一轮条目挤出窗口。",
+      "稳定前缀的八个做法：稳定内容放前 · 易变值移出前缀 · 工具定义别重排 · 少用工具 defer_loading · 系统提示更新用消息形式追加 · 预热缓存（max_tokens: 0）· 移动断点 · 长工具调用用 1 小时 TTL。",
+      "长同步工具调用 / 子 Agent 跑超 5 分钟 → 默认 TTL 从请求开始算，回来时已过期 → 下一轮 1.25× 重写 → <b>这类场景该用 1 小时 TTL</b>。",
+      "降本四层按<b>是否有损</b>排序：提命中率（无损）→ 去拐杖（双赢）→ 减用量（有损，必须留指针 + 进 Trace）→ 调 effort / 换模型（换质量，held-out 验证）。<b>压缩是最后手段。</b>",
+      "compaction 默认 150,000 输入 token 触发（可配，最小 50,000）；输入 + max_tokens 超出窗口时，4.5 以后不报错，生成到上限后以 <b>stop_reason: \"model_context_window_exceeded\"</b> 结束。"],
+      crit:"能说出四类价钱与其倍数关系；能说出「写而不读更贵」并解释原因；能列出缓存命中的六个条件；能算出 100 轮会话无缓存 $100.5、全命中 $11.2 与 89% 降幅；能算出「一行时间戳 $28.75」；能解释 20-block 回看窗口什么时候失效、怎么补断点，以及「连续工具块算 1 个位置」；能说出降本四层的排序理由；能说出 defer_loading 与 1 小时 TTL 的适用场景；且自测 5 题全对。"}
+  };
+  var ORDER = ["C1","C2","C3","C4","C5","C6"];
+
+  var st = { mode:"mid", cue:true, card:"C1", self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 > 我的知识库、职业资产和阅读训练系统。
 
-这是一个 Obsidian 知识库，围绕 2027 届秋招运转：外部素材统一进 `raw/`，按问题台账驱动加工，深读讨论后沉淀为可复述的**母题卡**与面试资产。`site/` 是 md 正本派生的**学习界面**（复训 / 派单 / 诊断 / 项目口述），发布在 GitHub Pages。
+这是一个 Obsidian 知识库，围绕 2027 届秋招运转：外部素材统一进 `raw/`，按问题台账驱动加工，深读讨论后沉淀为可复述的**母题卡**与面试资产。`site/` 是 md 正本派生的**学习界面**（复训 / 派单 / 诊断 / 项目口述 / 内化馆与第二大脑书架），发布在 GitHub Pages。
 
 ## 三条入口
 
@@ -40,12 +40,13 @@ wiki/ 知识资产（母题卡为主）+ output/ 对外成品
 | `wiki/interview/` | 面试表达、题库、面经复盘 |
 | `wiki/thinking/` | 学习方法、精力与行动规则 |
 | `wiki/sources/` | AI 生成的主题综述候选 |
+| `wiki/cards/` | 读厚卡片层：原则卡（情境 → 动作，进每日派单）+ 地基包（模块先修导航） |
 | `study/` | 能力课程底库（已降为素材，学习入口在母题卡） |
 | `projects/` | 活跃项目一目录：项目说明正本 + 编号手册 |
 | `archive/` | 已移出准备范围的项目存档（只读备查） |
 | `jd/` | JD 融合核对表、横向对比、参考简历 |
-| `output/` | 对外成品（简历只放 `output/resume/`，证据材料在 `output/evidence/`） |
-| `site/` | md 正本 → html 学习界面（build.py 派生） |
+| `output/` | 对外成品（简历只放 `output/resume/`，证据材料在 `output/evidence/`，一页答稿件在 `output/answers/`） |
+| `site/` | md 正本 → html 学习界面（build.py 派生）；`site/onepage/` 是上站的一页族（一页通 + 一页答成品页） |
 | `templates/` | 母题卡、模块卡、复盘等写作模板 |
 | `data/` | 站点进度云同步落盘文件（`marvis-sync.json`） |
 

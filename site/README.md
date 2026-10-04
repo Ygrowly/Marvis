@@ -12,10 +12,11 @@
 site/
   index.html          唯一入口：房间直达 + 今日复训 + 作业入口（计时器在弹窗里）
   progress.html       进度页（手写，数据本机 + 云同步到 data/marvis-sync.json）：首屏一张今日清单（类型标签）＋六个折叠抽屉；主线级派单（三档串行 + 簇内门控）+ 闭卷自评（讲得出/卡壳/讲不出）+ 断点回流 + 欠账减负 + 问题台账（闲置天数 / 本周闭环计数 / 公开模式开关）
-  brain.html          书架页（手写）：three.js 全库导航，吃 clusters / projects / rules 三份数据
+  brain.html          书架页（手写）：three.js 全库导航，吃 clusters / projects / rules / cards 四份数据；点书翻开（概要/前序/目录）+ 今日内化侧栏
   rules.html          行事准则页（手写）：情境 → 标准动作派单，数据 _data/rules.js
+  cards.html          内化馆（build 生成）：读厚卡视图（原则卡先想后翻 + ⚡打卡 + 地基包导航），数据 _data/cards.js
   interactive/        外部工具产物（archify），build 特意跳过清理
-  _data/clusters.js   进度页数据源：7 簇 / 49 条主线 / 手撕日课（脚本从模块卡生成，勿手改）
+  _data/clusters.js   进度页数据源：7 簇 / 49 条主线 / 手撕日课（手写数据源，与 CLAUDE.md 口径一致；改后全量跑测试）
   _data/rules.js      行事准则派单池（手写）：题面正本在 wiki/thinking/，此处只放派单题面，不复制正文
   projects/           项目口述页（build 生成，勿手改）：骨架 + 决策链，默认折叠
   _build/mermaid/     自带 mermaid.min.js（浏览器端渲染用；页面外链 _data/mmd-boot.js）
@@ -28,7 +29,6 @@ site/
   reviews/            诊断页（build 生成，勿手改）
   PLAN.md             方案正本
   build.py            构建器：按格式选 adapter → 视图 + 牌组数据
-  cards/              补充卡草稿区（::card 也可直接写进任何 md）
   figures/            图（.svg），md 里用 ::figure 引用
   _data/              构建产物 decks.json / modules.js / reviews.js / breaks.js / projects.js（数据）+ .js（file:// 用）；例外：clusters.js 与 rules.js 是手写数据源
   _components/        marvis.css + marvis.js（10 个原生 Web Components）+ sync.js（进度云同步，由 marvis.js 动态挂载）
@@ -148,7 +148,7 @@ A: 答案，可以换多行
 ::end
 ```
 
-写在任何被扫描的 md 里：`site/cards/`、`output/算法/`、`study/`、`wiki/interview/`、`wiki/thinking/`、`projects/`。
+写在任何被扫描的 md 里：`output/算法/`、`study/`、`wiki/interview/`、`wiki/thinking/`、`projects/`。
 `id` 全库唯一，重复跳过。想加扫描目录改 `build.py` 的 `CARD_DIRS`。
 
 ### 4. 图 —— `::figure`（AI 生成，人审图）

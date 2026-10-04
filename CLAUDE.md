@@ -81,6 +81,7 @@ status: captured | candidate | reading | integrated
 - 只有经过用户阅读或实践验证，并形成可复用资产，才能标记为 `integrated`。
 - 不使用 `mastered`。掌握程度依赖具体场景，并会随时间变化。
 - 不使用 `archived`。暂时不继续处理的内容留在 `raw/` 即可。
+- 例外（2026-10-04 收编）：**活页正本**——13 张模块卡、`wiki/thinking/性命双修执行案.md` 这类长期演进、持续在改的在用底稿——用 `status: active`，语义是「在用进行时」，不参与 captured → integrated 的升降。
 - 行动准则、个人判断类内容不从 `raw/` 素材加工而来，直接以 `candidate` 起步；翻 `integrated` 的验证标准不是「读完素材」，而是「实践过且能复述」。
 - `human_reviewed: true` 指**读过落盘后的文件文本**：主人逐段确认过、AI 如实转录的内容可标 true；AI 在转录之外做了归纳、改写或补结构的，一律 false（candidate），由主人读完正本后自行翻正，AI 不代翻。
 
@@ -200,12 +201,12 @@ AI 先读取用户的阅读笔记，再进行：
 复杂问题默认用一页 HTML 回答，skill：`answer-me-with-html`（装在 `~/.agents/skills/answer-me-with-html/`，单文件 CLI：`node ~/.agents/skills/answer-me-with-html/scripts/am.mjs`）。模型只写 Markdown 稿（frontmatter + `##` 面板 + flow / sequence / tree / timeline / kv / callout 组件），排版、主题、图形坐标由 CLI 确定性渲染，**不手写 HTML / CSS / SVG**；渲染自带 STE 受控写作检查（一句一事、句长上限、中文禁虚动词与套话）。
 
 - 出页判据：≥3 个关联概念、流程 / 协议 / 状态迁移、≥3 维对比取舍、层级或时间演进，或主人明说「画个图 / 用 HTML 讲」；一句话能答的照常一句话答。
-- 落点：正式留档 `output/answers/YYYY-MM-DD-<slug>.html`（稿件 md 同名同存）；随手答不留在库里（skill 默认存 `~/.answer-me-with-html/pages/`）。改单面板用 `am patch`，不整页重写。
+- 落点：成品页上站 `site/onepage/YYYY-MM-DD-<slug>.html`（随 Pages 部署，书架/内化馆可跳转），稿件 md 同名存 `output/answers/`；随手答不留在库里（skill 默认存 `~/.answer-me-with-html/pages/`）。改单面板用 `am patch`，不整页重写。
 - 边界：页面是呈现层，不替代正本——值得长期记住的结论要回流 `wiki/` 正本；页面内容按 AI 生成对待（candidate 心态），主人过目才算数。
 - 主题统一：稿件固定 `theme: blueprint`（图纸风）——工程题配工程图，网格尺规版式语言完整；卡片风（shadcn）留给对外分享时的临时切换，不改默认。
 - 教练边界：学习型讨论仍按严格教练模式——主人闭卷作答之前不出「完整讲解页」；一页答只用在主人明确要「讲给我看」的场合（讲原理、方案对比、复盘材料），不替代追问 → 自答 → 补断点的学习回路。
 - 质量底线（2026-10-04 验收教训）：中文排版以截图验收为准——表格列不被挤成竖排换行、note 不出孤行标点、导语括号不断行；修法是**改稿不改组件**（短句、短表项），改完重渲再看。
-- 索引：`output/answers/README.md` 逐页登记（日期 / 题目 / 一句话结论 / 状态），新页落库时同步。
+- 索引：`output/answers/README.md` 逐页登记（日期 / 题目 / 一句话结论 / 状态），新页落库时同步（成品页在 `site/onepage/`）。
 
 ## 目录职责
 
@@ -262,7 +263,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 ### `output/`
 
-面向具体使用场景的成品。简历及导出物（PDF/HTML）只放 `output/resume/`，不在 output 根目录散落；`output/evidence/` 存项目证据材料；`output/answers/` 存「一页答」（复杂问题的可视化回答：自包含单文件 HTML + 同名稿件 md，2026-10-04 起，约定见〈回答形态〉）。
+面向具体使用场景的成品。简历及导出物（PDF/HTML）只放 `output/resume/`，不在 output 根目录散落；`output/evidence/` 存项目证据材料；`output/answers/` 存「一页答」稿件 md（成品 html 上站 `site/onepage/`，约定见〈回答形态〉）；`output/_tools/` 集中一次性写入 / 校验脚本（2026-10-04 起，根目录不再堆 `_*.py`）；一次性战役卡（笔试冲刺、单场作战卡）完结后归档 `archive/`。
 
 ### `site/`
 
@@ -270,7 +271,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 - `index.html`：唯一入口，调度复训 + 进入子页；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机，云同步到 `data/marvis-sync.json`：看免配置（公开仓库直读 raw），上传只需贴一次令牌）；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
 - `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
-- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑书架，2026-10-03 加「今日内化」侧栏）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
+- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑书架，2026-10-03 加「今日内化」侧栏）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）；`onepage/` 一页族成品（2026-10-04 起：13 张模块一页通 + 一页答，离线管线产出、build 同样跳过清理，书架书页「一页总览」直达，页内导航回书架 / 模块概览）。`deliver/` 交付页**规划中、未建**
 - `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：4 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交）
 - 方案正本 `site/PLAN.md`，用法 `site/README.md`；面向 GitHub 访客的仓库说明是根目录 `README.md`（不承载规则）
 

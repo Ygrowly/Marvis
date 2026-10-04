@@ -56,7 +56,7 @@ MMD_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
 TOPIC_DIRS = ["wiki/topics"]          # 母题卡
 REVIEW_DIRS = ["wiki/interview"]      # 面试复盘（诊断页）
 MODULE_DIRS = ["wiki/topics"]         # 模块深挖卡（学习页）
-CARD_DIRS = ["site/cards", "output/算法", "study", "wiki/interview", "wiki/thinking", "projects"]
+CARD_DIRS = ["output/算法", "study", "wiki/interview", "wiki/thinking", "projects"]
 LEDGER_SRC = ROOT / "questions.md"    # 问题台账（唯一加工驱动源）→ _data/ledger.js
 
 CARD_RE = re.compile(r"^::card\s+id=(?P<id>\S+)(?:\s+tag=(?P<tag>\S+))?\s*$")
@@ -2122,7 +2122,8 @@ def cleanup_html():
     """
     n = 0
     for p in SITE.rglob("*.html"):
-        if p.parent.name == "interactive":
+        if p.parent.name in ("interactive", "onepage"):
+            # interactive/ = archify 外部产物；onepage/ = 一页族成品（一页通/一页答，离线工具产出）
             continue
         txt = p.read_text(encoding="utf-8")
         new = DIRTY_ATTR.sub("", txt)
@@ -2452,6 +2453,20 @@ CARDS_PAGE = """<!DOCTYPE html>
 
 
 def render_cards_page(payload, line_href):
+    _RULE_BOOKS = ("行动规则", "0713再就业男团-逆境准则", "性命双修执行案")
+
+    def wikilink(x):
+        """[[目标|别名]] → 站内展示：R 系准则书链到 rules.html，其余取别名纯文本。"""
+        t = x.strip()
+        if not (t.startswith("[[") and t.endswith("]]")):
+            return esc(t)
+        inner = t[2:-2]
+        target, _, alias = inner.partition("|")
+        target, alias = target.strip(), (alias or target).strip()
+        if target in _RULE_BOOKS:
+            return '<a href="rules.html">%s</a>' % esc(alias)
+        return esc(alias)
+
     def principle_html(c):
         details = ['<details class="crd-d"><summary>先想：这个情境你会怎么做，再展开对</summary>']
         details.append('<div class="crd-sec"><b>标准动作</b>%s</div>'
@@ -2464,7 +2479,7 @@ def render_cards_page(payload, line_href):
                            % link_line_refs(md_to_html(c["trap"]), line_href))
         if c["links"]:
             details.append('<div class="crd-sec"><b>关联</b> %s</div>'
-                           % "　".join(esc(x.replace("[[", "").replace("]]", "")) for x in c["links"]))
+                           % "　".join(wikilink(x) for x in c["links"]))
         details.append("</details>")
         return (
             '<div class="crd" id="card-%s">'

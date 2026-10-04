@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux与部署 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<nav style="max-width:1440px;margin:0 auto;padding:14px 28px 0;font:12.5px/1.6 -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:center"><a href="../brain.html" style="color:#185FA5;text-decoration:none">← 第二大脑书架</a><a href="../modules/Linux与部署.html" style="color:#185FA5;text-decoration:none">Linux与部署 · 模块概览与主线详情</a><span style="color:#9AA4AE">一页总览 · 从书架点书可回到本页</span></nav><div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>Linux与部署
+    <small>3 张母题 · 22 道题 · 3 个项目 —— 一条线：被关在什么盒子里 → 怎么上线怎么退出 → 坏了怎么查（前提：服务都是被管起来的）</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：盒子 → 上线 → 排查（运维的日常顺序）<span class="src">正本 wiki/topics/Linux与部署/</span></h2>
+  <div class="h2sub">先理解边界（X1）、再理解生命周期（X2）、最后才是排障（X3）；<b>不知道「被管起来」这层，三个灵异现象都无法解释</b>。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linux与部署 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <line x1="224" y1="52" x2="248" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+    <text x="258" y="56" font-size="11" fill="#4E5969">蓝 · 运维日常顺序（盒子 → 上线 → 排查）</text>
+    <line x1="499" y1="52" x2="523" y2="52" stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)"/>
+    <text x="533" y="56" font-size="11" fill="#4E5969">橙 · 判据与数字</text>
+    <line x1="774" y1="52" x2="798" y2="52" stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)"/>
+    <text x="808" y="56" font-size="11" fill="#4E5969">紫 · 失效与误判</text>
+    <line x1="1049" y1="52" x2="1073" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="1083" y="56" font-size="11" fill="#4E5969">绿 · 项目落点与共享前提</text>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="100" width="1270" height="112" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">① 盒子（X1）—— 容器是被「重新布置过视角」的普通进程：namespace 改视野、cgroup 设额度；共享内核，隔离强度弱于虚拟机</text>
+      <text x="106" y="146" font-size="11.5" fill="#B45309">关键推论：内存没有 namespace——free 看到的是宿主机视图；容器上限在 memory.max，超了 = cgroup OOM，与宿主机剩多少无关</text>
+      <text x="106" y="166" font-size="11.5" fill="#B45309">CPU 配额是「每周期预算」：0.5 核 = 每 100ms 周期允许 50ms CPU 时间——用完后即使核空闲也用不了 → CPU 不高但延迟抖动</text>
+      <text x="106" y="186" font-size="11.5" fill="#6D28D9">证据在 cpu.stat：nr_throttled / throttled_usec——「利用率不高 ≠ 有余量」，先查限流再谈加核</text>
+      <text x="1344" y="204" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">RuleArena：Redis 容器 256–512MB = cgroup 限制 · 老 JVM 不感知容器按宿主机 1/4 设堆 → 直接撞 memory.max 被 cgroup OOM</text>
+    </g>
+    <line x1="725" y1="212" x2="725" y2="245" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="252" width="1270" height="130" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <text x="106" y="276" font-size="13" font-weight="800" fill="#1D2129">② 上线（X2）—— 起与停难点完全不同：起 = 依赖就绪，停 = 优雅退出；上线的成败往往取决于「怎么退出」</text>
+      <text x="106" y="298" font-size="11.5" fill="#4E5969">SIGTERM ≠ SIGKILL：宽限期一到就是 KILL——所以长任务必须设计成「可中断 + 可恢复」，不指望一定能优雅退完</text>
+      <text x="106" y="318" font-size="11.5" fill="#6D28D9">优雅退出四步顺序不能乱：摘流量（最易漏）→ 等在途排空 → 关依赖 → 退出；发版后千分之几错误率抬升 = 没做优雅退出，是 bug 不是发版成本</text>
+      <text x="106" y="338" font-size="11.5" fill="#B45309">时间窗要能算：LB 摘流 1s + 在途 P99.9 800ms + 清理 200ms = 2s &lt; 宽限期 10s ✓——在途有 30s 长任务就是设计问题</text>
+      <text x="106" y="358" font-size="11.5" fill="#4E5969">探针设计：存活探针别查 DB——DB 抖 3s → 探针失败 → 重启好容器 → 连锁重启；配置三分支：环境变量 / 文件 / 配置中心</text>
+      <text x="1344" y="376" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">EnergyOps：重启后扫描七天缺口、低优先级回补——重启 ≠ 状态清零，能恢复的只有落库的部分 · RuleArena：先读 Receipt 再校准 Checkpoint</text>
+    </g>
+    <line x1="725" y1="382" x2="725" y2="415" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="422" width="1270" height="130" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <text x="106" y="446" font-size="13" font-weight="800" fill="#6D28D9">③ 排查（X3）—— 排查的能力体现在「顺序」，不在记得多少命令：两个是非问题先把可能性砍掉大半</text>
+      <text x="106" y="468" font-size="11.5" fill="#4E5969">全站还是单机？CPU 密集还是 IO 等待？——四个组合各指明下一步；同一指标看趋势、两个指标看关系</text>
+      <text x="106" y="488" font-size="11.5" fill="#B45309">load 高 + CPU 低 = 大量任务卡在不可中断等待（多为磁盘 IO）的签名；PSI 比 load 准——直接给「资源压力」百分比</text>
+      <text x="106" y="508" font-size="11.5" fill="#4E5969">内存看 available（used 里很大部分是可回收页缓存）；磁盘 df 100% 但 du 60% = 已删未释放句柄；TIME_WAIT 多 ≠ 故障</text>
+      <text x="106" y="528" font-size="11.5" fill="#6D28D9">容器内第一嫌疑是限流（throttled）——CPU 不高但延迟抖，查 cpu.stat，不是加核；数驭穹图判据：限额配额优先于加机器</text>
+      <text x="1344" y="546" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图：超时 / 扫描量 / 行数 / 并发 / 取消——容器级限制在业务层的对应物，防「一个请求拖垮整个服务」 · 权限不确定 fail closed</text>
+    </g>
+    <line x1="725" y1="552" x2="725" y2="585" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="592" width="1270" height="72" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="622" font-size="14.5" font-weight="800" fill="#15803D" text-anchor="middle">共享前提：现代服务都是「被管起来的」——被容器、编排系统、信号和探针管理着</text>
+      <text x="725" y="646" font-size="11.5" fill="#4E5969" text-anchor="middle">不知道这层管理，很多现象无法解释：进程「莫名」被杀（cgroup OOM）· SIGTERM 没处理完就没了（宽限期）· CPU 不高但延迟抖（限流）</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+<b>主干叙事（一段读完）</b>：Linux与部署的一条线是运维的日常顺序：「<b>它被关在什么盒子里 → 它怎么上线怎么退出 → 它坏了怎么查</b>」，共享前提：<b>现代服务都是被管起来的</b> —— 被容器、编排、信号和探针管理。
+    <b>盒子</b>：容器是被重新布置过视角的普通进程（namespace 改视野、cgroup 设额度，共享内核弱于 VM）；<b>内存没有 namespace</b> —— free 看到的是宿主机，上限在 memory.max，超了就是 cgroup OOM；CPU 配额是每周期预算（0.5 核 = 每 100ms 用 50ms），<b>用完后核空闲也用不了</b> —— 「CPU 不高但延迟抖」先查 nr_throttled。
+    <b>上线</b>：起难在依赖就绪（探针别查 DB），停难在优雅退出 —— 四步顺序不能乱（<b>摘流量最易漏</b>）；SIGTERM 宽限期到就 SIGKILL，长任务必须可中断 + 可恢复；时间窗要能算（摘流 + 在途 P99.9 + 清理 &lt; 宽限期）。
+    <b>排查</b>：用两个是非问题缩范围（全站 / 单机 × CPU / IO）；<b>load 高 + CPU 低 = 在等 IO 的签名</b>；内存看 available、磁盘 df / du 对不上是已删未释放句柄、容器内先查限流再谈加核——「限额配额优先于加机器」。
+  </div>
+  <div class="cap"><b>读法</b>：三个大框就是运维日常顺序；橙字是判据与数字（0.5 核 / 时间窗都要能算），紫字是失效与误判（毒教材高发区）；绿字是三个项目的落点。<b>底部横幅解释了三个「灵异现象」</b>：莫名被杀、SIGTERM 没处理完、CPU 不高但抖。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：3 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">X1 容器是什么</td><td>namespace 与 cgroup 各管什么</td><td class="ans"><span class="a">容器 = 被重新布置过视角的普通进程：namespace（PID/NET/MNT/UTS/IPC/USER）改视野、cgroup 设额度——共享内核，隔离强度弱于 VM；内存没有 namespace：free 看到宿主机视图，上限在 memory.max，超了 = cgroup OOM；CPU 配额是每周期预算（0.5 核 = 每 100ms 用 50ms），用完即限流——看 nr_throttled / throttled_usec</span></td><td>1–6</td><td class="ans"><span class="a">RuleArena：Redis 容器 256–512MB 是 cgroup 限制（cgroup OOM ≠ 宿主机 OOM，排查方向完全不同）；老 JVM 按宿主机 1/4 设堆 → 直接撞 memory.max</span></td></tr>
+      <tr><td class="k">X2 上线与退出</td><td>从镜像到能服务要过哪几关</td><td class="ans"><span class="a">起 = 依赖就绪（探针别查 DB：DB 抖 3s → 探针失败 → 重启好容器 → 连锁重启）；停 = 优雅退出四步：摘流量（最易漏）→ 等在途排空 → 关依赖 → 退出；SIGTERM 宽限期到就 SIGKILL——长任务必须可中断 + 可恢复；时间窗要能算（摘流 + 在途 P99.9 + 清理 &lt; 宽限期）；错误率抬升 = 没做优雅退出，是 bug</span></td><td>7–12</td><td class="ans"><span class="a">EnergyOps：重启后扫描七天缺口、低优先级回补——重启 ≠ 状态清零，自检必须存在；RuleArena：Worker 起来先读 AttackRun + 最后 Receipt 校准 Checkpoint</span></td></tr>
+      <tr><td class="k">X3 排查定位</td><td>变慢了先看哪里</td><td class="ans"><span class="a">两个是非问题缩范围（全站 / 单机 × CPU 密集 / IO 等待）——四个组合各有下一步；load 高 + CPU 低 = 不可中断等待（磁盘 IO）的签名；PSI 比 load 准（直接给资源压力）；内存看 available 不是 used；df 100% 但 du 60% = 已删未释放句柄；TIME_WAIT 多 ≠ 故障；容器内第一嫌疑是限流（throttled）</span></td><td>13–22</td><td class="ans"><span class="a">数驭穹图：限额与配额优先于加机器——加机器不解决单个请求无上界；权限不确定 fail closed；EnergyOps：重启后自检必须有（不能假设没报错就跑过）</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：容器里的两笔错账，优雅退出的时间窗<span class="src">正本 母题-X1 · 母题-X2</span></h2>
+  <div class="h2sub">左边是「平均够 ≠ 不被限流」与「free 救不了 cgroup OOM」，右边是「时间窗要能算才敢设」——都是数量级问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linux与部署 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">容器里的两笔错账（0.5 核限流 + JVM 撞墙）</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">cpu.max = "50000 100000"（0.5 核）：每 100ms 周期预算 50ms CPU 时间；单请求 50ms、8 req/s</text>
+      <text x="80" y="104" font-size="11.5" fill="#4E5969">平均需求 400ms/s = 0.4 核 &lt; 0.5 核「够」——但突发 2 个请求落进同一周期 = 100ms &gt; 50ms → 被限流 50ms</text>
+      <rect x="80" y="118" width="300" height="20" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="132" font-size="12" font-weight="800" fill="#fff">　表现：CPU 利用率只 40%，延迟抖 50ms+</text>
+      <text x="80" y="170" font-size="12" font-weight="800" fill="#1D2129">内存：memory.max = 512MB，宿主机 16GB，老 JVM 不感知容器</text>
+      <text x="80" y="196" font-size="11.5" fill="#4E5969">JVM 按「宿主机物理内存的 1/4」设最大堆 = 4GB → 进程 RSS 涨到 512MB 就被 cgroup OOM 杀</text>
+      <rect x="80" y="210" width="440" height="20" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="224" font-size="12" font-weight="800" fill="#fff">　free 显示还有 15GB——救不了它（内存没有 namespace）</text>
+      <text x="80" y="256" font-size="11.5" font-weight="700" fill="#B45309">判据：平均利用率够 ≠ 不被限流（要看突发周期）；容器内 JVM 必须显式设堆 / 用容器感知版本</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">证据链：cpu.stat 的 nr_throttled / throttled_usec · memory.events 的 oom_kill——数字都有出处</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">优雅退出的时间窗（能算才敢设）</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">在途 P99.9 = 800ms · LB 摘流生效 1s · 清理 200ms · 平台宽限期 10s：</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">需要 = 1s + 0.8s + 0.2s = 2s &lt; 10s ✓ 退得完</text>
+        <rect x="1080" y="96" width="80" height="12" rx="3" fill="#22C55E"/>
+        <text x="760" y="132">在途有 30s 长任务：30s &gt; 10s → 宽限期到 SIGKILL，在途作废</text>
+        <rect x="1080" y="122" width="240" height="12" rx="3" fill="#F59E0B"/>
+      </g>
+      <text x="760" y="166" font-size="11.5" fill="#4E5969">所以长任务不进退出路径：设计成「可中断 + 可恢复」——Checkpoint 只是恢复线索，不是完成证明</text>
+      <text x="760" y="192" font-size="11.5" fill="#6D28D9">探针反例：/health 里查 DB，DB 抖 3s → 存活探针失败 → 重启本来健康的容器 → 全体连锁重启</text>
+      <text x="760" y="218" font-size="11.5" fill="#4E5969">排查签名：load 48 / 8 核 + CPU 45% + 内存磁盘充足 → 在等 IO（不可中断等待）——不是加核</text>
+      <text x="760" y="244" font-size="11.5" fill="#4E5969">磁盘签名：df 100% 但 du 60% → 已删除但句柄未释放——lsof 找进程，重启或截断</text>
+      <text x="760" y="270" font-size="11.5" font-weight="700" fill="#B45309">顺序判据：先缩范围（全站/单机 × CPU/IO）再动手——「把命令全敲一遍看哪个大」既慢又漏</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">数驭穹图：限额与配额优先于加机器——加机器不解决「单个请求无上界」</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">0.5 核的真义</div><div class="big">100ms / 50ms</div>
+      <div class="d">每周期预算 50ms CPU 时间，不是半个物理核——突发周期超预算即限流，核空闲也用不了。</div></div>
+    <div class="ncard o"><div class="t">限流证据</div><div class="big">nr_throttled</div>
+      <div class="d">cpu.stat 的限流次数与时长——「CPU 不高但延迟抖」的第一嫌疑，先查它再谈加核。</div></div>
+    <div class="ncard b"><div class="t">JVM 容器错配</div><div class="big">4GB 堆 vs 512MB</div>
+      <div class="d">老 JVM 按宿主机 1/4 设堆：RSS 涨到 memory.max 即被 cgroup OOM——free 还有 15GB 救不了。</div></div>
+    <div class="ncard b"><div class="t">退出时间窗</div><div class="big">2s < 10s</div>
+      <div class="d">摘流 1s + 在途 P99.9 800ms + 清理 200ms：能算才敢设；在途 30s 长任务 = 设计问题。</div></div>
+    <div class="ncard o"><div class="t">错误率抬升</div><div class="big">千分之几 = bug</div>
+      <div class="d">发版后错误率小幅抬升通常就是没摘流量 / 没优雅退出——是 bug，不是发版成本。</div></div>
+    <div class="ncard b"><div class="t">load 签名</div><div class="big">load 48 / 8 核 + CPU 45%</div>
+      <div class="d">load 高 + CPU 低 = 大量任务卡在不可中断等待（多为磁盘 IO）——不是 CPU 不够。</div></div>
+    <div class="ncard o"><div class="t">内存看哪个</div><div class="big">available</div>
+      <div class="d">used 里很大部分是可回收页缓存——「用满」不是问题，「回收不动」才是。</div></div>
+    <div class="ncard b"><div class="t">df vs du 对不上</div><div class="big">100% vs 60%</div>
+      <div class="d">已删除但句柄未释放的文件占着空间——lsof 找到进程，重启或截断才释放。</div></div>
+    <div class="ncard o"><div class="t">探针反例</div><div class="big">DB 抖 3s</div>
+      <div class="d">/health 查库 + 存活探针 3s 超时 → 重启本来健康的容器 → 全体连锁重启——探针只测进程自身。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「容器是轻量虚拟机」</span><span class="v">✓ 共享内核：namespace 改视野、cgroup 设额度——隔离的是视图与资源，强度弱于 VM。</span></div>
+    <div class="mrow"><span class="x">✗「容器里 free 还有内存，所以不会 OOM」</span><span class="v">✓ 内存没有 namespace：上限在 memory.max，超了就是 cgroup OOM，与宿主机剩多少无关。</span></div>
+    <div class="mrow"><span class="x">✗「CPU 利用率不高，说明还有余量」</span><span class="v">✓ 容器里配额是每周期预算，用完后核空闲也用不了——看 cpu.stat 的 nr_throttled。</span></div>
+    <div class="mrow"><span class="x">✗「收到停止信号 exit(0) 就行」</span><span class="v">✓ 优雅退出四步：摘流量（最易漏）→ 等在途排空 → 关依赖 → 退出；顺序不能乱。</span></div>
+    <div class="mrow"><span class="x">✗「进程活着就是服务可用」</span><span class="v">✓ 存活探针查 DB 时 DB 抖动会重启好容器——探针只测进程自身，依赖就绪用就绪探针。</span></div>
+    <div class="mrow"><span class="x">✗「load 高就是 CPU 忙」</span><span class="v">✓ load 高 + CPU 低 = 大量任务卡在不可中断等待（多为磁盘 IO）——IO 等待的签名。</span></div>
+    <div class="mrow"><span class="x">✗「free 显示用满就是要爆了」</span><span class="v">✓ 页缓存可随时回收，看 available / MemAvailable——「回收不动」才是问题。</span></div>
+    <div class="mrow"><span class="x">✗「磁盘告警就是空间要满了」</span><span class="v">✓ 也可能是 inode 耗尽或已删未释放句柄（df 100% 但 du 60%）——lsof 找进程。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能讲清"容器隔离了什么 / 一个服务怎么上线 / 变慢了先看哪里"三条线</div></li>
+<li><span>☐</span><div><b>准确纠错</b>：能当场说清 <b>容器不是轻量虚拟机（共享内核，隔离的是视图与资源）</b>、<b>CPU 利用率不高也可能是被限流</b>、<b>free 的 used 高不等于内存不够</b> 这三处</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能回答"为什么容器里的 OOM 与宿主机 OOM 是两回事"和"优雅退出的时间窗设错的后果"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 <b>RuleArena 的容器内存限制</b> 讲 X1，用 <b>EnergyOps 的重启后缺口回补</b> 讲 X2</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的排查结论（例："服务变慢就是 CPU 不够，加核就行" / "top 内存不高，肯定不是内存问题"），能指出错在哪、真因该怎么查</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：盒子（容器到底隔离了什么、限制了哪些资源、namespace 与 cgroup 在这件事里的分工）、上线（从镜像到一个能服务的进程：配置与依赖、健康检查、优雅退出、进程与信号）、排查（CPU / 内存 / 磁盘 / 网络四类症状的定位顺序与常见误判）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.Linux与部署.v1";
+  var CARDS = {"X1": {"t": "容器是什么：namespace 与 cgroup 各管什么", "q": ["容器配额 cpu.max = \"50000 100000\"（0.5 核）。单请求 CPU 时间 50 ms，请求速率 8 个/秒；到达均匀分布。", "某 Java 服务放进容器，memory.max = 512 MB。宿主机 16 GB。JVM 是老版本（不感知容器），默认按\"宿主机物理内存的 1/4\"设置最大堆。", "某服务在容器里运行。运维给出三条信息："], "pts": ["1. 前提：容器是一个被\"重新布置过视角\"的普通进程｜两者的根本差别只有一个：内核是不是共享的。", "1. 前提：容器是一个被\"重新布置过视角\"的普通进程｜\"容器就是一个进程\"这句话要讲准确：", "1. 前提：容器是一个被\"重新布置过视角\"的普通进程｜把这两者的分工记成一句话，本卡后面全部由它推出：", "2. 关键推论：内存没有 namespace｜namespace 有 PID / NET / MNT / UTS / IPC / USER / CGROUP 等好几类，但没有\"内存 namespace\"——因为内存本身是被所有进程共享的资源池，隔离它的方式是\"设上限\"（cgroup），而不是\"换个视图\"。", "2. 关键推论：内存没有 namespace｜由此推出三个很实用的判断：", "2. 关键推论：内存没有 namespace｜这一点在 母题-O2-虚拟内存与缺页 4.3 已完整推导，这里只给排查用的落点：", "3. CPU 的限制方式与\"限流\"这个隐形杀手｜cgroup v2 的 CPU 限制是\"每个周期内允许多少 CPU 时间\"：", "3. CPU 的限制方式与\"限流\"这个隐形杀手｜注意\"0.5 核\"这个说法：它不是一个\"半个核心\"的物理约束，而是\"每个 100 ms 周期内只能用 50 ms 的 CPU 时间\"。这个区别很重要，因为它带来一个反直觉的现象：", "3. CPU 的限制方式与\"限流\"这个隐形杀手｜把本卡开头的第二个问题算出来：", "4. 边界与常见误解｜错。容器共享宿主机的内核，它只是\"被重新布置过视角的进程\"：namespace 改视野、cgroup 设额度。没有内核隔离，所以隔离强度弱于虚拟机 | | \"容器里 free 显示还有内存，所以不会 OOM\"", "4. 边界与常见误解｜内存没有 namespace——free 看到的是宿主机的视图。容器的上限在 memory.max 里，超了就是 cgroup OOM，和宿主机剩多少无关 | | \"CPU 利用率不高，说明还有余量\"", "4. 边界与常见误解｜在容器里这个判断可能完全错：配额是\"每周期允许用多少 CPU 时间\"，用完之后即使核空闲也用不了——表现为\"CPU 不高但延迟抖动\"。要看 cpu.stat 的 nr_throttled / throttled_usec | | \"容器里 top 的 CPU 就是我的使用量\""], "crit": "能用「namespace 改视野、cgroup 设额度」一句话讲容器；能解释为什么内存没有 namespace；能算 0.5 核的周期预算并解释限流；能用 nr_throttled 判断「CPU 不高但抖」。"}, "X2": {"t": "一个服务怎么上线：从镜像到能服务的进程", "q": ["某服务最长在途请求 P99.9 = 800 ms；LB 摘流量生效约 1 s；清理约 200 ms；平台的宽限期是 10 s。", "某服务的\"存活探针\"配置是\"调用 /health 接口，如果 3 秒不返回就重启容器\"，而 /health 里会去查一次数据库。", "某队列消费者的代码是："], "pts": ["1. 前提：上线的成败取决于\"怎么退出\"｜上线包含\"起\"和\"停\"两件事，而它们的难点完全不同：", "1. 前提：上线的成败取决于\"怎么退出\"｜为什么\"停止\"更难：", "1. 前提：上线的成败取决于\"怎么退出\"｜这两个信号的语义完全不同：", "2. 优雅退出的四个动作（顺序不能乱）｜正确顺序是\"先摘流量，再等排空，然后关依赖，最后才退出\"：", "2. 优雅退出的四个动作（顺序不能乱）｜① 为什么最容易漏：", "2. 优雅退出的四个动作（顺序不能乱）｜HTTP 请求不是唯一的\"在途工作\"：", "3. 量化：时间窗该怎么算｜代进数字算一遍（自测 Q1 完整算）：", "3. 量化：时间窗该怎么算｜结论：\"长任务\"不应该在退出路径上等 ——它应该被设计成\"可中断 + 可恢复\"：", "3. 量化：时间窗该怎么算｜三种做法，各有代价：", "4. 边界与常见误解｜不是正常的。千分之几的错误率抬升通常就是没有优雅退出（或没在 LB 侧摘流量）造成的——它是 bug，不是发版成本 | | \"收到停止信号就 exit(0) 就行\"", "4. 边界与常见误解｜会丢在途请求。正确顺序是先摘流量 → 等在途完成 → 关依赖 → 退出，且①摘流量最容易漏 | | \"优雅退出做得好就一定不丢请求\"", "4. 边界与常见误解｜不能保证：宽限期到就 SIGKILL。所以长任务必须设计成\"可中断 + 可恢复\"，而不是指望\"一定能优雅退完\" | | \"进程活着就是服务可用\""], "crit": "能按顺序背优雅退出四步并说出最易漏的一步；能算时间窗并判断宽限期够不够；能设计不查 DB 的存活探针；能把长任务讲成「可中断 + 可恢复」而不是「一定能退完」。"}, "X3": {"t": "线上变慢了从哪开始查：四类症状的定位顺序", "q": ["监控画面：CPU 利用率 45%、load average = 48（机器 8 核）、内存 available 充足、磁盘空间充足。", "纠错题（题干见母题卡二、自测 Q2）：某接口调用链：", "某服务 df 显示磁盘 100% 满，但 du 从根目录加起来只有 60%。"], "pts": ["1. 前提：排查的能力体现在\"顺序\"，不在\"记得多少命令\"｜\"把所有命令敲一遍，看哪个数字大\"这个做法有两个硬伤：", "1. 前提：排查的能力体现在\"顺序\"，不在\"记得多少命令\"｜正确的做法是\"用两个是的/否问题，把可能性先砍掉一大半\"：", "1. 前提：排查的能力体现在\"顺序\"，不在\"记得多少命令\"｜这两个问题加起来只有四个组合，但每一个组合都指明了下一步——这就是\"顺序\"的价值：它让你在信息最少的时候，做出最有信息量的动作。", "2. 四类症状：每一类先看什么｜先区分三种完全不同的情况：", "2. 四类症状：每一类先看什么｜load average 是这里最大的坑：", "2. 四类症状：每一类先看什么｜三步，顺序不能反：", "3. 量化与判据｜同一个指标看趋势，两个指标看关系：", "3. 量化与判据｜再加一条\"资源与吞吐的关系\"：", "3. 量化与判据｜单看一个指标不够，要看两个的关系：", "4. 边界与常见误解｜两个原因：可运行任务在抢 CPU，或大量任务卡在不可中断等待（多为磁盘 IO）。load 高 + CPU 低就是在等 IO 的签名 | | \"CPU 利用率不高就说明没压力\"", "4. 边界与常见误解｜在容器里尤其错：配额是\"每周期的时间预算\"，用完之后即使核空闲也用不了——看 cpu.stat 的 nr_throttled / throttled_usec（母题-X1-容器是什么 3.2） | | \"free 显示内存用满就是要爆了\"", "4. 边界与常见误解｜先看 available：used 里很大一部分是可回收的页缓存。\"用满\"本身不是问题，\"回收不动\"才是（母题-O2-虚拟内存与缺页） | | \"磁盘告警就是空间要满了\""], "crit": "能用两个是非问题缩排查范围；能解读 load 高 CPU 低、df / du 对不上、TIME_WAIT 多三个签名；能给出容器限流的第一嫌疑与证据；能把「限额优先于加机器」讲成判据。"}};
+  var ORDER = ["X1", "X2", "X3"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

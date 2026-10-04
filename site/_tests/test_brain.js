@@ -1,0 +1,62 @@
+/* brain.html 静态回归测试：三个真实 bug 的教训固化（2026-10-04 批 6）+ 一页总览接线 + 数据对账。
+   brain 内联脚本依赖 three.js，不做完整运行——这里验源码静态不变量与数据文件对账。*/
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+let fails = 0;
+function ok(cond, label, detail) {
+  console.log((cond ? '  ✅ ' : '  ❌ ') + label + (cond ? '' : '  → ' + (detail || '')));
+  if (!cond) fails++;
+}
+
+const brain = fs.readFileSync(path.join(ROOT, 'brain.html'), 'utf8');
+
+console.log('【源码不变量：历史上炸过的三处】');
+ok(/#bookmask\[hidden\]\s*\{\s*display:\s*none/.test(brain),
+  '书页遮罩 [hidden] 修复在（display:flex 曾压掉 hidden）');
+ok(brain.includes('var key = n.canon || n.name'),
+  'canon 反推在（clusters 显示名 ≠ 模块卡 module 字段）');
+{
+  const decl = brain.indexOf('var contents = m.contents || [];');
+  const use = brain.indexOf("if (!preTxt && contents.length)");
+  ok(decl >= 0 && use >= 0 && decl < use,
+    'contents 声明在兜底使用之前（var 提升、赋值不提升）',
+    'decl=' + decl + ' use=' + use);
+}
+
+console.log('【一页总览接线（2026-10-04）】');
+ok(brain.includes("actBtn('onepage/' + encodeURIComponent(n.canon || n.name) + '-一页通.html', '一页总览', true)"),
+  '书页弹层有「一页总览」主按钮，走 canon');
+
+global.window = {};
+require(path.join(ROOT, '_data', 'modules.js'));
+require(path.join(ROOT, '_data', 'cards.js'));
+const modules = global.window.MARVIS_MODULES || [];
+const cards = global.window.MARVIS_CARDS || {};
+
+console.log('【一页族对账：模块名 → site/onepage 文件】');
+ok(modules.length === 13, 'modules.js 13 个模块', String(modules.length));
+for (const m of modules) {
+  const op = path.join(ROOT, 'onepage', m.module + '-一页通.html');
+  const mp = path.join(ROOT, 'modules', m.module + '.html');
+  ok(fs.existsSync(op), 'onepage/' + m.module + '-一页通.html 存在');
+  ok(fs.existsSync(mp), 'modules/' + m.module + '.html 概览页存在');
+  if (fs.existsSync(op)) {
+    ok(fs.readFileSync(op, 'utf8').includes('← 第二大脑书架'),
+      m.module + ' 一页通带导航条（回书架/模块概览）');
+  }
+}
+
+console.log('【地基包对账：13/13，module 字段与 modules.js 一致】');
+ok((cards.grounds || []).length === 13, 'cards.js grounds = 13', String((cards.grounds || []).length));
+ok((cards.principles || []).length === 12, 'cards.js principles = 12', String((cards.principles || []).length));
+const modNames = new Set(modules.map(m => m.module));
+for (const g of cards.grounds || []) {
+  ok(modNames.has(g.module), '地基包 ' + g.id + ' 的 module「' + g.module + '」能对上模块');
+  const f = path.join(ROOT, '..', 'wiki', 'cards', '地基-' + g.module + '.md');
+  ok(fs.existsSync(f), 'wiki/cards/地基-' + g.module + '.md 存在');
+}
+
+console.log('\n' + (fails ? '❌ ' + fails + ' 项失败' : '✅ 全部通过'));
+process.exit(fails ? 1 : 0);

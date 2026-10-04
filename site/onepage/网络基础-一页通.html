@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网络 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<nav style="max-width:1440px;margin:0 auto;padding:14px 28px 0;font:12.5px/1.6 -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:center"><a href="../brain.html" style="color:#185FA5;text-decoration:none">← 第二大脑书架</a><a href="../modules/网络基础.html" style="color:#185FA5;text-decoration:none">网络基础 · 模块概览与主线详情</a><span style="color:#9AA4AE">一页总览 · 从书架点书可回到本页</span></nav><div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>网络
+    <small>3 张母题 · 18 道题 · 3 个项目 —— 一条线：请求怎么进来 → 数据怎么出去 → 用什么姿势扛住很多连接</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：怎么进来 → 怎么出去 → 怎么扛住<span class="src">正本 wiki/topics/网络/</span></h2>
+  <div class="h2sub">三条主线共享一个习惯：<b>先归因（哪一层）→ 再选型（客户端要什么 / 在等还是在算）→ 最后才谈手段</b>。502/504 的归因和 SSE 的定义是 9.9 丢过分的两处。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="网络 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <line x1="224" y1="52" x2="248" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+    <text x="258" y="56" font-size="11" fill="#4E5969">蓝 · 主线（怎么进来 → 怎么出去 → 怎么扛住）</text>
+    <line x1="499" y1="52" x2="523" y2="52" stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)"/>
+    <text x="533" y="56" font-size="11" fill="#4E5969">橙 · 判据与数字</text>
+    <line x1="774" y1="52" x2="798" y2="52" stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)"/>
+    <text x="808" y="56" font-size="11" fill="#4E5969">紫 · 生产坑与失效</text>
+    <line x1="1049" y1="52" x2="1073" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="1083" y="56" font-size="11" fill="#4E5969">绿 · 项目落点与总判据</text>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="100" width="1270" height="112" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">① 一次请求怎么走完（N1）—— 请求穿过的是一条链路，不是一个函数；每段失败的样子不一样</text>
+      <text x="106" y="146" font-size="11.5" fill="#4E5969">DNS → TCP 三次握手 → HTTP → 网关 → 应用 → 上游；三次 = 可靠的最少次数，四次挥手 = 全双工两方向各自关</text>
+      <text x="106" y="166" font-size="11.5" fill="#B45309">502 = 上游「活着但答得不对」；504 = 网关等上游超时——「慢」和「挂」排查方向完全不同（9.9 说反的那句）</text>
+      <text x="106" y="186" font-size="11.5" fill="#4E5969">超时分层：每往里一层设得更短——超时总由最内层先触发，错误信息直接读出是哪一层放弃</text>
+      <text x="1344" y="204" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图：网关超时=应用超时 → 两边同时放弃、无法归因——外层略长，让内层先超时留下自己的错误</text>
+    </g>
+    <line x1="725" y1="212" x2="725" y2="245" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="252" width="1270" height="130" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <text x="106" y="276" font-size="13" font-weight="800" fill="#1D2129">② 数据怎么出去（N2）—— 短轮询 / 长轮询 / SSE / WebSocket：判据是「客户端要什么」，不是哪个更先进</text>
+      <text x="106" y="298" font-size="11.5" fill="#B45309">SSE 精确定义：基于 HTTP 的长连接、单向（服务端→客户端）、text/event-stream——「是长连接」（9.9 当场答错）</text>
+      <text x="106" y="318" font-size="11.5" fill="#6D28D9">生产三坑：代理默认缓冲（X-Accel-Buffering: no）· 不发心跳被空闲超时掐断 · 断线重连要 Last-Event-ID + 递增 sequence 才不漏事件</text>
+      <text x="106" y="338" font-size="11.5" fill="#4E5969">选 SSE 的两个理由：① 只需单向推送 ② 复用现有 HTTP 网关（WebSocket 要动网关 / 负载均衡 / 鉴权）</text>
+      <text x="106" y="358" font-size="11.5" fill="#4E5969">HTTP/1.1 同域约 6 条并发连接：1 个 SSE + 8 个接口请求 → 3 个排队——HTTP/2 多路复用解决</text>
+      <text x="1344" y="376" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">EnergyOps：长任务进度选 SSE；RuleArena：要的是「能查最新状态」→ 轮询更简单——实时只在延迟有业务意义时才值得付</text>
+    </g>
+    <line x1="725" y1="382" x2="725" y2="415" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="422" width="1270" height="130" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <text x="106" y="446" font-size="13" font-weight="800" fill="#6D28D9">③ 怎么扛住很多连接（N3）—— 先问时间花在哪：不是风格问题，是「在等还是在算」</text>
+      <text x="106" y="468" font-size="11.5" fill="#4E5969">100ms 请求 CPU 只占 2ms → 98% 在等，等待期 CPU 空闲 → 单核理论可「同时」处理 50 个；IO 密集异步收益极大</text>
+      <text x="106" y="488" font-size="11.5" fill="#4E5969">进程 / 线程 / 协程的差异全从「谁调度」推出：内核调度贵、用户态切换 ns 级；epoll 一次系统调用拿到全部就绪连接</text>
+      <text x="106" y="508" font-size="11.5" fill="#B45309">协程省两笔：等待时间被利用起来 + 单位内存开销小两个数量级（线程 8MB 虚拟栈 vs 协程 KB 级；先撞 pid 上限不是内存）</text>
+      <text x="106" y="528" font-size="11.5" fill="#6D28D9">致命坑：协程里跑阻塞代码 = 整个事件循环停摆——CPU 不高、日志无异常、单测都快、高峰整体变慢</text>
+      <text x="1344" y="546" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图 / RuleArena：asyncio 服务 + 至少一次投递；CPU 密集（图像压缩 95% CPU）不进协程，进线程 / 进程池</text>
+    </g>
+    <line x1="725" y1="552" x2="725" y2="585" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="592" width="1270" height="72" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="622" font-size="14.5" font-weight="800" fill="#15803D" text-anchor="middle">三步判据：请求失败先归因到层 · 推送先问客户端要什么 · 并发先问「在等还是在算」</text>
+      <text x="725" y="646" font-size="11.5" fill="#4E5969" text-anchor="middle">连接复用（省握手）vs 连接被占住 / 超时设几层 · 单向够用选简单的 · 阻塞代码会拖垮整个事件循环</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+<b>主干叙事（一段读完）</b>：网络的一条线是「<b>请求怎么进来 → 数据怎么出去 → 用什么姿势扛住很多连接</b>」。
+    <b>进来</b>：请求穿过的是一条链路（DNS → TCP 三次握手 → HTTP → 网关 → 应用 → 上游），<b>每段失败的样子不一样</b> —— 502 是上游活着但答错、504 是网关等上游超时，「慢」和「挂」排查方向完全不同；超时分层（内短外长）让错误信息直接告诉你哪层放弃。
+    <b>出去</b>：推送四选一的判据是<b>客户端要什么</b> —— 短轮询、长轮询、SSE（HTTP 长连接、单向）、WebSocket（协议升级全双工）；SSE 的生产难度在三个坑：代理缓冲、心跳保活、断线重连要 Last-Event-ID + 递增 sequence 才不漏事件。
+    <b>扛连接</b>：先问时间花在哪 —— 98% 在等就是 IO 密集，异步收益极大；协程省两笔（等待被利用 + 单位开销小两个数量级），致命坑是<b>协程里跑阻塞代码 = 事件循环停摆</b>（CPU 不高、日志无异、高峰整体变慢）；CPU 密集进线程 / 进程池，GIL 挡不住多进程。
+  </div>
+  <div class="cap"><b>读法</b>：三个大框就是三条主线（怎么进来 / 怎么出去 / 怎么扛住）；橙字是判据与数字（要能现场算），紫字是生产坑（要能举出自己踩过的）；绿字是三个项目的落点。<b>底部一行是三条线的总判据</b>。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：3 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">N1 请求的路径</td><td>从 URL 到响应、哪层失败</td><td class="ans"><span class="a">链路 DNS → TCP（3 次握手 / 4 次挥手）→ HTTP → 网关 → 应用 → 上游；502 = 上游活着但答错、504 = 网关等上游超时；超时分层内短外长 → 从错误信息读出哪层放弃；HTTP 无状态 ≠ 短连接（Keep-Alive / 连接池复用）；HTTP/2 多路复用省连接数</span></td><td>1–7</td><td class="ans"><span class="a">EnergyOps：30 个 MCP Tool 的超时与重试；数驭穹图：网关=应用超时导致无法归因——外层略长让内层先超时；权限前置多一次串行调用，换掉整类泄露风险</span></td></tr>
+      <tr><td class="k">N2 推送模型</td><td>轮询 / SSE / WS 怎么选</td><td class="ans"><span class="a">判据 = 客户端要什么：短轮询（反复短请求）、长轮询（挂住到有数据）、SSE（HTTP 长连接单向 text/event-stream）、WebSocket（协议升级全双工）；SSE 三坑：代理缓冲、心跳保活、断线重连要 Last-Event-ID + 递增 sequence；HTTP/1.1 同域 6 连接会被 SSE + 接口挤占 → HTTP/2</span></td><td>8–12</td><td class="ans"><span class="a">EnergyOps：长任务进度选 SSE（单向够用 + 复用现有网关，两个理由）；RuleArena：要的是「能查最新状态」→ 轮询更简单——「实时」只在延迟有业务意义时才值得付</span></td></tr>
+      <tr><td class="k">N3 并发模型</td><td>进程 / 线程 / 协程</td><td class="ans"><span class="a">先问时间花在哪（98% 在等 → IO 密集异步收益大）；差异从「谁调度」推出：进程隔离贵、线程内核调度、协程用户态 ns 级切换；epoll 一次系统调用拿全就绪连接；协程省两笔：等待被利用 + 单位开销小两个数量级；致命坑 = 协程跑阻塞代码（事件循环停摆）；GIL：IO 密集无碍，CPU 密集进进程池；背压不处理 = 队列无限涨</span></td><td>13–18</td><td class="ans"><span class="a">数驭穹图 / RuleArena：asyncio 服务 + 至少一次投递；CPU 密集（图像压缩 95% CPU）不进协程，进线程 / 进程池</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：轮询的浪费账，等待占比的账<span class="src">正本 母题-N2 · 母题-N3</span></h2>
+  <div class="h2sub">左边是「无效流量怎么算出来」，右边是「异步值不值怎么算出来」——都是数量级问题。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="网络 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">轮询的浪费账与连接的排队账</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">进度页 1000 个在线用户：短轮询每 1 秒问一次 → 1000 QPS；而后端每 100 秒才产生 1 条新进度</text>
+      <rect x="80" y="92" width="8" height="22" rx="2" fill="#22C55E"/>
+      <text x="96" y="108" font-size="12" font-weight="800" fill="#15803D">真实需求：1 条 / 100 秒</text>
+      <rect x="80" y="124" width="480" height="22" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="140" font-size="12" font-weight="800" fill="#fff">　轮询流量：10 万次请求换 1 条新进度（×100,000）</text>
+      <text x="80" y="180" font-size="12" font-weight="800" fill="#1D2129">HTTP/1.1 的连接排队：同域约 6 条并发连接</text>
+      <text x="80" y="206" font-size="11.5" fill="#4E5969">1 个 SSE 已占 1 条，页面再发 8 个接口请求 → 3 个排队（队头阻塞）——HTTP/2 多路复用一条连接跑多个流</text>
+      <text x="80" y="232" font-size="11.5" fill="#4E5969">TLS 握手约 2 RTT：跨机房 RTT 50ms → 每次新建连接多付 100ms——长连接 / 连接池复用的理由</text>
+      <text x="80" y="264" font-size="11.5" font-weight="700" fill="#B45309">「要不要推送」先算无效流量：延迟没有业务意义时，轮询的简单性 > 推送的实时性</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">RuleArena 的选择：Worker 跑长任务，客户端要的是「能查到最新状态」→ 状态查询接口，不上 SSE</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">等待占比的账（异步值不值）</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">一次请求 100ms：CPU 2ms + 等待 IO 98ms——等待期 CPU 空闲，单核理论「同时」处理 100÷2 = 50 个</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">同步（一连接一线程）：10 万并发 → 10 万线程</text>
+        <rect x="1060" y="96" width="300" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="132">异步（事件循环 + 协程）：10 万协程，KB 级</text>
+        <rect x="1060" y="122" width="20" height="12" rx="3" fill="#22C55E"/>
+      </g>
+      <text x="760" y="166" font-size="11.5" fill="#4E5969">线程栈 8MB 是 Linux 默认（ulimit -s）且是虚拟预留：真实常驻 ~25KB/线程——先撞 pid 上限，不是内存</text>
+      <text x="760" y="192" font-size="11.5" fill="#6D28D9">反例：图像压缩 400ms（CPU 占 380ms = 95%）→ 协程零收益，CPU 密集进线程 / 进程池</text>
+      <text x="760" y="218" font-size="11.5" fill="#6D28D9">协程里一行阻塞调用（requests / time.sleep）= 事件循环停摆：高峰整体变慢、无异常、难定位</text>
+      <text x="760" y="244" font-size="11.5" fill="#4E5969">GIL：IO 密集无所谓（等的时候会放锁）；CPU 密集多核只能多进程</text>
+      <text x="760" y="270" font-size="11.5" font-weight="700" fill="#B45309">判据：先测等待占比，再决定要不要异步；阻塞代码用 run_in_executor 挪走</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">数驭穹图 / RuleArena：asyncio 服务；背压不处理 = 生产快过消费、队列无限涨——限流 + 有界队列</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">等待占比</div><div class="big">98 / 100</div>
+      <div class="d">CPU 2ms、IO 98ms：单核理论「同时」处理 50 个——「要不要异步」先测这个数。</div></div>
+    <div class="ncard o"><div class="t">轮询浪费</div><div class="big">×100,000</div>
+      <div class="d">1000 用户每秒轮询 = 1000 QPS，新进度 1 条/100s：10 万次请求换 1 条——轮询的无效流量账。</div></div>
+    <div class="ncard b"><div class="t">同域连接数</div><div class="big">≈ 6 条</div>
+      <div class="d">HTTP/1.1 浏览器每域名 6 条：1 个 SSE + 8 个请求 → 3 个排队；HTTP/2 多路复用解决。</div></div>
+    <div class="ncard o"><div class="t">TLS 握手</div><div class="big">2 RTT ≈ 100ms</div>
+      <div class="d">跨机房 RTT 50ms：每次新建连接多付 100ms——长连接 / 连接池复用的理由。</div></div>
+    <div class="ncard b"><div class="t">线程栈</div><div class="big">8MB（虚拟）</div>
+      <div class="d">Linux 默认 ulimit -s = 8192KB，虚拟预留按需提交；真实常驻 ~25KB——先撞 pid 上限不是内存。</div></div>
+    <div class="ncard b"><div class="t">三次握手</div><div class="big">3 次 = 最少</div>
+      <div class="d">可靠的最少次数（双方确认能收能发）；四次挥手 = 全双工两方向各自关闭，不能合并。</div></div>
+    <div class="ncard o"><div class="t">502 vs 504</div><div class="big">答错 vs 超时</div>
+      <div class="d">502 = 上游活着但响应无效；504 = 网关等上游超时——「慢」和「挂」排查方向完全不同。</div></div>
+    <div class="ncard b"><div class="t">CPU 密集反例</div><div class="big">95% CPU</div>
+      <div class="d">图像压缩 400ms 里 CPU 占 380ms——协程零收益，进线程 / 进程池，别塞事件循环。</div></div>
+    <div class="ncard o"><div class="t">心跳保活</div><div class="big">注释行</div>
+      <div class="d">SSE 不发心跳会被空闲超时掐断：定期发注释行（: ping）保活，长任务跑一半连接就没了。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「502 = 上游不可用」</span><span class="v">✓ 502 是上游活着但答得不对；完全没起来通常是 504 或连接拒绝——9.9 说反的那句。</span></div>
+    <div class="mrow"><span class="x">✗「接口 504 就是服务端挂了，重启就行」</span><span class="v">✓ 504 是网关等上游超时——服务端可能只是慢；「慢」和「挂」排查方向完全不同。</span></div>
+    <div class="mrow"><span class="x">✗「HTTP 无状态，所以每次请求都新建 TCP 连接」</span><span class="v">✓ 无状态 ≠ 短连接：协议不保存会话状态，但 Keep-Alive / 连接池复用传输层连接。</span></div>
+    <div class="mrow"><span class="x">✗「SSE 是短连接 / 普通 HTTP 响应」</span><span class="v">✓ SSE 是基于 HTTP 的长连接（服务端保持响应不结束）、单向——9.9 当场答错的那句。</span></div>
+    <div class="mrow"><span class="x">✗「SSE 自带重连，所以不会丢消息」</span><span class="v">✓ 能重连 ≠ 不漏事件：要 Last-Event-ID + 递增 sequence，服务端从那里补齐。</span></div>
+    <div class="mrow"><span class="x">✗「SSE 就是普通 HTTP 响应，过网关不用配置」</span><span class="v">✓ 代理默认缓冲（攒着不发）→ 显式关缓冲；不发心跳会被空闲超时掐断。</span></div>
+    <div class="mrow"><span class="x">✗「线程默认栈 1MB，10 万线程要 100GB」</span><span class="v">✓ Linux 默认 8MB 且是虚拟预留、按需提交，真实常驻 ~25KB——先撞 pid 上限不是内存。</span></div>
+    <div class="mrow"><span class="x">✗「上 WebSocket 因为它更强」</span><span class="v">✓ 判据是客户端要什么：单向够用选 SSE、要状态查询选轮询——双向全双工才值 WebSocket。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能讲清"一次请求怎么走完 + 服务端怎么推数据 + 怎么同时扛住很多连接"三条线，不看资料</div></li>
+<li><span>☐</span><div><b>准确纠错</b>：能当场说清 <b>SSE 是长连接</b>（不是短连接），以及 <b>502 是上游响应无效、504 是上游超时</b>——这两处 9.9 丢过分</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能回答"为什么 Agent 长任务选 SSE 不选 WebSocket"和"协程里跑阻塞代码会怎样"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 EnergyOps 的 SSE 进度推送讲一遍（含代理缓冲与心跳两个坑）</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的排查结论（例："接口 504 就是服务端挂了，重启就行"），能指出错在哪、真因该怎么查</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：一次 HTTP 请求的完整路径（DNS → TCP → HTTP → 连接池 → 状态码）、服务端推送的三种模型（轮询 / SSE / WebSocket）、服务端要同时扛住很多连接时的并发模型（进程 / 线程 / 协程与事件循环）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.网络.v1";
+  var CARDS = {"N1": {"t": "一次请求走完了什么，以及 502 / 503 / 504 各是哪一层的问题", "q": ["上游单次处理耗时 100ms，服务需要支撑 1000 QPS。", "下面三个现象，分别最可能对应哪个状态码？该先查什么？", "跨机房 RTT 约 50ms，TLS 握手约 2 RTT。"], "pts": ["1. 前提：请求穿过的是一条链路，不是一个函数｜每一段都可能失败，而且失败的样子不一样——这就是本卡的全部价值：", "1. 前提：请求穿过的是一条链路，不是一个函数｜把所有失败归纳成两类：", "2. 每一段做什么、失败长什么样｜：因为双方都要确认\"对方能收，也能发\"：", "2. 每一段做什么、失败长什么样｜三次是\"可靠的最少次数\"。四次挥手是因为 TCP 连接是全双工的，两个方向要各自关闭（一方说\"我没数据了\"，另一方可能还有数据要发），所以不能把两次合并。", "2. 每一段做什么、失败长什么样｜这一条直接推出后面的两件事：", "3. 状态码：把\"哪一层出问题\"翻译成数字｜这三者指向完全不同的排查起点：", "3. 状态码：把\"哪一层出问题\"翻译成数字｜每往里一层都设得更短，这样超时总是由最内层先触发——你就能从错误信息里直接读出是哪一层放弃的。", "4. HTTP/1.1 与 HTTP/2｜HTTP/2 的价值主要在\"减少连接数\"：浏览器对同一域名的并发连接数有限制，1.1 时代要靠多域名分流；2 用一条连接多路复用解决。服务端内部的 RPC 调用如果已经是长连接池，收益就没那么明显。", "5. 边界与常见误解｜502 是上游\"活着但答得不对\"。上游进程如果完全没起来，网关连不上，得到的通常是 504（等超时）或连接拒绝。\"502 = 上游不可用\"是 9.9 说反的那句 | | \"504 是服务端挂了\"", "5. 边界与常见误解｜504 是\"网关等上游超时\"——服务端可能只是慢。\"挂了\"和\"慢\"是两件事，排查方向完全不同 | | \"HTTP 是无连接的，所以每次请求都新建 TCP 连接\"", "5. 边界与常见误解｜\"无状态\"和\"短连接\"是两个概念。HTTP 协议本身不保存会话状态（无状态），但传输层的连接可以复用（Keep-Alive / 连接池）。两者不冲突 | | \"长连接 = WebSocket\""], "crit": "能画出完整链路并说出每段失败的样子；能说对 502 / 504 的归因（9.9 丢分点）；能给出超时分层的设法与理由；能分清「无状态」与「短连接」。"}, "N2": {"t": "SSE 是长连接吗，以及推送方式怎么选", "q": ["一个进度页有 1000 个在线用户。若用短轮询、每 1 秒问一次，而后端平均每 100 秒才产生一条新进度。", "下面三个场景分别该选什么？（从 短轮询 / 长轮询 / SSE / WebSocket 里选，并说明理由）", "HTTP/1.1 下，浏览器对同一域名允许约 6 个并发连接。一个页面已经用了 1 个 SSE。此时页面同时发起 8 个普通接口请求，会发生什么？"], "pts": ["1. 前提：先把三个容易混在一起的概念分开｜所以\"HTTP 是无状态的\"这句话，推不出\"HTTP 是短连接\"。 这是最容易混的一处（N1 的 Q5 已经纠过一次），而它正是 SSE 那道题的病根。", "1. 前提：先把三个容易混在一起的概念分开｜面试官问\"SSE 是长连接吗\"，他真正想区分的是\"你有没有把传输层的事实和应用层的语义混在一起\"。", "2. 四种做法（先各自介绍，再比较）｜判据不是\"哪个更先进\"，而是\"客户端要什么\"。 这是本卡最该带走的一句话——很多系统上 WebSocket 是因为\"听起来更强\"，而不是因为真的需要双向。", "2. 四种做法（先各自介绍，再比较）｜所以选 SSE 的理由不是\"它更弱所以够用\"，而是三条具体判据都命中它。", "3. SSE 的精确定义（一句话说全）｜SSE（Server-Sent Events）是基于 HTTP 的长连接：客户端发一次请求，服务端保持这个连接不断开，以 text/event-stream 格式持续往回推数据。所以它是长连接。它和另外两种的区别：长轮询是客户端反复发短请求；WebSocket 是双向全双工、需要协议升级；SSE 是", "4. 生产里的坑（这里才是\"真做过\"的证据）｜这个坑的解法是 HTTP/2：多路复用让一条连接上跑多个流（N1 第 4 节）。", "4. 生产里的坑（这里才是\"真做过\"的证据）｜\"能重连\"和\"不漏事件\"是两件事。 这是从\"我用了 SSE\"到\"我处理了它的失败模式\"的分界。", "5. 边界与常见误解｜错。SSE 是长连接——服务端保持响应不结束。这正是 9.9 当场答错的那一处，必须一条不错地纠正过来 | | \"SSE 和 WebSocket 差不多，都是长连接\"", "5. 边界与常见误解｜方向不同：SSE 单向（服务端→客户端），WebSocket 双向；SSE 跑在 HTTP 上，WebSocket 要协议升级。\"都是长连接\"只描述了传输层，没描述应用层 | | \"SSE 就是普通 HTTP 响应，过网关不用任何配置\"", "5. 边界与常见误解｜代理默认会缓冲，必须关掉（X-Accel-Buffering: no），否则数据会被攒着不发 | | \"SSE 自带重连，所以不会丢消息\""], "crit": "能一句话定义 SSE（HTTP 长连接、单向、text/event-stream）；能按「客户端要什么」在四者里选型；能给出生产三坑与对策；能用项目讲「选 SSE 的两个理由」和「轮询也行」的反例。"}, "N3": {"t": "进程 / 线程 / 协程，以及 asyncio 为什么能扛住很多连接", "q": ["一次请求总耗时 100ms，其中 CPU 计算占 2ms，等待 IO 占 98ms。", "下面这段代码有什么问题？高峰期会看到什么现象？", "要做一个图像压缩接口，单次压缩耗时 400ms（其中 CPU 占 380ms）。"], "pts": ["1. 前提：先问\"时间花在哪\"｜98% 的时间在等。而\"等\"的时候，CPU 是空闲的。", "1. 前提：先问\"时间花在哪\"｜如果一次请求只占用 2% 的 CPU 时间，那单核理论上就能\"同时\"处理 100/2 = 50 个这样的请求：", "1. 前提：先问\"时间花在哪\"｜所以\"要不要用异步\"不是风格问题，是\"你的程序在等还是在算\"的问题。 而 Agent 服务、API 网关这类程序几乎全是 IO 密集——所以异步收益极大。", "2. 三种执行单元：用同一指标比｜从\"谁调度\"这一个点出发，上面所有差异都能推出来：", "3. asyncio 为什么能扛住大量连接｜关键在 ①：一次系统调用就能拿到\"成千上万个连接里哪些有数据了\"。", "3. asyncio 为什么能扛住大量连接｜用单位内存开销来算 10 万并发单元需要多少内存（注意区分\"虚拟预留\"和\"真实常驻\"）：", "3. asyncio 为什么能扛住大量连接｜所以要说得准确，\"协程省\"省的是两笔：", "4. 阻塞代码：协程最致命的坑｜而且这种故障很隐蔽：CPU 看起来不高、日志里没有异常、每个请求单独测都很快——只是高峰期整体变慢。这就是\"异步写错了比同步还慢\"的原因。", "6. 边界与常见误解｜两处都错：① Linux 上线程默认栈由 ulimit -s 决定（默认 8192KB = 8MB），\"1MB\"是 Windows 的默认值（x86-32 才是 2MB）；② 它是虚拟地址空间预留、按需提交，真实常驻只有内核侧约 25KB/线程且不计入 RSS。而先撞上的通常不是内存，是 pid_m", "6. 边界与常见误解｜单操作的业务逻辑不会变快。协程的收益在\"IO 密集场景下能把等待时间利用起来\"+\"单位开销小两个数量级\" | | \"asyncio 能利用多核\"", "6. 边界与常见误解｜不能。它是单线程事件循环。要多核靠多进程 | | \"协程是并行执行的\""], "crit": "能从等待占比算单核并发上限；能从「谁调度」推出三种执行单元的全部差异；能解释 epoll 与协程省的两笔；能说清阻塞代码在协程里的故障形态与 GIL 边界。"}};
+  var ORDER = ["N1", "N2", "N3"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>

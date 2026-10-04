@@ -438,3 +438,15 @@
 - 联网横评：skill 生态暂无直接同类竞品（skillsllm 收录，理念源头是 Karpathy 的「answer with a page」）；产品侧 Napkin / MyLens 偏图片与导图、Gamma / Piktochart 偏成套模板、Claude Artifacts / ChatGPT Canvas 是运行时内嵌不适用于 CLI 工作流——「稿 → 确定性渲染」路线在输出 token（约 1/7）、速度、风格一致性上仍是最优解，维持选型不变
 - 治理定稿（CLAUDE.md〈回答形态〉增补四条）：① 主题统一 blueprint 图纸风（卡片风留给对外分享临时切）；② 教练边界——闭卷作答前不出完整讲解页，一页答只服务「讲给我看」场合，不替代学习回路；③ 质量底线——中文排版截图验收（列不竖排 / note 不孤行 / 导语括号不断行），改稿不改组件；④ 索引 output/answers/README.md 逐页登记
 - MAP 登记：output/answers/ 仍待主人简历线落定后一并补（MAP.md 尚有未提交改动，不混线）
+
+## 2026-10-04 深夜（全库治理统一：一页通上站接书架 + 地基包 13/13 + 簇级登记 + 断链归零 + output 分区）
+
+- 缘起：主人要求对全库做再次治理统一——先扫描分析、出方案讨论，拍板四项：① 一页通必须上站且书架可点（自用优先，不纠结对外）；② MAP 改簇级登记，地基包等问题改正后全部补齐；③ 过期战役卡留档；④ 核心目的 = 「可视化成长：教材一页总览，点击看详情」，从简不堆设计。四个 Explore/自查扫描先行（链路 / 冗余 / 库存 / 承诺）
+- **断链归零**：两张原则卡 23 处 Obsidian 断链全修——R 系规则改别名链到真实正本（行动规则 / 0713 逆境准则 / 性命双修执行案；此前指向不存在的 R*.md），秋招投递台账等 5 处改 `.html` 直链；build 端 `[[目标|别名]]` 转换（R 系链 rules.html，其余取别名纯文本，管道符不再外露）
+- **一页通上站**：13 页 + 一页答共 14 页迁 `site/onepage/`（「网络」页改名「网络基础」对齐模块名；build 清理豁免同 interactive）；每页注入导航条（← 书架 / 模块概览与主线详情）；`brain.html` 书页弹层改「一页总览」为主按钮（走 canon 直达 `onepage/{模块}-一页通.html`）——书 → 总览 → 详情链路全通
+- **地基包 13/13 全齐**：新写 9 份（PostgreSQL / Redis / 操作系统 / 网络基础 / Linux与部署 / 并发与锁 / 消息队列 / 数据存储选型 / 评测观测与治理），定位/心智模型/必会/路径/验收门五段式，`[@模块-行号]` 对齐真实主线序；build 后 cards.js grounds 13、书架 13 本技术书全部有「地基包」按钮（candidate，待主人验证）
+- **output 分区**：43 个 `_qa_/_ta_/_finish_/_fill_` 等工具脚本集中 `output/_tools/`（根目录只留 `_push_via_api.py`）；4 张过期战役卡（美团 ×2 / 凯捷 ×2）归档 `archive/`——**算法手撕-32题作战卡经引用核查是活跃资产，留根**；`site/cards/冲刺卡组.md` 迁 `wiki/interview/`（build 扫描目录同步改）；清掉 site.zip / __pycache__ / 临时文件
+- **MAP 簇级登记**：第二节新增「簇级登记」表（模块簇 ×13 = 模块卡+87 母题卡+地基包 / 算法簇 / 读厚卡簇 / 一页通族 / 一页答族 / 复盘族 / sources 族）——解决 114 个文件只靠隐式登记的问题；一页通行、读厚卡行同步更新；测试行补 test_brain
+- **口径修齐**：site/README clusters.js「勿手改」改「手写数据源」（与 CLAUDE 一致，实为打架条款）、目录树补 cards.html 与 onepage、根 README 补 wiki/cards / 内化线 / answers / onepage；宪法收编 `status: active`（活页正本：13 模块卡 + 性命双修案，不再算口径外）
+- **测试**：新增 `site/_tests/test_brain.js`（源码静态不变量：历史上炸过的遮罩 hidden / contents 提升 / canon 反推三处固化 + 一页族 13 文件与导航条对账 + 地基包 13/13 对账）；六套件全绿（dispatch / progression / render / sync / brain / ledger）
+- 遗留（如实）：模块卡「一句话结论」13 张仍空（设计上留给主人闭卷写）；adler 6 卡 human_reviewed 待主人过；地基包 9 份与一页答 1 份 candidate 待验；台账 Q-022（27 天）/ Q-016（17 天）超 14 天红线待巡检处置，Q-021 触碰字段矛盾待修

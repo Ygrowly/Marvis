@@ -767,7 +767,9 @@
         if (c.topics) sub.push(c.topics + ' 母题');
         toc.appendChild(tocRow(ln.href, ln.lv, (c.no ? c.no + ' · ' : '') + ln.n, sub.join(' · ')));
       });
-      acts.appendChild(actBtn(n.href, '打开模块概览', true));
+      // 一页总览：site/onepage/{模块}-一页通.html（canon 与文件名一一对应，网络基础已对齐）
+      acts.appendChild(actBtn('onepage/' + encodeURIComponent(n.canon || n.name) + '-一页通.html', '一页总览', true));
+      acts.appendChild(actBtn(n.href, '打开模块概览', false));
       if (g) acts.appendChild(actBtn('cards.html#' + g.id, '地基包', false));
     } else if (n.hall === 'work') {
       abs.innerHTML = mdInline(n.desc);

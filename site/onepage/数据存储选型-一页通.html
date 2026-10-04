@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据存储选型 · 一页复习舱</title>
+<style>
+:root{
+  --blue:#1664FF; --blue-soft:#E8F0FF; --blue-deep:#0E42B5;
+  --orange:#F59E0B; --orange-soft:#FEF3D6; --orange-deep:#B45309;
+  --purple:#8B5CF6; --purple-soft:#F1ECFE; --purple-deep:#6D28D9;
+  --green:#22C55E; --green-soft:#E8F8EE; --green-deep:#15803D;
+  --red:#EF4444; --red-soft:#FDECEC;
+  --grey:#86909C; --grey-soft:#F2F3F5;
+  --line:#E5E6EB; --line2:#CDD0D6;
+  --tx:#1D2129; --tx2:#4E5969; --tx3:#86909C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased;font-size:13.5px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 76px}
+
+header{padding:40px 0 22px;border-bottom:2px solid var(--tx)}
+.kicker{font-size:11.5px;letter-spacing:.24em;color:var(--blue);font-weight:800;margin-bottom:10px}
+h1{font-size:30px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:var(--tx2);margin-top:8px}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;
+  padding:10px 14px;background:#F7F8FA;border:1px solid var(--line);border-radius:10px}
+.bar .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em}
+button.m{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line2);background:#fff;color:var(--tx2);font-weight:700}
+button.m.on{background:var(--blue);border-color:var(--blue);color:#fff}
+button.m:hover{border-color:var(--blue)}
+.bar .hint{font-size:11.5px;color:var(--tx3);margin-left:auto}
+
+.self{margin-top:14px;border:1px dashed var(--line2);border-radius:10px;background:#FCFCFD;padding:12px 14px}
+.self .lab{font-size:11.5px;font-weight:800;color:var(--tx3);letter-spacing:.08em;margin-bottom:6px}
+.self textarea{width:100%;min-height:56px;font:inherit;font-size:13px;line-height:1.6;color:var(--tx);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;background:#fff}
+.self .ok{font-size:11.5px;color:var(--green-deep);margin-top:5px;min-height:16px}
+
+section{margin-top:34px;position:relative}
+section::before{content:"";position:absolute;left:-15px;top:2px;bottom:-26px;width:2px;
+  background:linear-gradient(180deg,#C7DBFF,rgba(199,219,255,0))}
+section:last-of-type::before{display:none}
+h2{font-size:19px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h2 .num{font-size:11px;color:#fff;background:var(--blue);border-radius:5px;padding:3px 9px;letter-spacing:.08em;font-weight:800}
+h2 .src{font-size:11px;font-weight:500;color:var(--tx3);margin-left:auto;font-family:Menlo,Consolas,monospace}
+.h2sub{font-size:13px;color:var(--tx3);margin-bottom:14px}
+
+.story{margin-top:12px;padding:12px 16px;border-radius:10px;background:#F7F8FA;border:1px solid var(--line);
+  border-left:4px solid var(--blue);font-size:13.4px;line-height:1.85;color:var(--tx2)}
+.story b{color:var(--tx)}
+
+.todo{border:1.5px dashed var(--orange);border-radius:12px;background:var(--orange-soft);
+  padding:16px 20px;font-size:13px;color:var(--orange-deep);line-height:1.8}
+.todo b{color:var(--orange-deep)}
+
+.fig{border:1px solid var(--line);border-radius:12px;background:#FBFBFD;padding:12px 10px;overflow-x:auto}
+.fig svg{width:100%;min-width:1180px;height:auto;display:block}
+.cap{font-size:12.5px;color:var(--tx2);padding:10px 8px 2px;line-height:1.75}
+.cap b{color:var(--tx)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--tx3);font-size:11.5px;letter-spacing:.08em;font-weight:800;background:#F7F8FA}
+td.k{white-space:nowrap;font-weight:800}
+tr:hover td{background:#FAFBFF}
+td.ans{position:relative}
+#mainTable.masked td.ans .a{display:none}
+#mainTable.masked td.ans{white-space:nowrap}
+#mainTable.masked td.ans:after{content:"▸ 已遮 · 点「对答案」";color:#C9CDD4;font-size:11px;letter-spacing:.03em}
+
+.rec{border:1px solid #C7DBFF;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-top:8px}
+.rec .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec select{font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:#fff;font-weight:700;color:var(--tx)}
+.rec ol{list-style:none;counter-reset:r;font-size:13.5px;margin-top:10px}
+.rec li{counter-increment:r;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start}
+.rec li:before{content:counter(r);flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ansBox{display:none}
+#ansBox.show{display:block}
+.rec .crit{margin-top:10px;padding-top:10px;border-top:1px dashed #A9C6FF;font-size:12.8px;color:#123A82}
+.rec .tip{font-size:11.5px;color:#123A82;margin-top:8px}
+.rec button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:700}
+.rec button.ghost{background:#fff;color:var(--blue)}
+.ptT{margin-top:14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#123A82}
+ol.pts{list-style:none;counter-reset:p;font-size:12.8px;margin-top:6px}
+ol.pts li{counter-increment:p;padding:6px 0 6px 0;display:flex;gap:10px;align-items:flex-start;
+  border-bottom:1px dashed #D9E3FB}
+ol.pts li:last-child{border-bottom:none}
+ol.pts li:before{content:counter(p);flex:none;min-width:20px;height:20px;border-radius:5px;background:#DCE8FF;color:#123A82;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:6px}
+.ncard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.ncard .t{font-size:11.5px;color:var(--tx3);font-weight:800;letter-spacing:.06em}
+.ncard .big{font-size:18px;font-weight:800;margin:4px 0 3px;letter-spacing:-.01em}
+.ncard .d{font-size:12.2px;color:var(--tx2);line-height:1.6}
+.ncard.o{background:var(--orange-soft);border-color:#F5DFAE} .ncard.o .big{color:var(--orange-deep)}
+.ncard.b{background:var(--blue-soft);border-color:#C7DBFF} .ncard.b .big{color:var(--blue-deep)}
+
+.mis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mrow{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;font-size:12.8px}
+.mrow .x{color:#B42318;font-weight:800}
+.mrow .v{color:var(--green-deep);font-weight:700;margin-top:5px;display:block;line-height:1.62}
+
+.gate{border:1px solid var(--line2);border-radius:12px;background:#F7F8FA;padding:14px 20px;margin-top:6px}
+.gate ul{list-style:none;font-size:13.2px}
+.gate li{padding:5px 0;display:flex;gap:9px;align-items:flex-start}
+.gate li span{color:var(--blue);font-weight:800}
+
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--tx3);line-height:1.85}
+
+body[data-mode="quick"] .lv-mid,body[data-mode="quick"] .lv-deep{display:none}
+body[data-mode="mid"] .lv-deep{display:none}
+@media print{
+  .wrap{max-width:none;padding:0 6px} section{break-inside:avoid}
+  .fig{overflow:visible} .fig svg{min-width:0}
+  .bar{display:none} .lv-mid,.lv-deep{display:block!important}
+  #mainTable.masked td.ans .a{display:inline} #mainTable.masked td.ans:after{content:""}
+}
+</style>
+</head>
+<body data-mode="mid">
+<!-- 定稿 2026-10-03 · 脚手架补全：01/04/05 手写，02/06 机制与判据人工校订 -->
+<nav style="max-width:1440px;margin:0 auto;padding:14px 28px 0;font:12.5px/1.6 -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:center"><a href="../brain.html" style="color:#185FA5;text-decoration:none">← 第二大脑书架</a><a href="../modules/数据存储选型.html" style="color:#185FA5;text-decoration:none">数据存储选型 · 模块概览与主线详情</a><span style="color:#9AA4AE">一页总览 · 从书架点书可回到本页</span></nav><div class="wrap">
+
+<header>
+  <div class="kicker">STUDY MODULE · P0 · 一页复习舱</div>
+  <h1>数据存储选型
+    <small>4 张母题 · 30 道题 · 3 个项目 —— 一条线：分野 → 扩展 → 边界 → 语义（判据：看物理布局不看功能列表）</small>
+  </h1>
+
+  <div class="bar">
+    <span class="lab">深度</span>
+    <button class="m" data-mode-btn="quick" type="button">30 秒</button>
+    <button class="m" data-mode-btn="mid" type="button">3 分钟</button>
+    <button class="m" data-mode-btn="deep" type="button">深挖</button>
+    <span class="hint">默认 3 分钟层；选择会记住。打印时全部展开。</span>
+  </div>
+
+  <div class="self">
+    <div class="lab">20 秒版（闭卷自填 · 自动存在本机）</div>
+    <textarea id="self20" placeholder="先别翻页：用 20 秒把这一模块讲一遍，写在这里。填不出的那句 = 明天复训第一条。"></textarea>
+    <div class="ok" id="selfOk"></div>
+  </div>
+</header>
+
+<!-- 01 主干图 -->
+<section class="lv-quick">
+  <h2><span class="num">01</span>主干：分野 → 扩展 → 边界 → 语义<span class="src">正本 wiki/topics/数据存储选型/</span></h2>
+  <div class="h2sub">前三个是选型问题，第四条是选型在 AI 时代的延伸（两个项目的核心议题）；<b>每个判断都从「物理布局」出发，不从「功能列表」出发</b>。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 830" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="数据存储选型 主干图">
+    <defs>
+      <marker id="mB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1664FF"/></marker>
+      <marker id="mO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F59E0B"/></marker>
+      <marker id="mP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+      <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22C55E"/></marker>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#0E42B5" flood-opacity="0.10"/>
+      </filter>
+    </defs>
+    <rect x="180" y="24" width="1100" height="56" rx="10" fill="#fff" stroke="#E5E6EB"/>
+    <line x1="224" y1="52" x2="248" y2="52" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+    <text x="258" y="56" font-size="11" fill="#4E5969">蓝 · 四问（分野 → 扩展 → 边界 → 语义）</text>
+    <line x1="499" y1="52" x2="523" y2="52" stroke="#F59E0B" stroke-width="2.4" marker-end="url(#mO)"/>
+    <text x="533" y="56" font-size="11" fill="#4E5969">橙 · 算式与代价</text>
+    <line x1="774" y1="52" x2="798" y2="52" stroke="#8B5CF6" stroke-width="2.4" marker-end="url(#mP)"/>
+    <text x="808" y="56" font-size="11" fill="#4E5969">紫 · 雷区与误区</text>
+    <line x1="1049" y1="52" x2="1073" y2="52" stroke="#22C55E" stroke-width="2.4" marker-end="url(#mG)"/>
+    <text x="1083" y="56" font-size="11" fill="#4E5969">绿 · 项目落点与共享判据</text>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="100" width="1270" height="112" rx="8" fill="#E8F0FF" stroke="#1664FF" stroke-width="1.6"/>
+      <text x="106" y="124" font-size="13" font-weight="800" fill="#0E42B5">① 分野（S1）—— 一切差别只来自一件事：数据在磁盘上怎么排。行存一行连续（点查/写快），列存一列连续（扫描/聚合快）</text>
+      <text x="106" y="146" font-size="11.5" fill="#B45309">同一物理排布不可能同时满足「拿全一行」和「只读一列」：1 亿行宽表查 2 列 = 100GB vs 1.6GB，差 62 倍（同列同类型还白送压缩）</text>
+      <text x="106" y="166" font-size="11.5" fill="#4E5969">OLAP 的「事务」通常不是 ACID；频繁点更新 = 重写整段（ClickHouse 之短）；HTAP 是折中不是全面胜出——省同步链路，付两侧代价</text>
+      <text x="106" y="186" font-size="11.5" fill="#6D28D9">千万行以内上 OLAP 引擎多半是负债：同步链路 + 一致性窗口 + 「两份数据谁是准的」——能不能做 ≠ 划得来</text>
+      <text x="1344" y="204" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图：PG 管控制面（OLTP）+ Parquet / 对象存储 + DuckDB 数据面（列存）——两种负载两种引擎 · EnergyOps：升级条件写明才引入</text>
+    </g>
+    <line x1="725" y1="212" x2="725" y2="245" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="252" width="1270" height="130" rx="8" fill="#FEF3D6" stroke="#F59E0B" stroke-width="1.6"/>
+      <text x="106" y="276" font-size="13" font-weight="800" fill="#1D2129">② 扩展（S2）—— 先分清「不够用」是哪种不够：写并发 / 数据量 / 连接数 / 分析扫描——四类上限解法完全不同</text>
+      <text x="106" y="298" font-size="11.5" fill="#B45309">写入压力加从库无效——从库只分担读；「加了从库还是慢」的最常见根因就在这</text>
+      <text x="106" y="318" font-size="11.5" fill="#4E5969">三条路：读写分离（买读扩展）→ 分库分表（买写并发与容量，付出跨片 join / 分页 / 事务 + 全局 ID）→ 分布式数据库（买一体化，付新栈运维面）</text>
+      <text x="106" y="338" font-size="11.5" fill="#4E5969">分表判据是「付不付得起维护这张表的代价」（DDL / 备份耗时 / 热数据装不下），不是行数；分布式事务主流 = 最终一致（核心是幂等与对账）</text>
+      <text x="106" y="358" font-size="11.5" fill="#4E5969">CAP 别套「三选二」：用 PACELC——同区讲延迟、异区讲一致；两全其美的方案不存在，只有你选哪半边付钱</text>
+      <text x="1344" y="376" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图：LIVE_READ 优先只读副本，「客户只有生产主库时默认不开放复杂查询」——不许分析负载打主库写成了产品规则</text>
+    </g>
+    <line x1="725" y1="382" x2="725" y2="415" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="422" width="1270" height="130" rx="8" fill="#F1ECFE" stroke="#8B5CF6" stroke-width="1.6"/>
+      <text x="106" y="446" font-size="13" font-weight="800" fill="#6D28D9">③ 边界（S3）—— 能力边界由「索引结构」决定：关系库强在按值精确定位 + 自由过滤关联，弱在全文相关性 / 模糊匹配 / 深度多跳</text>
+      <text x="106" y="468" font-size="11.5" fill="#4E5969">五类专有存储各为查询形状而生：Redis = 加速层（能重算的放）· MongoDB = 对象型读写（雷区 = 账务强一致）· ES = 检索层（副本，不当唯一数据源）· 向量 = 相似度 · 图 = 深度多跳</text>
+      <text x="106" y="488" font-size="11.5" fill="#B45309">引入判据：新引擎的固定成本（同步链路 / 一致性窗口 / 运维面 / 团队心智）不随数据量缩小——省下的查询时间买不买得回</text>
+      <text x="106" y="508" font-size="11.5" fill="#6D28D9">「数据有关系」是所有业务的共性，不构成上图库的依据——两三层 JOIN 够用；RAG 混合检索 = 向量 + 关键词两条腿（盲区不重叠）</text>
+      <text x="106" y="528" font-size="11.5" fill="#4E5969">「明确不做的比做的更能说明取舍」：RuleArena 把 K8s / RabbitMQ / 通用 DAG 放进主动删除清单</text>
+      <text x="1344" y="546" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">RuleArena：PG 存权威状态（AttackRun / Receipt）+ Redis 队列限流（256–512MB）——不可再生的状态不放进「随时可能被拿走」的存储</text>
+    </g>
+    <line x1="725" y1="552" x2="725" y2="585" stroke="#1664FF" stroke-width="2.4" marker-end="url(#mB)"/>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="592" width="1270" height="112" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="106" y="616" font-size="13" font-weight="800" fill="#15803D">④ 语义（S4）—— 仓库存的是事实，「事实的含义」存在语义层：NL2SQL 的准确率上限是口径，不是模型</text>
+      <text x="106" y="638" font-size="11.5" fill="#4E5969">语义资产三层：技术元数据 / 业务语义 / 公共规则——分工由可信度决定；核心表语义卡片 = 公式 + 过滤 + 去重 + 时间定义 + 边界案例</text>
+      <text x="106" y="658" font-size="11.5" fill="#6D28D9">语义层 ≠ 检索层：把「GMV = 实付金额」塞进向量库只是「找到这个说法」，不代表现行有效——确权要有状态机与版本，相似度做不到</text>
+      <text x="106" y="678" font-size="11.5" fill="#4E5969">长提示词会漂移（有时遵守有时不遵守），且不解决可版本化 / 可评测 / 可对账；Ontology = 概念层定义，知识图谱 = 实例化数据——两个词不是一回事</text>
+      <text x="1344" y="696" font-size="10.5" font-weight="700" fill="#15803D" text-anchor="end">数驭穹图 03：「模型只能映射和使用，不能自行创造」——语义正本；120 指标 × 150 字口径塞不进提示词，必须系统化</text>
+    </g>
+
+    <g filter="url(#sh)">
+      <rect x="90" y="730" width="1270" height="64" rx="8" fill="#E8F8EE" stroke="#22C55E" stroke-width="1.6"/>
+      <text x="725" y="756" font-size="14" font-weight="800" fill="#15803D" text-anchor="middle">共享判据：存储的能力边界由「物理布局 + 一致性模型」决定，不是功能列表——它能做 ≠ 划得来</text>
+      <text x="725" y="780" font-size="11.5" fill="#4E5969" text-anchor="middle">负载三问：一次操作碰多少行 · 写得多频繁 · 多久要看到结果——三个答案就能把任意负载归到引擎族</text>
+    </g>
+  </svg>
+  </div>
+  <div class="story">
+<b>主干叙事（一段读完）</b>：数据存储选型的四个问题是「<b>两种负载分野 → 一种扛不住怎么扩 → 不用关系库的去哪 → 数据之上的含义存哪</b>」，共享判据：<b>能力边界由物理布局与一致性模型决定，不看功能列表 —— 它能做 ≠ 划得来</b>。
+    <b>分野</b>：行存一行连续（点查 / 写快）、列存一列连续（扫描 / 聚合快）—— 同一物理排布不可能同时满足「拿全一行」和「只读一列」：1 亿行宽表查 2 列，100GB vs 1.6GB 差 62 倍；但 OLAP 的「事务」通常不是 ACID，频繁更新重写整段；千万行以内上 OLAP 多半是负债。
+    <b>扩展</b>：先分清哪种不够用 —— <b>写入压力加从库无效</b>（从库只分担读）；三条路（读写分离 → 分库分表 → 分布式库）各买到什么、付出什么；判据是付不付得起维护代价，不是行数。
+    <b>边界</b>：Redis 是加速层（能重算的放）、ES 是检索层（不当唯一数据源）、图的优势只在深度多跳 —— <b>引入一个引擎的固定成本不随数据量缩小</b>。
+    <b>语义</b>：NL2SQL 的准确率上限是<b>口径</b>不是模型 —— 语义资产三层、确权要状态机与版本，向量检索只能「找到说法」；长提示词会漂移，语义必须系统化（数驭穹图：「模型只能映射和使用，不能自行创造」）。
+  </div>
+  <div class="cap"><b>读法</b>：四个大框是四个问题，前三个是选型、第四条是选型在 AI 时代的延伸（也是两个项目的核心议题）；橙字是算式（62 倍 / 固定成本清单都要能算），紫字是雷区；<b>底部一行是全模块的判据与「负载三问」</b>。</div>
+</section>
+<!-- 02 检索表 -->
+<section class="lv-mid">
+  <h2><span class="num">02</span>检索表：4 张母题 ↔ 题号 ↔ 项目<span class="src">正本 模块卡 第 3/4/5 节</span></h2>
+  <div class="h2sub">默认<b>遮住机制与证据</b>（康奈尔线索栏）—— 先看母题名和题号自己讲一遍，再点「对答案」。</div>
+  <div class="bar" style="margin-top:0;margin-bottom:8px">
+    <button class="m" id="cueToggle" type="button">对答案</button>
+    <span class="hint">遮住时才是复习，展开时是检索。</span>
+  </div>
+  <table id="mainTable" class="masked">
+    <thead><tr><th style="width:110px">母题</th><th style="width:120px">它回答什么</th><th>关键机制（一句话）</th><th style="width:70px">题号</th><th style="width:280px">项目证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">S1 分野</td><td>OLTP 与 OLAP 差在哪</td><td class="ans"><span class="a">一切差别来自磁盘排布：行存一行连续（点查 / 写快）、列存一列连续（扫描 / 聚合快）——两类负载对「读取效率」定义相反；1 亿行宽表查 2 列：100GB vs 1.6GB（62 倍）+ 同列压缩加成；OLAP 的「事务」通常非 ACID、频繁更新重写整段；千万行以内上 OLAP 多半是负债（同步链路 + 一致性窗口）；HTAP 是折中不是全面胜出</span></td><td>1–8</td><td class="ans"><span class="a">数驭穹图：PG 控制面 + Parquet / 对象存储 + DuckDB 数据面——「两种负载交给两种引擎」的标准做法；EnergyOps：写多聚合读但规模未到，「达到升级条件才引入」</span></td></tr>
+      <tr><td class="k">S2 扩展</td><td>单机不够了三条路</td><td class="ans"><span class="a">先分清哪种不够用（写并发 / 数据量 / 连接 / 分析扫描）；写入压力加从库无效（从库只分担读）；三路：读写分离（读扩展）→ 分库分表（写并发 + 容量，代价 = 跨片 join / 分页 / 事务 + 全局 ID）→ 分布式数据库（一体化，代价 = 新栈运维面）；分表判据 = 维护代价（DDL / 备份 / 热数据）不是行数；分布式事务主流 = 最终一致（幂等 + 对账）；CAP 讲成 PACELC</span></td><td>9–17</td><td class="ans"><span class="a">数驭穹图：LIVE_READ 优先只读副本或分析库，「客户只有生产主库时默认不开放复杂查询」——把「不许打主库」写成产品规则</span></td></tr>
+      <tr><td class="k">S3 边界</td><td>什么不该用关系库</td><td class="ans"><span class="a">能力边界由索引结构决定：关系库强在按值精确定位 + 自由过滤关联，弱在全文相关性 / 模糊匹配 / 深度多跳；Redis = 加速层（能重算的放）、MongoDB = 对象型（雷区 = 账务强一致）、ES = 检索层（不当唯一数据源）、向量 = 相似度、图 = 深度多跳实时；引入判据：固定成本（同步链路 / 一致性窗口 / 运维面 / 心智）不随数据量缩小</span></td><td>18–24</td><td class="ans"><span class="a">RuleArena：PG 存权威状态 + Redis 队列限流（256–512MB，不可再生状态不放「随时可能被拿走」的存储）；K8s / RabbitMQ / DAG 进主动删除清单——明确不做更说明取舍</span></td></tr>
+      <tr><td class="k">S4 语义</td><td>事实的含义存哪</td><td class="ans"><span class="a">模型没有业务先验，业务事实是人为确权的结果——NL2SQL 准确率上限是「口径」不是模型（语法错误模型很少犯）；语义资产三层（技术元数据 / 业务语义 / 公共规则）分工由可信度决定；语义层 ≠ 检索层：向量只「找到说法」不代表现行有效——确权要状态机 + 版本；长提示词漂移、不解决可版本化 / 评测 / 对账；Ontology = 概念定义 ≠ 知识图谱 = 实例数据</span></td><td>25–30</td><td class="ans"><span class="a">数驭穹图 03：「模型只能映射和使用，不能自行创造」+ 三层知识 + 六节语义卡片——S4 的项目正本；120 指标 × 150 字塞不进提示词，必须系统化</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 03 闭卷器 -->
+<section class="lv-mid">
+  <h2><span class="num">03</span>今日闭卷 · 选一张母题开讲<span class="src">cue 取自母题卡「二、自测」</span></h2>
+  <div class="h2sub">口述作答，说完再点开知识点与判据对照。<b>别边看边答</b> —— 那是认读不是回忆。</div>
+  <div class="rec">
+    <div class="row">
+      <select id="cardSel"></select>
+      <button type="button" id="critBtn">答完了，看知识点与判据</button>
+      <button type="button" class="ghost" id="resetBtn">换一张</button>
+    </div>
+    <ol id="cueList"></ol>
+    <div id="ansBox">
+      <div class="ptT">知识点清单 · 取自该母题卡「一、教材」</div>
+      <ol id="ptList" class="pts"></ol>
+      <div class="crit" id="critBox"></div>
+    </div>
+    <div class="tip">题面是教材自测题的压缩版；知识点与判据默认收起 —— 讲完再点开对照。<b>完整推导仍不在这一页</b>，在对应母题卡的「二、自测」与「一、教材」。</div>
+  </div>
+</section>
+
+<!-- 04 两笔账 -->
+<section class="lv-deep">
+  <h2><span class="num">04</span>两笔账：行存 vs 列存的扫描账，扩容的账<span class="src">正本 母题-S1 · 母题-S2</span></h2>
+  <div class="h2sub">左边是「同一张表、两种排布」的 62 倍差距，右边是「先分清哪种不够用」的扩容顺序——都要能现场算。</div>
+  <div class="fig">
+  <svg viewBox="0 0 1450 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="数据存储选型 两笔账">
+    <g>
+      <rect x="60" y="24" width="640" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="80" y="52" font-size="13" font-weight="800" fill="#0E42B5">行存 vs 列存：同一张表的两笔扫描账</text>
+      <text x="80" y="78" font-size="11.5" fill="#4E5969">1 亿行 × 100 字段 × 行宽 1KB，聚合 2 个数值列（各 8B）——同一张表的两种排布：</text>
+      <rect x="80" y="92" width="470" height="22" rx="4" fill="#F59E0B" opacity="0.9"/>
+      <text x="88" y="108" font-size="12" font-weight="800" fill="#fff">　行存：~100 GB（要拿整行，另外 98 列陪跑）</text>
+      <rect x="80" y="124" width="30" height="22" rx="4" fill="#22C55E"/>
+      <text x="120" y="140" font-size="12" font-weight="800" fill="#15803D">列存：2 × 8B × 1 亿 = 1.6 GB（差 62 倍，压缩后更小）</text>
+      <text x="80" y="176" font-size="12" font-weight="800" fill="#1D2129">写入侧反过来：频繁点更新 = 列存重写整段</text>
+      <text x="80" y="200" font-size="11.5" fill="#4E5969">行存单行 insert 一次写；列存改一行要重写相关列段（merge）——ClickHouse 不适合频繁更新</text>
+      <text x="80" y="226" font-size="11.5" fill="#6D28D9">OLAP 的「事务」通常不是 ACID——账务类数据别放分析引擎</text>
+      <text x="80" y="256" font-size="11.5" font-weight="700" fill="#B45309">结论：同一物理排布不可能同时满足「拿全一行」+「只读一列」——分野的起点</text>
+      <text x="80" y="292" font-size="10.5" fill="#86909C">两边的表设计不一样 → 数据不能共用 → 必须 ETL / CDC 同步 → 延迟与一致性窗口：「要不要上 OLAP」一半在问「受得了这个窗口吗」</text>
+    </g>
+    <g>
+      <rect x="740" y="24" width="650" height="292" rx="10" fill="#fff" stroke="#E5E6EB"/>
+      <text x="760" y="52" font-size="13" font-weight="800" fill="#B45309">扩容的账（先分清哪种不够用）</text>
+      <text x="760" y="78" font-size="11.5" fill="#4E5969">写 QPS 2000、单行含索引维护 0.15ms、单实例实测上限 ~1500 QPS（日志与页的串行化）：</text>
+      <g font-size="11.5" fill="#4E5969">
+        <text x="760" y="106">加 10 个从库 → 写入仍是 1500 QPS（从库只分担读）</text>
+        <rect x="1150" y="96" width="205" height="12" rx="3" fill="#F59E0B"/>
+        <text x="760" y="132">按 user_id % 4 分 4 片 → 写并发 ×4，但跨片 join / 分页 / 事务全变难</text>
+        <rect x="1150" y="122" width="205" height="12" rx="3" fill="#22C55E"/>
+      </g>
+      <text x="760" y="166" font-size="11.5" fill="#6D28D9">「加从库还是慢」的最常见根因：写瓶颈用读副本解决——方向就错了</text>
+      <text x="760" y="192" font-size="11.5" fill="#4E5969">数驭穹图的实际选择：控制面 PG 强一致（权限不能错）+ 数据面 Parquet + DuckDB 扫描快（分析不能慢）——同一份数据两个引擎</text>
+      <text x="760" y="218" font-size="11.5" fill="#4E5969">同步不用全量复制（成本与合规）：只同步「选定数据集」，快照 + 位点 + 校验，关键校验失败停在 INVALID / STALE</text>
+      <text x="760" y="244" font-size="11.5" fill="#4E5969">分表判据反着用：8000 万行本身不构成动作——先看 DDL / 备份耗时、热数据是否装得下</text>
+      <text x="760" y="270" font-size="11.5" font-weight="700" fill="#B45309">顺序：读写分离 + 优化先买喘息（便宜且不排他）→ 再决定要不要吃下分片 / 换库的长期复杂度</text>
+      <text x="760" y="292" font-size="10.5" fill="#86909C">得物的一体化路径同理：先低风险业务迁移，再 TP / AP 一体化重构——小步验证，不是一步到位</text>
+    </g>
+  </svg>
+  </div>
+</section>
+<!-- 05 数字板 -->
+<section class="lv-deep">
+  <h2><span class="num">05</span>要能现场算出来的数<span class="src">正本 母题卡「一、教材」推导</span></h2>
+  <div class="h2sub">每个数都要带推导，只报结果是会被追问倒的。</div>
+  <div class="nums">
+    <div class="ncard b"><div class="t">行存 vs 列存</div><div class="big">100GB vs 1.6GB</div>
+      <div class="d">1 亿行宽表查 2 列：差 62 倍——同一物理排布不可能同时满足「拿全一行」和「只读一列」。</div></div>
+    <div class="ncard o"><div class="t">列存加成</div><div class="big">同列同类型</div>
+      <div class="d">压缩率高（RLE / 字典）是列排布白送的：IO 更少、聚合更快——但点更新要重写列段。</div></div>
+    <div class="ncard b"><div class="t">ClickHouse 之短</div><div class="big">频繁更新 = 重写</div>
+      <div class="d">OLAP 的「事务」通常不是 ACID——账务数据别放分析引擎；分析引擎管的是扫描与聚合。</div></div>
+    <div class="ncard o"><div class="t">千万行负债线</div><div class="big">同步 + 窗口 + 双份</div>
+      <div class="d">千万行以内上 OLAP 引擎：同步链路、一致性窗口、「谁是准的」三笔固定成本——多半是负债。</div></div>
+    <div class="ncard b"><div class="t">从库不解决写</div><div class="big">1500 QPS 不变</div>
+      <div class="d">写 QPS 2000 > 单实例 1500：加 10 个从库写还是 1500——从库只分担读，「加从库还是慢」的根因。</div></div>
+    <div class="ncard o"><div class="t">分片的代价</div><div class="big">×4 写并发 ≠ 免费</div>
+      <div class="d">user_id % 4：写并发 ×4，但跨片 join / 分页 / 事务全变难、要全局 ID——分片键=查询形状的属性。</div></div>
+    <div class="ncard b"><div class="t">引入引擎的固定成本</div><div class="big">不随数据量缩小</div>
+      <div class="d">同步链路 / 一致性窗口 / 运维面 / 团队心智——省下的查询时间买不买得回，是引入的唯一判据。</div></div>
+    <div class="ncard o"><div class="t">语义塞不进提示词</div><div class="big">120 × 150 字</div>
+      <div class="d">120 个核心指标 × 150 字口径 ≈ 1.8 万字：长提示词漂移——语义必须系统化、可版本化。</div></div>
+    <div class="ncard b"><div class="t">CAP 的实用版</div><div class="big">PACELC</div>
+      <div class="d">同区讲延迟（L）、异区讲一致（C）——「三选二」的说法没法用来做选型决策。</div></div>
+  </div>
+</section>
+
+<!-- 06 误判 -->
+<section class="lv-deep">
+  <h2><span class="num">06</span>八句最容易说错的话<span class="src">正本 母题卡「二、自测」纠错题原话</span></h2>
+  <div class="h2sub">说对前半句没用，后半句才是判据。</div>
+  <div class="mis">
+    <div class="mrow"><span class="x">✗「ClickHouse 也能做点更新，所以通用」</span><span class="v">✓ 能做 ≠ 划得来：物理布局决定擅长什么——频繁更新要重写列段，分析引擎管扫描与聚合。</span></div>
+    <div class="mrow"><span class="x">✗「OLAP 引擎的事务也是 ACID」</span><span class="v">✓ 通常不是——分析引擎的「事务」语义弱，账务类数据别放。</span></div>
+    <div class="mrow"><span class="x">✗「500 万行，为了分析性能上 ClickHouse 双写」</span><span class="v">✓ 千万行以内是负债：同步链路 + 一致性窗口 + 「谁是准的」——先用关系库自身能力。</span></div>
+    <div class="mrow"><span class="x">✗「加几个从库就能扛住写压力」</span><span class="v">✓ 从库只分担读，写入压力加从库无效——「加了从库还是慢」的最常见根因。</span></div>
+    <div class="mrow"><span class="x">✗「8000 万行了，该分库分表了」</span><span class="v">✓ 判据是「付不付得起维护这张表的代价」（DDL / 备份 / 热数据），不是行数。</span></div>
+    <div class="mrow"><span class="x">✗「有外键关联就应该上图数据库」</span><span class="v">✓ 「数据有关系」是所有业务的共性，两三层 JOIN 够用——图的优势只在深度多跳 + 实时。</span></div>
+    <div class="mrow"><span class="x">✗「把指标说明写进提示词就行了」</span><span class="v">✓ 长提示词会漂移（有时遵守有时不遵守），不解决可版本化 / 可评测 / 可对账——语义要系统化。</span></div>
+    <div class="mrow"><span class="x">✗「Ontology 就是知识图谱」</span><span class="v">✓ Ontology 是概念层定义（类型 / 关系 / 约束），知识图谱是实例化的数据——厂商语境的 Ontology 是第三个东西。</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 07 验收门 -->
+<section class="lv-deep">
+  <h2><span class="num">07</span>验收门（全勾才算闭环）<span class="src">正本 模块卡 第 6 节</span></h2>
+  <div class="gate">
+    <ul>
+<li><span>☐</span><div><b>闭卷 3 分钟</b>：能用"负载三问"（一次查多少行 / 写得多频 / 要多久看到结果）把任意一段负载归到引擎族，并说清行存与列存的分水岭</div></li>
+<li><span>☐</span><div><b>准确纠错</b>：能当场说清 <b>OLAP 引擎的"事务"通常不是 ACID 事务</b>、<b>HTAP 是折中不是全面胜出</b>、<b>千万行以内引入 OLAP 引擎多半是负债</b> 这三处</div></li>
+<li><span>☐</span><div><b>两层追问</b>：能回答"为什么 ClickHouse 不适合高频点更新"和"分库分表之后跨片 join 与分页怎么办"</div></li>
+<li><span>☐</span><div><b>一个项目案例</b>：能用 <b>数驭穹图的 PG 控制面 + DuckDB 数据面</b>讲 S1，用 <b>它的快照/实时双模式</b>讲 S2，用 <b>RuleArena 的 PG 权威状态 + Redis 队列</b>讲 S3</div></li>
+<li><span>☐</span><div><b>判断力测试</b>：给一段有缺陷的选型方案（例："数据量 500 万行，为了分析性能上 ClickHouse 并双写到 MySQL" / "用 Redis 当唯一存储"），能指出问题在哪、会怎么炸、该怎么改</div></li>
+<li><span>☐</span><div><b>手撕</b>：不在本卡范围，走独立日课</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  边界：包含：分野（OLTP 与 OLAP 为什么是两类东西，行存与列存的分水岭）、扩展（单机扛不住之后的三条路：读写分离 / 分片 / 换分布式数据库，各自买到什么、付出什么）、边界（什么需求不该用关系库解决：缓存、文档、搜索、向量、图，以及多引擎并存的隐性成本）、语义（数据仓库存事实，语义层/Ontology 存"含义与动作"——NL2SQL 与 Agent 真正依赖的是什么）。 —— 边界外的内容不进本页。
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "mv.onepage.数据存储选型.v1";
+  var CARDS = {"S1": {"t": "OLTP 与 OLAP 的分野与选型", "q": ["一张宽表，100 个字段，行宽 1 KB，共 1 亿行。现在只查询其中 2 个数值列（每列 8 字节）：SELECT sum(a), avg(b) FROM t。", "还是这张表。现在有两个写入场景：", "某团队说：\"我们的库有 8000 万行，报表要跑 40 秒。我们打算 MySQL 和 ClickHouse 双写，以后所有查询都走 ClickHouse，MySQL 只做写入。\""], "pts": ["1. 前提：所有的差别只来自一件事——数据在磁盘上怎么排｜这不是两个技术名词，这是两类负载。 先用\"一次操作碰多少数据\"把它们分开：", "1. 前提：所有的差别只来自一件事——数据在磁盘上怎么排｜这张表已经决定了一件事：这两类负载对\"读取效率\"的定义是相反的——OLTP 希望\"给我一行时一次把这一行拿全\"，OLAP 希望\"给我一列时别把别的列也读进来\"。同一个物理排布不可能同时满足这两个愿望，这就是整个分野的起点。", "1. 前提：所有的差别只来自一件事——数据在磁盘上怎么排｜行式存储（row store）：同一行的字段连续存放，一行接一行。", "2. 用同一个指标把两种排布算一遍｜假设表宽 100 个字段、行宽约 1 KB：", "2. 用同一个指标把两种排布算一遍｜还是那张表，现在只算 3 个数值列（每列 8 字节）：", "2. 用同一个指标把两种排布算一遍｜附带还有两个加成，都来自同一件事：", "3. 从物理排布推出的全部差异｜下面是同一张表的两种排布推导出来的完整差异表——每一条都能追到 2.1 / 2.2 / 2.3：", "3. 从物理排布推出的全部差异｜最后两行是真正的哲学分歧，值得单独记：", "3. 从物理排布推出的全部差异｜由此还能推出一件工程事实：既然两边的表设计不一样，数据就不能\"同一张表两边共用\"——必须经过 ETL / CDC 同步，于是必然带来延迟和一致性窗口。\"要不要上 OLAP 引擎\"这个问题，一半的答案其实是在问\"你受得了这个延迟窗口吗\"。", "4. 选型：三个问题，依次收敛｜选型不要从\"哪个引擎先进\"开始。按顺序问三个问题，任何一个能定死答案，后面的就不用问了。", "4. 选型：三个问题，依次收敛｜这一问是\"拦住过度设计\"的那一关。", "4. 选型：三个问题，依次收敛｜关系型数据库本身也能做分析（PostgreSQL 的并行扫描、物化视图、分区表；MySQL 8 的窗口函数与 CTE）。\"能不能做\"和\"划不划得来\"是两件事——数据量没到那个量级时，多一套引擎带来的同步链路、一致性窗口、运维面、以及\"两份数据谁是准的\"这一串问题，代价远大于省下的那几秒查询时间。"], "crit": "能用「物理排布」推出行存 / 列存全部差异；能算 1 亿行宽表两列聚合的扫描量差（62 倍）；能说清 OLAP 事务语义弱与 ClickHouse 更新代价；能用「负载三问」收敛选型。"}, "S2": {"t": "单机不够了怎么扩：读写分离、分库分表、还是换分布式数据库", "q": ["某表写 QPS 2000，平均每行写入（含索引维护）耗时 0.15 ms。单实例的写入能力受\"日志与页的串行化\"限制，实测该实例的写入上限约 1500 QPS。", "某表按 user_id % 4 分成 4 片。现在有两类查询：", "团队报了一个方案："], "pts": ["1. 前提：单机到底卡在哪——先分清\"不够用\"是哪一种不够用｜\"单机到顶了\"这句话必须先拆开，因为四类上限的解法完全不同：", "1. 前提：单机到底卡在哪——先分清\"不够用\"是哪一种不够用｜这张表决定了后面所有讨论的顺序：", "1. 前提：单机到底卡在哪——先分清\"不够用\"是哪一种不够用｜关键判断：写入压力无法用\"加从库\"解决。 从库是复制的副本，写入还是只有主库在承担——加从库只增加\"能同时读的人\"，不增加\"能同时写的人\"。这是很多\"加了从库还是慢\"的根因。", "2. 三条路，先各自介绍｜做法：一个主库接收写，N 个从库通过复制协议（binlog / WAL）同步，应用层把读请求路由到从库。", "2. 三条路，先各自介绍｜数驭穹图的 LIVE_READ 走的就是这条路：02 写明实时模式*\"优先连接只读副本或分析库\"*，且*\"若客户只有生产主库，默认不开放复杂即席查询\"*——把\"不许打到主库\"写成了产品规则。", "2. 三条路，先各自介绍｜两个维度，不要混：", "3. 逐个淘汰：统一指标是\"新增了多少个失败点\"｜把开头的四个方案放进同一把尺子：", "3. 逐个淘汰：统一指标是\"新增了多少个失败点\"｜用题面给的两个症状来判：", "3. 逐个淘汰：统一指标是\"新增了多少个失败点\"｜\"先做 A 和 B、同时评估 C 或 D\"不是和稀泥，而是成本顺序：A 与 B 便宜且不排他，先用它们买到喘息时间，再决定要不要吃下 C/D 的长期复杂度——这也是得物那个案例的实际路径（summaries/oceanBase.md：*\"低风险业务迁移 → TP/AP 一体化重构\"*，先小步验证，再", "4. 分布式事务与全局 ID：为什么\"没有全局时钟\"是根本困难｜所有方案的困难来自同一个地方：", "4. 分布式事务与全局 ID：为什么\"没有全局时钟\"是根本困难｜工程上的主流选择是 ②，而它的核心不是事务本身，是幂等与对账——这正是 母题-A3-失败恢复与幂等 与 母题-L3-分布式锁与fencing-token 要解决的问题：\"用最终一致\"这句话只有在\"重复执行不出错\"和\"能对账发现差异\"都成立时才是安全的。", "4. 分布式事务与全局 ID：为什么\"没有全局时钟\"是根本困难｜自增主键在分片后失效（每个分片都会从 1 开始）。可选方案："], "crit": "能分清四种「不够用」；能解释「加从库不解决写压力」的根因；能背三条路各自买到什么、付出什么；能把 CAP 讲成 PACELC 并给出分布式事务的主流方案（幂等 + 对账）。"}, "S3": {"t": "什么时候不该用关系数据库：五类专有存储的边界", "q": ["某团队准备为\"全文搜索\"引入 Elasticsearch。已知：", "某系统用 Redis 存了 3 类数据：", "某团队的需求描述是："], "pts": ["1. 前提：一个存储的能力边界，由它的\"索引结构\"决定｜关系数据库最强的是\"按值精确定位\"与\"自由组合的过滤与关联\"：", "1. 前提：一个存储的能力边界，由它的\"索引结构\"决定｜这些强项的反面就是它的边界：", "1. 前提：一个存储的能力边界，由它的\"索引结构\"决定｜所以判断标准只有一句话：", "2. 五类专有存储：各自为哪种\"查询形状\"而生｜所以它的正确定位是\"加速层\"，不是\"权威层\"——能重新算出来的东西（缓存、计数器、队列进度）放它，丢了算不出来的东西（订单、余额、账）不放它。 这条判断在 母题-R5-缓存的边界 已完整展开。", "2. 五类专有存储：各自为哪种\"查询形状\"而生｜它的甜点区是\"以对象为单位读写、结构会变、不需要跨对象事务\"——例如用户档案、配置、内容快照、事件原文。它的雷区是\"需要跨对象强一致的账务类数据\"。", "2. 五类专有存储：各自为哪种\"查询形状\"而生｜所以它正确的角色是\"检索层\"，权威数据在别处，它是一份为检索优化的副本。 \"用 ES 当唯一数据源\"是经典事故——因为它的持久性与事务语义不是为承担这个责任设计的。", "3. 回到题目：四个需求各自该去哪｜④ 是本卡最重要的一个\"不急着加引擎\"的例子：", "4. 多引入一个引擎要付什么账｜summaries/oceanBase.md 里得物的现状就是这张清单的实证：它的在线体系里同时有 MySQL、TiDB、MongoDB、HBase、DuckDB、ClickHouse、StarRocks、向量库，而这份材料把它带来的问题列得很清楚：", "4. 多引入一个引擎要付什么账｜把它压缩成\"引入一个新引擎的固定成本\"（注意：这份成本不随数据量缩小）：", "4. 多引入一个引擎要付什么账｜所以引入判据是：", "5. 边界与常见误解｜持久化能力 ≠ 权威存储能力。它缺的不只是\"会不会丢\"，还有：事务强度、容量上界（内存）、查询能力、以及\"内存满了要淘汰\"这个机制本身。能重新算出来的放它，算不出来的不放它（2.1）——RuleArena 把这一点直接写进了选型卡 | | \"全文检索用 LIKE '%关键词%' 就行\"", "5. 边界与常见误解｜两处不成立：① 前置通配符用不上 B+ 树索引，只能全表扫；② 它没有\"相关性\"概念——检索要回答的是\"哪几条最相关、按相关度排序\"，这是检索问题不是过滤问题 | | \"有外键关联就应该上图数据库\""], "crit": "能用「索引结构」推出五类专有存储的甜点区与雷区；能列出「引入一个引擎」的固定成本清单；能把 RuleArena 的 PG + Redis 二分讲成正面案例；能反驳「有关系就上图」。"}, "S4": {"t": "语义层与 Ontology：NL2SQL 的准确率上限为什么是\"口径\"", "q": ["\"为什么上周的转化率掉了？\"", "某企业有 120 个核心指标，每个指标的完整口径说明（公式 + 过滤 + 去重规则 + 时间定义 + 边界案例）平均约 150 字。", "\"你们项目里用 Ontology 了吗？\""], "pts": ["1. 前提：模型没有业务先验，而业务事实是\"人为确权\"的结果｜回到开头那道题。三个答案都能写出正确的 SQL 语法，但结果不同——而这不是模型的错，也不是 SQL 的错：", "1. 前提：模型没有业务先验，而业务事实是\"人为确权\"的结果｜projects/数驭穹图/03-数据目录与语义资产.md 把这件事写成了一句话：", "1. 前提：模型没有业务先验，而业务事实是\"人为确权\"的结果｜这条判断推出了本卡的全部结论：", "2. 语义层是什么：三层知识 + 生命周期｜03 把语义资产分成三层，这个分层很干净：", "2. 语义层是什么：三层知识 + 生命周期｜这个分层的意义在于\"分工是由可信度决定的\"：", "2. 语义层是什么：三层知识 + 生命周期｜03 的\"六节知识卡片\"给出了一个核心表的语义卡片该包含什么：", "3. 语义层与检索层是两件事｜这是本卡最容易被混淆的一处，值得单独说清：", "3. 语义层与检索层是两件事｜\"不能用相似度解决口径问题\"这一条很关键：如果你把\"GMV = 实付金额\"这句话塞进向量库，检索到它只是\"找到了这个说法\"，不代表它是现行有效的口径。 确权必须有状态机与版本（2.3），这是检索做不到的。", "3. 语义层与检索层是两件事｜回到第二个问题——团队往提示词里塞 3000 字指标说明：", "4. Ontology：一个被两种意思共用的词｜\"Ontology（本体）\"在两个语境里指的是不同的东西：", "4. Ontology：一个被两种意思共用的词｜\"知识图谱\"与这两者的关系也要分清：", "4. Ontology：一个被两种意思共用的词｜因为 Agent 与\"只看不写\"的 BI 有一个根本差别："], "crit": "能解释「NL2SQL 上限是口径不是模型」；能背语义资产三层与语义卡片的字段；能说清语义层与检索层的差别（确权 vs 相似度）；能区分 Ontology 与知识图谱。"}};
+  var ORDER = ["S1", "S2", "S3", "S4"];
+
+  var st = { mode:"mid", cue:true, card:ORDER[0], self:"", showAns:false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) { if (o.hasOwnProperty(k)) st[k] = o[k]; } }
+  } catch (e) {}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function apply(){
+    document.body.setAttribute("data-mode", st.mode);
+    var btns = document.querySelectorAll("[data-mode-btn]");
+    for (var i=0;i<btns.length;i++){
+      if (btns[i].getAttribute("data-mode-btn") === st.mode) btns[i].classList.add("on");
+      else btns[i].classList.remove("on");
+    }
+    var tbl = document.getElementById("mainTable");
+    if (tbl){ if (st.cue) tbl.classList.add("masked"); else tbl.classList.remove("masked"); }
+    var ct = document.getElementById("cueToggle");
+    if (ct) ct.textContent = st.cue ? "对答案" : "遮住答案";
+  }
+
+  function applyAns(){
+    var box = document.getElementById("ansBox");
+    if (box){ if (st.showAns) box.classList.add("show"); else box.classList.remove("show"); }
+    var b = document.getElementById("critBtn");
+    if (b) b.textContent = st.showAns ? "遮住答案" : "答完了，看知识点与判据";
+  }
+
+  function renderCues(){
+    var sel = document.getElementById("cardSel");
+    var list = document.getElementById("cueList");
+    var box = document.getElementById("critBox");
+    if (!sel || !list || !box) return;
+    var c = CARDS[st.card];
+    var html = "";
+    for (var i=0;i<c.q.length;i++) html += "<li><div>" + c.q[i] + "</div></li>";
+    list.innerHTML = html;
+    var pl = document.getElementById("ptList");
+    if (pl) { var h2 = ""; for (var j = 0; j < c.pts.length; j++) h2 += "<li><div>" + c.pts[j] + "</div></li>"; pl.innerHTML = h2; }
+    box.textContent = "通过判据（教材原文）：" + c.crit;
+    sel.value = st.card;
+    applyAns();
+  }
+
+  var sel = document.getElementById("cardSel");
+  if (sel){
+    for (var i=0;i<ORDER.length;i++){
+      var op = document.createElement("option");
+      op.value = ORDER[i];
+      op.textContent = ORDER[i] + " · " + CARDS[ORDER[i]].t;
+      sel.appendChild(op);
+    }
+    sel.addEventListener("change", function(){ st.card = sel.value; st.showAns = false; save(); renderCues(); });
+  }
+  var btns = document.querySelectorAll("[data-mode-btn]");
+  for (var b=0;b<btns.length;b++){
+    btns[b].addEventListener("click", function(){ st.mode = this.getAttribute("data-mode-btn"); save(); apply(); });
+  }
+  var ct = document.getElementById("cueToggle");
+  if (ct) ct.addEventListener("click", function(){ st.cue = !st.cue; save(); apply(); });
+  var cb = document.getElementById("critBtn");
+  if (cb) cb.addEventListener("click", function(){ st.showAns = !st.showAns; save(); applyAns(); });
+  var rb = document.getElementById("resetBtn");
+  if (rb) rb.addEventListener("click", function(){
+    var idx = ORDER.indexOf(st.card);
+    st.card = ORDER[(idx + 1) % ORDER.length]; st.showAns = false; save(); renderCues();
+  });
+  var ta = document.getElementById("self20");
+  var ok = document.getElementById("selfOk");
+  if (ta){
+    ta.value = st.self || "";
+    ta.addEventListener("input", function(){ st.self = ta.value; save(); if (ok) ok.textContent = "已存在本机（" + ta.value.length + " 字）"; });
+    if (st.self && ok) ok.textContent = "已存在本机（" + st.self.length + " 字）";
+  }
+
+  apply();
+  renderCues();
+})();
+</script>
+</body>
+</html>
