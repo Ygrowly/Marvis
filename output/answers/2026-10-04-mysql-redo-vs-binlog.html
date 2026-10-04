@@ -437,7 +437,7 @@ html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var
 <button class="am-btn" type="button" data-am="copy" data-done="已复制 ✓">复制源稿</button>
 </div>
 <main class="am-sheet">
-<header class="am-head"><h1>MySQL 为什么有了 binlog 还要 redo log？</h1><p class="am-sub">两种日志各管一件事，缺一个就出事故</p><div class="am-head-meta"><span><b>source</b>Marvis · MySQL 主线 · 面试高频</span></div><div class="am-intro am-md"><div class="am-md"><p>一句话结论：<strong>redo log 保证崩溃后数据不丢（crash-safe），binlog 保证主从一致与可回溯（复制和归档）。两者职责不同，不能互相替代。</strong></p>
+<header class="am-head"><h1>MySQL 为什么有了 binlog 还要 redo log？</h1><p class="am-sub">两种日志各管一件事，缺一个就出事故</p><div class="am-head-meta"><span><b>source</b>Marvis · MySQL 主线 · 面试高频</span></div><div class="am-intro am-md"><div class="am-md"><p>一句话结论：<strong>redo log 保证崩溃后数据不丢（crash-safe），binlog 保证主从复制与备份归档。两者职责不同，不能互相替代。</strong></p>
 </div></div></header>
 <div class="am-frame">
 <div class="am-ruler am-ruler--top" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="am-ruler am-ruler--bottom" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="am-ruler am-ruler--left" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div><div class="am-ruler am-ruler--right" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
@@ -492,7 +492,7 @@ html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var
 </tr>
 <tr>
 <td>两阶段协调</td>
-<td>没有 prepare 状态，崩溃后无法判断提交还是回滚</td>
+<td>没有 prepare 状态，判不了提交还是回滚</td>
 <td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span></span></td>
 </tr>
 </tbody></table></div>
@@ -510,12 +510,12 @@ html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var
 </thead>
 <tbody><tr>
 <td>主从复制</td>
-<td>从库拿不到日志，主从数据发散</td>
+<td>从库没日志，数据发散</td>
 <td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span></span></td>
 </tr>
 <tr>
 <td>备份归档</td>
-<td>循环写覆盖旧日志，回不到过去某个时间点</td>
+<td>循环写会覆盖，回不到过去</td>
 <td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span></span></td>
 </tr>
 </tbody></table></div>
@@ -523,7 +523,7 @@ html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var
 </section>
 <section class="am-panel am-span-wide" id="panel-D" style="grid-column: span 2">
 <header class="am-panel-head"><span class="am-panel-id">D</span><h2>提交时的两阶段配合</h2><span class="am-panel-meta">MySQL 内部 XA</span></header>
-<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 345 258" width="345" height="258" role="img" aria-label="时序图：InnoDB、Server" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="254"/><g data-key="InnoDB"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">InnoDB</text></g><line class="am-lifeline" x1="290.1" y1="42" x2="290.1" y2="254"/><g data-key="Server"><rect class="am-actor" x="248.1" y="8" width="84" height="34" rx="2"/><text x="290.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Server</text></g><g data-step="0"><text x="94" y="68" dominant-baseline="central">redo log 落盘，标记 prepare</text><path class="am-edge" d="M54,64 H84 V84 H56" marker-end="url(#am1-arrow)"/></g><g data-step="1"><text x="172.1" y="118" text-anchor="middle">写 binlog</text><path class="am-edge" d="M54,128 L288.1,128" marker-end="url(#am1-arrow)"/></g><g data-step="2"><text x="172.1" y="158" text-anchor="middle">通知提交，redo log 标记 commit</text><path class="am-edge" d="M290.1,168 L56,168" marker-end="url(#am1-arrow)"/></g><g data-step="3"><rect class="am-note" x="34" y="192" width="276.1" height="44" rx="2"/><text x="172.1" y="206" text-anchor="middle" dominant-baseline="central" font-size="12">崩溃恢复时两边对照：binlog 完整则提交</text><text x="172.1" y="222" text-anchor="middle" dominant-baseline="central" font-size="12">，否则回滚</text></g></svg></figure>
+<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 345 242" width="345" height="242" role="img" aria-label="时序图：InnoDB、Server" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="238"/><g data-key="InnoDB"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">InnoDB</text></g><line class="am-lifeline" x1="290.1" y1="42" x2="290.1" y2="238"/><g data-key="Server"><rect class="am-actor" x="248.1" y="8" width="84" height="34" rx="2"/><text x="290.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Server</text></g><g data-step="0"><text x="94" y="68" dominant-baseline="central">redo log 落盘，标记 prepare</text><path class="am-edge" d="M54,64 H84 V84 H56" marker-end="url(#am1-arrow)"/></g><g data-step="1"><text x="172.1" y="118" text-anchor="middle">写 binlog</text><path class="am-edge" d="M54,128 L288.1,128" marker-end="url(#am1-arrow)"/></g><g data-step="2"><text x="172.1" y="158" text-anchor="middle">通知提交，redo log 标记 commit</text><path class="am-edge" d="M290.1,168 L56,168" marker-end="url(#am1-arrow)"/></g><g data-step="3"><rect class="am-note" x="34" y="192" width="276.1" height="28" rx="2"/><text x="172.1" y="206" text-anchor="middle" dominant-baseline="central" font-size="12">binlog 完整则提交，否则回滚</text></g></svg></figure>
 <div class="am-md"><p>prepare 和 commit 之间只夹一步写 binlog。这保证两份日志要么都有，要么都能判废。</p>
 </div></div>
 </section>
@@ -535,7 +535,7 @@ html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var
 </div>
 </div>
 </main>
-<footer class="am-colophon">Generated by Answer me with HTML 0.4.6 · 2026-10-04 21:48</footer>
+<footer class="am-colophon">Generated by Answer me with HTML 0.4.6 · 2026-10-04 22:04</footer>
 <textarea id="am-source" hidden readonly aria-hidden="true">---
 template: sheet
 theme: blueprint
@@ -544,7 +544,7 @@ subtitle: 两种日志各管一件事，缺一个就出事故
 source: Marvis · MySQL 主线 · 面试高频
 cols: 3
 ---
-一句话结论：**redo log 保证崩溃后数据不丢（crash-safe），binlog 保证主从一致与可回溯（复制和归档）。两者职责不同，不能互相替代。**
+一句话结论：**redo log 保证崩溃后数据不丢（crash-safe），binlog 保证主从复制与备份归档。两者职责不同，不能互相替代。**
 
 ## A 分工对照 {meta=&quot;先看职责&quot;}
 | 维度 | redo log | binlog |
@@ -558,20 +558,20 @@ cols: 3
 | 场景 | 后果 | 判定 |
 |---|---|---|
 | 崩溃恢复 | 逻辑日志重放慢，恢复不精确 | no |
-| 两阶段协调 | 没有 prepare 状态，崩溃后无法判断提交还是回滚 | no |
+| 两阶段协调 | 没有 prepare 状态，判不了提交还是回滚 | no |
 
 ## C 只留 redo log 会怎样 {meta=&quot;反事实二&quot;}
 | 场景 | 后果 | 判定 |
 |---|---|---|
-| 主从复制 | 从库拿不到日志，主从数据发散 | no |
-| 备份归档 | 循环写覆盖旧日志，回不到过去某个时间点 | no |
+| 主从复制 | 从库没日志，数据发散 | no |
+| 备份归档 | 循环写会覆盖，回不到过去 | no |
 
 ## D 提交时的两阶段配合 {span=2 meta=&quot;MySQL 内部 XA&quot;}
 ```sequence
 InnoDB -&gt; InnoDB: redo log 落盘，标记 prepare
 InnoDB -&gt; Server: 写 binlog
 Server -&gt; InnoDB: 通知提交，redo log 标记 commit
-note InnoDB, Server: 崩溃恢复时两边对照：binlog 完整则提交，否则回滚
+note InnoDB, Server: binlog 完整则提交，否则回滚
 ```
 prepare 和 commit 之间只夹一步写 binlog。这保证两份日志要么都有，要么都能判废。
 

@@ -423,3 +423,11 @@
 - 约定入宪：CLAUDE.md 新增〈回答形态〉节（触发条件 / 落点 `output/answers/YYYY-MM-DD-<slug>.html` 稿件同存 / 页面是呈现层不替代正本、AI 产出按 candidate 对待）；`output/` 目录职责同步补 answers
 - 首个样例：`output/answers/2026-10-04-mysql-redo-vs-binlog.html`——redo log vs binlog 面试题（分工对照 + 双反事实 + 两阶段提交时序图 + 30 秒答法），sequence 自环 / 表格徽章 / callout 三组件与 STE 检查一次通过（0 警告）
 - 登记：盘点文档 `wiki/sources/2026-09-26-网站设计参考与图表界面skills盘点.md` 增补第七节；MAP 登记待主人另一条线（简历/项目说明改动）落定后一并补
+
+## 2026-10-04 晚（一页答验收 + 联网横评 + 治理定稿）
+
+- 主人看了实际效果（卡片主题截图），要求：评价 + 联网看同类 + 按仓库核心目的定规范治理
+- 验收修正样例页四处中文排版：B/C 表「判定」表头与「两阶段协调」被窄列挤成竖排、D 图 note 逗号孤行、导语括号断行——修法是改稿不改组件（短句、短表项），重渲后全部单行，STE 仍 0 警告
+- 联网横评：skill 生态暂无直接同类竞品（skillsllm 收录，理念源头是 Karpathy 的「answer with a page」）；产品侧 Napkin / MyLens 偏图片与导图、Gamma / Piktochart 偏成套模板、Claude Artifacts / ChatGPT Canvas 是运行时内嵌不适用于 CLI 工作流——「稿 → 确定性渲染」路线在输出 token（约 1/7）、速度、风格一致性上仍是最优解，维持选型不变
+- 治理定稿（CLAUDE.md〈回答形态〉增补四条）：① 主题统一 blueprint 图纸风（卡片风留给对外分享临时切）；② 教练边界——闭卷作答前不出完整讲解页，一页答只服务「讲给我看」场合，不替代学习回路；③ 质量底线——中文排版截图验收（列不竖排 / note 不孤行 / 导语括号不断行），改稿不改组件；④ 索引 output/answers/README.md 逐页登记
+- MAP 登记：output/answers/ 仍待主人简历线落定后一并补（MAP.md 尚有未提交改动，不混线）
