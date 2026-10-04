@@ -58,5 +58,21 @@ for (const g of cards.grounds || []) {
   ok(fs.existsSync(f), 'wiki/cards/地基-' + g.module + '.md 存在');
 }
 
+console.log('【内化馆关联节（2026-10-04 审查教训：grab_list 只认列表项，行内关联曾被静默丢掉）】');
+{
+  const cardsHtml = fs.readFileSync(path.join(ROOT, 'cards.html'), 'utf8');
+  const rulesN = (cardsHtml.match(/href="rules\.html"/g) || []).length;
+  ok(rulesN >= 10, 'R 系关联链到 rules.html（≥10）', String(rulesN));
+  ok(!cardsHtml.includes('[['), 'cards.html 无 raw [[ 残留');
+  const cardsJs = fs.readFileSync(path.join(ROOT, '_data', 'cards.js'), 'utf8');
+  const m = cardsJs.match(/window\.MARVIS_CARDS = (\{[\s\S]*?\});\s*\n/);
+  let nLinks = 0;
+  if (m) {
+    const d = JSON.parse(m[1]);
+    nLinks = (d.principles || []).reduce((a, c) => a + (c.links || []).length, 0);
+  }
+  ok(nLinks >= 20, '原则卡关联条目 ≥20（行内顿号写法可解析）', String(nLinks));
+}
+
 console.log('\n' + (fails ? '❌ ' + fails + ' 项失败' : '✅ 全部通过'));
 process.exit(fails ? 1 : 0);

@@ -645,7 +645,7 @@ def build_html(mod, card_secs, mothers_data, mother_files, order, qlist, project
 def build_material(mod, card_secs, mothers_data, order, qlist, projects, gate, boundary):
     L = []
     L.append(u'# %s · 一页通素材包\n' % mod)
-    L.append(u'> 由 `output/_gen_onepage.py` 从正本抽取，只读参考；修改请回模块卡 / 母题卡。\n')
+    L.append(u'> 由 `output/_tools/_gen_onepage.py` 从正本抽取，只读参考；修改请回模块卡 / 母题卡。成品页在 `site/onepage/`。\n')
     L.append(u'## 0 · 模块边界（页脚用）\n\n%s\n' % boundary)
     L.append(u'## 2 · 主线拆解（画 01 主干图的骨架）\n')
     L.append(card_secs.get(2, u'（模块卡缺第 2 节）').strip() + '\n')

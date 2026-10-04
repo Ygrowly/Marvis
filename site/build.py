@@ -122,6 +122,21 @@ def grab_list(text, name):
             for ln in block.splitlines() if re.match(r"^\s*[-*]\s+\S", ln)]
 
 
+def grab_links(text, name):
+    """关联字段兼容两种写法：`- ` 列表项（grab_list），或行内顿号分隔
+    （原则卡的关联是单行 `**关联**：[[A]]、[[B]]（注）`——2026-10-04 审查发现
+    grab_list 只认列表项，行内写法的 links 一直是空数组、关联节从未渲染）。"""
+    items = grab_list(text, name)
+    if items:
+        return items
+    idx = text.find("**" + name + "**")
+    if idx < 0:
+        return []
+    tail = text[idx + len("**" + name + "**"):].lstrip("：: ")
+    line = tail.splitlines()[0] if tail.splitlines() else ""
+    return [p.strip() for p in line.split("、") if p.strip()]
+
+
 def grab_numbered(text, name):
     """抽 `**字段**` 之后的 `1. ` 编号列表，返回 [(问, 答)]"""
     idx = text.find("**" + name + "**")
@@ -2278,7 +2293,7 @@ def parse_brain_cards_file(path):
                 "action": grab_block(sec, "标准动作"),
                 "triggers": grab_list(sec, "触发器"),
                 "trap": grab_block(sec, "易错"),
-                "links": grab_list(sec, "关联"),
+                "links": grab_links(sec, "关联"),
             })
         else:
             out["grounds"].append({
@@ -2456,16 +2471,15 @@ def render_cards_page(payload, line_href):
     _RULE_BOOKS = ("行动规则", "0713再就业男团-逆境准则", "性命双修执行案")
 
     def wikilink(x):
-        """[[目标|别名]] → 站内展示：R 系准则书链到 rules.html，其余取别名纯文本。"""
-        t = x.strip()
-        if not (t.startswith("[[") and t.endswith("]]")):
-            return esc(t)
-        inner = t[2:-2]
-        target, _, alias = inner.partition("|")
-        target, alias = target.strip(), (alias or target).strip()
-        if target in _RULE_BOOKS:
-            return '<a href="rules.html">%s</a>' % esc(alias)
-        return esc(alias)
+        """[[目标|别名]] → 站内展示：R 系准则书链到 rules.html，其余取别名纯文本。
+        正则替换，兼容项内尾注（如 `[[行动规则|R1]]（正本在行动规则.md）`）。"""
+        def sub(m):
+            target, _, alias = m.group(1).partition("|")
+            target, alias = target.strip(), (alias or target).strip()
+            if target in _RULE_BOOKS:
+                return '<a href="rules.html">%s</a>' % esc(alias)
+            return esc(alias)
+        return re.sub(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", sub, x)
 
     def principle_html(c):
         details = ['<details class="crd-d"><summary>先想：这个情境你会怎么做，再展开对</summary>']
