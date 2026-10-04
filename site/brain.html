@@ -3,35 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>第二大脑 · 知识星系</title>
+<title>我的书架 · 第二大脑</title>
 <link rel="stylesheet" href="_components/marvis.css">
 <style>
-  :root { --ink:#2C2C2A; --mut:#5F5E5A; }
   .brain-cols { display: flex; gap: 14px; align-items: stretch; margin: 14px 0 10px; }
   #stage { position: relative; flex: 1 1 auto; min-width: 0; height: 640px; border-radius: 12px; overflow: hidden;
-    background: #0E1322; border: 1px solid rgba(0,0,0,.25); cursor: grab; }
+    background: radial-gradient(120% 105% at 50% 0%, #f8f3e9 0%, #f0e9db 55%, #e5dbc6 100%);
+    border: 1px solid rgba(0,0,0,.10); box-shadow: inset 0 0 70px rgba(122,96,66,.12); cursor: grab; }
   #stage.dragging { cursor: grabbing; }
   #cv { display: block; width: 100%; height: 100%; }
   #labels { position: absolute; inset: 0; pointer-events: none; }
-  .lbl { position: absolute; font-size: 11px; line-height: 1.2; padding: 1px 6px; border-radius: 5px;
-    background: rgba(14,19,34,.72); border: 1px solid rgba(255,255,255,.22); color: #E8E6DF;
-    white-space: nowrap; transform: translate(-50%,-50%); pointer-events: auto; cursor: pointer; }
-  .lbl.hot { background: #fff; color: #2C2C2A; border-color: #fff; font-weight: 500; z-index: 5; }
-  .hall-lbl { font-size: 12px; font-weight: 500; background: rgba(14,19,34,.85); border-color: rgba(255,255,255,.4);
-    padding: 2px 8px; }
-  .hall-lbl b { font-weight: 500; }
-  .hall-lbl i { font-style: normal; color: #B9B7AE; font-size: 11px; margin-left: 4px; }
-  .star-lbl { border-color: rgba(255,255,255,.14); color: #CFCDC5; font-size: 10px; opacity: .9; }
-  @media (max-width: 980px) { .brain-cols { flex-direction: column; } #side { width: auto !important; } }
+  .lbl { position: absolute; font-size: 11px; line-height: 1.15; padding: 1px 6px; border-radius: 5px;
+    background: rgba(255,255,255,.9); border: 1px solid rgba(0,0,0,.12); white-space: nowrap;
+    transform: translate(-50%,-50%); color: #2C2C2A; pointer-events: auto; cursor: pointer; }
+  .lbl.hot { background: #fff; border-color: rgba(0,0,0,.45); font-weight: 500; z-index: 5; }
+  .hall-lbl { font-size: 11px; font-weight: 500; color: #f2ddb0;
+    background: linear-gradient(180deg, rgba(74,55,34,.94), rgba(52,38,22,.94));
+    border: 1px solid rgba(214,180,120,.55); border-radius: 5px; padding: 2px 10px;
+    box-shadow: 0 2px 8px rgba(30,18,8,.4), inset 0 1px 0 rgba(255,236,190,.18);
+    letter-spacing: .5px; }
+  .hall-lbl b { font-weight: 600; }
+  .hall-lbl i { font-style: normal; color: #cbb68a; font-size: 11px; margin-left: 4px; }
+  @media (max-width: 980px) { .brain-cols { flex-direction: column; } #side { width: auto !important; flex: none !important; } }
 
   /* —— 今日内化侧栏 —— */
   #side { flex: 0 0 300px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   .side-card { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; padding: 12px 14px; }
-  .side-card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--ink); }
-  .side-card h4 em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--mut); margin-left: 6px; }
+  .side-card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: #2C2C2A; }
+  .side-card h4 em { font-style: normal; font-weight: 400; font-size: 11px; color: #5F5E5A; margin-left: 6px; }
   .side-big { font-size: 24px; font-weight: 500; line-height: 1.2; }
-  .side-big small { font-size: 12px; color: var(--mut); font-weight: 400; }
-  .side-note { font-size: 12px; color: var(--mut); line-height: 1.6; margin: 4px 0 0; }
+  .side-big small { font-size: 12px; color: #5F5E5A; font-weight: 400; }
+  .side-note { font-size: 12px; color: #5F5E5A; line-height: 1.6; margin: 4px 0 0; }
   .mini-track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); overflow: hidden; margin-top: 5px; }
   .mini-track i { display: block; height: 100%; }
   .situ { background: #fbfaf7; border-left: 3px solid #F3C1AC; border-radius: 0 8px 8px 0;
@@ -45,18 +47,17 @@
   .side-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .side-btns .mv-btn { padding: 2px 10px; font-size: 12px; }
 
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mut); margin: 0 0 10px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #5F5E5A; margin: 0 0 10px; }
   .legend span.k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-
   #panel { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; padding: 14px 16px; background: #fff; margin-top: 0; min-height: 96px; }
   #panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
-  #panel .meta { font-size: 12px; color: var(--mut); margin-bottom: 6px; line-height: 1.6; }
+  #panel .meta { font-size: 12px; color: #5F5E5A; margin-bottom: 6px; line-height: 1.5; }
   #panel ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
   #panel li { margin: 3px 0; }
   #panel a { color: #185FA5; text-decoration: none; }
   .bars { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
   .bar { flex: 1 1 140px; border: 1px solid rgba(0,0,0,.10); border-radius: 10px; padding: 8px 10px; background: #fff; }
-  .bar small { display: block; color: var(--mut); font-size: 11px; }
+  .bar small { display: block; color: #5F5E5A; font-size: 11px; }
   .bar strong { font-size: 18px; font-weight: 500; }
   .track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); margin-top: 6px; overflow: hidden; }
   .track i { display: block; height: 100%; }
@@ -64,13 +65,62 @@
   .fb-hall { border: 1px solid rgba(0,0,0,.12); border-radius: 10px; padding: 10px 12px; background: #fff; }
   .fb-hall h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
   .fb-hall a { display: block; font-size: 12px; margin: 2px 0; color: #185FA5; text-decoration: none; }
+
+  /* —— 翻开一本书：双页书页弹层（左页概要/前序，右页目录）—— */
+  #bookmask { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+    background: rgba(38,26,13,.55); backdrop-filter: blur(2px); }
+  #bookmask[hidden] { display: none; }   /* 显式 display 会压掉 [hidden] 的默认 none，必须补回来——否则遮罩永远盖在页面上 */
+  #book { position: relative; width: min(900px, 94vw); perspective: 1800px; }
+  .bk-sheet { display: flex; width: 100%; min-height: 540px; max-height: 82vh; position: relative;
+    filter: drop-shadow(0 24px 48px rgba(30,18,8,.45));
+    transform: rotateY(-28deg) translateX(26px); opacity: 0;
+    transition: transform .5s cubic-bezier(.2,.75,.25,1), opacity .32s ease-out; }
+  #bookmask.open .bk-sheet { transform: rotateY(0) translateX(0); opacity: 1; }
+  .bk-strip { position: absolute; left: -14px; top: -5px; bottom: -5px; width: 18px; border-radius: 6px 0 0 6px;
+    box-shadow: 0 6px 18px rgba(30,18,8,.4); }
+  .bk-page { flex: 1 1 50%; min-width: 0; background: #fcf7ec; padding: 24px 26px 20px; overflow-y: auto;
+    position: relative; }
+  .bk-page::-webkit-scrollbar { width: 8px; }
+  .bk-page::-webkit-scrollbar-thumb { background: rgba(150,110,60,.3); border-radius: 4px; }
+  .bk-left { border-radius: 14px 2px 2px 14px;
+    box-shadow: inset -26px 0 34px -24px rgba(90,60,30,.5), inset 0 0 46px rgba(150,110,60,.07); }
+  .bk-right { border-radius: 2px 14px 14px 2px;
+    box-shadow: inset 26px 0 34px -24px rgba(90,60,30,.5), inset 0 0 46px rgba(150,110,60,.07);
+    display: flex; flex-direction: column; }
+  .bk-left::before, .bk-right::after { content: ''; position: absolute; top: 8px; bottom: 8px; width: 5px;
+    background: repeating-linear-gradient(90deg, rgba(150,110,60,.06) 0 1px, rgba(150,110,60,.22) 1px 2px); }
+  .bk-left::before { left: 3px; }
+  .bk-right::after { right: 3px; }
+  .bk-tag { display: inline-block; font-size: 11px; letter-spacing: .5px; color: #fff;
+    padding: 1px 8px; border-radius: 4px; margin-bottom: 10px; align-self: flex-start; }
+  .bk-title { font-family: "KaiTi","STKaiti","楷体","Noto Serif SC",serif; font-size: 24px; font-weight: 600;
+    margin: 0 0 4px; color: #2C2C2A; line-height: 1.35; }
+  .bk-meta { font-size: 12px; color: #88806E; margin-bottom: 14px; }
+  .bk-sec { margin: 12px 0 0; }
+  .bk-sec > b { display: block; font-size: 12px; font-weight: 600; color: #A0763F;
+    letter-spacing: 2px; margin-bottom: 6px; border-bottom: 1px solid rgba(160,118,63,.22);
+    padding-bottom: 4px; }
+  .bk-sec > div { font-size: 13.5px; line-height: 1.8; color: #3D382F; white-space: pre-wrap; }
+  .bk-row { display: flex; gap: 8px; align-items: baseline; padding: 7px 6px; border-radius: 6px;
+    text-decoration: none; color: #3D382F; font-size: 13.5px; line-height: 1.55; }
+  .bk-row:hover { background: rgba(176,124,58,.10); }
+  .bk-row + .bk-row { border-top: 1px dashed rgba(160,118,63,.18); }
+  .bk-dot { flex: none; font-size: 11px; color: #B07C3A; width: 14px; text-align: center; }
+  .bk-row-name { font-weight: 500; }
+  .bk-row-sub { margin-left: auto; font-size: 11px; color: #978971; text-align: right; flex: none; max-width: 46%; }
+  .bk-actions { margin-top: auto; padding-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .bk-actions .mv-btn { text-decoration: none; }
+  .bk-x { position: absolute; right: 14px; top: 12px; z-index: 5; width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid rgba(120,90,50,.35); background: rgba(252,247,236,.95); color: #6B5B3E;
+    font-size: 16px; cursor: pointer; line-height: 1; }
+  .bk-x:hover { background: #fff; }
 </style>
 </head>
 <body class="mv-page">
 <div class="mv-wrap" style="max-width:78rem">
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
-    <h1 class="mv-h1" style="margin:0">第二大脑 · 知识星系</h1>
+    <h1 class="mv-h1" style="margin:0">我的书架</h1>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
       <a class="mv-btn" href="cards.html" style="text-decoration:none">内化馆</a>
@@ -79,9 +129,9 @@
     </div>
   </div>
   <p class="mv-sub" style="margin-bottom:8px">
-    画像、知识与准则长成一片星系：<b>一团星系 = 一个方向，一颗恒星 = 一个模块 / 项目 / 一本书，行星 = 主线或一张读厚卡</b>。
-    <b>星星越亮 = 练得越透</b>；灰暗的是还没读进去的，空轨道是还没长出来的。
-    拖拽旋转、滚轮缩放，点恒星下钻、点行星看卡。右侧是<b>今天该长哪块</b>。
+    第二大脑，做成一面书架。<b>五个区就是五个方向，一本书就是一个模块、一个项目、一条准则或一本读过的书</b>，名字印在书脊上。
+    <b>书越厚、颜色越实 = 练得越透</b>；灰而薄的是还没读进去的部分，虚影书位是还没长出来的部分。
+    拖拽小幅转视角，滚轮缩放，点书看明细和下钻。右侧是<b>今天该长哪块</b>。
   </p>
 
   <div class="legend" id="legend"></div>
@@ -98,16 +148,41 @@
     </div>
   </div>
 
-  <div id="panel"></div>
+  <div id="panel">
+    <h3>点任意一本书翻开</h3>
+    <div class="meta">书页里有概要、前序和目录；目录条目可直接跳主线 / 读厚卡。点顶部铭牌看整体。</div>
+  </div>
 
   <div class="bars" id="bars"></div>
 
   <p class="mv-note" style="margin-top:18px">
-    亮度只由进度页的闭卷自评推进，这里不手写。技术主线走模块主线页训练；
-    行事准则与读厚原则卡已接进每日派单（进度页每天各 1 条）——<b>书架上不再有恒灰的书</b>。
-    真实用上一次，在内化馆或右侧「今日情境」记一笔 ⚡，那是自测之外的真实反馈。
+    书的厚薄和颜色只由进度页的闭卷自评推进，这里不手写。<b>行事准则与读厚原则卡已接进每日派单</b>（进度页每天各 1 条）——
+    书架上不再有恒灰的书。真实用上一次，在内化馆或右侧「今日情境」记一笔 ⚡，那是自测之外的真实反馈。
   </p>
 
+</div>
+
+<div id="bookmask" hidden onclick="if(event.target===this)closeBook()">
+  <div id="book">
+    <div class="bk-sheet">
+      <div class="bk-strip" id="bk-strip"></div>
+      <div class="bk-page bk-left">
+        <span class="bk-tag" id="bk-tag"></span>
+        <h3 class="bk-title" id="bk-title"></h3>
+        <div class="bk-meta" id="bk-meta"></div>
+        <div class="bk-sec" id="bk-abs-sec"><b>概 要</b><div id="bk-abs"></div></div>
+        <div class="bk-sec" id="bk-pre-sec"><b>前 序</b><div id="bk-pre"></div></div>
+      </div>
+      <div class="bk-page bk-right">
+        <div class="bk-sec" style="margin:0;flex:1;display:flex;flex-direction:column">
+          <b>目 录</b>
+          <div id="bk-toc" style="flex:1"></div>
+        </div>
+        <div class="bk-actions" id="bk-actions"></div>
+      </div>
+      <button class="bk-x" type="button" onclick="closeBook()">×</button>
+    </div>
+  </div>
 </div>
 
 <script src="_build/three/three.min.js"></script>
@@ -115,6 +190,7 @@
 <script src="_data/projects.js"></script>
 <script src="_data/rules.js"></script>
 <script src="_data/cards.js"></script>
+<script src="_data/modules.js"></script>
 <script>
 (function () {
   'use strict';
@@ -130,126 +206,142 @@
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
-  // ── 五团星系 ────────────────────────────────────────────────
+  // ── 五个区（暖木书房调：蓝 denim / 赭 amber / 紫 iris / 苔绿 / 陶土，参考 Japandi 暖调）──
   var HALLS = [
-    { k: 'tech',  name: '本事 · 技术地基', color: 0x4FA3E8, dark: 0x1E6FB8, css: '#378ADD' },
-    { k: 'work',  name: '作品 · 三个项目', color: 0xE09A33, dark: 0xA96A10, css: '#BA7517' },
-    { k: 'os',    name: '操作系统 · 行事准则', color: 0x9A8FF0, dark: 0x5D50C9, css: '#7F77DD' },
-    { k: 'field', name: '战场 · 秋招', color: 0x7FCC4A, dark: 0x4B8F1E, css: '#639922' },
-    { k: 'books', name: '书架 · 读过的', color: 0xF07B4A, dark: 0xB84A1F, css: '#D85A30' }
+    { k: 'tech',  name: '本事 · 技术地基', color: 0x4C82B8, dark: 0x2C5A8C, css: '#4C82B8' },
+    { k: 'work',  name: '作品 · 三个项目', color: 0xC08A3E, dark: 0x8A5E1E, css: '#C08A3E' },
+    { k: 'os',    name: '操作系统 · 行事准则', color: 0x8B7FD4, dark: 0x5C50A8, css: '#8B7FD4' },
+    { k: 'field', name: '战场 · 秋招', color: 0x6FA054, dark: 0x47702F, css: '#6FA054' },
+    { k: 'books', name: '书架 · 读过的', color: 0xCE7B57, dark: 0x9A4E2E, css: '#CE7B57' }
   ];
-  var GRAY = 0x6E7486;
-  var LV_WORD = ['还没读进去', '正在读', '已读透'];
 
-  // 收集节点：恒星 = 条目（带 planets 行星数组），行星 = 训练单元
-  var stars = [];
-  function mkStar(hall, id, name, desc, href, planets) {
-    var got = 0, tot = 0;
-    (planets || []).forEach(function (p) { if (!p.untrained) { tot++; if (p.lv >= MASTER) got++; } });
-    var st = { hall: hall, id: id, name: name, desc: desc || '', href: href || '',
-               planets: planets || [], got: got, tot: tot,
-               ratio: tot ? got / tot : 0, untrained: !tot };
-    (st.planets).forEach(function (p) { p.star = st; });
-    stars.push(st);
-    return st;
-  }
-  function mkPlanet(name, href, lv, extra) {
-    return Object.assign({ name: name, href: href || '', lv: lv || 0 }, extra || {});
-  }
+  var nodes = [];
 
-  // ① 技术地基：模块 = 恒星，主线 = 行星
-  var groundsByModule = {};
-  ((window.MARVIS_CARDS && window.MARVIS_CARDS.grounds) || []).forEach(function (g) {
-    groundsByModule[g.module] = g;
-  });
-  var allCards = (window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || [];
+  // ① 本事：模块 = 一本书，主线印在下钻面板
   (window.MARVIS_CLUSTERS || []).forEach(function (c) {
     if (c.zone !== '一档' && c.zone !== '二档') return;
-    var planets = c.topics.map(function (t) {
-      return mkPlanet(t.id + ' · ' + t.name, t.href, lvOf(c.id + '/' + t.id));
+    var tot = c.topics.length, got = 0;
+    c.topics.forEach(function (t) { if (lvOf(c.id + '/' + t.id) >= MASTER) got++; });
+    // 归一：clusters 的显示名（Redis 与缓存）≠ 模块卡 module 字段（Redis）——
+    // 用第一条主线的 href 反推正本模块名，概览页链接与 modules.js / 地基包查找都用它
+    var firstHref = (c.topics[0] && c.topics[0].href) || '';
+    var canon = (firstHref.match(/^modules\/(.+)-\d+-/) || [])[1] || c.name;
+    var m0 = null;
+    (window.MARVIS_MODULES || []).forEach(function (x) { if (x.module === canon) m0 = x; });
+    nodes.push({
+      hall: 'tech', id: c.id, name: c.name, canon: canon,
+      ratio: tot ? got / tot : 0, got: got, tot: tot,
+      desc: c.zone + ' · ' + got + '/' + tot + ' 条主线已到「会了」',
+      href: m0 ? m0.href : '',
+      lines: c.topics.map(function (t) {
+        return { n: t.id + ' · ' + t.name, href: t.href, lv: lvOf(c.id + '/' + t.id) };
+      })
     });
-    var gnd = groundsByModule[c.name];
-    mkStar('tech', c.id, c.name,
-      c.zone + ' · ' + planets.filter(function (p) { return p.lv >= MASTER; }).length + '/' + planets.length +
-      ' 条主线到「会了」' + (gnd ? ' · 有地基包' : ''),
-      'modules/' + encodeURIComponent(c.name) + '.html', planets).ground = gnd || null;
   });
 
-  // ② 作品：项目 = 恒星，口述条目 = 行星
+  // ② 作品：项目 = 一本书，口述条目印在下钻面板
   var pitch = (window.MARVIS_CLUSTERS || []).filter(function (c) { return c.id === 'pitch'; })[0];
   (window.MARVIS_PROJECTS || []).forEach(function (p) {
-    var planets = [];
+    var lines = [], got = 0, tot = 0;
     if (pitch) pitch.topics.forEach(function (t) {
       if (t.proj !== p.name) return;
-      planets.push(mkPlanet(t.name, t.href, lvOf('pitch/' + t.id)));
+      tot++;
+      var l = lvOf('pitch/' + t.id);
+      if (l >= MASTER) got++;
+      lines.push({ n: t.name, href: t.href, lv: l });
     });
-    mkStar('work', p.id, p.name, p.lead, p.href, planets);
+    nodes.push({
+      hall: 'work', id: p.id, name: p.name, ratio: tot ? got / tot : 0,
+      got: got, tot: tot, desc: p.lead, href: p.href, lines: lines
+    });
   });
 
-  // ③ 行事准则：正本文档 = 恒星，准则条目 = 行星
-  //   注意 rules.js 的 src 形如 'wiki/thinking/行动规则.md · A-7'——『 · 节号』后缀要切掉，
-  //   否则每条准则各成一颗星（首轮渲染曾因此出现 9 颗恒星）。
-  var osDocs = {};
+  // ③ 行事准则：一条准则 = 一本书（2026-10-03 起可训练，等级挂 rule/R*）
   (window.MARVIS_RULES || []).forEach(function (r) {
-    var doc = (r.src || '').replace(/^.*thinking\//, '').split(' · ')[0].replace(/\.md$/, '');
-    if (!osDocs[doc]) osDocs[doc] = [];
-    osDocs[doc].push(mkPlanet(r.name, 'rules.html#r-' + r.id, lvOf('rule/' + r.id), { rid: r.id }));
-  });
-  Object.keys(osDocs).forEach(function (doc) {
-    mkStar('os', doc, doc, '行事准则正本 · 遇到情境做什么（' + osDocs[doc].length + ' 条）',
-      ob('wiki/thinking/' + doc), osDocs[doc]);
+    var l = lvOf('rule/' + r.id);
+    nodes.push({
+      hall: 'os', id: r.id, name: r.name,
+      ratio: l >= 2 ? 1 : (l >= 1 ? 0.5 : 0), tot: 1, got: l >= 1 ? 1 : 0,
+      desc: r.action, href: 'rules.html#r-' + r.id, lines: [], rule: r
+    });
   });
 
-  // ④ 战场：秋招成品 = 恒星
+  // ④ 战场：秋招成品 = 一本书（不进派单，恒灰）
   [
     { n: '秋招破局方案', d: 'offer = 投递量 × 过筛率 × 转化率；两条可观测止损线', f: '../output/秋招破局方案.html', h: true },
-    { n: '投递台账 108 家', d: '五层分组 + 硬窗口日历 · 状态存本机', f: '../output/秋招投递台账.html', h: true },
+    { n: '投递台账 108 家', d: '五层分组 S16 / A28 / B35 / C21 / D8 + 硬窗口日历', f: '../output/秋招投递台账.html', h: true },
     { n: '简历族（母版+3 方向）', d: '事实不变、表达自由；只改母版再派生', f: '../output/resume/刘宇广-AI应用开发-2027届.html', h: true },
     { n: '面试复盘报告', d: '乐元素 · 线上 AI 业务推演的实测评分与缺失模块', f: 'reviews/', h: true },
     { n: '网申开放题作答', d: '逐条最优版本，纯文本可直接粘进表单', f: '../output/网申开放题作答-刘宇广.md', h: false }
   ].forEach(function (r, i) {
-    mkStar('field', 'a' + i, r.n, r.d, r.h ? r.f : ob(r.f), []);
+    nodes.push({
+      hall: 'field', id: 'a' + i, name: r.n, ratio: 0, untrained: true,
+      desc: r.d, href: r.h ? r.f : ob(r.f), lines: []
+    });
   });
 
-  // ⑤ 书架：书 = 恒星，读厚原则卡 = 行星
-  var booksBySrc = {};
-  allCards.forEach(function (c) {
-    if (!booksBySrc[c.source]) booksBySrc[c.source] = { cards: [], author: c.author, href: c.source_href };
-    booksBySrc[c.source].cards.push(
-      mkPlanet(c.name, 'cards.html#card-' + c.id, lvOf('card/' + c.id), { cid: c.id, one: c.one }));
+  // ⑤ 书架·读过的：挂了读厚卡的书可训练（等级挂 card/{id}），其余是读完只留下概念的灰册
+  var byBook = {};
+  ((window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || []).forEach(function (c) {
+    if (!byBook[c.source]) byBook[c.source] = { cards: [], author: c.author, href: c.source_href };
+    byBook[c.source].cards.push(c);
   });
-  Object.keys(booksBySrc).forEach(function (src) {
-    var b = booksBySrc[src];
-    mkStar('books', src, src,
-      (b.author ? b.author + ' · ' : '') + '读厚 ' + b.cards.length + ' 张 · 遇到情境知道怎么做',
-      b.href ? ob(b.href) : 'cards.html', b.cards);
+  Object.keys(byBook).forEach(function (src) {
+    var b = byBook[src], tot = b.cards.length, got = 0, rSum = 0;
+    var lines = b.cards.map(function (c) {
+      var l = lvOf('card/' + c.id);
+      rSum += (l >= 2 ? 1 : (l >= 1 ? 0.5 : 0));
+      if (l >= 1) got++;
+      return { n: c.name, href: 'cards.html#card-' + c.id, lv: l, card: true, cid: c.id, one: c.one };
+    });
+    nodes.push({
+      hall: 'books', id: src, name: src,
+      ratio: tot ? rSum / tot : 0, tot: tot, got: got,
+      desc: (b.author ? b.author + ' · ' : '') + '读厚 ' + tot + ' 张 · 遇到情境知道怎么做',
+      href: b.href ? ob(b.href) : 'cards.html', lines: lines
+    });
+  });
+  [
+    { n: '心态制胜', d: '行动规则整份的触发来源：自我1离线、自我2当班——还没读厚', f: 'reading/discussions/2026-09-06-心态制胜-discussion' },
+    { n: '儒释道·道篇·身体与命功', d: '命功框架的来源：身体是电池——还没读厚', f: 'reading/notes/2026-09-09-儒释道-道篇-身体与命功' },
+    { n: '二十岁困惑与目标制定', d: '二十岁三问；讨论全程留档——还没读厚', f: 'reading/discussions/2026-09-24-二十岁困惑与目标制定-discussion' },
+    { n: '能力圈与位置价值', d: '不懂不做、位置决定价值——还没读厚', f: 'reading/notes/2026-09-25-能力圈与位置价值' }
+  ].forEach(function (r, i) {
+    nodes.push({ hall: 'books', id: 'l' + i, name: r.n, ratio: 0, untrained: true, desc: r.d, href: ob(r.f), lines: [] });
   });
 
-  function lv3(n) {   // 恒星三档：0 还没读进去 · 1 正在读 · 2 已读透
+  /* 掌握度三档（借数字花园的成熟度范式：人眼分不清十档深浅，三段一眼就懂）
+     0 = 还没读进去（灰、薄册） · 1 = 正在读（厅色、中等厚） · 2 = 已读透（深色、最厚） */
+  function lv3(n) {
     if (n.untrained) return 0;
-    return n.ratio >= 1 ? 2 : (n.ratio > 0 ? 1 : 0);
+    if (n.tot) return n.ratio >= 1 ? 2 : (n.ratio > 0 ? 1 : 0);
+    return 0;
   }
-
-  // ── 全局数字 ────────────────────────────────────────────────
-  var techWork = stars.filter(function (n) { return n.hall === 'tech' || n.hall === 'work'; });
-  var G = 0, T = 0;
-  techWork.forEach(function (n) { G += n.got; T += n.tot; });
-  var overall = T ? Math.round(G / T * 100) : 0;
-  var neula = stars.filter(function (n) { return n.hall === 'os' || n.hall === 'books'; });
-  var NG = 0, NT = 0;
-  neula.forEach(function (n) { NG += n.got; NT += n.tot; });
-  var internal = NT ? Math.round(NG / NT * 100) : 0;
+  var LV_WORD = ['还没读进去', '正在读', '已读透'];
 
   document.getElementById('legend').innerHTML =
     HALLS.map(function (h) {
       return '<span><span class="k" style="background:' + h.css + '"></span>' + h.name + '</span>';
     }).join('') +
-    '<span><span class="k" style="background:#6E7486"></span>灰暗 = 还没读进去</span>' +
-    '<span>越亮 = 练得越透 · 空轨道 = 还没长出来</span>';
+    '<span><span class="k" style="background:#B4B2A9"></span>灰薄册 = 还没读进去</span>' +
+    '<span>越厚越实 = 练得越透</span>' +
+    '<span>半透明虚影 = 还没长出来的部分</span>';
+
+  // 整体掌握度沿用旧口径（本事+作品），内化线（准则+读厚卡）单列一个数
+  var techNodes = nodes.filter(function (n) { return n.hall === 'tech' || n.hall === 'work'; });
+  var G = 0, T = 0;
+  techNodes.forEach(function (n) { G += n.got || 0; T += n.tot || 0; });
+  var overall = T ? Math.round(G / T * 100) : 0;
+  var neuNodes = nodes.filter(function (n) {
+    return (n.hall === 'os' || n.hall === 'books') && !n.untrained;
+  });
+  var NG = 0, NT = 0;
+  neuNodes.forEach(function (n) { NG += n.got || 0; NT += n.tot || 0; });
+  var internal = NT ? Math.round(NG / NT * 100) : 0;
 
   var bars = document.getElementById('bars');
   HALLS.forEach(function (h) {
-    var list = stars.filter(function (n) { return n.hall === h.k; });
+    var list = nodes.filter(function (n) { return n.hall === h.k; });
     var trained = list.filter(function (n) { return !n.untrained; });
     var pct = 0;
     if (trained.length) {
@@ -257,9 +349,10 @@
       trained.forEach(function (n) { g += n.got; t += n.tot; });
       pct = t ? Math.round(g / t * 100) : 0;
     }
+    var un = list.filter(function (n) { return n.untrained; }).length;
     var d = document.createElement('div');
     d.className = 'bar';
-    d.innerHTML = '<small>' + h.name + ' · ' + list.length + ' 颗恒星</small>' +
+    d.innerHTML = '<small>' + h.name + (un ? ' · ' + un + ' 项未读厚' : '') + '</small>' +
       '<strong>' + (trained.length ? pct + '%' : '—') + '</strong>' +
       '<div class="track"><i style="width:' + (trained.length ? pct : 0) + '%;background:' + h.css + '"></i></div>';
     bars.appendChild(d);
@@ -267,71 +360,552 @@
 
   var PROFILE = { name: '刘宇广 · 2027 届', who: '南华大学本科 · 求职 AI 应用开发 / Agent 后端' };
 
-  // ── 面板（下钻明细）────────────────────────────────────────
   function panelCore() {
     var p = document.getElementById('panel');
     var cnt = [0, 0, 0];
-    stars.forEach(function (n) { cnt[lv3(n)]++; });
+    nodes.forEach(function (n) { cnt[lv3(n)]++; });
     p.innerHTML = '<h3>' + PROFILE.name + '</h3>' +
       '<div class="meta">' + PROFILE.who + '</div>' +
       '<div class="meta">已接入派单的部分掌握度 <b>' + overall + '%</b>（' + G + '/' + T + '） · ' +
-      '内化线（准则 + 原则卡）<b>' + internal + '%</b>（' + NG + '/' + NT + '）</div>' +
-      '<div class="meta">这片星系共 ' + stars.length + ' 颗恒星：已读透 <b>' + cnt[2] +
+      '内化线（准则 + 读厚卡）<b>' + internal + '%</b>（' + NG + '/' + NT + '）</div>' +
+      '<div class="meta">这座书架共 ' + nodes.length + ' 本：已读透 <b>' + cnt[2] +
       '</b> · 正在读 <b>' + cnt[1] + '</b> · 还没读进去 <b>' + cnt[0] + '</b></div>' +
       '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页</a>' +
       ' <a class="mv-btn" href="cards.html" style="text-decoration:none">去内化馆</a></div>';
-    hot(null);
-  }
-  function hot(n) {
-    stars.forEach(function (x) { if (x.label) x.label.classList.toggle('hot', x === n); });
-    stars.forEach(function (x) { (x.planets || []).forEach(function (pl) { if (pl.label) pl.label.classList.toggle('hot', false); }); });
-    if (n && n.label) n.label.classList.add('hot');
+    nodes.forEach(function (x) { if (x.label) x.label.classList.remove('hot'); });
   }
 
-  function panelStar(n) {
-    var p = document.getElementById('panel');
+  function fallback2D(reason) {
+    var st = document.getElementById('stage');
+    st.style.height = 'auto';
+    st.innerHTML = '<p class="mv-note" style="margin:10px 0 0">已降级为 2D 列表（' +
+      reason + '）。内容与下钻完全一样，只是不立体。</p>';
+    var fb = document.createElement('div');
+    fb.className = 'fallback';
+    HALLS.forEach(function (h) {
+      var box = document.createElement('div');
+      box.className = 'fb-hall';
+      box.innerHTML = '<h4>' + h.name + '</h4>';
+      nodes.filter(function (n) { return n.hall === h.k; }).forEach(function (n) {
+        var a = document.createElement('a');
+        var lv = lv3(n);
+        a.textContent = (lv === 2 ? '● ' : lv === 1 ? '◐ ' : '○ ') + n.name +
+          (n.tot ? '（' + n.got + '/' + n.tot + '）' : '');
+        a.href = n.href || 'progress.html';
+        box.appendChild(a);
+      });
+      fb.appendChild(box);
+    });
+    st.appendChild(fb);
+    panelCore();
+  }
+  if (typeof THREE === 'undefined') { fallback2D('three.js 未加载'); return; }
+
+  // ── 3D：一面书架墙 ────────────────────────────────────────
+  var stage = document.getElementById('stage');
+  var canvas = document.getElementById('cv');
+  var labelBox = document.getElementById('labels');
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  } catch (e) {
+    fallback2D('这台机器/浏览器没有可用的 WebGL');
+    return;
+  }
+  renderer.setClearColor(0x000000, 0);          // 透明背景，透出 CSS 的暖色晕染
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+
+  // 布光：半球光铺环境底色 + 一盏暖主光负责投影（光位偏正前上，影子短而干净）+ 冷补光拉层次
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x9a8468, 0.92));
+  var lk = new THREE.DirectionalLight(0xfff1dc, 1.0);
+  lk.position.set(4, 22, 20);
+  lk.castShadow = true;
+  lk.shadow.mapSize.set(2048, 2048);
+  lk.shadow.camera.left = -26; lk.shadow.camera.right = 26;
+  lk.shadow.camera.top = 20; lk.shadow.camera.bottom = -6;
+  lk.shadow.camera.near = 1; lk.shadow.camera.far = 80;
+  lk.shadow.bias = -0.0006;
+  scene.add(lk);
+  var lf = new THREE.DirectionalLight(0xdfe8ff, 0.28);
+  lf.position.set(-10, 5, 9);
+  scene.add(lf);
+
+  var meshes = [];
+  var BOOK_H = 3.3, BOOK_D = 1.7, GAP_B = 0.07, PAD = 0.55;
+  function bookW(lv) { return [0.44, 0.66, 0.92][lv]; }
+
+  // —— 纹理套件（全部 canvas 现画，零外部依赖；sRGB 标记保证输出色彩正确）——
+  function srgb(t) { t.encoding = THREE.sRGBEncoding; return t; }
+
+  // 木纹：底色 + 克制的深浅细条纹（层板与背板共用一套画法，换底色即可）
+  function woodTex(base, w, h) {
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d');
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    for (var i = 0; i < 60; i++) {
+      g.fillStyle = 'rgba(52,36,22,' + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+      g.fillRect(0, Math.random() * h, w, Math.random() * 1.3 + 0.3);
+    }
+    for (var j = 0; j < 18; j++) {
+      g.fillStyle = 'rgba(255,240,214,' + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+      g.fillRect(0, Math.random() * h, w, Math.random() * 1.2 + 0.3);
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return srgb(t);
+  }
+  var plankMat = new THREE.MeshStandardMaterial({ map: woodTex('#96744f', 256, 64), roughness: 0.78 });
+  var boardMat = new THREE.MeshStandardMaterial({ map: woodTex('#5c4834', 512, 256), roughness: 0.9 });
+
+  // 书页侧纹：奶白纸面 + 细密页线——书架上「这是一本书」的另一半证据
+  var pagesMat = (function () {
+    var c = document.createElement('canvas'); c.width = 64; c.height = 256;
+    var g = c.getContext('2d');
+    g.fillStyle = '#f1e8d4'; g.fillRect(0, 0, 64, 256);
+    for (var y = 4; y < 252; y += 3) {
+      g.fillStyle = 'rgba(172,148,108,' + (y % 9 === 0 ? 0.26 : 0.15) + ')';
+      g.fillRect(2, y, 60, 1);
+    }
+    g.fillStyle = 'rgba(118,94,62,.28)'; g.fillRect(0, 0, 2, 256); g.fillRect(62, 0, 2, 256);
+    return new THREE.MeshStandardMaterial({ map: srgb(new THREE.CanvasTexture(c)), roughness: 0.88 });
+  })();
+
+  // 书脊：竖排书名（楷体烫金）+ 装帧带 + 曲面明暗（左受光右背光），字号随字数自适应（最长 12 字）
+  function spineTex(text, col, wpx, lv) {
+    var c = document.createElement('canvas');
+    c.width = wpx; c.height = 340;
+    var g = c.getContext('2d');
+    g.fillStyle = '#' + col.getHexString(); g.fillRect(0, 0, wpx, 340);
+    var gr = g.createLinearGradient(0, 0, wpx, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,.30)');
+    gr.addColorStop(0.2, 'rgba(255,255,255,.05)');
+    gr.addColorStop(0.72, 'rgba(0,0,0,0)');
+    gr.addColorStop(1, 'rgba(0,0,0,.22)');
+    g.fillStyle = gr; g.fillRect(0, 0, wpx, 340);
+    g.fillStyle = 'rgba(0,0,0,.16)';
+    g.fillRect(0, 10, wpx, 7); g.fillRect(0, 323, wpx, 7);
+    g.fillStyle = 'rgba(255,249,238,.5)';
+    g.fillRect(wpx * 0.5 - 5, 26, 10, 2); g.fillRect(wpx * 0.5 - 5, 312, 10, 2);
+    var name = String(text).replace(/\s+/g, '');
+    var chars = name.slice(0, 12).split('');
+    var fit = Math.max(18, Math.min(38, Math.floor(250 / chars.length)));
+    var step = fit * 1.22;
+    var y0 = 170 - (chars.length - 1) * step / 2;
+    // 书名用楷体（书法感）+ 烫金渐变 + 深色描边——任何书脊色上都醒目
+    g.font = '600 ' + fit + 'px "KaiTi","STKaiti","楷体","Noto Serif SC","Microsoft YaHei",serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = Math.max(2, fit * 0.10);
+    g.strokeStyle = 'rgba(42,26,10,.55)';
+    g.lineJoin = 'round';
+    var gold = g.createLinearGradient(0, y0 - chars.length * step / 2, 0, y0 + chars.length * step / 2);
+    gold.addColorStop(0, '#fff3cf');
+    gold.addColorStop(0.5, '#f7dfa4');
+    gold.addColorStop(1, '#e8c078');
+    g.fillStyle = lv === 0 ? 'rgba(255,240,206,.82)' : gold;
+    chars.forEach(function (ch, i) {
+      g.strokeText(ch, wpx / 2, y0 + i * step);
+      g.fillText(ch, wpx / 2, y0 + i * step);
+    });
+    return srgb(new THREE.CanvasTexture(c));
+  }
+
+  // 书色：厅色为底，未练的掺灰（仍看得出属于哪个区），已读透的压深；同排书加微差避免「复制粘贴」感
+  function bookColor(h, lv, i) {
+    var c = new THREE.Color(h.color);
+    if (lv === 0) c.lerp(new THREE.Color(0xcec7b8), 0.55);
+    else if (lv === 2) c.lerp(new THREE.Color(h.dark), 0.45);
+    var hsl = { h: 0.6, s: 0.5, l: 0.5 };
+    c.getHSL(hsl);
+    c.setHSL((hsl.h + ((i * 0.37) % 1 - 0.5) * 0.018 + 1) % 1,
+             Math.max(0.06, Math.min(0.85, hsl.s + ((i * 0.61) % 1 - 0.5) * 0.10)),
+             Math.max(0.16, Math.min(0.72, hsl.l + ((i * 0.23) % 1 - 0.5) * 0.07)));
+    c.convertSRGBToLinear();
+    return c;
+  }
+
+  // 每区预留的虚影书位：一眼看到「还没长出来的部分」
+  var GHOSTS = { tech: 2, work: 0, os: 0, field: 0, books: 1 };
+
+  // 分组：每厅一组竖排书
+  var groups = HALLS.map(function (h) {
+    var list = nodes.filter(function (n) { return n.hall === h.k; });
+    var w = 0;
+    list.forEach(function (n, i) { w += bookW(lv3(n)) + (i ? GAP_B : 0); });
+    var ng = GHOSTS[h.k] || 0;
+    if (ng) w += list.length ? GAP_B : 0;
+    w += ng * (0.5 + GAP_B);
+    var avg = 0;
+    list.forEach(function (n) { avg += lv3(n); });
+    avg = list.length ? avg / list.length : 0;
+    return { h: h, list: list, ghosts: ng, w: w + PAD * 2, avg: avg };
+  });
+
+  // 两行布局：第一行 本事+作品，第二行 操作系统+战场+书架（按实际书宽算，不写死）
+  var ROWS = [['tech', 'work'], ['os', 'field', 'books']];
+  var ROW_GAP = 0.8;
+  function rowWidth(ids) {
+    var w = 0;
+    ids.forEach(function (id, i) {
+      var g = groups.filter(function (x) { return x.h.k === id; })[0];
+      if (g) w += g.w + (i ? ROW_GAP : 0);
+    });
+    return w;
+  }
+  var WALL_W = Math.max(rowWidth(ROWS[0]), rowWidth(ROWS[1]));
+  var X0 = -WALL_W / 2;
+
+  var SHELF_Y = [4.5, 0];          // 两行层板的顶面高度
+  var TOP_Y = SHELF_Y[0] + BOOK_H + 1.3;   // 顶部铭牌中心
+
+  // 背板
+  var board = new THREE.Mesh(
+    new THREE.BoxGeometry(WALL_W + 0.5, TOP_Y - SHELF_Y[1] + BOOK_H + 1.0, 0.25),
+    boardMat
+  );
+  board.position.set(0, (TOP_Y - 1.0 + SHELF_Y[1]) / 2 + 0.2, -BOOK_D / 2 - 0.3);
+  board.receiveShadow = true;
+  scene.add(board);
+
+  groups.forEach(function (grp) {
+    var h = grp.h;
+    var ri = 0, idx = 0;
+    ROWS.forEach(function (ids, r) {
+      ids.forEach(function (id, j) {
+        if (id === h.k) { ri = r; idx = j; }
+      });
+    });
+    var rowIds = ROWS[ri];
+    var gx = -rowWidth(rowIds) / 2;   // 每行各自居中，行内组数和宽度不同也能对住
+    for (var j = 0; j < rowIds.length; j++) {
+      var g2 = groups.filter(function (x) { return x.h.k === rowIds[j]; })[0];
+      if (rowIds[j] === h.k) break;
+      gx += g2.w + ROW_GAP;
+    }
+    var baseY = SHELF_Y[ri];
+
+    // 层板：木纹 + 接收投影
+    var plank = new THREE.Mesh(
+      new THREE.BoxGeometry(grp.w, 0.22, BOOK_D + 0.35),
+      plankMat
+    );
+    plank.position.set(gx + grp.w / 2, baseY - 0.11, 0);
+    plank.castShadow = true; plank.receiveShadow = true;
+    scene.add(plank);
+
+    // 一本书 = 一个条目
+    var cx = gx + PAD;
+    grp.list.forEach(function (n, bi) {
+      var lv = lv3(n);
+      var w = bookW(lv);
+      var bh = BOOK_H * (0.93 + ((bi * 0.23) % 1) * 0.13);   // 书高微差，一排书才有真实感
+      var col = bookColor(h, lv, bi);
+      var spine = new THREE.MeshStandardMaterial({
+        map: spineTex(n.name, col, lv === 0 ? 62 : (lv === 1 ? 88 : 118), lv),
+        roughness: 0.58, metalness: 0.02
+      });
+      // 非书脊的五个面全是纸纹侧面——书脊是布面装帧，书芯是奶白纸块
+      var book = new THREE.Mesh(
+        new THREE.BoxGeometry(w, bh, BOOK_D),
+        [pagesMat, pagesMat, pagesMat, pagesMat, spine, pagesMat]
+      );
+      book.position.set(cx + w / 2, baseY + bh / 2, 0);
+      book.userData.homeZ = 0;
+      book.castShadow = true; book.receiveShadow = true;
+      scene.add(book);
+      n.mesh = book;
+      meshes.push(book);
+
+      var lb = document.createElement('div');
+      lb.className = 'lbl';
+      lb.textContent = n.name;
+      lb.style.display = 'none';     // 名字在书脊上，标签只在悬停时出
+      lb.addEventListener('click', function (e) { e.stopPropagation(); openBook(n); });
+      labelBox.appendChild(lb);
+      n.label = lb;
+
+      cx += w + GAP_B;
+    });
+
+    // 虚影书位：虚线描边的空位——一眼读出「这里预留着一本还没长出来的书」
+    for (var gi = 0; gi < grp.ghosts; gi++) {
+      var gw = 0.5;
+      var gl = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(gw, BOOK_H * 0.97, BOOK_D)),
+        new THREE.LineDashedMaterial({ color: 0x8a7460, dashSize: 0.3, gapSize: 0.18, transparent: true, opacity: 0.6 })
+      );
+      gl.computeLineDistances();
+      gl.position.set(cx + gw / 2, baseY + BOOK_H * 0.485, 0);
+      scene.add(gl);
+      cx += gw + GAP_B;
+    }
+
+    // 区名标签
+    var hl = document.createElement('div');
+    hl.className = 'lbl hall-lbl';
+    hl.innerHTML = '<b>' + h.name + '</b><i>' + grp.list.length + ' 本</i>';
+    labelBox.appendChild(hl);
+    h.label = hl;
+    h.anchor = new THREE.Vector3(gx + grp.w / 2, baseY + BOOK_H + 0.55, 0.6);
+  });
+
+  // 顶部铭牌 = 我（深木纹 + 双描边 + 暖金字）
+  var nameCanvas = document.createElement('canvas');
+  nameCanvas.width = 1024; nameCanvas.height = 128;
+  (function () {
+    var g = nameCanvas.getContext('2d');
+    g.fillStyle = '#6b5138'; g.fillRect(0, 0, 1024, 128);
+    for (var i = 0; i < 40; i++) {
+      g.fillStyle = 'rgba(30,20,12,' + (0.05 + Math.random() * 0.09).toFixed(3) + ')';
+      g.fillRect(0, Math.random() * 128, 1024, Math.random() * 1.8 + 0.5);
+    }
+    g.strokeStyle = 'rgba(243,223,178,.55)'; g.lineWidth = 3;
+    g.strokeRect(8, 8, 1008, 112);
+    g.strokeStyle = 'rgba(243,223,178,.22)'; g.lineWidth = 1;
+    g.strokeRect(17, 17, 990, 94);
+    g.fillStyle = '#f3dfb2';
+    g.font = '600 30px "KaiTi","STKaiti","楷体","Noto Serif SC","Microsoft YaHei",serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(PROFILE.name + ' · AI 应用开发 / Agent 后端 · 整体 ' + overall + '% · 内化 ' + internal + '%', 512, 66);
+  })();
+  var plaqueSide = new THREE.MeshStandardMaterial({ color: 0x6b5138, roughness: 0.8 });
+  var plaque = new THREE.Mesh(
+    new THREE.BoxGeometry(Math.min(WALL_W, 13.5), 1.3, 0.32),
+    [
+      plaqueSide, plaqueSide, plaqueSide, plaqueSide,
+      new THREE.MeshStandardMaterial({ map: srgb(new THREE.CanvasTexture(nameCanvas)), roughness: 0.7 }),
+      plaqueSide
+    ]
+  );
+  plaque.position.set(0, TOP_Y, 0);
+  plaque.castShadow = true; plaque.receiveShadow = true;
+  scene.add(plaque);
+  meshes.push(plaque);
+
+  var coreLbl = document.createElement('div');
+  coreLbl.className = 'lbl hall-lbl';
+  coreLbl.innerHTML = '<b>我</b><i>整体 ' + overall + '% · 内化 ' + internal + '%</i>';
+  coreLbl.style.display = 'none';
+  coreLbl.addEventListener('click', function (e) { e.stopPropagation(); panelCore(); });
+  labelBox.appendChild(coreLbl);
+  var coreAnchor = new THREE.Vector3(0, TOP_Y, 0.8);
+
+  // ── 翻开一本书：左页概要/前序，右页目录（2026-10-03 晚，按主人「点书翻开」的意象）──
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function mdInline(s) {   // 只认 **加粗** 一种标记——概要/前序来自模块卡与地基包，别让星号露出来
+    return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  }
+  function dot(lv) { return lv >= 2 ? '●' : (lv >= 1 ? '◐' : '○'); }
+  function bkEl(id) { return document.getElementById(id); }
+  function tocRow(href, lv, name, sub) {
+    var a = document.createElement('a');
+    a.className = 'bk-row';
+    if (href) { a.href = href; a.target = '_blank'; }
+    a.innerHTML = '<span class="bk-dot">' + dot(lv || 0) + '</span>' +
+      '<span class="bk-row-name">' + esc(name) + '</span>' +
+      (sub ? '<span class="bk-row-sub">' + esc(sub) + '</span>' : '');
+    return a;
+  }
+  function actBtn(href, label, primary) {
+    var a = document.createElement('a');
+    a.className = 'mv-btn' + (primary ? ' mv-btn-primary' : '');
+    a.href = href; a.target = '_blank';
+    a.textContent = label;
+    return a;
+  }
+  function groundOf(moduleName) {
+    var g = null;
+    ((window.MARVIS_CARDS && window.MARVIS_CARDS.grounds) || []).forEach(function (x) {
+      if (x.module === moduleName) g = x;
+    });
+    return g;
+  }
+  function openBook(n) {
+    var h = HALLS.filter(function (x) { return x.k === n.hall; })[0];
     var lv = lv3(n);
-    var html = '<h3>' + n.name + '</h3><div class="meta">' + (n.desc || '') + '</div>';
-    html += '<div class="meta">状态：<b>' + LV_WORD[lv] + '</b>' +
-      (n.untrained ? '（这个区不进派单，没有复训数据）' : '') +
-      (n.tot ? ' · 掌握度 ' + Math.round(n.ratio * 100) + '%（' + n.got + '/' + n.tot + '）' : '') + '</div>';
-    if (n.hall === 'tech' && n.ground) {
-      html += '<div class="meta">地基包：<a href="cards.html#' + n.ground.id + '">先记必会清单，再去主线添砖加瓦 →</a></div>';
+    bkEl('bk-strip').style.background = h.css;
+    var tag = bkEl('bk-tag');
+    tag.textContent = h.name;
+    tag.style.background = h.css;
+    bkEl('bk-title').textContent = n.name;
+    var meta = ['状态：' + LV_WORD[lv]];
+    if (n.tot) meta.push('掌握度 ' + Math.round(n.ratio * 100) + '%（' + n.got + '/' + n.tot + '）');
+    bkEl('bk-meta').textContent = meta.join(' · ');
+
+    var abs = bkEl('bk-abs'), pre = bkEl('bk-pre');
+    var preSec = bkEl('bk-pre-sec');
+    var toc = bkEl('bk-toc'); toc.innerHTML = '';
+    var acts = bkEl('bk-actions'); acts.innerHTML = '';
+
+    if (n.hall === 'tech') {
+      var key = n.canon || n.name;   // 正本模块名（Redis 与缓存 → Redis）
+      var m = (window.MARVIS_MODULES || []).filter(function (x) { return x.module === key; })[0] || {};
+      var g = groundOf(key);
+      var contents = m.contents || [];   // 先声明——下面的前序兜底要用（var 提升但赋值不提升）
+      abs.innerHTML = mdInline((g && g.positioning) || m.summary || n.desc);
+      var preTxt = (g && g.model) || m.reason || '';
+      if (!preTxt && contents.length) {
+        // 模块卡没写一句话结论 / 为什么现在时，用主线问题串当前序（引用式组装，不复制正文）
+        preTxt = '本书依次回答 ' + contents.length + ' 问：' +
+          contents.map(function (c) { return '「' + (c.lead || c.name) + '」'; }).join('；') + '。';
+      }
+      pre.innerHTML = mdInline(preTxt);
+      preSec.style.display = preTxt ? '' : 'none';
+      n.lines.forEach(function (ln, i) {
+        var c = contents[i] || {};
+        var sub = [];
+        if (c.lead) sub.push(c.lead);
+        if (c.topics) sub.push(c.topics + ' 母题');
+        toc.appendChild(tocRow(ln.href, ln.lv, (c.no ? c.no + ' · ' : '') + ln.n, sub.join(' · ')));
+      });
+      acts.appendChild(actBtn(n.href, '打开模块概览', true));
+      if (g) acts.appendChild(actBtn('cards.html#' + g.id, '地基包', false));
+    } else if (n.hall === 'work') {
+      abs.innerHTML = mdInline(n.desc);
+      preSec.style.display = 'none';
+      n.lines.forEach(function (ln) {
+        toc.appendChild(tocRow(ln.href, ln.lv, ln.n,
+          ln.lv >= 2 ? '讲透了' : (ln.lv >= 1 ? '讲得出' : '还没练')));
+      });
+      acts.appendChild(actBtn(n.href, '打开口述页', true));
+    } else if (n.hall === 'os' && n.rule) {
+      abs.innerHTML = mdInline(n.rule.action);
+      pre.innerHTML = mdInline(n.rule.scene);
+      preSec.style.display = '';
+      toc.appendChild(tocRow('rules.html#r-' + n.rule.id, lv, '去训练这条准则', '情境 → 动作'));
+      toc.appendChild(tocRow(ob(n.rule.src), null, '打开正本', n.rule.src));
+      acts.appendChild(actBtn('rules.html#r-' + n.rule.id, '去训练', true));
+    } else if (n.hall === 'books' && n.lines && n.lines.length) {
+      abs.innerHTML = mdInline(n.desc);
+      var uses = 0;
+      n.lines.forEach(function (ln) { uses += ((B.uses[ln.cid] || []).length); });
+      pre.textContent = '读厚 ' + n.lines.length + ' 张 · 「会了」' + n.got +
+        ' 张 · 真实用上 ⚡' + uses + ' 次';
+      preSec.style.display = '';
+      n.lines.forEach(function (ln) {
+        toc.appendChild(tocRow(ln.href, ln.lv, ln.n, ln.one || '读厚卡'));
+      });
+      if (n.href && n.href.indexOf('cards.html') !== 0) acts.appendChild(actBtn(n.href, '阅读闭环', false));
+      acts.appendChild(actBtn('cards.html', '去内化馆', true));
+    } else {
+      abs.innerHTML = mdInline(n.desc || '这本书还没写概要——在内化馆给它写读厚卡，书页就会长出内容。');
+      preSec.style.display = 'none';
+      if (n.href) {
+        toc.appendChild(tocRow(n.href, null, '打开原文 / 页面', ''));
+        acts.appendChild(actBtn(n.href, '打开', true));
+      }
     }
-    if (n.planets && n.planets.length) {
-      html += '<ul>' + n.planets.map(function (pl) {
-        return '<li>' + (pl.lv >= 2 ? '● ' : pl.lv >= 1 ? '◐ ' : '○ ') +
-          '<a href="' + pl.href + '">' + pl.name + '</a>' +
-          (pl.cid ? ' <span style="color:#888780;font-size:11px">读厚卡</span>' : '') + '</li>';
-      }).join('') + '</ul>';
+
+    var mask = bkEl('bookmask');
+    mask.hidden = false;
+    requestAnimationFrame(function () { mask.classList.add('open'); });
+    try { history.replaceState(null, '', '#book-' + encodeURIComponent(n.name)); } catch (e) {}
+    nodes.forEach(function (x) { if (x.label) x.label.classList.toggle('hot', x === n); });
+  }
+  function closeBook() {
+    var mask = bkEl('bookmask');
+    mask.classList.remove('open');
+    mask.hidden = true;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    nodes.forEach(function (x) { if (x.label) x.label.classList.remove('hot'); });
+  }
+  window.closeBook = closeBook;
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBook(); });
+
+  // ── 相机：正面平视，只允许小幅左右转 ──────────────────────
+  var theta = 0, phi = 1.40, dist = 21.5;
+  var drag = false, px = 0, py = 0;
+  stage.addEventListener('mousedown', function (e) {
+    drag = true; px = e.clientX; py = e.clientY; stage.classList.add('dragging');
+  });
+  window.addEventListener('mouseup', function () { drag = false; stage.classList.remove('dragging'); });
+  window.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    theta -= (e.clientX - px) * 0.004;
+    theta = Math.max(-0.46, Math.min(0.46, theta));   // ±26°：能看侧面，不会转到迷路
+    phi -= (e.clientY - py) * 0.003;
+    phi = Math.max(1.18, Math.min(1.52, phi));
+    px = e.clientX; py = e.clientY;
+  });
+  stage.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    dist = Math.max(7, Math.min(34, dist + e.deltaY * 0.014));
+  }, { passive: false });
+
+  var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  function pick(e) {
+    var r = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    return raycaster.intersectObjects(meshes, false)[0];
+  }
+  stage.addEventListener('click', function (e) {
+    var hit = pick(e);
+    if (!hit) return;
+    if (hit.object === plaque) { panelCore(); return; }
+    var n = nodes.filter(function (x) { return x.mesh === hit.object; })[0];
+    if (n) openBook(n);
+  });
+
+  var hovered = null;
+  stage.addEventListener('mousemove', function (e) {
+    if (drag) return;
+    var hit = pick(e);
+    var n = hit ? nodes.filter(function (x) { return x.mesh === hit.object; })[0] : null;
+    if (n !== hovered) {
+      if (hovered && hovered.mesh) hovered.mesh.position.z = hovered.mesh.userData.homeZ || 0;
+      if (n && n.mesh) n.mesh.position.z = 0.55;      // 抽出来一点，像从架上取下
+      hovered = n;
     }
-    if (n.href) {
-      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + n.href +
-        '" style="text-decoration:none">打开</a></div>';
-    }
-    p.innerHTML = html;
-    hot(n);
+    nodes.forEach(function (x) { if (x.label) x.label.classList.toggle('hot', x === n); });
+    stage.style.cursor = (hit || n) ? 'pointer' : '';
+  });
+
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var v = new THREE.Vector3();
+  function place(lb, vec) {
+    v.copy(vec).project(camera);
+    var w = stage.clientWidth, h = stage.clientHeight;
+    lb.style.left = ((v.x * 0.5 + 0.5) * w) + 'px';
+    lb.style.top = ((-v.y * 0.5 + 0.5) * h) + 'px';
+    if (v.z <= 1) lb.style.visibility = 'visible';
   }
 
-  function panelPlanet(pl) {
-    var p = document.getElementById('panel');
-    var html = '<h3>' + pl.name + '</h3>';
-    if (pl.star) html += '<div class="meta">绕行：' + pl.star.name + '</div>';
-    if (pl.one) html += '<div class="meta">' + pl.one + '</div>';
-    if (pl.cid) {
-      var u = B.uses[pl.cid] || [];
-      html += '<div class="meta">状态：<b>' + LV_WORD[pl.lv] + '</b> · 真实用过 <b>' + u.length + '</b> 次' +
-        (u.length ? ' · 最近 ' + u[u.length - 1].d : '') + '</div>';
-      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + pl.href +
-        '" style="text-decoration:none">打开这张卡</a></div>';
-    } else if (pl.href) {
-      html += '<div class="meta">状态：<b>' + LV_WORD[pl.lv] + '</b></div>';
-      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + pl.href +
-        '" style="text-decoration:none">打开</a></div>';
-    }
-    p.innerHTML = html;
-    hot(pl.star);
-  }
+  panelCore();
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    camera.position.set(
+      dist * Math.sin(phi) * Math.sin(theta),
+      dist * Math.cos(phi),
+      dist * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(0, 4.5, 0);   // 对准整面墙的中部（含顶部铭牌），否则铭牌会被裁掉
+    renderer.render(scene, camera);
+
+    HALLS.forEach(function (h) { if (h.label) place(h.label, h.anchor); });
+    place(coreLbl, coreAnchor);
+    if (hovered && hovered.label) place(hovered.label, hovered.mesh.position.clone().add(new THREE.Vector3(0, BOOK_H / 2 + 0.45, 0.6)));
+  })();
 
   // ── 今日内化侧栏 ───────────────────────────────────────────
   (function buildSide() {
@@ -344,8 +918,7 @@
         if (s && s.due && s.due <= t && s.l >= 1) due++;
       });
     });
-    var rcl = window.MARVIS_RULE_CLUSTER, ccl = window.MARVIS_CARD_CLUSTER;
-    [rcl, ccl].forEach(function (c) {
+    [window.MARVIS_RULE_CLUSTER, window.MARVIS_CARD_CLUSTER].forEach(function (c) {
       if (!c) return;
       c.topics.forEach(function (tp) {
         var s = S.lv[c.id + '/' + tp.id];
@@ -363,7 +936,7 @@
     (window.MARVIS_RULES || []).forEach(function (r) {
       pool.push({ kind: 'rule', id: r.id, name: r.name, src: '行事准则', scene: r.scene, action: r.action, href: 'rules.html#r-' + r.id });
     });
-    allCards.forEach(function (c) {
+    ((window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || []).forEach(function (c) {
       pool.push({ kind: 'card', id: c.id, name: c.name, src: c.source, scene: c.scene, action: c.action, href: 'cards.html#card-' + c.id });
     });
     var d = new Date();
@@ -384,10 +957,11 @@
         : '<p class="side-note">还没有可轮换的情境卡——先读一本书，写一份读厚正本。</p>');
 
     // ③ 内化进度
-    var rGot = 0, rTot = (rcl && rcl.topics.length) || 0;
-    if (rcl) rcl.topics.forEach(function (tp) { if (lvOf('rule/' + tp.id) >= MASTER) rGot++; });
-    var cGot = 0, cTot = (ccl && ccl.topics.length) || 0;
-    if (ccl) ccl.topics.forEach(function (tp) { if (lvOf('card/' + tp.id) >= MASTER) cGot++; });
+    var rGot = 0, rTot = (window.MARVIS_RULES || []).length;
+    (window.MARVIS_RULES || []).forEach(function (r) { if (lvOf('rule/' + r.id) >= MASTER) rGot++; });
+    var cAll = (window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || [];
+    var cGot = 0, cTot = cAll.length;
+    cAll.forEach(function (c) { if (lvOf('card/' + c.id) >= MASTER) cGot++; });
     function mini(label, got, tot, color) {
       var pct = tot ? Math.round(got / tot * 100) : 0;
       return '<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px">' +
@@ -414,357 +988,16 @@
     if (el) el.textContent = (B.uses[id] || []).length;
   };
 
-  // ── 2D 降级（无 WebGL 时内容不丢）────────────────────────────
-  function fallback2D(reason) {
-    var st = document.getElementById('stage');
-    st.style.height = 'auto';
-    st.innerHTML = '<p class="mv-note" style="margin:10px 0 0;color:#5F5E5A">已降级为 2D 列表（' +
-      reason + '）。内容与下钻完全一样，只是不立体。</p>';
-    var fb = document.createElement('div');
-    fb.className = 'fallback';
-    HALLS.forEach(function (h) {
-      var box = document.createElement('div');
-      box.className = 'fb-hall';
-      box.innerHTML = '<h4>' + h.name + '</h4>';
-      stars.filter(function (n) { return n.hall === h.k; }).forEach(function (n) {
-        var lv = lv3(n);
-        var a = document.createElement('a');
-        a.textContent = (lv === 2 ? '● ' : lv === 1 ? '◐ ' : '○ ') + n.name +
-          (n.tot ? '（' + n.got + '/' + n.tot + '）' : '');
-        a.href = n.href || 'progress.html';
-        box.appendChild(a);
-      });
-      fb.appendChild(box);
-    });
-    st.appendChild(fb);
-    panelCore();
-  }
-  if (typeof THREE === 'undefined') { fallback2D('three.js 未加载'); return; }
-
-  // ══ 3D：知识星系 ═══════════════════════════════════════════
-  var stage = document.getElementById('stage');
-  var canvas = document.getElementById('cv');
-  var labelBox = document.getElementById('labels');
-  var renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-  } catch (e) {
-    fallback2D('这台机器/浏览器没有可用的 WebGL');
-    return;
-  }
-  var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0E1322);
-  scene.fog = new THREE.Fog(0x0E1322, 60, 130);
-  var camera = new THREE.PerspectiveCamera(46, 1, 0.1, 400);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.62));
-  var lk = new THREE.DirectionalLight(0xffffff, 0.7);
-  lk.position.set(8, 18, 12);
-  scene.add(lk);
-
-  // 柔光贴图（恒星/核心的辉光用）
-  var glowTex = (function () {
-    var c = document.createElement('canvas'); c.width = c.height = 128;
-    var g = c.getContext('2d');
-    var gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(255,255,255,1)');
-    gr.addColorStop(0.22, 'rgba(255,255,255,.5)');
-    gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-    return new THREE.CanvasTexture(c);
+  // 深链：brain.html#book-<书名> 直接翻开那本书（分享 / 回归测试都用得上）
+  (function () {
+    var m = location.hash.match(/^#book-(.+)$/);
+    if (!m) return;
+    var nm = decodeURIComponent(m[1]);
+    var n = nodes.filter(function (x) { return x.name === nm; })[0];
+    if (n) openBook(n);
   })();
 
-  var pickables = [];
-  var orbiters = [];   // { mesh, r, angle, speed, group }——行星沿自身轨道慢转
-
-  function addGlow(parent, colorHex, opacity, scale) {
-    var sm = new THREE.SpriteMaterial({ map: glowTex, color: colorHex, transparent: true,
-      opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false });
-    var sp = new THREE.Sprite(sm);
-    sp.scale.set(scale, scale, 1);
-    parent.add(sp);
-    return sp;
-  }
-
-  // 核心恒星 = 我
-  var CORE_Y = 2;
-  var core = new THREE.Mesh(
-    new THREE.SphereGeometry(2.1, 40, 28),
-    new THREE.MeshStandardMaterial({ color: 0xEFE3BC, emissive: 0xC9A85C, emissiveIntensity: 0.55, roughness: 0.4 })
-  );
-  core.position.set(0, CORE_Y, 0);
-  core.userData.isCore = true;
-  scene.add(core);
-  pickables.push(core);
-  addGlow(scene, 0xD9C48C, 0.34, 9).position.copy(core.position);
-
-  // 五团星系按五边形摆位（本事居左、作品后左、战场后右、书架前右、准则前左）
-  var CLUSTER_R = 19;
-  var HALL_ANGLE = { tech: 270, work: 342, field: 54, books: 126, os: 198 };
-  function clusterCenter(hall) {
-    var a = (HALL_ANGLE[hall] || 0) * Math.PI / 180;
-    return new THREE.Vector3(Math.sin(a) * CLUSTER_R, CORE_Y, -Math.cos(a) * CLUSTER_R);
-  }
-  HALLS.forEach(function (h) { h.center = clusterCenter(h.k); });
-
-  // 神经连线：核心 → 各团中心
-  HALLS.forEach(function (h) {
-    var geo = new THREE.BufferGeometry().setFromPoints([core.position.clone(), h.center.clone()]);
-    scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({
-      color: h.color, transparent: true, opacity: 0.14 })));
-  });
-
-  function starColor(h, lv) {
-    var c = new THREE.Color(h.color);
-    if (lv === 0) c.lerp(new THREE.Color(GRAY), 0.72);
-    else if (lv === 2) c.lerp(new THREE.Color(h.dark), 0.35);
-    return c;
-  }
-
-  var clusters = {};
-  HALLS.forEach(function (h) { clusters[h.k] = stars.filter(function (n) { return n.hall === h.k; }); });
-
-  Object.keys(clusters).forEach(function (hk) {
-    var h = HALLS.filter(function (x) { return x.k === hk; })[0];
-    var list = clusters[hk];
-    var cols = Math.min(4, list.length), rows = Math.ceil(list.length / cols);
-    var SP = 7.4;
-    list.forEach(function (n, i) {
-      var col = i % cols, row = Math.floor(i / cols);
-      var x = (col - (cols - 1) / 2) * SP + (row % 2 ? SP * 0.28 : 0);
-      var z = (row - (rows - 1) / 2) * SP;
-      var pos = h.center.clone().add(new THREE.Vector3(x, (i % 3) * 0.5 - 0.5, z));
-
-      var lv = lv3(n);
-      var r = 0.78 + Math.min(n.planets.length, 9) * 0.1;
-      var colr = starColor(h, lv);
-      var mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(r, 30, 22),
-        new THREE.MeshStandardMaterial({ color: colr, emissive: colr, emissiveIntensity: lv === 0 ? 0.12 : (lv === 1 ? 0.42 : 0.8), roughness: 0.5 })
-      );
-      mesh.position.copy(pos);
-      mesh.userData.star = n;
-      scene.add(mesh);
-      n.mesh = mesh;
-      pickables.push(mesh);
-      addGlow(scene, colr.getHex(), lv === 0 ? 0.10 : (lv === 1 ? 0.30 : 0.55), r * (lv === 0 ? 3.4 : 4.6)).position.copy(pos);
-
-      // 行星轨道（每颗恒星一个小倾斜面）
-      var grp = new THREE.Group();
-      grp.position.copy(pos);
-      grp.rotation.x = ((i % 5) - 2) * 0.09;
-      grp.rotation.z = ((i % 4) - 1.5) * 0.11;
-      scene.add(grp);
-      n.orbit = grp;
-
-      var rings = n.planets.length > 5 ? [2.5, 3.7] : [2.9];
-      n.planets.forEach(function (pl, pi) {
-        var rr = rings[pi % rings.length] + Math.floor(pi / (rings.length * 3)) * 0.55;
-        var pc = pl.lv === 0 ? new THREE.Color(GRAY).lerp(new THREE.Color(h.color), 0.3)
-               : pl.lv === 1 ? new THREE.Color(h.color)
-               : new THREE.Color(0xFFF3D6);
-        var pm = new THREE.Mesh(
-          new THREE.SphereGeometry(pl.lv >= 2 ? 0.34 : 0.26, 16, 12),
-          new THREE.MeshStandardMaterial({ color: pc, emissive: pc, emissiveIntensity: pl.lv === 0 ? 0.1 : (pl.lv === 1 ? 0.45 : 0.95), roughness: 0.45 })
-        );
-        pm.userData.planet = pl;
-        grp.add(pm);
-        pl.mesh = pm;
-        pickables.push(pm);
-        var a0 = (pi * 2.399) % (Math.PI * 2);   // 黄金角散开，不同恒星不同相位
-        orbiters.push({ mesh: pm, r: rr, angle: a0, speed: 0.16 / rr, group: grp });
-
-        var lb = document.createElement('div');
-        lb.className = 'lbl';
-        lb.textContent = pl.name;
-        lb.style.display = 'none';
-        lb.addEventListener('click', function (e) { e.stopPropagation(); panelPlanet(pl); });
-        labelBox.appendChild(lb);
-        pl.label = lb;
-      });
-
-      // 轨道线
-      rings.forEach(function (rr) {
-        var seg = 72, pts = [];
-        for (var k = 0; k <= seg; k++) {
-          var a = k / seg * Math.PI * 2;
-          pts.push(new THREE.Vector3(Math.cos(a) * rr, 0, Math.sin(a) * rr));
-        }
-        var geo = new THREE.BufferGeometry().setFromPoints(pts);
-        grp.add(new THREE.Line(geo, new THREE.LineBasicMaterial({
-          color: h.color, transparent: true, opacity: lv === 0 ? 0.08 : 0.16 })));
-      });
-
-      // 恒星标签（只挂名字，掌握度点开面板看——短标签才铺得开）
-      var lb2 = document.createElement('div');
-      lb2.className = 'lbl star-lbl';
-      lb2.textContent = n.name;
-      lb2.addEventListener('click', function (e) { e.stopPropagation(); panelStar(n); });
-      labelBox.appendChild(lb2);
-      n.label = lb2;
-    });
-
-    // 星系团名标签
-    var hl = document.createElement('div');
-    hl.className = 'lbl hall-lbl';
-    var nPlanets = list.reduce(function (s, n) { return s + n.planets.length; }, 0);
-    hl.innerHTML = '<b>' + h.name + '</b><i>' + list.length + ' 恒星 · ' + nPlanets + ' 行星</i>';
-    labelBox.appendChild(hl);
-    h.label = hl;
-    h.anchor = h.center.clone().add(new THREE.Vector3(0, 4.6, 0));
-  });
-
-  var coreLbl = document.createElement('div');
-  coreLbl.className = 'lbl hall-lbl';
-  coreLbl.innerHTML = '<b>我</b><i>整体 ' + overall + '% · 内化 ' + internal + '%</i>';
-  coreLbl.addEventListener('click', function (e) { e.stopPropagation(); panelCore(); });
-  labelBox.appendChild(coreLbl);
-  var coreAnchor = new THREE.Vector3(0, CORE_Y + 3.6, 0);
-
-  // ── 相机：绕核心自由转，俯仰与距离限幅 ──────────────────────
-  var theta = 0.35, phi = 1.02, dist = 54;
-  var drag = false, px = 0, py = 0, moved = 0;
-  stage.addEventListener('mousedown', function (e) {
-    drag = true; moved = 0; px = e.clientX; py = e.clientY; stage.classList.add('dragging');
-  });
-  window.addEventListener('mouseup', function () { drag = false; stage.classList.remove('dragging'); });
-  window.addEventListener('mousemove', function (e) {
-    if (!drag) return;
-    var dx = e.clientX - px, dy = e.clientY - py;
-    moved += Math.abs(dx) + Math.abs(dy);
-    theta -= dx * 0.005;
-    phi = Math.max(0.3, Math.min(1.45, phi - dy * 0.004));
-    px = e.clientX; py = e.clientY;
-  });
-  stage.addEventListener('wheel', function (e) {
-    e.preventDefault();
-    dist = Math.max(14, Math.min(90, dist + e.deltaY * 0.03));
-  }, { passive: false });
-  // 触屏：单指转，双指捏合缩放
-  var touches = {}, pinch0 = 0, dist0 = 0;
-  stage.addEventListener('touchstart', function (e) {
-    if (e.touches.length === 1) {
-      drag = true; moved = 0; px = e.touches[0].clientX; py = e.touches[0].clientY;
-    } else if (e.touches.length === 2) {
-      drag = false;
-      pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      dist0 = dist;
-    }
-  }, { passive: true });
-  stage.addEventListener('touchmove', function (e) {
-    if (e.touches.length === 1 && drag) {
-      var dx2 = e.touches[0].clientX - px, dy2 = e.touches[0].clientY - py;
-      moved += Math.abs(dx2) + Math.abs(dy2);
-      theta -= dx2 * 0.005;
-      phi = Math.max(0.3, Math.min(1.45, phi - dy2 * 0.004));
-      px = e.touches[0].clientX; py = e.touches[0].clientY;
-      e.preventDefault();
-    } else if (e.touches.length === 2) {
-      var pn = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      dist = Math.max(14, Math.min(90, dist0 * pinch0 / Math.max(20, pn)));
-      e.preventDefault();
-    }
-  }, { passive: false });
-  window.addEventListener('touchend', function () { drag = false; });
-
-  var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
-  function pick(e) {
-    var r = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
-    mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    return raycaster.intersectObjects(pickables, false)[0];
-  }
-  var hoveredStar = null, hoveredPlanet = null;
-  function setHover(obj) {
-    var n = obj && obj.object.userData.star, pl = obj && obj.object.userData.planet;
-    var coreHit = obj && obj.object.userData.isCore;
-    if (hoveredStar && hoveredStar.mesh) hoveredStar.mesh.scale.set(1, 1, 1);
-    if (hoveredPlanet && hoveredPlanet.mesh) hoveredPlanet.mesh.scale.set(1, 1, 1);
-    hoveredStar = n || null;
-    hoveredPlanet = pl || null;
-    if (hoveredStar) hoveredStar.mesh.scale.set(1.25, 1.25, 1.25);
-    if (hoveredPlanet) hoveredPlanet.mesh.scale.set(1.6, 1.6, 1.6);
-    stage.style.cursor = obj ? 'pointer' : '';
-    return { star: hoveredStar, planet: hoveredPlanet, core: coreHit };
-  }
-  stage.addEventListener('click', function (e) {
-    if (moved > 6) return;                      // 拖拽结束不算点击
-    var hit = pick(e);
-    var w = setHover(hit);
-    if (w.core) { panelCore(); return; }
-    if (w.planet) { panelPlanet(w.planet); return; }
-    if (w.star) { panelStar(w.star); return; }
-  });
-  stage.addEventListener('mousemove', function (e) {
-    if (drag) return;
-    var hit = pick(e);
-    var w = setHover(hit);
-    stars.forEach(function (x) {
-      if (x.label) x.label.classList.toggle('hot', x === w.star);
-      x.planets.forEach(function (pl) {
-        if (pl.label) {
-          var on = pl === w.planet;
-          pl.label.style.display = on ? 'block' : 'none';
-          pl.label.classList.toggle('hot', on);
-        }
-      });
-    });
-  });
-
-  function resize() {
-    var w = stage.clientWidth, h = stage.clientHeight;
-    renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  var v = new THREE.Vector3();
-  function place(lb, vec, hideBehind) {
-    v.copy(vec).project(camera);
-    var w = stage.clientWidth, h = stage.clientHeight;
-    lb.style.left = ((v.x * 0.5 + 0.5) * w) + 'px';
-    lb.style.top = ((-v.y * 0.5 + 0.5) * h) + 'px';
-    lb.style.visibility = (v.z <= 1 && (!hideBehind || v.z < 1)) ? 'visible' : 'hidden';
-  }
-
-  panelCore();
-
-  var lastT = Date.now();
-  (function loop() {
-    requestAnimationFrame(loop);
-    var now = Date.now(), dt = Math.min(0.05, (now - lastT) / 1000);
-    lastT = now;
-    // 行星公转：慢速、错相位，星系是活的
-    orbiters.forEach(function (o) {
-      o.angle += o.speed * dt;
-      o.mesh.position.set(Math.cos(o.angle) * o.r, 0, Math.sin(o.angle) * o.r);
-    });
-    camera.position.set(
-      dist * Math.sin(phi) * Math.sin(theta),
-      dist * Math.cos(phi),
-      dist * Math.sin(phi) * Math.cos(theta)
-    );
-    camera.lookAt(0, CORE_Y, 0);
-    renderer.render(scene, camera);
-
-    HALLS.forEach(function (h) { if (h.label) place(h.label, h.anchor, true); });
-    place(coreLbl, coreAnchor, true);
-    stars.forEach(function (n) {
-      if (!n.label) return;
-      place(n.label, n.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)), true);
-      n.planets.forEach(function (pl) {
-        if (pl.label && pl.label.style.display === 'block') {
-          place(pl.label, pl.mesh.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.7, 0)));
-        }
-      });
-    });
-  })();
-
-  window.MARVIS_BRAIN = { stars: stars, overall: overall, internal: internal };
+  window.MARVIS_BRAIN = { nodes: nodes, overall: overall, internal: internal, openBook: openBook };
 })();
 </script>
 </body>

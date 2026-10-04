@@ -2798,10 +2798,25 @@ def main():
         "window.MARVIS_REVIEWS = " + json.dumps(review_index, ensure_ascii=False) + ";\n",
         encoding="utf-8")
 
-    mod_index = [{"module": md["module"], "title": md["title"], "href": md["page"],
-                  "lines": len(md["lines"]), "topics": len(md["topics"]),
-                  "ready": sum(1 for t in md["topics"] if t["id"] in md["cards"])}
-                 for md in modules]
+    # 2026-10-03 晚增补：index 附上「书页内容」（概要 / 前序 / 目录）——书架页点书翻开用。
+    # summary = 模块卡一句话结论（概要），reason = 为什么现在（前序兜底），
+    # contents = 每条主线一行（目录条目：名 / 回答什么 / 母题数 / 主线页链接）。
+    mod_index = []
+    for md in modules:
+        tbl, qbl = _by_line(md["topics"]), _by_line(md["questions"])
+        mod_index.append({
+            "module": md["module"], "title": md["title"], "href": md["page"],
+            "lines": len(md["lines"]), "topics": len(md["topics"]),
+            "ready": sum(1 for t in md["topics"] if t["id"] in md["cards"]),
+            "summary": md["summary"],
+            "reason": md["reason"],
+            "contents": [{"no": ln["no"], "name": line_short(ln["name"]),
+                          "lead": line_question(ln["name"]),
+                          "href": module_line_page(md, ln["no"]),
+                          "topics": len(tbl.get(ln["no"], [])),
+                          "qs": len(qbl.get(ln["no"], []))}
+                         for ln in md["lines"]],
+        })
     (OUT_DATA / "modules.js").write_text(
         "window.MARVIS_MODULES = " + json.dumps(mod_index, ensure_ascii=False) + ";\n",
         encoding="utf-8")

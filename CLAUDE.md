@@ -81,6 +81,8 @@ status: captured | candidate | reading | integrated
 - 只有经过用户阅读或实践验证，并形成可复用资产，才能标记为 `integrated`。
 - 不使用 `mastered`。掌握程度依赖具体场景，并会随时间变化。
 - 不使用 `archived`。暂时不继续处理的内容留在 `raw/` 即可。
+- 行动准则、个人判断类内容不从 `raw/` 素材加工而来，直接以 `candidate` 起步；翻 `integrated` 的验证标准不是「读完素材」，而是「实践过且能复述」。
+- `human_reviewed: true` 指**读过落盘后的文件文本**：主人逐段确认过、AI 如实转录的内容可标 true；AI 在转录之外做了归纳、改写或补结构的，一律 false（candidate），由主人读完正本后自行翻正，AI 不代翻。
 
 ## 主工作流
 
@@ -256,7 +258,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 - `index.html`：唯一入口，调度复训 + 进入子页；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机，云同步到 `data/marvis-sync.json`：看免配置（公开仓库直读 raw），上传只需贴一次令牌）；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
 - `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
-- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑星系）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
+- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑书架，2026-10-03 加「今日内化」侧栏）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）。`deliver/` 交付页**规划中、未建**
 - `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：4 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交）
 - 方案正本 `site/PLAN.md`，用法 `site/README.md`；面向 GitHub 访客的仓库说明是根目录 `README.md`（不承载规则）
 
@@ -268,12 +270,13 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 ## 落盘闸门（正本制）
 
-全库登记表见 [[MAP]]。四条硬规矩：
+全库登记表见 [[MAP]]。五条硬规矩：
 
 1. **默认更新，不默认新建。** 产出新内容前先查 `MAP.md`：能找到对应主题就写进那个正本，不新建文件。新建必须有理由并在 MAP 登记。
 2. **一个主题一个正本。** 正本之外的同类文件只能是「卫星」——引用正本或存快照，不再复制正文。同主题出现第二份完整正文时，视为治理事故，合并掉。
 3. **母题卡落点唯一。** 技术知识类母题卡进 `wiki/topics/{模块}/`，面试表达类进 `wiki/interview/`；`output/` 只放对外成品，`study/` 只放能力课程，两处都不新建母题卡。
 4. **视图是派生物。** `site/` 下的 html 一律由 `build.py` 从 md 正本生成，不手写、不回写正本。改内容只改 md，然后跑 `python site/build.py`。视图登记见 [[MAP]] 第四节。
+5. **个人成长 / 行为准则类落点唯一。** 正本进 `wiki/thinking/`（根因链 + 完整方案）；其中可训练的「情境 → 动作」提为 `wiki/cards/` 原则卡或 `site/_data/rules.js` 派单题面，只留一行题面并指回正本，不复制正文。不在 `wiki/topics/`、`wiki/interview/`、`output/` 新建此类内容。
 
 起因：2026-09-06 的治理只治了目录、没治产出行为，之后 4 天新增约 30 份文件且无一份是更新已有正本，于是再次分散。本闸门用于防复发。
 

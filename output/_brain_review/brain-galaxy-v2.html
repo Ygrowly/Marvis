@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>第二大脑 · 知识星系</title>
+<link rel="stylesheet" href="_components/marvis.css">
+<style>
+  :root { --ink:#2C2C2A; --mut:#5F5E5A; }
+  .brain-cols { display: flex; gap: 14px; align-items: stretch; margin: 14px 0 10px; }
+  #stage { position: relative; flex: 1 1 auto; min-width: 0; height: 640px; border-radius: 12px; overflow: hidden;
+    background: #0E1322; border: 1px solid rgba(0,0,0,.25); cursor: grab; }
+  #stage.dragging { cursor: grabbing; }
+  #cv { display: block; width: 100%; height: 100%; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; font-size: 11px; line-height: 1.2; padding: 1px 6px; border-radius: 5px;
+    background: rgba(14,19,34,.72); border: 1px solid rgba(255,255,255,.22); color: #E8E6DF;
+    white-space: nowrap; transform: translate(-50%,-50%); pointer-events: auto; cursor: pointer; }
+  .lbl.hot { background: #fff; color: #2C2C2A; border-color: #fff; font-weight: 500; z-index: 5; }
+  .hall-lbl { font-size: 12px; font-weight: 500; background: rgba(14,19,34,.85); border-color: rgba(255,255,255,.4);
+    padding: 2px 8px; }
+  .hall-lbl b { font-weight: 500; }
+  .hall-lbl i { font-style: normal; color: #B9B7AE; font-size: 11px; margin-left: 4px; }
+  .star-lbl { border-color: rgba(255,255,255,.14); color: #CFCDC5; font-size: 10px; opacity: .9; }
+  @media (max-width: 980px) { .brain-cols { flex-direction: column; } #side { width: auto !important; } }
+
+  /* —— 今日内化侧栏 —— */
+  #side { flex: 0 0 300px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .side-card { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; padding: 12px 14px; }
+  .side-card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--ink); }
+  .side-card h4 em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--mut); margin-left: 6px; }
+  .side-big { font-size: 24px; font-weight: 500; line-height: 1.2; }
+  .side-big small { font-size: 12px; color: var(--mut); font-weight: 400; }
+  .side-note { font-size: 12px; color: var(--mut); line-height: 1.6; margin: 4px 0 0; }
+  .mini-track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); overflow: hidden; margin-top: 5px; }
+  .mini-track i { display: block; height: 100%; }
+  .situ { background: #fbfaf7; border-left: 3px solid #F3C1AC; border-radius: 0 8px 8px 0;
+    padding: 8px 10px; font-size: 13px; line-height: 1.65; margin: 8px 0 0; }
+  .situ b { font-weight: 500; color: #993C1D; }
+  .situ details { margin-top: 6px; }
+  .situ summary { cursor: pointer; font-size: 12px; color: #993C1D; list-style: none; user-select: none; }
+  .situ summary::-webkit-details-marker { display: none; }
+  .situ summary::before { content: '▸ '; }
+  .situ details[open] summary::before { content: '▾ '; }
+  .side-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .side-btns .mv-btn { padding: 2px 10px; font-size: 12px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mut); margin: 0 0 10px; }
+  .legend span.k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  #panel { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; padding: 14px 16px; background: #fff; margin-top: 0; min-height: 96px; }
+  #panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+  #panel .meta { font-size: 12px; color: var(--mut); margin-bottom: 6px; line-height: 1.6; }
+  #panel ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  #panel li { margin: 3px 0; }
+  #panel a { color: #185FA5; text-decoration: none; }
+  .bars { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+  .bar { flex: 1 1 140px; border: 1px solid rgba(0,0,0,.10); border-radius: 10px; padding: 8px 10px; background: #fff; }
+  .bar small { display: block; color: var(--mut); font-size: 11px; }
+  .bar strong { font-size: 18px; font-weight: 500; }
+  .track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); margin-top: 6px; overflow: hidden; }
+  .track i { display: block; height: 100%; }
+  .fallback { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 10px; margin-top: 10px; }
+  .fb-hall { border: 1px solid rgba(0,0,0,.12); border-radius: 10px; padding: 10px 12px; background: #fff; }
+  .fb-hall h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
+  .fb-hall a { display: block; font-size: 12px; margin: 2px 0; color: #185FA5; text-decoration: none; }
+</style>
+</head>
+<body class="mv-page">
+<div class="mv-wrap" style="max-width:78rem">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h1 class="mv-h1" style="margin:0">第二大脑 · 知识星系</h1>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
+      <a class="mv-btn" href="cards.html" style="text-decoration:none">内化馆</a>
+      <a class="mv-btn" href="rules.html" style="text-decoration:none">行事准则</a>
+      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
+    </div>
+  </div>
+  <p class="mv-sub" style="margin-bottom:8px">
+    画像、知识与准则长成一片星系：<b>一团星系 = 一个方向，一颗恒星 = 一个模块 / 项目 / 一本书，行星 = 主线或一张读厚卡</b>。
+    <b>星星越亮 = 练得越透</b>；灰暗的是还没读进去的，空轨道是还没长出来的。
+    拖拽旋转、滚轮缩放，点恒星下钻、点行星看卡。右侧是<b>今天该长哪块</b>。
+  </p>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="brain-cols">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="labels"></div>
+    </div>
+    <div id="side">
+      <div class="side-card" id="side-due"></div>
+      <div class="side-card" id="side-situ"></div>
+      <div class="side-card" id="side-progress"></div>
+    </div>
+  </div>
+
+  <div id="panel"></div>
+
+  <div class="bars" id="bars"></div>
+
+  <p class="mv-note" style="margin-top:18px">
+    亮度只由进度页的闭卷自评推进，这里不手写。技术主线走模块主线页训练；
+    行事准则与读厚原则卡已接进每日派单（进度页每天各 1 条）——<b>书架上不再有恒灰的书</b>。
+    真实用上一次，在内化馆或右侧「今日情境」记一笔 ⚡，那是自测之外的真实反馈。
+  </p>
+
+</div>
+
+<script src="_build/three/three.min.js"></script>
+<script src="_data/clusters.js"></script>
+<script src="_data/projects.js"></script>
+<script src="_data/rules.js"></script>
+<script src="_data/cards.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'mv.progress.v1', BKEY = 'mv.brain.v1', MASTER = 1;
+  var S = null, B = { uses: {} };
+  try { S = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { S = null; }
+  if (!S || typeof S !== 'object') S = {};
+  if (!S.lv) S.lv = {};
+  try { B = JSON.parse(localStorage.getItem(BKEY) || '{}') || {}; } catch (e) { B = {}; }
+  if (!B.uses) B.uses = {};
+  function lvOf(k) { return (S.lv[k] && S.lv[k].l) || 0; }
+  function ob(p) { return 'obsidian://open?vault=Marvis&file=' + encodeURIComponent(p); }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  // ── 五团星系 ────────────────────────────────────────────────
+  var HALLS = [
+    { k: 'tech',  name: '本事 · 技术地基', color: 0x4FA3E8, dark: 0x1E6FB8, css: '#378ADD' },
+    { k: 'work',  name: '作品 · 三个项目', color: 0xE09A33, dark: 0xA96A10, css: '#BA7517' },
+    { k: 'os',    name: '操作系统 · 行事准则', color: 0x9A8FF0, dark: 0x5D50C9, css: '#7F77DD' },
+    { k: 'field', name: '战场 · 秋招', color: 0x7FCC4A, dark: 0x4B8F1E, css: '#639922' },
+    { k: 'books', name: '书架 · 读过的', color: 0xF07B4A, dark: 0xB84A1F, css: '#D85A30' }
+  ];
+  var GRAY = 0x6E7486;
+  var LV_WORD = ['还没读进去', '正在读', '已读透'];
+
+  // 收集节点：恒星 = 条目（带 planets 行星数组），行星 = 训练单元
+  var stars = [];
+  function mkStar(hall, id, name, desc, href, planets) {
+    var got = 0, tot = 0;
+    (planets || []).forEach(function (p) { if (!p.untrained) { tot++; if (p.lv >= MASTER) got++; } });
+    var st = { hall: hall, id: id, name: name, desc: desc || '', href: href || '',
+               planets: planets || [], got: got, tot: tot,
+               ratio: tot ? got / tot : 0, untrained: !tot };
+    (st.planets).forEach(function (p) { p.star = st; });
+    stars.push(st);
+    return st;
+  }
+  function mkPlanet(name, href, lv, extra) {
+    return Object.assign({ name: name, href: href || '', lv: lv || 0 }, extra || {});
+  }
+
+  // ① 技术地基：模块 = 恒星，主线 = 行星
+  var groundsByModule = {};
+  ((window.MARVIS_CARDS && window.MARVIS_CARDS.grounds) || []).forEach(function (g) {
+    groundsByModule[g.module] = g;
+  });
+  var allCards = (window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || [];
+  (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+    if (c.zone !== '一档' && c.zone !== '二档') return;
+    var planets = c.topics.map(function (t) {
+      return mkPlanet(t.id + ' · ' + t.name, t.href, lvOf(c.id + '/' + t.id));
+    });
+    var gnd = groundsByModule[c.name];
+    mkStar('tech', c.id, c.name,
+      c.zone + ' · ' + planets.filter(function (p) { return p.lv >= MASTER; }).length + '/' + planets.length +
+      ' 条主线到「会了」' + (gnd ? ' · 有地基包' : ''),
+      'modules/' + encodeURIComponent(c.name) + '.html', planets).ground = gnd || null;
+  });
+
+  // ② 作品：项目 = 恒星，口述条目 = 行星
+  var pitch = (window.MARVIS_CLUSTERS || []).filter(function (c) { return c.id === 'pitch'; })[0];
+  (window.MARVIS_PROJECTS || []).forEach(function (p) {
+    var planets = [];
+    if (pitch) pitch.topics.forEach(function (t) {
+      if (t.proj !== p.name) return;
+      planets.push(mkPlanet(t.name, t.href, lvOf('pitch/' + t.id)));
+    });
+    mkStar('work', p.id, p.name, p.lead, p.href, planets);
+  });
+
+  // ③ 行事准则：正本文档 = 恒星，准则条目 = 行星
+  //   注意 rules.js 的 src 形如 'wiki/thinking/行动规则.md · A-7'——『 · 节号』后缀要切掉，
+  //   否则每条准则各成一颗星（首轮渲染曾因此出现 9 颗恒星）。
+  var osDocs = {};
+  (window.MARVIS_RULES || []).forEach(function (r) {
+    var doc = (r.src || '').replace(/^.*thinking\//, '').split(' · ')[0].replace(/\.md$/, '');
+    if (!osDocs[doc]) osDocs[doc] = [];
+    osDocs[doc].push(mkPlanet(r.name, 'rules.html#r-' + r.id, lvOf('rule/' + r.id), { rid: r.id }));
+  });
+  Object.keys(osDocs).forEach(function (doc) {
+    mkStar('os', doc, doc, '行事准则正本 · 遇到情境做什么（' + osDocs[doc].length + ' 条）',
+      ob('wiki/thinking/' + doc), osDocs[doc]);
+  });
+
+  // ④ 战场：秋招成品 = 恒星
+  [
+    { n: '秋招破局方案', d: 'offer = 投递量 × 过筛率 × 转化率；两条可观测止损线', f: '../output/秋招破局方案.html', h: true },
+    { n: '投递台账 108 家', d: '五层分组 + 硬窗口日历 · 状态存本机', f: '../output/秋招投递台账.html', h: true },
+    { n: '简历族（母版+3 方向）', d: '事实不变、表达自由；只改母版再派生', f: '../output/resume/刘宇广-AI应用开发-2027届.html', h: true },
+    { n: '面试复盘报告', d: '乐元素 · 线上 AI 业务推演的实测评分与缺失模块', f: 'reviews/', h: true },
+    { n: '网申开放题作答', d: '逐条最优版本，纯文本可直接粘进表单', f: '../output/网申开放题作答-刘宇广.md', h: false }
+  ].forEach(function (r, i) {
+    mkStar('field', 'a' + i, r.n, r.d, r.h ? r.f : ob(r.f), []);
+  });
+
+  // ⑤ 书架：书 = 恒星，读厚原则卡 = 行星
+  var booksBySrc = {};
+  allCards.forEach(function (c) {
+    if (!booksBySrc[c.source]) booksBySrc[c.source] = { cards: [], author: c.author, href: c.source_href };
+    booksBySrc[c.source].cards.push(
+      mkPlanet(c.name, 'cards.html#card-' + c.id, lvOf('card/' + c.id), { cid: c.id, one: c.one }));
+  });
+  Object.keys(booksBySrc).forEach(function (src) {
+    var b = booksBySrc[src];
+    mkStar('books', src, src,
+      (b.author ? b.author + ' · ' : '') + '读厚 ' + b.cards.length + ' 张 · 遇到情境知道怎么做',
+      b.href ? ob(b.href) : 'cards.html', b.cards);
+  });
+
+  function lv3(n) {   // 恒星三档：0 还没读进去 · 1 正在读 · 2 已读透
+    if (n.untrained) return 0;
+    return n.ratio >= 1 ? 2 : (n.ratio > 0 ? 1 : 0);
+  }
+
+  // ── 全局数字 ────────────────────────────────────────────────
+  var techWork = stars.filter(function (n) { return n.hall === 'tech' || n.hall === 'work'; });
+  var G = 0, T = 0;
+  techWork.forEach(function (n) { G += n.got; T += n.tot; });
+  var overall = T ? Math.round(G / T * 100) : 0;
+  var neula = stars.filter(function (n) { return n.hall === 'os' || n.hall === 'books'; });
+  var NG = 0, NT = 0;
+  neula.forEach(function (n) { NG += n.got; NT += n.tot; });
+  var internal = NT ? Math.round(NG / NT * 100) : 0;
+
+  document.getElementById('legend').innerHTML =
+    HALLS.map(function (h) {
+      return '<span><span class="k" style="background:' + h.css + '"></span>' + h.name + '</span>';
+    }).join('') +
+    '<span><span class="k" style="background:#6E7486"></span>灰暗 = 还没读进去</span>' +
+    '<span>越亮 = 练得越透 · 空轨道 = 还没长出来</span>';
+
+  var bars = document.getElementById('bars');
+  HALLS.forEach(function (h) {
+    var list = stars.filter(function (n) { return n.hall === h.k; });
+    var trained = list.filter(function (n) { return !n.untrained; });
+    var pct = 0;
+    if (trained.length) {
+      var g = 0, t = 0;
+      trained.forEach(function (n) { g += n.got; t += n.tot; });
+      pct = t ? Math.round(g / t * 100) : 0;
+    }
+    var d = document.createElement('div');
+    d.className = 'bar';
+    d.innerHTML = '<small>' + h.name + ' · ' + list.length + ' 颗恒星</small>' +
+      '<strong>' + (trained.length ? pct + '%' : '—') + '</strong>' +
+      '<div class="track"><i style="width:' + (trained.length ? pct : 0) + '%;background:' + h.css + '"></i></div>';
+    bars.appendChild(d);
+  });
+
+  var PROFILE = { name: '刘宇广 · 2027 届', who: '南华大学本科 · 求职 AI 应用开发 / Agent 后端' };
+
+  // ── 面板（下钻明细）────────────────────────────────────────
+  function panelCore() {
+    var p = document.getElementById('panel');
+    var cnt = [0, 0, 0];
+    stars.forEach(function (n) { cnt[lv3(n)]++; });
+    p.innerHTML = '<h3>' + PROFILE.name + '</h3>' +
+      '<div class="meta">' + PROFILE.who + '</div>' +
+      '<div class="meta">已接入派单的部分掌握度 <b>' + overall + '%</b>（' + G + '/' + T + '） · ' +
+      '内化线（准则 + 原则卡）<b>' + internal + '%</b>（' + NG + '/' + NT + '）</div>' +
+      '<div class="meta">这片星系共 ' + stars.length + ' 颗恒星：已读透 <b>' + cnt[2] +
+      '</b> · 正在读 <b>' + cnt[1] + '</b> · 还没读进去 <b>' + cnt[0] + '</b></div>' +
+      '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页</a>' +
+      ' <a class="mv-btn" href="cards.html" style="text-decoration:none">去内化馆</a></div>';
+    hot(null);
+  }
+  function hot(n) {
+    stars.forEach(function (x) { if (x.label) x.label.classList.toggle('hot', x === n); });
+    stars.forEach(function (x) { (x.planets || []).forEach(function (pl) { if (pl.label) pl.label.classList.toggle('hot', false); }); });
+    if (n && n.label) n.label.classList.add('hot');
+  }
+
+  function panelStar(n) {
+    var p = document.getElementById('panel');
+    var lv = lv3(n);
+    var html = '<h3>' + n.name + '</h3><div class="meta">' + (n.desc || '') + '</div>';
+    html += '<div class="meta">状态：<b>' + LV_WORD[lv] + '</b>' +
+      (n.untrained ? '（这个区不进派单，没有复训数据）' : '') +
+      (n.tot ? ' · 掌握度 ' + Math.round(n.ratio * 100) + '%（' + n.got + '/' + n.tot + '）' : '') + '</div>';
+    if (n.hall === 'tech' && n.ground) {
+      html += '<div class="meta">地基包：<a href="cards.html#' + n.ground.id + '">先记必会清单，再去主线添砖加瓦 →</a></div>';
+    }
+    if (n.planets && n.planets.length) {
+      html += '<ul>' + n.planets.map(function (pl) {
+        return '<li>' + (pl.lv >= 2 ? '● ' : pl.lv >= 1 ? '◐ ' : '○ ') +
+          '<a href="' + pl.href + '">' + pl.name + '</a>' +
+          (pl.cid ? ' <span style="color:#888780;font-size:11px">读厚卡</span>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    if (n.href) {
+      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + n.href +
+        '" style="text-decoration:none">打开</a></div>';
+    }
+    p.innerHTML = html;
+    hot(n);
+  }
+
+  function panelPlanet(pl) {
+    var p = document.getElementById('panel');
+    var html = '<h3>' + pl.name + '</h3>';
+    if (pl.star) html += '<div class="meta">绕行：' + pl.star.name + '</div>';
+    if (pl.one) html += '<div class="meta">' + pl.one + '</div>';
+    if (pl.cid) {
+      var u = B.uses[pl.cid] || [];
+      html += '<div class="meta">状态：<b>' + LV_WORD[pl.lv] + '</b> · 真实用过 <b>' + u.length + '</b> 次' +
+        (u.length ? ' · 最近 ' + u[u.length - 1].d : '') + '</div>';
+      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + pl.href +
+        '" style="text-decoration:none">打开这张卡</a></div>';
+    } else if (pl.href) {
+      html += '<div class="meta">状态：<b>' + LV_WORD[pl.lv] + '</b></div>';
+      html += '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="' + pl.href +
+        '" style="text-decoration:none">打开</a></div>';
+    }
+    p.innerHTML = html;
+    hot(pl.star);
+  }
+
+  // ── 今日内化侧栏 ───────────────────────────────────────────
+  (function buildSide() {
+    // ① 今日到期（与技术主线同一套 due 数据）
+    var t = todayStr(), due = 0;
+    (window.MARVIS_CLUSTERS || []).forEach(function (c) {
+      if (c.zone !== '一档' && c.zone !== '二档') return;
+      c.topics.forEach(function (tp) {
+        var s = S.lv[c.id + '/' + tp.id];
+        if (s && s.due && s.due <= t && s.l >= 1) due++;
+      });
+    });
+    var rcl = window.MARVIS_RULE_CLUSTER, ccl = window.MARVIS_CARD_CLUSTER;
+    [rcl, ccl].forEach(function (c) {
+      if (!c) return;
+      c.topics.forEach(function (tp) {
+        var s = S.lv[c.id + '/' + tp.id];
+        if (s && s.due && s.due <= t && s.l >= 1) due++;
+      });
+    });
+    document.getElementById('side-due').innerHTML =
+      '<h4>今日到期 <em>复训阶梯 1 / 3 / 7 / 14 天</em></h4>' +
+      '<div class="side-big">' + due + '<small> 条等着被提取</small></div>' +
+      '<p class="side-note">' + (due ? '逾期久的排前面。提取（闭卷讲）比重看有效得多。' : '今天没有到期复训——去推进新主线或用加餐多长一块。') + '</p>' +
+      '<div class="side-btns"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页清账</a></div>';
+
+    // ② 今日情境：准则 + 原则卡里按日期轮换一张（每天换，不用挑）
+    var pool = [];
+    (window.MARVIS_RULES || []).forEach(function (r) {
+      pool.push({ kind: 'rule', id: r.id, name: r.name, src: '行事准则', scene: r.scene, action: r.action, href: 'rules.html#r-' + r.id });
+    });
+    allCards.forEach(function (c) {
+      pool.push({ kind: 'card', id: c.id, name: c.name, src: c.source, scene: c.scene, action: c.action, href: 'cards.html#card-' + c.id });
+    });
+    var d = new Date();
+    var di = d.getFullYear() * 372 + (d.getMonth() + 1) * 31 + d.getDate();
+    var pick = pool.length ? pool[di % pool.length] : null;
+    var usesN = pick ? (B.uses[pick.id] || []).length : 0;
+    document.getElementById('side-situ').innerHTML =
+      '<h4>今日情境 <em>' + (pick ? (pick.kind === 'rule' ? '行事准则' : '读厚原则卡') : '') + '</em></h4>' +
+      (pick
+        ? '<div style="font-size:15px;font-weight:500">' + pick.name + ' <span style="font-size:11px;color:#888780">' + pick.src + '</span></div>' +
+          '<div class="situ"><b>情境</b>　' + pick.scene +
+          '<details><summary>想好了，对一下标准动作</summary><div style="margin-top:6px">' + pick.action + '</div></details></div>' +
+          '<div class="side-btns">' +
+          '<a class="mv-btn mv-btn-primary" href="' + pick.href + '" style="text-decoration:none">去训练</a>' +
+          '<button class="mv-btn" type="button" onclick="marvisUse(\'' + pick.id + '\')">⚡ 记一笔：今天用上了</button>' +
+          '</div>' +
+          '<p class="side-note">这张卡真实用过 <b id="situ-use">' + usesN + '</b> 次。内化 = 概念变成动作，动作被真实场景反复提取。</p>'
+        : '<p class="side-note">还没有可轮换的情境卡——先读一本书，写一份读厚正本。</p>');
+
+    // ③ 内化进度
+    var rGot = 0, rTot = (rcl && rcl.topics.length) || 0;
+    if (rcl) rcl.topics.forEach(function (tp) { if (lvOf('rule/' + tp.id) >= MASTER) rGot++; });
+    var cGot = 0, cTot = (ccl && ccl.topics.length) || 0;
+    if (ccl) ccl.topics.forEach(function (tp) { if (lvOf('card/' + tp.id) >= MASTER) cGot++; });
+    function mini(label, got, tot, color) {
+      var pct = tot ? Math.round(got / tot * 100) : 0;
+      return '<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px">' +
+        '<span>' + label + '</span><span style="color:#888780">' + got + '/' + tot + '</span></div>' +
+        '<div class="mini-track"><i style="width:' + pct + '%;background:' + color + '"></i></div></div>';
+    }
+    document.getElementById('side-progress').innerHTML =
+      '<h4>内化进度 <em>「会了」以上的条目</em></h4>' +
+      mini('行事准则', rGot, rTot, '#7F77DD') +
+      mini('读厚原则卡', cGot, cTot, '#D85A30') +
+      '<div class="side-btns" style="margin-top:10px">' +
+      '<a class="mv-btn" href="cards.html" style="text-decoration:none">内化馆</a>' +
+      '<a class="mv-btn" href="rules.html" style="text-decoration:none">行事准则</a></div>';
+  })();
+
+  // ⚡ 打卡：真实用上一次（存 mv.brain.v1，随 mv.* 云同步；内化馆同键可见）
+  window.marvisUse = function (id) {
+    var note = prompt('在哪用上的？（一句话，可留空）', '');
+    if (note === null) return;
+    B.uses[id] = B.uses[id] || [];
+    B.uses[id].push({ d: todayStr(), note: (note || '').trim() });
+    try { localStorage.setItem(BKEY, JSON.stringify(B)); } catch (e) {}
+    var el = document.getElementById('situ-use');
+    if (el) el.textContent = (B.uses[id] || []).length;
+  };
+
+  // ── 2D 降级（无 WebGL 时内容不丢）────────────────────────────
+  function fallback2D(reason) {
+    var st = document.getElementById('stage');
+    st.style.height = 'auto';
+    st.innerHTML = '<p class="mv-note" style="margin:10px 0 0;color:#5F5E5A">已降级为 2D 列表（' +
+      reason + '）。内容与下钻完全一样，只是不立体。</p>';
+    var fb = document.createElement('div');
+    fb.className = 'fallback';
+    HALLS.forEach(function (h) {
+      var box = document.createElement('div');
+      box.className = 'fb-hall';
+      box.innerHTML = '<h4>' + h.name + '</h4>';
+      stars.filter(function (n) { return n.hall === h.k; }).forEach(function (n) {
+        var lv = lv3(n);
+        var a = document.createElement('a');
+        a.textContent = (lv === 2 ? '● ' : lv === 1 ? '◐ ' : '○ ') + n.name +
+          (n.tot ? '（' + n.got + '/' + n.tot + '）' : '');
+        a.href = n.href || 'progress.html';
+        box.appendChild(a);
+      });
+      fb.appendChild(box);
+    });
+    st.appendChild(fb);
+    panelCore();
+  }
+  if (typeof THREE === 'undefined') { fallback2D('three.js 未加载'); return; }
+
+  // ══ 3D：知识星系 ═══════════════════════════════════════════
+  var stage = document.getElementById('stage');
+  var canvas = document.getElementById('cv');
+  var labelBox = document.getElementById('labels');
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  } catch (e) {
+    fallback2D('这台机器/浏览器没有可用的 WebGL');
+    return;
+  }
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0E1322);
+  scene.fog = new THREE.Fog(0x0E1322, 60, 130);
+  var camera = new THREE.PerspectiveCamera(46, 1, 0.1, 400);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+  var lk = new THREE.DirectionalLight(0xffffff, 0.7);
+  lk.position.set(8, 18, 12);
+  scene.add(lk);
+
+  // 柔光贴图（恒星/核心的辉光用）
+  var glowTex = (function () {
+    var c = document.createElement('canvas'); c.width = c.height = 128;
+    var g = c.getContext('2d');
+    var gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.22, 'rgba(255,255,255,.5)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+
+  var pickables = [];
+  var orbiters = [];   // { mesh, r, angle, speed, group }——行星沿自身轨道慢转
+
+  function addGlow(parent, colorHex, opacity, scale) {
+    var sm = new THREE.SpriteMaterial({ map: glowTex, color: colorHex, transparent: true,
+      opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+    var sp = new THREE.Sprite(sm);
+    sp.scale.set(scale, scale, 1);
+    parent.add(sp);
+    return sp;
+  }
+
+  // 核心恒星 = 我
+  var CORE_Y = 2;
+  var core = new THREE.Mesh(
+    new THREE.SphereGeometry(2.1, 40, 28),
+    new THREE.MeshStandardMaterial({ color: 0xEFE3BC, emissive: 0xC9A85C, emissiveIntensity: 0.55, roughness: 0.4 })
+  );
+  core.position.set(0, CORE_Y, 0);
+  core.userData.isCore = true;
+  scene.add(core);
+  pickables.push(core);
+  addGlow(scene, 0xD9C48C, 0.34, 9).position.copy(core.position);
+
+  // 五团星系按五边形摆位（本事居左、作品后左、战场后右、书架前右、准则前左）
+  var CLUSTER_R = 19;
+  var HALL_ANGLE = { tech: 270, work: 342, field: 54, books: 126, os: 198 };
+  function clusterCenter(hall) {
+    var a = (HALL_ANGLE[hall] || 0) * Math.PI / 180;
+    return new THREE.Vector3(Math.sin(a) * CLUSTER_R, CORE_Y, -Math.cos(a) * CLUSTER_R);
+  }
+  HALLS.forEach(function (h) { h.center = clusterCenter(h.k); });
+
+  // 神经连线：核心 → 各团中心
+  HALLS.forEach(function (h) {
+    var geo = new THREE.BufferGeometry().setFromPoints([core.position.clone(), h.center.clone()]);
+    scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({
+      color: h.color, transparent: true, opacity: 0.14 })));
+  });
+
+  function starColor(h, lv) {
+    var c = new THREE.Color(h.color);
+    if (lv === 0) c.lerp(new THREE.Color(GRAY), 0.72);
+    else if (lv === 2) c.lerp(new THREE.Color(h.dark), 0.35);
+    return c;
+  }
+
+  var clusters = {};
+  HALLS.forEach(function (h) { clusters[h.k] = stars.filter(function (n) { return n.hall === h.k; }); });
+
+  Object.keys(clusters).forEach(function (hk) {
+    var h = HALLS.filter(function (x) { return x.k === hk; })[0];
+    var list = clusters[hk];
+    var cols = Math.min(4, list.length), rows = Math.ceil(list.length / cols);
+    var SP = 7.4;
+    list.forEach(function (n, i) {
+      var col = i % cols, row = Math.floor(i / cols);
+      var x = (col - (cols - 1) / 2) * SP + (row % 2 ? SP * 0.28 : 0);
+      var z = (row - (rows - 1) / 2) * SP;
+      var pos = h.center.clone().add(new THREE.Vector3(x, (i % 3) * 0.5 - 0.5, z));
+
+      var lv = lv3(n);
+      var r = 0.78 + Math.min(n.planets.length, 9) * 0.1;
+      var colr = starColor(h, lv);
+      var mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 30, 22),
+        new THREE.MeshStandardMaterial({ color: colr, emissive: colr, emissiveIntensity: lv === 0 ? 0.12 : (lv === 1 ? 0.42 : 0.8), roughness: 0.5 })
+      );
+      mesh.position.copy(pos);
+      mesh.userData.star = n;
+      scene.add(mesh);
+      n.mesh = mesh;
+      pickables.push(mesh);
+      addGlow(scene, colr.getHex(), lv === 0 ? 0.10 : (lv === 1 ? 0.30 : 0.55), r * (lv === 0 ? 3.4 : 4.6)).position.copy(pos);
+
+      // 行星轨道（每颗恒星一个小倾斜面）
+      var grp = new THREE.Group();
+      grp.position.copy(pos);
+      grp.rotation.x = ((i % 5) - 2) * 0.09;
+      grp.rotation.z = ((i % 4) - 1.5) * 0.11;
+      scene.add(grp);
+      n.orbit = grp;
+
+      var rings = n.planets.length > 5 ? [2.5, 3.7] : [2.9];
+      n.planets.forEach(function (pl, pi) {
+        var rr = rings[pi % rings.length] + Math.floor(pi / (rings.length * 3)) * 0.55;
+        var pc = pl.lv === 0 ? new THREE.Color(GRAY).lerp(new THREE.Color(h.color), 0.3)
+               : pl.lv === 1 ? new THREE.Color(h.color)
+               : new THREE.Color(0xFFF3D6);
+        var pm = new THREE.Mesh(
+          new THREE.SphereGeometry(pl.lv >= 2 ? 0.34 : 0.26, 16, 12),
+          new THREE.MeshStandardMaterial({ color: pc, emissive: pc, emissiveIntensity: pl.lv === 0 ? 0.1 : (pl.lv === 1 ? 0.45 : 0.95), roughness: 0.45 })
+        );
+        pm.userData.planet = pl;
+        grp.add(pm);
+        pl.mesh = pm;
+        pickables.push(pm);
+        var a0 = (pi * 2.399) % (Math.PI * 2);   // 黄金角散开，不同恒星不同相位
+        orbiters.push({ mesh: pm, r: rr, angle: a0, speed: 0.16 / rr, group: grp });
+
+        var lb = document.createElement('div');
+        lb.className = 'lbl';
+        lb.textContent = pl.name;
+        lb.style.display = 'none';
+        lb.addEventListener('click', function (e) { e.stopPropagation(); panelPlanet(pl); });
+        labelBox.appendChild(lb);
+        pl.label = lb;
+      });
+
+      // 轨道线
+      rings.forEach(function (rr) {
+        var seg = 72, pts = [];
+        for (var k = 0; k <= seg; k++) {
+          var a = k / seg * Math.PI * 2;
+          pts.push(new THREE.Vector3(Math.cos(a) * rr, 0, Math.sin(a) * rr));
+        }
+        var geo = new THREE.BufferGeometry().setFromPoints(pts);
+        grp.add(new THREE.Line(geo, new THREE.LineBasicMaterial({
+          color: h.color, transparent: true, opacity: lv === 0 ? 0.08 : 0.16 })));
+      });
+
+      // 恒星标签（只挂名字，掌握度点开面板看——短标签才铺得开）
+      var lb2 = document.createElement('div');
+      lb2.className = 'lbl star-lbl';
+      lb2.textContent = n.name;
+      lb2.addEventListener('click', function (e) { e.stopPropagation(); panelStar(n); });
+      labelBox.appendChild(lb2);
+      n.label = lb2;
+    });
+
+    // 星系团名标签
+    var hl = document.createElement('div');
+    hl.className = 'lbl hall-lbl';
+    var nPlanets = list.reduce(function (s, n) { return s + n.planets.length; }, 0);
+    hl.innerHTML = '<b>' + h.name + '</b><i>' + list.length + ' 恒星 · ' + nPlanets + ' 行星</i>';
+    labelBox.appendChild(hl);
+    h.label = hl;
+    h.anchor = h.center.clone().add(new THREE.Vector3(0, 4.6, 0));
+  });
+
+  var coreLbl = document.createElement('div');
+  coreLbl.className = 'lbl hall-lbl';
+  coreLbl.innerHTML = '<b>我</b><i>整体 ' + overall + '% · 内化 ' + internal + '%</i>';
+  coreLbl.addEventListener('click', function (e) { e.stopPropagation(); panelCore(); });
+  labelBox.appendChild(coreLbl);
+  var coreAnchor = new THREE.Vector3(0, CORE_Y + 3.6, 0);
+
+  // ── 相机：绕核心自由转，俯仰与距离限幅 ──────────────────────
+  var theta = 0.35, phi = 1.02, dist = 54;
+  var drag = false, px = 0, py = 0, moved = 0;
+  stage.addEventListener('mousedown', function (e) {
+    drag = true; moved = 0; px = e.clientX; py = e.clientY; stage.classList.add('dragging');
+  });
+  window.addEventListener('mouseup', function () { drag = false; stage.classList.remove('dragging'); });
+  window.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - px, dy = e.clientY - py;
+    moved += Math.abs(dx) + Math.abs(dy);
+    theta -= dx * 0.005;
+    phi = Math.max(0.3, Math.min(1.45, phi - dy * 0.004));
+    px = e.clientX; py = e.clientY;
+  });
+  stage.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    dist = Math.max(14, Math.min(90, dist + e.deltaY * 0.03));
+  }, { passive: false });
+  // 触屏：单指转，双指捏合缩放
+  var touches = {}, pinch0 = 0, dist0 = 0;
+  stage.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 1) {
+      drag = true; moved = 0; px = e.touches[0].clientX; py = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      drag = false;
+      pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      dist0 = dist;
+    }
+  }, { passive: true });
+  stage.addEventListener('touchmove', function (e) {
+    if (e.touches.length === 1 && drag) {
+      var dx2 = e.touches[0].clientX - px, dy2 = e.touches[0].clientY - py;
+      moved += Math.abs(dx2) + Math.abs(dy2);
+      theta -= dx2 * 0.005;
+      phi = Math.max(0.3, Math.min(1.45, phi - dy2 * 0.004));
+      px = e.touches[0].clientX; py = e.touches[0].clientY;
+      e.preventDefault();
+    } else if (e.touches.length === 2) {
+      var pn = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      dist = Math.max(14, Math.min(90, dist0 * pinch0 / Math.max(20, pn)));
+      e.preventDefault();
+    }
+  }, { passive: false });
+  window.addEventListener('touchend', function () { drag = false; });
+
+  var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  function pick(e) {
+    var r = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    return raycaster.intersectObjects(pickables, false)[0];
+  }
+  var hoveredStar = null, hoveredPlanet = null;
+  function setHover(obj) {
+    var n = obj && obj.object.userData.star, pl = obj && obj.object.userData.planet;
+    var coreHit = obj && obj.object.userData.isCore;
+    if (hoveredStar && hoveredStar.mesh) hoveredStar.mesh.scale.set(1, 1, 1);
+    if (hoveredPlanet && hoveredPlanet.mesh) hoveredPlanet.mesh.scale.set(1, 1, 1);
+    hoveredStar = n || null;
+    hoveredPlanet = pl || null;
+    if (hoveredStar) hoveredStar.mesh.scale.set(1.25, 1.25, 1.25);
+    if (hoveredPlanet) hoveredPlanet.mesh.scale.set(1.6, 1.6, 1.6);
+    stage.style.cursor = obj ? 'pointer' : '';
+    return { star: hoveredStar, planet: hoveredPlanet, core: coreHit };
+  }
+  stage.addEventListener('click', function (e) {
+    if (moved > 6) return;                      // 拖拽结束不算点击
+    var hit = pick(e);
+    var w = setHover(hit);
+    if (w.core) { panelCore(); return; }
+    if (w.planet) { panelPlanet(w.planet); return; }
+    if (w.star) { panelStar(w.star); return; }
+  });
+  stage.addEventListener('mousemove', function (e) {
+    if (drag) return;
+    var hit = pick(e);
+    var w = setHover(hit);
+    stars.forEach(function (x) {
+      if (x.label) x.label.classList.toggle('hot', x === w.star);
+      x.planets.forEach(function (pl) {
+        if (pl.label) {
+          var on = pl === w.planet;
+          pl.label.style.display = on ? 'block' : 'none';
+          pl.label.classList.toggle('hot', on);
+        }
+      });
+    });
+  });
+
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var v = new THREE.Vector3();
+  function place(lb, vec, hideBehind) {
+    v.copy(vec).project(camera);
+    var w = stage.clientWidth, h = stage.clientHeight;
+    lb.style.left = ((v.x * 0.5 + 0.5) * w) + 'px';
+    lb.style.top = ((-v.y * 0.5 + 0.5) * h) + 'px';
+    lb.style.visibility = (v.z <= 1 && (!hideBehind || v.z < 1)) ? 'visible' : 'hidden';
+  }
+
+  panelCore();
+
+  var lastT = Date.now();
+  (function loop() {
+    requestAnimationFrame(loop);
+    var now = Date.now(), dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    // 行星公转：慢速、错相位，星系是活的
+    orbiters.forEach(function (o) {
+      o.angle += o.speed * dt;
+      o.mesh.position.set(Math.cos(o.angle) * o.r, 0, Math.sin(o.angle) * o.r);
+    });
+    camera.position.set(
+      dist * Math.sin(phi) * Math.sin(theta),
+      dist * Math.cos(phi),
+      dist * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(0, CORE_Y, 0);
+    renderer.render(scene, camera);
+
+    HALLS.forEach(function (h) { if (h.label) place(h.label, h.anchor, true); });
+    place(coreLbl, coreAnchor, true);
+    stars.forEach(function (n) {
+      if (!n.label) return;
+      place(n.label, n.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)), true);
+      n.planets.forEach(function (pl) {
+        if (pl.label && pl.label.style.display === 'block') {
+          place(pl.label, pl.mesh.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.7, 0)));
+        }
+      });
+    });
+  })();
+
+  window.MARVIS_BRAIN = { stars: stars, overall: overall, internal: internal };
+})();
+</script>
+</body>
+</html>
