@@ -44,7 +44,7 @@ const lv = {}; lv[lineKey] = { l: 1, last: '2026-10-07', due: null, hit: 1, miss
 const after = MarvisInsight.aggregate(I, IDX, lv, { 'jy-1': ['2026-10-07 说了就算'] });
 const promoted = after.domains.flatMap(d => d.files).filter(f => f.stage >= 3);
 ok(promoted.some(f => TP[f.path] === linePage), '主线有训练记录 → 该主线的母题正本翻「训练」档');
-const jyFile = after.domains.flatMap(d => d.files).find(f => f.path === 'wiki/cards/原则-精确努力.md');
+const jyFile = after.domains.flatMap(d => d.files).find(f => f.path === 'wiki/cards/原则-精准努力.md');
 ok(jyFile && jyFile.stage === 4, '原则卡有 uses 打卡 → 翻「亮」档（实际 ' + (jyFile && jyFile.stage) + '）');
 ok(after.domains.every(d => d.counts.reduce((a, b) => a + b, 0) === d.total), '每域五档计数守恒');
 ok(Array.isArray(DOM) && DOM.length >= 4 && DOM.every(d => d.name && d.color), '域登记表就绪（' + DOM.map(d => d.name).join('/') + '）');
