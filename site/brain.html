@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>我的书架 · 第二大脑</title>
+<title>第二大脑 · 人生画像</title>
 <link rel="stylesheet" href="_components/marvis.css">
 <style>
   .brain-cols { display: flex; gap: 1.5rem; align-items: stretch; margin: 1.25rem 0 1rem; }
@@ -124,12 +124,9 @@
 <div class="mv-wrap-lg">
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
-    <h1 class="mv-h1" style="margin:0">我的书架</h1>
+    <h1 class="mv-h1" style="margin:0">人生画像 · 书架</h1>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
-      <a class="mv-btn" href="cards.html" style="text-decoration:none">内化馆</a>
-      <a class="mv-btn" href="rules.html" style="text-decoration:none">行事准则</a>
-      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
     </div>
   </div>
   <p class="mv-sub intro">
@@ -146,9 +143,9 @@
       <div id="labels"></div>
     </div>
     <div id="side">
-      <div class="side-card" id="side-due"></div>
-      <div class="side-card" id="side-situ"></div>
-      <div class="side-card" id="side-progress"></div>
+      <div class="side-card" id="side-who"></div>
+      <div class="side-card" id="side-map"></div>
+      <div class="side-card" id="side-track"></div>
     </div>
   </div>
 
@@ -195,6 +192,10 @@
 <script src="_data/rules.js"></script>
 <script src="_data/cards.js"></script>
 <script src="_data/modules.js"></script>
+<script src="_data/pagekey.js"></script>
+<script src="_data/insight.js"></script>
+<script src="_data/domains.js"></script>
+<script src="_components/insight.js"></script>
 <script>
 (function () {
   'use strict';
@@ -376,7 +377,7 @@
       '<div class="meta">这座书架共 ' + nodes.length + ' 本：已读透 <b>' + cnt[2] +
       '</b> · 正在读 <b>' + cnt[1] + '</b> · 还没读进去 <b>' + cnt[0] + '</b></div>' +
       '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页</a>' +
-      ' <a class="mv-btn" href="cards.html" style="text-decoration:none">去内化馆</a></div>';
+      '</div>';
     nodes.forEach(function (x) { if (x.label) x.label.classList.remove('hot'); });
   }
 
@@ -920,74 +921,73 @@
     if (hovered && hovered.label) place(hovered.label, hovered.mesh.position.clone().add(new THREE.Vector3(0, BOOK_H / 2 + 0.45, 0.6)));
   })();
 
-  // ── 今日内化侧栏 ───────────────────────────────────────────
-  (function buildSide() {
-    // ① 今日到期（与技术主线同一套 due 数据）
-    var t = todayStr(), due = 0;
-    (window.MARVIS_CLUSTERS || []).forEach(function (c) {
-      if (c.zone !== '一档' && c.zone !== '二档') return;
-      c.topics.forEach(function (tp) {
-        var s = S.lv[c.id + '/' + tp.id];
-        if (s && s.due && s.due <= t && s.l >= 1) due++;
-      });
+  // ── 画像三栏（PLAN v2 第2期）：我是谁 / 我的版图 / 我的轨迹 ──
+  // 今日职责（到期清单、今日情境）已唯一归今日页；本页只回答「我在哪、往哪走」。
+  (function buildPortrait() {
+    var IDX = window.MarvisInsight.buildIndex({
+      clusters: window.MARVIS_CLUSTERS, drill: window.MARVIS_DRILL,
+      ruleCluster: window.MARVIS_RULE_CLUSTER, cards: window.MARVIS_CARDS,
+      topicPage: window.MARVIS_TOPIC_PAGE
     });
-    [window.MARVIS_RULE_CLUSTER, window.MARVIS_CARD_CLUSTER].forEach(function (c) {
-      if (!c) return;
-      c.topics.forEach(function (tp) {
-        var s = S.lv[c.id + '/' + tp.id];
-        if (s && s.due && s.due <= t && s.l >= 1) due++;
-      });
-    });
-    document.getElementById('side-due').innerHTML =
-      '<h4>今日到期 <em>复训阶梯 1 / 3 / 7 / 14 天</em></h4>' +
-      '<div class="side-big">' + due + '<small> 条等着被提取</small></div>' +
-      '<p class="side-note">' + (due ? '逾期久的排前面。提取（闭卷讲）比重看有效得多。' : '今天没有到期复训——去推进新主线或用加餐多长一块。') + '</p>' +
-      '<div class="side-btns"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页清账</a></div>';
+    var AGG = window.MarvisInsight.aggregate(window.MARVIS_INSIGHT, IDX, (S.lv || {}), (B.uses || {}));
 
-    // ② 今日情境：准则 + 原则卡里按日期轮换一张（每天换，不用挑）
-    var pool = [];
-    (window.MARVIS_RULES || []).forEach(function (r) {
-      pool.push({ kind: 'rule', id: r.id, name: r.name, src: '行事准则', scene: r.scene, action: r.action, href: 'rules.html#r-' + r.id });
-    });
-    ((window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || []).forEach(function (c) {
-      pool.push({ kind: 'card', id: c.id, name: c.name, src: c.source, scene: c.scene, action: c.action, href: 'cards.html#card-' + c.id });
-    });
-    var d = new Date();
-    var di = d.getFullYear() * 372 + (d.getMonth() + 1) * 31 + d.getDate();
-    var pick = pool.length ? pool[di % pool.length] : null;
-    var usesN = pick ? (B.uses[pick.id] || []).length : 0;
-    document.getElementById('side-situ').innerHTML =
-      '<h4>今日情境 <em>' + (pick ? (pick.kind === 'rule' ? '行事准则' : '读厚原则卡') : '') + '</em></h4>' +
-      (pick
-        ? '<div style="font-size:1rem;font-weight:600">' + pick.name + ' <span style="font-size:0.8125rem;font-weight:400;color:var(--mv-muted)">' + pick.src + '</span></div>' +
-          '<div class="situ"><b>情境</b>　' + pick.scene +
-          '<details><summary>想好了，对一下标准动作</summary><div style="margin-top:6px">' + pick.action + '</div></details></div>' +
-          '<div class="side-btns">' +
-          '<a class="mv-btn mv-btn-primary" href="' + pick.href + '" style="text-decoration:none">去训练</a>' +
-          '<button class="mv-btn" type="button" onclick="marvisUse(\'' + pick.id + '\')">⚡ 记一笔：今天用上了</button>' +
-          '</div>' +
-          '<p class="side-note">这张卡真实用过 <b id="situ-use">' + usesN + '</b> 次。内化 = 概念变成动作，动作被真实场景反复提取。</p>'
-        : '<p class="side-note">还没有可轮换的情境卡——先读一本书，写一份读厚正本。</p>');
+    // ① 我是谁：当前战役 + 位置 + 总体进度（overall 在上方已按本事+作品算出）
+    var dom = (window.MARVIS_DOMAINS || []);
+    document.getElementById('side-who').innerHTML =
+      '<h4>我是谁 <em>位置与战役</em></h4>' +
+      '<div class="side-big">2027 秋招<small> · 当前唯一挂载战役</small></div>' +
+      '<p class="side-note">能力底盘 = Agent 应用开发（AI 主战场四簇 + 后端基本盘）。' +
+      '整体掌握度 <b>' + overall + '%</b>（本事 + 作品口径），内化线（准则 + 读厚卡）单列看版图。</p>' +
+      '<div class="side-btns"><a class="mv-btn" href="obsidian://open?vault=Marvis&amp;file=wiki%2Ftopics%2FAI%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%83%BD%E5%8A%9B%E5%9C%B0%E5%9B%BE" style="text-decoration:none">能力地图</a></div>';
 
-    // ③ 内化进度
-    var rGot = 0, rTot = (window.MARVIS_RULES || []).length;
-    (window.MARVIS_RULES || []).forEach(function (r) { if (lvOf('rule/' + r.id) >= MASTER) rGot++; });
-    var cAll = (window.MARVIS_CARDS && window.MARVIS_CARDS.principles) || [];
-    var cGot = 0, cTot = cAll.length;
-    cAll.forEach(function (c) { if (lvOf('card/' + c.id) >= MASTER) cGot++; });
-    function mini(label, got, tot, color) {
-      var pct = tot ? Math.round(got / tot * 100) : 0;
+    // ② 我的版图：域 × 五档矩阵（与今日页「内化速览」同一实现、同一份数据）
+    var LBL = AGG.stageNames, COL = AGG.stageCss;
+    var order = dom.map(function (d) { return d.name; });
+    var byName = {};
+    AGG.domains.forEach(function (d) { byName[d.name] = d; });
+    var rows = order.map(function (name) {
+      var d = byName[name];
+      if (!d || !d.total) {
+        return '<div style="margin-top:0.625rem"><div style="display:flex;justify-content:space-between;font-size:0.8125rem">' +
+          '<span style="color:var(--mv-muted)">' + name + '</span><span style="color:var(--mv-muted)">还没长</span></div>' +
+          '<div class="mini-track"><i style="width:0"></i></div></div>';
+      }
+      var tot = d.total || 1;
+      var segs = d.counts.map(function (c, i) {
+        return c ? '<i style="display:inline-block;width:' + (c / tot * 100) + '%;height:100%;background:' + COL[i] + '"></i>' : '';
+      }).join('');
       return '<div style="margin-top:0.625rem"><div style="display:flex;justify-content:space-between;font-size:0.8125rem">' +
-        '<span>' + label + '</span><span style="color:var(--mv-muted)">' + got + '/' + tot + '</span></div>' +
-        '<div class="mini-track"><i style="width:' + pct + '%;background:' + color + '"></i></div></div>';
+        '<span>' + name + '</span><span style="color:var(--mv-muted)">' + d.total + ' 正本 · 内化中 ' + d.internalized + '</span></div>' +
+        '<div class="mini-track" style="display:flex">' + segs + '</div></div>';
+    }).join('');
+    var leg = '<div style="display:flex;gap:.5rem;font-size:.75rem;color:var(--mv-muted);margin-top:.5rem;flex-wrap:wrap">' +
+      LBL.map(function (l, i) { return '<span><i style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + COL[i] + ';margin-right:3px"></i>' + l + '</span>'; }).join('') + '</div>';
+    document.getElementById('side-map').innerHTML =
+      '<h4>我的版图 <em>域 × 内化五档</em></h4>' + rows + leg +
+      '<div class="side-btns"><a class="mv-btn" href="index.html#insight" style="text-decoration:none">今日页同款速览</a></div>';
+
+    // ③ 我的轨迹：真实反馈三项——⚡用上次数、已读透正本、本周台账闭环
+    var usesN = 0;
+    Object.keys(B.uses || {}).forEach(function (k) { usesN += (B.uses[k] || []).length; });
+    var neu = nodes.filter(function (n) { return (n.hall === 'os' || n.hall === 'books') && !n.untrained; }).length;
+    var wk = 0, wd;
+    try {
+      var LS = JSON.parse(localStorage.getItem('mv.ledger.v1')) || {};
+      var d0 = new Date(); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
+      var ws = d0.getFullYear() + '-' + ('0' + (d0.getMonth() + 1)).slice(-2) + '-' + ('0' + d0.getDate()).slice(-2);
+      Object.keys(LS.done || {}).forEach(function (k) { if (LS.done[k] >= ws) wk++; });
+      wd = LS.check;
+    } catch (e) {}
+    function tri(label, v, unit) {
+      return '<div style="flex:1;min-width:4.5rem"><div class="ms-label" style="font-size:.75rem;color:var(--mv-muted)">' + label + '</div>' +
+        '<div class="side-big" style="font-size:1.25rem">' + v + '<small style="font-size:.75rem"> ' + unit + '</small></div></div>';
     }
-    document.getElementById('side-progress').innerHTML =
-      '<h4>内化进度 <em>「会了」以上的条目</em></h4>' +
-      mini('行事准则', rGot, rTot, '#7F77DD') +
-      mini('读厚原则卡', cGot, cTot, '#D85A30') +
-      '<div class="side-btns" style="margin-top:10px">' +
-      '<a class="mv-btn" href="cards.html" style="text-decoration:none">内化馆</a>' +
-      '<a class="mv-btn" href="rules.html" style="text-decoration:none">行事准则</a></div>';
+    document.getElementById('side-track').innerHTML =
+      '<h4>我的轨迹 <em>真实反馈，不是感觉</em></h4>' +
+      '<div style="display:flex;gap:.5rem;flex-wrap:wrap">' +
+      tri('⚡ 真实用上', usesN, '次') + tri('已读透', neu, '正本') + tri('本周闭环', wk, '题') + '</div>' +
+      '<p class="side-note">' + (wd ? '上次台账巡检 ' + wd + '。' : '台账还没巡检过。') +
+      '轨迹只记真实发生的事：用上一次、读透一份、闭环一题。</p>';
   })();
 
   // ⚡ 打卡：真实用上一次（存 mv.brain.v1，随 mv.* 云同步；内化馆同键可见）

@@ -500,3 +500,14 @@
 - **对账测试**：新建 `site/_tests/test_insight.js`（四断言：TOPIC_PAGE 覆盖 96 / insight 母题全映射 / 页路径全挂主线（训练档可达）/ 原则卡正本全映射派单 id）；CI 套件列表与 CLAUDE/MAP 口径同步 6 node + 1 python
 - **smell 清理**（Standards 轴 5 项）：site/README.md `_data` 口径残留更新（decks 移除）；marvis.js 头注组件数 6→8（实际 define 数）；index.html `today()` 与 marvis.js 重复处加"测试 VM 自包含需刻意重复"注释；`write_insight()` 去函数内重复 import、双产出循环加刻意设计注释；mv.review 清除码加**可见说明**（规则抽屉一行）与退役时点注释（保留至 2026-11-07）
 - 验证：空账本五档分布 0 暗 102 / 读厚 26（= 96 母题 + 13 地基 - 7 验收 + thinking/interview）；96 母题 + 18 卡全部可达训练档；build 重建零 diff；七套件全绿
+
+## 2026-10-07 深夜 III（第2期画像：三栏画像页 + 聚合库上移 + 入口退役）
+
+- **五档聚合唯一实现上移**：新建 `site/_components/insight.js`（buildIndex / stageOf / aggregate，UMD 双导出——浏览器挂 window.MarvisInsight，Node 测试直接 require）；今日页内联聚合块删除改用库，画像页共用同一实现——「今日页速览与画像页版图永远是同一份真话」
+- **brain.html 重构为三栏画像页**（PLAN v2 第2期）：标题改「第二大脑 · 人生画像」；右栏「今日内化」三卡（今日到期/今日情境/内化进度）**退役**——今日职责唯一归今日页，本页只回答「我在哪、往哪走」；新三栏：①我是谁（当前战役 + 整体掌握度）②我的版图（域×五档矩阵，按 `MARVIS_DOMAINS` 登记 事业/学识/关系/身心 排序，无数据的域如实显示「还没长」）③我的轨迹（⚡真实用上次数 / 已读透正本 / 本周台账闭环——只记真实发生的事）
+- **入口退役**：brain 头部「内化馆/行事准则」独立入口按钮与面板「去内化馆」拆除——cards.html/rules.html 降为下钻视图（仅卡面锚点与反向导航可达），全站顶级入口收敛为 今日 + 第二大脑 两页
+- **新数据件**：`_data/domains.js`（域登记表，一行一域有首卡才建，候选域财富/审美注释待启用）；`_data/pagekey.js` 第1期已建，本期画像页同源消费
+- **test_insight.js 升级**：从「映射对账」扩为「映射对账 + 五档行为模拟」——空账本无训练/亮档、主线有记录→母题正本翻训练档、原则卡有 uses→翻亮档、每域五档计数守恒、域登记表就绪，共 9 断言
+- **顺手抓出并修复一个真雷**：审查修复 a88aaa1 删 write_insight 函数内 `import datetime as _dt` 时漏了第二处 `_dt.date.fromisoformat` 引用——**build 自该提交起实际炸在 recent 收集循环**（此前验证命令取的是管道 tail 的退出码，假绿）；本节修复为 datetime.date，build 真实 exit 0。教训：管道后 `$?` 不是 python 的，验证一律用 `python ...; echo $?`
+- **3D 取舍（记 PLAN 停车场）**：宫殿皮肤本期只接数据（版图矩阵/图例读共享聚合），书厚三态视觉语言不动——五档渐变着色等主人在浏览器确认三栏手感后再定，避免一次重构 3D 场景
+- 回归：build 真实通过，七套件全绿（dispatch / progression / render / sync / brain / insight / ledger）

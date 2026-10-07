@@ -2579,7 +2579,7 @@ def write_insight():
                     raw = (meta.get(key) or "").strip()
                     if raw:
                         try:
-                            age = (today - _dt.date.fromisoformat(raw[:10])).days
+                            age = (today - datetime.date.fromisoformat(raw[:10])).days
                         except ValueError:
                             break
                         if age <= RECENT_DAYS:
