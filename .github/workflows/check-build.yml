@@ -1,7 +1,7 @@
 name: Check build freshness（落盘即上站）
 
-> PLAN v2 治理律 1 的机器执行：md 正本改了、site/ 派生物没重新生成 → 本检查红。
-> 本地修法恒为一条：python site/build.py 后重新提交。
+# PLAN v2 治理律 1 的机器执行：md 正本改了、site/ 派生物没重新生成 → 本检查红。
+# 本地修法恒为一条：python site/build.py 后重新提交。
 
 on:
   push:
