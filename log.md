@@ -511,3 +511,14 @@
 - **顺手抓出并修复一个真雷**：审查修复 a88aaa1 删 write_insight 函数内 `import datetime as _dt` 时漏了第二处 `_dt.date.fromisoformat` 引用——**build 自该提交起实际炸在 recent 收集循环**（此前验证命令取的是管道 tail 的退出码，假绿）；本节修复为 datetime.date，build 真实 exit 0。教训：管道后 `$?` 不是 python 的，验证一律用 `python ...; echo $?`
 - **3D 取舍（记 PLAN 停车场）**：宫殿皮肤本期只接数据（版图矩阵/图例读共享聚合），书厚三态视觉语言不动——五档渐变着色等主人在浏览器确认三栏手感后再定，避免一次重构 3D 场景
 - 回归：build 真实通过，七套件全绿（dispatch / progression / render / sync / brain / insight / ledger）
+
+## 2026-10-07 深夜 IV（第2期审查修复：入口残留三处根治 + wikilink 存量分组 bug + 共享渲染收拢）
+
+- 缘起：主人对第2期跑双轴复审。实质缺口=入口退役 3 处残留；修复如下
+- **入口残留根治（三层）**：① brain 点书面板「去内化馆」→ 两态按钮（卡锚点→「打开卡详情」/ obsidian→「阅读闭环」）；② books 厅无正本书 href 回退 `cards.html` → null（fallback2D 无 href 灰显不可点）；③ **生成器层**——build.py wikilink 的 R 系链接锚点化（别名提取 R\d+ → `rules.html#r-RX`，全库 8 条关联别名 100% 带 id，22 条渲染链接全部锚点、零裸链）。**入口退役断言固化进 test_insight**（手写页源码静态断言 + build 产物零裸链断言，双向看防复发与回长）
+- **顺手挖出一个存量 bug**：wikilink 的 `m.group(1).partition("|")` 切错了对象——正则把别名放 group(2)，group(1) 永远不含管道，导致关联区别名恒丢、只显示书名（e01576c 引入，此前从未被发现）。修正分组取值后 22 条关联首次以「R1-机会成本门」等全名+锚点呈现
+- **共享渲染收拢（smell）**：insight.js 增 `barHtml(AGG, {height, empty})`（五档条+图例唯一 HTML 实现，支持画像页空域「还没长」行）与 `buildIndexFromWindow()`（五参调用收拢）；今日页/画像页两份分叉渲染删除改用——视觉漂移起点消除
+- **domains.js join 键约定**：删摆设 id 字段；frontmatter domain 值 = build 聚合键 = 登记表 name，同一字符串；test_insight 新增「insight 域名 ∈ 登记表」断言——改中文名漏改 frontmatter 直接红，不再静默落「还没长」
+- **文档矛盾清理**：MAP L168 括号失衡修复（test_insight/test_brain 描述重写 + `_dom_stub.js` 共享桩登记）；MAP L162 行末「侧栏保留」旧句清理；CLAUDE「2026-10-03 加今日内化侧栏」旧句清理；CI step 名六套件→七套件；site/README `_data` 清单补 pagekey.js/domains.js
+- **test_brain 断言跟进**：「R 系关联链到 rules.html」升级为锚点形态 `rules.html#r-R\d+`（旧模式数无锚链接，锚点化后恒 0 而红）
+- 回归：七套件直取退出码全绿 + build 直验 exit=0

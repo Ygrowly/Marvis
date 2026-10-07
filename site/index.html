@@ -1677,32 +1677,13 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
     var n = I.domains.reduce(function (a, d) { return a + d.files.length; }, 0);
     if (sum) sum.textContent = n + ' 正本 · ' + I.domains.length + ' 域';
 
-    /* ── 内化度五档：唯一实现已上移 _components/insight.js（第2期），今日页与画像页共用 ── */
-    var IDX = window.MarvisInsight.buildIndex({
-      clusters: window.MARVIS_CLUSTERS, drill: window.MARVIS_DRILL,
-      ruleCluster: window.MARVIS_RULE_CLUSTER, cards: window.MARVIS_CARDS,
-      topicPage: window.MARVIS_TOPIC_PAGE
-    });
+    /* ── 内化度五档：实现与渲染都在 _components/insight.js（与画像页同一份） ── */
+    var IDX = window.MarvisInsight.buildIndexFromWindow(window);
     var LV = {}, USES = {};
     try { var _ps = JSON.parse(localStorage.getItem('mv.progress.v1')) || {}; LV = _ps.lv || {}; } catch (e) {}
     try { var _bs = JSON.parse(localStorage.getItem('mv.brain.v1')); USES = (_bs && _bs.uses) || {}; } catch (e) {}
     var AGG = window.MarvisInsight.aggregate(window.MARVIS_INSIGHT, IDX, LV, USES);
-    var LBL = AGG.stageNames, COL = AGG.stageCss;
-    var bar = AGG.domains.map(function (d) {
-      var tot = d.total || 1;
-      var segs = d.counts.map(function (c, i) {
-        return c ? '<div style="width:' + (c / tot * 100) + '%;background:' + COL[i] + '" title="' + LBL[i] + ' ' + c + '"></div>' : '';
-      }).join('');
-      return '<div style="margin-bottom:.625rem">' +
-        '<div style="display:flex;justify-content:space-between;font-size:.8125rem">' +
-        '<span>' + d.name + '</span><span style="color:var(--mv-muted)">' + d.total + ' 正本 · ' +
-        (d.internalized ? '内化中 ' + d.internalized : '训练待启动') + '</span></div>' +
-        '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden">' + segs + '</div></div>';
-    }).join('');
-    var legend = '<div style="display:flex;gap:.75rem;font-size:.75rem;color:var(--mv-muted);margin-bottom:.75rem;flex-wrap:wrap">' +
-      LBL.map(function (l, i) {
-        return '<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COL[i] + ';margin-right:4px"></i>' + l + '</span>';
-      }).join('') + '</div>';
+    var bar = window.MarvisInsight.barHtml(AGG);
     var list = R.length ? '<div class="mv-ms-label" style="margin:1rem 0 .5rem">新到架 <span style="font-weight:400">· 近 14 天落盘，点进 Obsidian 即读</span></div>' +
       R.map(function (r) {
         return '<div style="display:flex;gap:.75rem;font-size:.875rem;padding:.25rem 0">' +
@@ -1712,7 +1693,7 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
           (r.status && r.status !== 'integrated' ? '<span style="color:var(--mv-muted)">（' + r.status + '）</span>' : '') +
           '</div>';
       }).join('') : '';
-    box.innerHTML = legend + bar + list;
+    box.innerHTML = bar + list;
   })();
 
     if (gap === null || gap > 7) show('台账该巡检了', (gap === null ? '从没记过巡检' : '上次巡检 ' + LS.check + '，已隔 ' + gap + ' 天') + ' · 15 分钟逐条过一遍。');

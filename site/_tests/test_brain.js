@@ -66,8 +66,10 @@ for (const g of cards.grounds || []) {
 console.log('【内化馆关联节（2026-10-04 审查教训：grab_list 只认列表项，行内关联曾被静默丢掉）】');
 {
   const cardsHtml = fs.readFileSync(path.join(ROOT, 'cards.html'), 'utf8');
-  const rulesN = (cardsHtml.match(/href="rules\.html"/g) || []).length;
-  ok(rulesN >= 10, 'R 系关联链到 rules.html（≥10）', String(rulesN));
+  /* 2026-10-07 第2期审查修复：R 系关联全部锚点化 rules.html#r-RX（无锚裸链=治理事故，
+     test_insight 亦有零裸链断言双向看护） */
+  const rulesN = (cardsHtml.match(/href="rules\.html#r-R\d+"/g) || []).length;
+  ok(rulesN >= 10, 'R 系关联链到 rules.html#r- 锚点（≥10）', String(rulesN));
   ok(!cardsHtml.includes('[['), 'cards.html 无 raw [[ 残留');
   const cardsJs = fs.readFileSync(path.join(ROOT, '_data', 'cards.js'), 'utf8');
   const m = cardsJs.match(/window\.MARVIS_CARDS = (\{[\s\S]*?\});\s*\n/);

@@ -304,7 +304,7 @@
       hall: 'books', id: src, name: src,
       ratio: tot ? rSum / tot : 0, tot: tot, got: got,
       desc: (b.author ? b.author + ' · ' : '') + '读厚 ' + tot + ' 张 · 遇到情境知道怎么做',
-      href: b.href ? ob(b.href) : 'cards.html', lines: lines
+      href: b.href ? ob(b.href) : null, lines: lines
     });
   });
   [
@@ -376,7 +376,7 @@
       '内化线（准则 + 读厚卡）<b>' + internal + '%</b>（' + NG + '/' + NT + '）</div>' +
       '<div class="meta">这座书架共 ' + nodes.length + ' 本：已读透 <b>' + cnt[2] +
       '</b> · 正在读 <b>' + cnt[1] + '</b> · 还没读进去 <b>' + cnt[0] + '</b></div>' +
-      '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">去进度页</a>' +
+      '<div style="margin-top:10px"><a class="mv-btn mv-btn-primary" href="index.html" style="text-decoration:none">回今日</a>' +
       '</div>';
     nodes.forEach(function (x) { if (x.label) x.label.classList.remove('hot'); });
   }
@@ -397,7 +397,7 @@
         var lv = lv3(n);
         a.textContent = (lv === 2 ? '● ' : lv === 1 ? '◐ ' : '○ ') + n.name +
           (n.tot ? '（' + n.got + '/' + n.tot + '）' : '');
-        a.href = n.href || 'progress.html';
+        if (n.href) { a.href = n.href; } else { a.style.color = 'var(--mv-muted)'; a.style.cursor = 'default'; }
         box.appendChild(a);
       });
       fb.appendChild(box);
@@ -802,8 +802,8 @@
       n.lines.forEach(function (ln) {
         toc.appendChild(tocRow(ln.href, ln.lv, ln.n, ln.one || '读厚卡'));
       });
-      if (n.href && n.href.indexOf('cards.html') !== 0) acts.appendChild(actBtn(n.href, '阅读闭环', false));
-      acts.appendChild(actBtn('cards.html', '去内化馆', true));
+      if (n.href && n.href.indexOf('cards.html#') === 0) acts.appendChild(actBtn(n.href, '打开卡详情', true));
+      else if (n.href) acts.appendChild(actBtn(n.href, '阅读闭环', false));
     } else {
       abs.innerHTML = mdInline(n.desc || '这本书还没写概要——在内化馆给它写读厚卡，书页就会长出内容。');
       preSec.style.display = 'none';
@@ -924,11 +924,7 @@
   // ── 画像三栏（PLAN v2 第2期）：我是谁 / 我的版图 / 我的轨迹 ──
   // 今日职责（到期清单、今日情境）已唯一归今日页；本页只回答「我在哪、往哪走」。
   (function buildPortrait() {
-    var IDX = window.MarvisInsight.buildIndex({
-      clusters: window.MARVIS_CLUSTERS, drill: window.MARVIS_DRILL,
-      ruleCluster: window.MARVIS_RULE_CLUSTER, cards: window.MARVIS_CARDS,
-      topicPage: window.MARVIS_TOPIC_PAGE
-    });
+    var IDX = window.MarvisInsight.buildIndexFromWindow(window);
     var AGG = window.MarvisInsight.aggregate(window.MARVIS_INSIGHT, IDX, (S.lv || {}), (B.uses || {}));
 
     // ① 我是谁：当前战役 + 位置 + 总体进度（overall 在上方已按本事+作品算出）
@@ -940,30 +936,14 @@
       '整体掌握度 <b>' + overall + '%</b>（本事 + 作品口径），内化线（准则 + 读厚卡）单列看版图。</p>' +
       '<div class="side-btns"><a class="mv-btn" href="obsidian://open?vault=Marvis&amp;file=wiki%2Ftopics%2FAI%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%83%BD%E5%8A%9B%E5%9C%B0%E5%9B%BE" style="text-decoration:none">能力地图</a></div>';
 
-    // ② 我的版图：域 × 五档矩阵（与今日页「内化速览」同一实现、同一份数据）
-    var LBL = AGG.stageNames, COL = AGG.stageCss;
+    // ② 我的版图：域 × 五档矩阵（与今日页同一实现同一渲染，barHtml 出自共享库）
     var order = dom.map(function (d) { return d.name; });
-    var byName = {};
-    AGG.domains.forEach(function (d) { byName[d.name] = d; });
-    var rows = order.map(function (name) {
-      var d = byName[name];
-      if (!d || !d.total) {
-        return '<div style="margin-top:0.625rem"><div style="display:flex;justify-content:space-between;font-size:0.8125rem">' +
-          '<span style="color:var(--mv-muted)">' + name + '</span><span style="color:var(--mv-muted)">还没长</span></div>' +
-          '<div class="mini-track"><i style="width:0"></i></div></div>';
-      }
-      var tot = d.total || 1;
-      var segs = d.counts.map(function (c, i) {
-        return c ? '<i style="display:inline-block;width:' + (c / tot * 100) + '%;height:100%;background:' + COL[i] + '"></i>' : '';
-      }).join('');
-      return '<div style="margin-top:0.625rem"><div style="display:flex;justify-content:space-between;font-size:0.8125rem">' +
-        '<span>' + name + '</span><span style="color:var(--mv-muted)">' + d.total + ' 正本 · 内化中 ' + d.internalized + '</span></div>' +
-        '<div class="mini-track" style="display:flex">' + segs + '</div></div>';
-    }).join('');
-    var leg = '<div style="display:flex;gap:.5rem;font-size:.75rem;color:var(--mv-muted);margin-top:.5rem;flex-wrap:wrap">' +
-      LBL.map(function (l, i) { return '<span><i style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + COL[i] + ';margin-right:3px"></i>' + l + '</span>'; }).join('') + '</div>';
+    var have = {};
+    AGG.domains.forEach(function (d) { have[d.name] = true; });
+    var empty = order.filter(function (n) { return !have[n]; });
     document.getElementById('side-map').innerHTML =
-      '<h4>我的版图 <em>域 × 内化五档</em></h4>' + rows + leg +
+      '<h4>我的版图 <em>域 × 内化五档</em></h4>' +
+      window.MarvisInsight.barHtml(AGG, { height: 7, empty: empty }) +
       '<div class="side-btns"><a class="mv-btn" href="index.html#insight" style="text-decoration:none">今日页同款速览</a></div>';
 
     // ③ 我的轨迹：真实反馈三项——⚡用上次数、已读透正本、本周台账闭环

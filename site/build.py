@@ -2408,10 +2408,15 @@ def render_cards_page(payload, line_href):
         """[[目标|别名]] → 站内展示：R 系准则书链到 rules.html，其余取别名纯文本。
         正则替换，兼容项内尾注（如 `[[行动规则|R1]]（正本在行动规则.md）`）。"""
         def sub(m):
-            target, _, alias = m.group(1).partition("|")
-            target, alias = target.strip(), (alias or target).strip()
+            # 正则里目标在 group(1)（不含管道），别名在 group(2)——
+            # 此前写成 group(1).partition("|") 永远切不开，别名恒丢、只剩书名（存量 bug）
+            target = m.group(1).strip()
+            alias = (m.group(2) or target).strip()
             if target in _RULE_BOOKS:
-                return '<a href="rules.html">%s</a>' % esc(alias)
+                m = re.search(r"\bR\d+\b", alias)
+                if m:   # 别名带 R 系 id → 直达 rules.html#r- 锚点（无锚裸链是治理事故）
+                    return '<a href="rules.html#r-%s">%s</a>' % (m.group(0), esc(alias))
+                return esc(alias)
             return esc(alias)
         return re.sub(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", sub, x)
 

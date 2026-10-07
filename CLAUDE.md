@@ -271,7 +271,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 - `index.html`：**今日页（两页一库·内化回路唯一入口）**——派单引擎 + 闭卷自评 + 台账抽屉与提醒条 + 模块/项目卡墙与宫殿导航 + 内化速览与新到架（**2026-10-07 第1期：progress 并入，唯一账本 `mv.progress.v1`，复训牌组与 mv.review 假账已拆**）；`progress.html`：仅重定向 stub；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
 - `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
-- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑书架，2026-10-03 加「今日内化」侧栏）、`rules.html`（行事准则，**第2期起退役为下钻视图**，题面正本在 `wiki/thinking/`）；`brain.html` 第2期起为**三栏画像页**（我是谁/版图/轨迹；聚合库 `site/_components/insight.js` 为今日页与画像页共用，域登记 `site/_data/domains.js`），「今日」职责全部归今日页；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）；`onepage/` 一页族成品（2026-10-04 起：13 张模块一页通 + 一页答，离线管线产出、build 同样跳过清理，书架书页「一页总览」直达，页内导航回书架 / 模块概览）。`deliver/` 交付页**规划中、未建**
+- **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑 · 第2期起为三栏画像页，「今日内化」侧栏已退役）、`rules.html`（行事准则，**第2期起退役为下钻视图**，题面正本在 `wiki/thinking/`）；`brain.html` 第2期起为**三栏画像页**（我是谁/版图/轨迹；聚合库 `site/_components/insight.js` 为今日页与画像页共用，域登记 `site/_data/domains.js`），「今日」职责全部归今日页；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）；`onepage/` 一页族成品（2026-10-04 起：13 张模块一页通 + 一页答，离线管线产出、build 同样跳过清理，书架书页「一页总览」直达，页内导航回书架 / 模块概览）。`deliver/` 交付页**规划中、未建**
 - `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：6 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交；CI `check-build.yml` 亦全量跑 + build 同步断言）
 - 方案正本 `site/PLAN.md`，用法 `site/README.md`；面向 GitHub 访客的仓库说明是根目录 `README.md`（不承载规则）
 

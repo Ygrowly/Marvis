@@ -29,7 +29,7 @@ jobs:
             exit 1
           fi
 
-      - name: Regression suites（六套件）
+      - name: Regression suites（七套件）
         run: |
           for t in test_dispatch test_progression test_render test_sync test_brain test_insight; do
             node "site/_tests/$t.js"

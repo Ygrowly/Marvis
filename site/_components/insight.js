@@ -65,7 +65,45 @@
     return { domains: domains, stageNames: STAGE_NAMES, stageCss: STAGE_CSS };
   }
 
-  var api = { buildIndex: buildIndex, stageOf: stageOf, aggregate: aggregate,
+  /* 从 window 全局自动取参建索引（今日页/画像页同参，测试传 global.window） */
+  function buildIndexFromWindow(w) {
+    w = w || (typeof window !== 'undefined' ? window : {});
+    return buildIndex({ clusters: w.MARVIS_CLUSTERS, drill: w.MARVIS_DRILL,
+      ruleCluster: w.MARVIS_RULE_CLUSTER, cards: w.MARVIS_CARDS,
+      topicPage: w.MARVIS_TOPIC_PAGE });
+  }
+
+  /* 五档分段条 + 图例的唯一 HTML 实现。AGG = aggregate() 产出；
+     opts.empty = 无数据域名数组（画像页按宪法显示「还没长」行）。 */
+  function barHtml(AGG, opts) {
+    opts = opts || {};
+    var LBL = AGG.stageNames, COL = AGG.stageCss;
+    var rows = AGG.domains.map(function (d) {
+      var tot = d.total || 1;
+      var segs = d.counts.map(function (c, i) {
+        return c ? '<div style="width:' + (c / tot * 100) + '%;background:' + COL[i] +
+          '" title="' + LBL[i] + ' ' + c + '"></div>' : '';
+      }).join('');
+      return '<div style="margin-bottom:.625rem">' +
+        '<div style="display:flex;justify-content:space-between;font-size:.8125rem">' +
+        '<span>' + d.name + '</span><span style="color:var(--mv-muted)">' + d.total + ' 正本 · ' +
+        (d.internalized ? '内化中 ' + d.internalized : '训练待启动') + '</span></div>' +
+        '<div style="display:flex;height:' + (opts.height || 6) + 'px;border-radius:3px;overflow:hidden">' + segs + '</div></div>';
+    }).join('');
+    var emptyRows = (opts.empty || []).map(function (name) {
+      return '<div style="margin-bottom:.625rem"><div style="display:flex;justify-content:space-between;font-size:.8125rem">' +
+        '<span style="color:var(--mv-muted)">' + name + '</span><span style="color:var(--mv-muted)">还没长</span></div>' +
+        '<div style="display:flex;height:' + (opts.height || 6) + 'px;border-radius:3px;overflow:hidden;background:rgba(0,0,0,.05)"></div></div>';
+    }).join('');
+    var legend = '<div style="display:flex;gap:.75rem;font-size:.75rem;color:var(--mv-muted);margin-bottom:.75rem;flex-wrap:wrap">' +
+      LBL.map(function (l, i) {
+        return '<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COL[i] + ';margin-right:4px"></i>' + l + '</span>';
+      }).join('') + '</div>';
+    return legend + rows + emptyRows;
+  }
+
+  var api = { buildIndex: buildIndex, buildIndexFromWindow: buildIndexFromWindow,
+              barHtml: barHtml, stageOf: stageOf, aggregate: aggregate,
               trained: trained, stageNames: STAGE_NAMES, stageCss: STAGE_CSS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else if (typeof window !== 'undefined') window.MarvisInsight = api;

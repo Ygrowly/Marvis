@@ -49,5 +49,29 @@ ok(jyFile && jyFile.stage === 4, '原则卡有 uses 打卡 → 翻「亮」档�
 ok(after.domains.every(d => d.counts.reduce((a, b) => a + b, 0) === d.total), '每域五档计数守恒');
 ok(Array.isArray(DOM) && DOM.length >= 4 && DOM.every(d => d.name && d.color), '域登记表就绪（' + DOM.map(d => d.name).join('/') + '）');
 
+/* join 键约定：insight 的域名必须都在域登记表启用列表里——改中文名=改宪法，漏改 frontmatter 这里就红 */
+const regNames = new Set(DOM.map(d => d.name));
+const unregistered = I.domains.map(d => d.name).filter(n => !regNames.has(n));
+ok(unregistered.length === 0, 'insight 域名全部在域登记表内' + (unregistered.length ? '（未登记：' + unregistered.join('、') + '）' : ''));
+
+/* 入口退役静态断言（第2期验收）：cards/rules 不得作为独立入口出现在任何手写页源码；
+   build 产物 cards.html 不得再生长出无锚 rules.html 链接。 */
+const srcOf = f => fs.readFileSync(path.join(ROOT, 'site', f), 'utf8');
+const brainSrc = srcOf('brain.html'), indexSrc = srcOf('index.html');
+const bareIn = (src, name) => {
+  const hits = [];
+  if (/actBtn\('cards\.html'/.test(src)) hits.push(name + ':actBtn(cards.html)');
+  if (/href="cards\.html"/.test(src)) hits.push(name + ':href=cards.html 裸');
+  if (/['"]cards\.html['"](?!,)/.test(src) && /href\s*:\s*['"]cards\.html['"]/.test(src)) hits.push(name + ':href回退cards.html');
+  if (/href="rules\.html"/.test(src)) hits.push(name + ':href=rules.html 裸');
+  if (/href="progress\.html"|['"]progress\.html['"]/.test(src)) hits.push(name + ':progress.html 入口');
+  return hits;
+};
+const entryHits = [...bareIn(brainSrc, 'brain'), ...bareIn(indexSrc, 'index')];
+ok(entryHits.length === 0, '手写页无 cards/rules/progress 裸入口' + (entryHits.length ? '（' + entryHits.join('；') + '）' : ''));
+const cardsHtml = srcOf('cards.html');
+const bareRules = (cardsHtml.match(/href="rules\.html"/g) || []).length;
+ok(bareRules === 0, 'build 产物 cards.html 无无锚 rules.html 链接（发现 ' + bareRules + ' 个）');
+
 if (fails) { console.log('❌ ' + fails + ' 项对账失败'); process.exit(1); }
 console.log('✅ 内化聚合对账全通过（含五档行为模拟）');
