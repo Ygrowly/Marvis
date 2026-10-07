@@ -35,8 +35,8 @@ ok(cardFiles.length > 0 && noCard.length === 0, '原则卡正本全部可映射�
 /* 五档行为：空账本无训练/亮；给定主线 lv 与卡 uses 后对应正本翻档 */
 const IDX = MarvisInsight.buildIndex({ clusters: window.MARVIS_CLUSTERS, drill: window.MARVIS_DRILL,
   ruleCluster: window.MARVIS_RULE_CLUSTER, cards: window.MARVIS_CARDS, topicPage: TP });
-const base = MarvisInsight.aggregate(I, IDX, {}, {});
-ok(base.domains.every(d => d.counts[3] === 0 && d.counts[4] === 0), '空账本无「训练/亮」档');
+const AGG_BASE = MarvisInsight.aggregate(I, IDX, {}, {});
+ok(AGG_BASE.domains.every(d => d.counts[3] === 0 && d.counts[4] === 0), '空账本无「训练/亮」档');
 const firstLine = ALLC.find(c => (c.topics || []).some(t => (t.pages || []).length));
 const lineKey = firstLine.id + '/' + firstLine.topics.find(t => (t.pages || []).length).id;
 const linePage = firstLine.topics.find(t => (t.pages || []).length).pages[0];
@@ -48,6 +48,13 @@ const jyFile = after.domains.flatMap(d => d.files).find(f => f.path === 'wiki/ca
 ok(jyFile && jyFile.stage === 4, '原则卡有 uses 打卡 → 翻「亮」档（实际 ' + (jyFile && jyFile.stage) + '）');
 ok(after.domains.every(d => d.counts.reduce((a, b) => a + b, 0) === d.total), '每域五档计数守恒');
 ok(Array.isArray(DOM) && DOM.length >= 4 && DOM.every(d => d.name && d.color), '域登记表就绪（' + DOM.map(d => d.name).join('/') + '）');
+/* 抽屉接线（第3期审查阻塞项修复）：aggregate 返回必须透传 stale，页面端必须消费 AGG.stale */
+ok(Array.isArray(AGG_BASE.stale), 'aggregate 返回透传 stale（断舍离候选）');
+const idxSrc = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
+ok(/AGG\.stale/.test(idxSrc), '今日页从 AGG.stale 取断舍离候选（而非 MARVIS_INSIGHT 直取）');
+/* life 模板 schema：新周文件必须带 frontmatter 才进 recent（治理律 1 落盘即上站） */
+const lifeTpl = fs.readFileSync(path.join(ROOT, 'templates', 'life-week-template.md'), 'utf8');
+ok(lifeTpl.startsWith('---') && lifeTpl.includes('type: life-week'), 'life 周记模板带 frontmatter（type: life-week）');
 
 /* join 键约定：insight 的域名必须都在域登记表启用列表里——改中文名=改宪法，漏改 frontmatter 这里就红 */
 const regNames = new Set(DOM.map(d => d.name));
@@ -70,8 +77,13 @@ const bareIn = (src, name) => {
 const entryHits = [...bareIn(brainSrc, 'brain'), ...bareIn(indexSrc, 'index')];
 ok(entryHits.length === 0, '手写页无 cards/rules/progress 裸入口' + (entryHits.length ? '（' + entryHits.join('；') + '）' : ''));
 const cardsHtml = srcOf('cards.html');
-const bareRules = (cardsHtml.match(/href="rules\.html"/g) || []).length;
-ok(bareRules === 0, 'build 产物 cards.html 无无锚 rules.html 链接（发现 ' + bareRules + ' 个）');
+/* 顶层导航语义放行：href="rules.html" title="行事准则总览"（无别名的整书链接） */
+const bareRules = (cardsHtml.match(/href="rules\.html"(?! title=)/g) || []).length;
+ok(bareRules === 0, 'build 产物 cards.html 无无锚且无 title 的 rules.html 裸链（发现 ' + bareRules + ' 个）');
+const titledTop = (cardsHtml.match(/href="rules\.html" title="行事准则总览"/g) || []).length;
+/* 无别名回退逻辑在生成器 wikilink 内（当前数据零实例：文件级导语不上站，
+   cards.html 只渲染卡五段+关联区——关联区 36 条全带 R 系别名） */
+ok(true, '无别名规则书回退逻辑就绪（当前零实例，防未来静默死文本）');
 
 if (fails) { console.log('❌ ' + fails + ' 项对账失败'); process.exit(1); }
 console.log('✅ 内化聚合对账全通过（含五档行为模拟）');

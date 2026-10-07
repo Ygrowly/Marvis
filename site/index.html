@@ -1694,7 +1694,7 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
           '</div>';
       }).join('') : '';
     var ST = AGG.stale || [];
-    var staleHtml = ST.length ? '<div class="mv-ms-label" style="margin:1rem 0 .5rem">断舍离候选 <span style="font-weight:400">· candidate 且 30+ 天未触碰；在 Obsidian 里三选一：验收 / 归档 archive/ / 删</span></div>' +
+    var staleHtml = ST.length ? '<div class="mv-ms-label" style="margin:1rem 0 .5rem">断舍离候选 <span style="font-weight:400">· 未验收（candidate 等）且 30+ 天未触碰；在 Obsidian 里三选一：验收 / 归档 archive/ / 删</span></div>' +
       ST.map(function (r) {
         return '<div style="display:flex;gap:.75rem;font-size:.875rem;padding:.25rem 0">' +
           '<span style="color:var(--mv-muted);white-space:nowrap">' + r.days + ' 天</span>' +

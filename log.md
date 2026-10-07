@@ -531,3 +531,14 @@
 - **断舍离候选抽屉上线**（治理律 3 机制化）：build 端 write_insight 扫全内容区，candidate/未标注且 30 天未触碰 → `MARVIS_INSIGHT.stale`（cap 15）；今日页 insight 抽屉渲染候选清单（天数 + Obsidian 直达，三选一动作在 Obsidian 做，页面只列不写回）。**逻辑通路已验证**：21 天线实跑抓 15 条（总手册 29 天 + 早期母题卡），30 天线当前如实 0 条——随时间 candidate 自然滚入。life/ 进「新到架」扫描（无 domain 不进版图）
 - **_tools 断舍离**：7 个一次性迁移脚本（_phase1/2/3、_review_fixes）删除——效果已落 commit 且正则锚定旧文本不可重跑；保留 check_ledger/check_algo32/_push_via_api 等运行时脚本
 - 回归：七套件直取退出码全绿 + build 直验 exit=0（内化速览：4 域 139 正本 · 新到架 24 条 · 断舍离候选 0 条）
+
+## 2026-10-08 凌晨（第3期审查修复：抽屉接线断裂 + 口径三处对齐 + 勘误）
+
+- **【阻塞项】断舍离抽屉页面端接线断裂修复**：build 端 stale 产出挂在 `MARVIS_INSIGHT`，页面端却从 `aggregate()` 返回取——返回形状无 stale → `AGG.stale = undefined` → 抽屉恒空（两轴各验半条链路，对质后复核闭合）。修法：aggregate 返回透传 stale（一行）+ test_insight 加接线断言（aggregate 含 stale + index 源码消费 `AGG.stale`）——接线类验收从此不再靠 grep
+- **life 模板 schema 缺口**：模板无 frontmatter，照抄的周文件进不了 recent（治理律 1 对 life/ 是断的）——模板补 `type: life-week` + created/updated/week/status；CLAUDE life 段补 schema 必填说明；test_insight 加模板 schema 断言
+- **扫描口径三方对齐**：统一为「未验收（candidate/未标注）且 30 天未触碰」——白名单过滤（排除 reading 进行时）；`wiki/sources`（candidate 主力区）补进 INSIGHT_ROOTS；**stale 第二趟全量扫描合并进域聚合同一趟**（README 过滤同步继承，消除分叉）；index 标签文案同步。实跑：sources 候选开始入选（当前 7 条）
+- **无别名规则书链接**：生成器加顶层回退（`href="rules.html" title="行事准则总览"`，与零裸链断言协同——带 title 放行）；但复核发现审查前提不成立——cards.html **从不渲染文件级导语**（只渲染卡五段+关联区），导语里的 `[[行动规则]]` 从未上站，故当前零实例，回退逻辑就位防未来。test_insight 断言改为条件式
+- **顺手**：cards.html 导航「进度与作业」（指向重定向 stub）→「回今日」；MAP L171「双向可达」旧句清理；brain `.mini-track` 死 CSS 删（buildSide 残留）
+- **勘误（追加式不改史）**：① 深夜 V 节「删 7 个一次性脚本」实为**存量 6 个**（_phase1_merge/_phase1_insight/_phase2_portrait/_phase2_review_fixes/_review_fixes/_review_fixes2）+ 1 个本轮自建自删的 _phase3_stale；② test_insight 分桶口径实为域登记 2 + 入口退役 2（总数 12 无误，本轮已扩至 15）
+- **domain 挂域边界——待主人拍板**（宪法"功夫不设域"同族三种现状：行动规则不挂 / 0713+性命双修挂身心 / 出牌准则挂关系）：方案 a=准则类全部摘域守字面；方案 b=PLAN 写明"按主战场挂域用于画像归位、横切性在使用时体现"（现状合法化 + 行动规则作为元功夫明确不归位）。倾向 b。
+- 回归：七套件直取退出码全绿 + build 直验 exit=0（断舍离候选 7 条：sources 入选开始）

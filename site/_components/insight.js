@@ -62,7 +62,9 @@
       return { name: d.name, counts: counts, files: files,
                total: files.length, internalized: counts[3] + counts[4] };
     });
-    return { domains: domains, stageNames: STAGE_NAMES, stageCss: STAGE_CSS };
+    /* stale（断舍离候选）随盘面透传：页面端从 AGG 取，接线由 test_insight 看护 */
+    return { domains: domains, stageNames: STAGE_NAMES, stageCss: STAGE_CSS,
+             stale: (insight && insight.stale) || [] };
   }
 
   /* 从 window 全局自动取参建索引（今日页/画像页同参，测试传 global.window） */

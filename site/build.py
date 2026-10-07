@@ -2309,7 +2309,7 @@ CARDS_PAGE = """<!DOCTYPE html>
     <div style="display:flex;gap:8px;align-items:center">
       <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
       <a class="mv-btn" href="brain.html" style="text-decoration:none">第二大脑</a>
-      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
     </div>
   </div>
   <p class="mv-sub" style="margin-bottom:0.5rem">
@@ -2414,9 +2414,13 @@ def render_cards_page(payload, line_href):
             alias = (m.group(2) or target).strip()
             if target in _RULE_BOOKS:
                 m = re.search(r"\bR\d+\b", alias)
-                if m:   # 别名带 R 系 id → 直达 rules.html#r- 锚点（无锚裸链是治理事故）
+                if m:   # 别名带 R 系 id → 直达 rules.html#r- 锚点
                     return '<a href="rules.html#r-%s">%s</a>' % (m.group(0), esc(alias))
-                return esc(alias)
+                if alias != target:   # 有别名无 R id：语义不明，不硬链
+                    return esc(alias)
+                # 无别名 → 指向整本书：回退 rules.html 顶层（title 标记导航语义，
+                # test_insight 的零裸链断言放行带 title 的顶层链）
+                return '<a href="rules.html" title="行事准则总览">%s</a>' % esc(alias)
             return esc(alias)
         return re.sub(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", sub, x)
 
@@ -2552,7 +2556,7 @@ def write_cards(modules):
 # insight.js：域 × 状态分布（画像页/今日页「内化速览」用；内化度五档的运行时信号
 # 在 localStorage，由页面端聚合，build 只供静态盘面）。
 # recent.js：新到架——近 14 天 created/updated 的正本与阅读流水，保证"落盘即上站"。
-INSIGHT_ROOTS = ["wiki/cards", "wiki/topics", "wiki/thinking", "wiki/interview", "reading", "life"]
+INSIGHT_ROOTS = ["wiki/cards", "wiki/topics", "wiki/thinking", "wiki/interview", "wiki/sources", "reading", "life"]
 RECENT_DAYS = 14
 RECENT_CAP = 24
 
@@ -2566,6 +2570,7 @@ def write_insight():
     # 域聚合与新到架同趟扫描是刻意设计：同一遍 frontmatter 读取双产出，不做职责拆分。
     today = datetime.date.today()
     domains, recent = {}, []
+    stale = []
     for root in INSIGHT_ROOTS:
         for path in sorted((ROOT / root).rglob("*.md")):
             if path.name.startswith("README"):
@@ -2591,29 +2596,17 @@ def write_insight():
                             recent.append({"date": raw[:10], "title": title,
                                            "path": rel, "status": status})
                         break
-    # 断舍离候选（PLAN v2 治理律 3）：candidate/未标注 且 30 天未触碰 → 今日页出抽屉，
-    # 三选一（验收 / 归档 archive/ / 删）的动作在 Obsidian 里做，页面只列不写回。
-    STALE_DAYS = 30
-    stale = []
-    for root in INSIGHT_ROOTS:
-        for path in sorted((ROOT / root).rglob("*.md")):
-            meta, body = split_front(path.read_text(encoding="utf-8"))
-            status = (meta.get("status") or "").strip()
-            if status in ("integrated", "active"):
-                continue
-            raw = (meta.get("updated") or meta.get("created") or "").strip()
-            if not raw:
+            # 断舍离候选（治理律 3）：未验收（candidate/未标注）且 30 天未触碰 → 今日页抽屉，
+            # 三选一（验收 / 归档 archive/ / 删）在 Obsidian 里做，页面只列不写回。
+            if status not in ("candidate", "", "未标注"):
                 continue
             try:
-                age = (today - datetime.date.fromisoformat(raw[:10])).days
+                sage = (today - datetime.date.fromisoformat((meta.get("updated") or meta.get("created") or "")[:10])).days
             except ValueError:
-                continue
-            if age > STALE_DAYS:
+                sage = 0
+            if sage > 30:
                 stale.append({"title": _front_title(body) or path.stem,
-                              "path": path.relative_to(ROOT).as_posix(),
-                              "status": status or "未标注", "days": age})
-    stale.sort(key=lambda x: -x["days"])
-    stale = stale[:15]
+                              "path": rel, "status": status or "未标注", "days": sage})
 
     out_domains = []
     for name in sorted(domains):
@@ -2625,6 +2618,8 @@ def write_insight():
         out_domains.append(d)
     recent.sort(key=lambda r: r["date"], reverse=True)
     recent = recent[:RECENT_CAP]
+    stale.sort(key=lambda x: -x["days"])
+    stale = stale[:15]
     (OUT_DATA / "insight.js").write_text(
         "window.MARVIS_INSIGHT = " + json.dumps({"generated": today.isoformat(),
                                                  "domains": out_domains, "stale": stale},
