@@ -30,7 +30,7 @@ site/
   PLAN.md             方案正本
   build.py            构建器：按格式选 adapter → 视图 + 牌组数据
   figures/            图（.svg），md 里用 ::figure 引用
-  _data/              构建产物 decks.json / modules.js / reviews.js / breaks.js / projects.js（数据）+ .js（file:// 用）；例外：clusters.js 与 rules.js 是手写数据源
+  _data/              构建产物 cards.js / insight.js / recent.js / modules.js / reviews.js / breaks.js / projects.js / ledger.js / mmd-boot.js（decks 已随双复训合并停生成）；例外：clusters.js 与 rules.js 是手写数据源
   _components/        marvis.css + marvis.js（10 个原生 Web Components）+ sync.js（进度云同步，由 marvis.js 动态挂载）
 ```
 

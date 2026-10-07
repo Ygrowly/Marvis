@@ -1,5 +1,5 @@
 /* Marvis 知识宫殿 · 组件库 v0.1
-   六个组件：flip-card / timer-ring / check-list / palace-map / stat-bars / metric-strip
+   八个组件：flip-card / timer-ring / check-list / palace-map / stat-bars / metric-strip
    零依赖，classic script（不是 module），因此 file:// 双击直接可用。
    所有用户数据存 localStorage，键名前缀 mv.
 */

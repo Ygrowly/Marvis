@@ -8,6 +8,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
+const { elStub } = require(path.join(ROOT, '_tests', '_dom_stub.js'));
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
@@ -37,7 +38,7 @@ const sandbox = {
   window: global.window,
   localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
   document: {
-    getElementById: () => ({ innerHTML: '', textContent: '', hidden: true, value: '', remove: () => {}, style: {} }),
+    getElementById: (id) => elStub(id),
     addEventListener: () => {}, querySelector: () => null,
   },
   alert: () => {}, confirm: () => true, console,

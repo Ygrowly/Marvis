@@ -31,7 +31,7 @@ jobs:
 
       - name: Regression suites（六套件）
         run: |
-          for t in test_dispatch test_progression test_render test_sync test_brain; do
+          for t in test_dispatch test_progression test_render test_sync test_brain test_insight; do
             node "site/_tests/$t.js"
           done
           python site/_tests/test_ledger.py

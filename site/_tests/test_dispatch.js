@@ -5,6 +5,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
+const { elStub } = require(path.join(ROOT, '_tests', '_dom_stub.js'));
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const m = html.match(/<script>\r?\n([\s\S]*?)<\/script>/);
 if (!m) throw new Error('找不到内联脚本');
@@ -33,7 +34,7 @@ const sandbox = {
   },
   document: {
     getElementById: (id) => {
-      if (!ELS[id]) ELS[id] = { id: id, innerHTML: '', textContent: '', hidden: true, value: '', remove: () => {}, style: {} };
+      if (!ELS[id]) ELS[id] = elStub(id);
       return ELS[id];
     },
     addEventListener: () => {}, querySelector: () => null,

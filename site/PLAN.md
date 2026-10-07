@@ -70,8 +70,8 @@ aliases: [site 方案v2, 人生操作系统方案, PLAN-v2]
 | 期 | 内容 | 验收断言 |
 |---|---|---|
 | **0 止血** | ① index review-deck 退役、双复训合并、decks.js/json 停生成、mv.review 作废提示一次后清理；② 死缓归档：study/01-10→archive/study-courses/、乐元素两份→archive/battles/、output/_brain_review 与 _onepage_review→archive/、output 散件→_tools/、rules.html"未接入派单"文案修正；③ 清箱：.workbuddy、feishu-knowledge-growth、generated-images 查引用后三态归位；④ CI 断言 | 六套件全绿；`grep -r decks` 零消费；`grep -rn "study/0[1-9]" site/` 断链归零；全库无"散在地上"目录；CI workflow 含 build+diff 步骤 |
-| **1 地基** | 卡 frontmatter 加 `domain:`；build 聚合内化度五档→`_data/insight.js`；index+progress 合并为今日页（保留派单引擎，清三套迁移补丁中的死键）；新到架信息流 | `python site/build.py` 产出 insight.js；全部 15 卡+87 母题卡有 domain；今日页单页完成"看清单→练→记账"全闭环；CI 绿 |
-| **2 画像** | brain 重构三栏画像页；宫殿皮肤（读矩阵数据）；cards/rules 退役为下钻视图；`_data/domains.js` 上线 | 画像页三栏齐；矩阵数据与 localStorage 信号对账测试；cards.html/rules.html 不再被任何页面作为独立入口链接 |
+| **1 地基** | 卡 frontmatter 加 `domain:`；build 聚合域×状态（静态盘面）→`_data/insight.js`；内化度五档由**页面端聚合**（mv.progress.v1 / mv.brain.v1 信号 build 物理不可达）接入今日页速览；index+progress 合并为今日页（保留派单引擎，清三套迁移补丁中的死键）；新到架信息流 | `python site/build.py` 产出 insight.js；全部 15 卡+96 母题卡有 domain；今日页单页完成"看清单→练→记账"全闭环；速览显示五档分布；CI 绿 |
+| **2 画像** | brain 重构三栏画像页（五档矩阵从今日页速览函数上移共用）；宫殿皮肤（读矩阵数据）；cards/rules 退役为下钻视图；`_data/domains.js` 上线 | 画像页三栏齐；矩阵数据与 localStorage 信号对账测试；cards.html/rules.html 不再被任何页面作为独立入口链接 |
 | **3 人生层** | `life/` 一周一文件开张；每周巡检提取仪式（错题/错话/感悟→卡候选）；《心态制胜》《儒释道》走完落卡工序；财富/审美域按首卡启用 | life/ 有首个周文件；每月断舍离抽屉可运行；两本书各出原则卡 ≥4 张 |
 
 **边界（不做清单）**：不做社交 feed、不做记账 app、不做习惯打卡大全——工具性事务留外部工具，只有洞察与原则流入。理财/鉴赏按首卡扩域，不预建空房间。

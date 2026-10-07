@@ -2558,8 +2558,8 @@ def _front_title(body):
 
 
 def write_insight():
-    import datetime as _dt
-    today = _dt.date.today()
+    # 域聚合与新到架同趟扫描是刻意设计：同一遍 frontmatter 读取双产出，不做职责拆分。
+    today = datetime.date.today()
     domains, recent = {}, []
     for root in INSIGHT_ROOTS:
         for path in sorted((ROOT / root).rglob("*.md")):
@@ -2853,6 +2853,13 @@ def main():
         encoding="utf-8")
     _nbp = sum(1 for v in breaks.values() if v["bp"])
     print("断点回流 %d 张卡（其中 %d 张有真断点原文）" % (len(breaks), _nbp))
+
+    # 母题 md 正本路径 → 母题页路径（PLAN v2 第1期审查修复：内化速览「训练档」映射用；
+    # 页 stem 带模块名前缀而 md stem 不带，页面端自行拼接会 miss，故由 build 直出）
+    (OUT_DATA / "pagekey.js").write_text(
+        "window.MARVIS_TOPIC_PAGE = " + json.dumps({t["src"]: t["page"] for t in topics},
+                                                   ensure_ascii=False, sort_keys=True) + ";\n",
+        encoding="utf-8")
 
     write_ledger()
     write_insight()

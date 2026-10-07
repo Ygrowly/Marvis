@@ -104,6 +104,7 @@
         <b>模块内按序号</b>：一个模块 = 一条链，从它的第 01 条主线开始，01 → 02 → 03 依次推进（后面的主线会用到前面的知识）；前一条到「会了」才解锁下一条，所以<b>每个模块每天最多推进 1 条</b>，新学那 4~6 条来自 4~6 个不同模块。<br>
         <b>自评三档</b>：讲得出 → 进「常练」、复训间隔翻倍；卡壳 → 留在原档、明天重讲；讲不出 → 回「会了」、明天重来。卡面和弹窗会摆开上次写下的断点。<br>
         <b>抽检</b>：每 7 天一轮 5 题，每题 60 秒，连答不回头，结果直接改等级；项目线口述 90 秒。<br>
+        <b>旧账作废</b>：旧首页复训牌组的独立账本 mv.review 已于 2026-10-07 作废（与派单引擎互不相通），打开本页自动清除；唯一账本是 mv.progress.v1。<br>
         数据默认写在这台机器的浏览器里（键名 mv.progress.v1），<b>同时同步到仓库的 <code>data/marvis-sync.json</code></b>：打开页面自动拉云端（看不用配置），断网照常能点，联网后自动合并，换机器打开就是同一份；要把本机改动写回去，右下角「云同步」贴一次令牌（相当于密码）即可，之后全自动。
       </p>
     </div>
@@ -154,6 +155,7 @@
 <script src="_data/reviews.js"></script>
 <script src="_data/projects.js"></script>
 <script src="_data/insight.js"></script>
+<script src="_data/pagekey.js"></script>
 <script src="_data/recent.js"></script>
 <script src="_components/marvis.js"></script>
 <script>
@@ -225,6 +227,7 @@ function breaksOf(it) {
    ══════════════════════════════════════════════════════════════ */
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 function dstr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+/* 与 marvis.js 的 today() 刻意重复：三套测试 VM 抽本页内联脚本单跑，必须自包含，勿合并 */
 function today() { return dstr(new Date()); }
 function shift(ds, n) {
   var p = ds.split('-');
@@ -1584,7 +1587,8 @@ function ledDone(id) {
 function ledUndo(id) { delete (LS.done || {})[id]; saveLedgerState(); renderLedger(); }
 function ledCheck() { LS.check = today(); saveLedgerState(); renderLedger(); }
 
-/* 双复训合并（PLAN v2 第0期）：旧首页牌组的独立账本 mv.review 与派单引擎互不相通，作废清除。 */
+/* 双复训合并（PLAN v2 第0期）：旧首页牌组的独立账本 mv.review 与派单引擎互不相通，作废清除。
+   幂等迁移码，计划保留至 2026-11-07（给旧设备缓存一个清理窗口），之后可整行移除。 */
 try { if (localStorage.getItem('mv.review')) { localStorage.removeItem('mv.review'); console.info('[marvis] 旧复训账本 mv.review 已作废清除（唯一账本 mv.progress.v1）'); } } catch (e) {}
 
 S = load();
@@ -1671,16 +1675,62 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
     if (!box || !I) return;
     var n = I.domains.reduce(function (a, d) { return a + d.files.length; }, 0);
     if (sum) sum.textContent = n + ' 正本 · ' + I.domains.length + ' 域';
+
+    /* ── 内化度五档（PLAN v2 §二 轴三）：0 空 / 1 暗(记录过) / 2 读厚(拆成情境→动作且人验过) / 3 训练(进派单有记录) / 4 亮(真实用上) ──
+       build 端只供 frontmatter status（静态盘面）；「训练」「亮」两档的信号在 localStorage
+       （mv.progress.v1 主线记录 / mv.brain.v1 uses 打卡），build 物理不可达，只能页面端聚合。 */
+    var pageToLine = {};                 /* 母题页路径 → 主线 key（clusters.js pages 完整路径，与 breaks 键同形态） */
+    var ALLC = [].concat(window.MARVIS_CLUSTERS || [], window.MARVIS_DRILL ? [window.MARVIS_DRILL] : [], window.MARVIS_RULE_CLUSTER ? [window.MARVIS_RULE_CLUSTER] : []);
+    ALLC.forEach(function (c) {
+      (c.topics || []).forEach(function (t) {
+        (t.pages || []).forEach(function (p) { pageToLine[String(p)] = c.id + '/' + t.id; });
+        if (/^topics\/.+\.html$/.test(String(t.href || ''))) pageToLine[String(t.href)] = c.id + '/' + t.id;  /* drill 型：href 直指母题页（无 pages 字段） */
+      });
+    });
+    var TP = window.MARVIS_TOPIC_PAGE || {};  /* 母题 md 正本路径 → 页路径（build 直出 pagekey.js；页 stem 带模块前缀，勿自行拼接） */
+    var PR = {};                         /* 原则卡 md 路径 → [卡id]（cards.js 的 src 字段） */
+    ((window.MARVIS_CARDS || {}).principles || []).forEach(function (c) {
+      (PR[c.src] = PR[c.src] || []).push(c.id);
+    });
+    var S = {}, B = { uses: {} };
+    try { S = JSON.parse(localStorage.getItem('mv.progress.v1')) || {}; } catch (e) {}
+    try { B = JSON.parse(localStorage.getItem('mv.brain.v1')) || B; } catch (e) {}
+    var lv = S.lv || {};
+    function trained(key) { var r = lv[key]; return !!(r && (r.last || r.due || r.l >= 1)); }
+    function stageOf(f) {
+      var s = (f.status === 'integrated' || f.status === 'active') ? 2 : 1;   /* status 基线：验过=读厚，否则=暗 */
+      var ids = PR[f.path];                                                /* 原则卡：亮 > 训练 > 基线 */
+      if (ids) {
+        ids.forEach(function (id) {
+          if ((B.uses[id] || []).length) s = 4;
+          else if (s < 3 && trained('card/' + id)) s = 3;
+        });
+        return s;
+      }
+      var lp = TP[f.path] && pageToLine[TP[f.path]];
+      if (lp && trained(lp)) s = 3;                                        /* 母题卡：所在主线训练过 → 训练档 */
+      return s;
+    }
+
+    var LBL = ['空', '暗', '读厚', '训练', '亮'];
+    var COL = ['#d8d2c4', '#b8a88f', '#7f9c7a', '#4d7c62', '#2f6b4f'];
     var bar = I.domains.map(function (d) {
-      var tot = d.files.length;
-      var ok = (d.stats['integrated'] || 0) + (d.stats['active'] || 0);
+      var counts = [0, 0, 0, 0, 0];
+      d.files.forEach(function (f) { counts[stageOf(f)]++; });
+      var tot = d.files.length || 1;
+      var segs = counts.map(function (c, i) {
+        return c ? '<div style="width:' + (c / tot * 100) + '%;background:' + COL[i] + '" title="' + LBL[i] + ' ' + c + '"></div>' : '';
+      }).join('');
       return '<div style="margin-bottom:.625rem">' +
         '<div style="display:flex;justify-content:space-between;font-size:.8125rem">' +
-        '<span>' + d.name + '</span><span style="color:var(--mv-muted)">' + tot +
-        ' 正本 · 验收 ' + ok + '</span></div>' +
-        '<div style="height:6px;background:var(--mv-line,#e5e1d8);border-radius:3px;overflow:hidden">' +
-        '<div style="height:100%;width:' + (tot ? Math.round(ok / tot * 100) : 0) + '%;background:var(--mv-accent)"></div></div></div>';
+        '<span>' + d.name + '</span><span style="color:var(--mv-muted)">' + d.files.length + ' 正本 · ' +
+        ((counts[3] + counts[4]) ? '内化中 ' + (counts[3] + counts[4]) : '训练待启动') + '</span></div>' +
+        '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden">' + segs + '</div></div>';
     }).join('');
+    var legend = '<div style="display:flex;gap:.75rem;font-size:.75rem;color:var(--mv-muted);margin-bottom:.75rem;flex-wrap:wrap">' +
+      LBL.map(function (l, i) {
+        return '<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COL[i] + ';margin-right:4px"></i>' + l + '</span>';
+      }).join('') + '</div>';
     var list = R.length ? '<div class="mv-ms-label" style="margin:1rem 0 .5rem">新到架 <span style="font-weight:400">· 近 14 天落盘，点进 Obsidian 即读</span></div>' +
       R.map(function (r) {
         return '<div style="display:flex;gap:.75rem;font-size:.875rem;padding:.25rem 0">' +
@@ -1690,7 +1740,7 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
           (r.status && r.status !== 'integrated' ? '<span style="color:var(--mv-muted)">（' + r.status + '）</span>' : '') +
           '</div>';
       }).join('') : '';
-    box.innerHTML = bar + list;
+    box.innerHTML = legend + bar + list;
   })();
 
     if (gap === null || gap > 7) show('台账该巡检了', (gap === null ? '从没记过巡检' : '上次巡检 ' + LS.check + '，已隔 ' + gap + ' 天') + ' · 15 分钟逐条过一遍。');

@@ -4,6 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
+const { elStub } = require(path.join(ROOT, '_tests', '_dom_stub.js'));
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
@@ -13,7 +14,7 @@ require(path.join(ROOT, '_data', 'breaks.js'));
 
 const dom = {};
 function el(id) {
-  if (!dom[id]) dom[id] = { id, innerHTML: '', textContent: '', hidden: true, value: '', remove: () => {}, style: {} };
+  if (!dom[id]) dom[id] = elStub(id);
   return dom[id];
 }
 const sandbox = {

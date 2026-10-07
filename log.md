@@ -491,3 +491,12 @@
 - **mv.review 作废**：引擎加载时检测旧键一次性清除（console 提示），唯一账本 `mv.progress.v1` 落定——"练了这边那边不知道"的历史脏账就此终结
 - **insight.js + recent.js（build 端静态盘面）**：`write_insight()` 扫 wiki/{cards,topics,thinking,interview} + reading/ 的 frontmatter——insight = 域×状态分布（当前 3 域 128 正本：学识 113 / 关系 6 / 事业 12 卡）；recent = 近 14 天落盘 23 条「新到架」；今日页新增「内化速览与新到架」抽屉（域验收率条 + 新落盘直达 Obsidian）。内化度五档的运行时聚合（闭卷等级/复训位置/uses 打卡）留第 2 期画像页接线
 - 回归：build 通过，六套件全绿
+
+## 2026-10-07 深夜 II（第0、1期审查修复：五档聚合补实现 + 映射 bug 两层 + smell 清理）
+
+- 缘起：主人对 feat/life-os 第0、1期跑 code-review（Spec + Standards 双轴）。第0期全过；修复清单如下
+- **【实质】内化度五档聚合补实现**（审查项 1：spec 要求五档，实际只聚了三档 status）——今日页「内化速览」升级：`stageOf()` 按 PLAN v2 §二轴三聚合 0 空 / 1 暗(记录过) / 2 读厚(人验过) / 3 训练(进派单有记录) / 4 亮(真实用上)；status 基线（integrated|active→读厚）来自 build 静态盘面，训练与亮两档页面端读 mv.progress.v1 / mv.brain.v1（localStorage 信号 build 物理不可达——**spec 口径相应修正**，§六第1期验收改为"build 静态 + 页面端五档"，数字 87→96 校正）；渲染改五段分段条 + 图例
+- **映射 bug 两层（对账测试当场抓出）**：① 母题页 stem 带模块名前缀（`LLM与上下文-母题-C1-…`）而 md 正本 stem 不带，页面端 stem 拼接必 miss——改为 build 直出 `_data/pagekey.js`（`MARVIS_TOPIC_PAGE` = md 正本路径 → 母题页路径，96 条），页面端两级查表；② 算法 12 张母题页是孤儿——它们在 `MARVIS_DRILL`（drill 簇 href 直指母题页，无 pages 字段），映射源补齐三簇（CLUSTERS + DRILL + RULE_CLUSTER）
+- **对账测试**：新建 `site/_tests/test_insight.js`（四断言：TOPIC_PAGE 覆盖 96 / insight 母题全映射 / 页路径全挂主线（训练档可达）/ 原则卡正本全映射派单 id）；CI 套件列表与 CLAUDE/MAP 口径同步 6 node + 1 python
+- **smell 清理**（Standards 轴 5 项）：site/README.md `_data` 口径残留更新（decks 移除）；marvis.js 头注组件数 6→8（实际 define 数）；index.html `today()` 与 marvis.js 重复处加"测试 VM 自包含需刻意重复"注释；`write_insight()` 去函数内重复 import、双产出循环加刻意设计注释；mv.review 清除码加**可见说明**（规则抽屉一行）与退役时点注释（保留至 2026-11-07）
+- 验证：空账本五档分布 0 暗 102 / 读厚 26（= 96 母题 + 13 地基 - 7 验收 + thinking/interview）；96 母题 + 18 卡全部可达训练档；build 重建零 diff；七套件全绿
