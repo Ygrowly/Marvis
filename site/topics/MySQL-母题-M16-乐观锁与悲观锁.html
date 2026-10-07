@@ -181,7 +181,7 @@ p → 1    → 发散</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M16-乐观锁与悲观锁" tag="MySQL" q="乐观锁和悲观锁怎么选？各自的实现与边界是什么——为什么&quot;哪个更好&quot;这个问题本身就是错的？" a="两者不是&quot;谁更好&quot;，而是对冲突概率的两种假设——悲观锁假定冲突一定发生，所以先加锁（SELECT ... FOR UPDATE / synchronized）；乐观锁假定冲突很少，不加锁、提交时校验（version 字段或 CAS，UPDATE ... WHERE version=?，影响行数 0 即冲突）。判据只有一个：冲突频率——冲突高到&quot;重试成本 &gt; 加锁成本&quot;时用悲观。这不是口号：乐观锁成本是 单次成本 ÷ (1−p)，在 p→1 时发散；高冲突下 N 个请求抢同一行，乐观锁总工作量 N²、悲观锁 N，差一个 N 倍。乐观锁要注意 ABA 问题（值相等 ≠ 中间没变过），version 字段本质就是&quot;自带 ABA 防护的 CAS&quot;。RuleArena 的退款与任务认领用的是乐观锁（条件更新），项目给的判据是「权威性」不是「频率」（04 §15「MVP 优先业务唯一键 + 条件更新」；Q7「锁可以降低竞争，但不能成为资金正确性的唯一保证」），而且条件更新天然幂等；但如果同一个任务被大量 Worker 高频争抢，我会换成悲观锁或把任务分区错开。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是你 9.9 一面真实被问、且答得不合格的题</strong>——<strong>所以这张卡不只是知识点，是"补掉一个真实丢分点"的修复卡</strong>。当次的扣分点有三条：① 口误；② 乐观锁部分只说"先执行，变更时才上锁"，<strong>没有提到版本号 / CAS 这两个关键词</strong>；③ 没讲适用边界——<strong>按评分表，概念不完整、论据只能给 2 分</strong>。<strong>这张卡的目标是：再遇到时能拿满分。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -229,12 +229,5 @@ p → 1    → 发散</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

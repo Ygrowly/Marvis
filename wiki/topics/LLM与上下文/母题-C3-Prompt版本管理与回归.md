@@ -14,7 +14,7 @@ level: B
 > **所属主线**：三 · 输出怎么被约束与验收（从"请求它做对"变成"结构上做不错"）
 > **层级**：B · 标准级（**为什么必须消融**能从"prompt 是控制层、模型是概率系统"推出来；但**该删哪一条**没有唯一答案——那是取舍，只能测出来，所以不是 A）
 > **关联母题**：[[母题-C1-上下文组装与窗口预算]]（每条指令都在抢注意力预算）· [[母题-C2-结构化输出与JSON可靠性]]（schema 变更也是一种版本变更）· [[母题-C5-模型选型与降级三角]]（换模型 = 最大的一次 prompt 变更）
-> **素材来源**：Anthropic《The new rules of context engineering for Claude 5 generation models》（2026-07-24，作者 Thariq Shihipar）、Anthropic《Reducing cost and improving performance with Claude Platform》（2026-09-08，作者 Lance Martin）、Anthropic Engineering《Effective context engineering for AI agents》（2025-09-29）；`study/02-LLM与Context-Engineering.md` 第 5 节。**其中样本量算式、"相对提升 vs 错误率"换算、年化节省 vs 消融成本、自测题，为本次新增（待你核对）**
+> **素材来源**：Anthropic《The new rules of context engineering for Claude 5 generation models》（2026-07-24，作者 Thariq Shihipar）、Anthropic《Reducing cost and improving performance with Claude Platform》（2026-09-08，作者 Lance Martin）、Anthropic Engineering《Effective context engineering for AI agents》（2025-09-29）；`archive/study-courses/02-LLM与Context-Engineering.md` 第 5 节。**其中样本量算式、"相对提升 vs 错误率"换算、年化节省 vs 消融成本、自测题，为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① 为什么"感觉变好了"不算证据 ② 为什么模型升级是重估 prompt 的最好时机 ③ 为什么消融应当成为习惯而不是项目）· 读完约 12 分钟 · 需要先懂：无
 

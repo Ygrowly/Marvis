@@ -106,7 +106,7 @@
   有权用户查过 → 结果进了缓存
   无权用户用同样的 query 查 → 直接命中缓存 → 拿到不该看的内容</pre>
 <p class="mv-md-p">【推论】<strong>所以缓存必须按租户 / 权限分区</strong>——<strong>它不是优化项，是权限模型的一部分。</strong></p>
-<p class="mv-md-p">【事实】<strong>必须专门测的六类场景</strong>（study/03 与 study/10 都给过）：<strong>跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染。</strong></p>
+<p class="mv-md-p">【事实】<strong>必须专门测的六类场景</strong>（archive/study-courses/03 与 archive/study-courses/10 都给过）：<strong>跨租户、已撤权、共享链接、继承权限、删除传播、缓存污染。</strong></p>
 <p class="mv-md-p">【推论】<strong>这六类之所以要单独列，是因为它们都不能靠"正常流程"覆盖</strong>——<strong>正常流程测的是"有权限的人能不能拿到"，它们测的是"没权限的人会不会拿到"。</strong></p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们做了 ACL"这句话，必须补上"缓存怎么处理"？</p>
 <hr class="mv-md-hr">
@@ -190,7 +190,7 @@ Agent 场景：模型被诱导【调用工具】
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="评测观测与治理/母题-E5-越权与提示注入防护" tag="评测观测与治理" q="安全和功能不同——功能可以&quot;迭代改进&quot;，安全只能&quot;要么守住要么失守&quot;。那么防线该怎么排、又该怎么证明它守住了？" a="越权有两个方向——纵向（低权限做了高权限的事）和横向（看到不属于自己的数据），后者常常被低估，因为它的影响半径是&quot;一整个租户的数据&quot;且静默。在 AI 系统里，横向越权还有一条特有路径：检索——权限必须在召回前生效，因为未授权内容一旦进上下文就已经泄露了；而且缓存会绕过 ACL（有权用户查过的结果会命中给无权用户），所以缓存按租户分区是权限模型的一部分。提示注入的麻烦在于&quot;你过滤不过来&quot;：间接注入来自任何工具返回的内容（网页、文档、日志、评论），而 Agent 场景下损失在动作层面（删文件、发消息、转账），是真的发生了。所以防线按确定性排序：边界（沙箱 + 最小权限 + 真凭证不进沙箱）→ 契约（参数独立校验、危险动作需确认）→ 过滤（内容检测）——顺序不能反：过滤是概率性的、有持续成本、会被绕过，而&quot;以为有防线&quot;比&quot;没有防线&quot;更危险。最后，&quot;测过&quot;必须说清 N：三倍法则下 0/200 只给 1.5% 的上界，要声称 0.1% 需要 3000 个样本——而攻击面是组合爆炸的（30 工具 × 5 类来源 × 变体）。安全红线永远不参与平均。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>最容易答成"我们在 prompt 里写了不要泄露"</strong>——而这句话<strong>把安全建立在了一个会被绕过的东西上</strong>。<strong>真正的分层是"边界（确定性）&gt; 契约（半确定性）&gt; 过滤（概率性）"，顺序不能反</strong>。而且这道题有个<strong>AI 特有的难点</strong>：<strong>注入可能来自任何一个工具返回的内容</strong>，<strong>你根本过滤不过来</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -236,12 +236,5 @@ Agent 场景：模型被诱导【调用工具】
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

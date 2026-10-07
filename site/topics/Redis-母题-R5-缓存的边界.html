@@ -99,7 +99,7 @@ Redis      = 队列、限流、短期进度（都可以丢、可以重投）
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Redis/母题-R5-缓存的边界" tag="Redis" q="什么数据该放缓存、什么不该，边界是怎么划出来的。" a="判断&quot;什么数据该放缓存&quot;要问三问——丢了能不能重建、旧一段时间能忍吗（几秒）、会不会因为读到旧值做错事；任何一问不过就不是&quot;缓存策略要调&quot;，而是放错地方了。核心区分是派生数据（榜单、统计、配置副本 —— 可以缓存）与权威状态（订单、账本、余额、库存 —— 不能只放缓存）；而同一份数据的&quot;展示路径&quot;和&quot;判断路径&quot;容忍度完全不同：展示可以旧 60 秒，判断一秒都不能旧（所以余额的正确做法是&quot;显示可以走缓存、扣减用条件更新下沉到数据库&quot;）。另外两笔必须提前算的账：缓存全挂时回源压力放大 1/(1−命中率) 倍（命中率 95% 就是 20 倍，足以打穿数据库，所以限流与降级必须提前设计）；TTL 给的是&quot;最多旧多久&quot;的上限，它的角色是给&quot;写时失效&quot;兜底，不是主要机制，而且要加随机抖动防集体到期。至于 Redis 的持久化——它保证&quot;重启后数据大多还在&quot;，不保证&quot;数据是唯一一份&quot;（AOF everysec 最坏丢约 1 秒），所以权威状态必须留在数据库里（RuleArena 的 PG + Redis 分工就是这个模板）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -149,12 +149,5 @@ Redis      = 队列、限流、短期进度（都可以丢、可以重投）
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

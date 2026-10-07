@@ -176,7 +176,7 @@ WHERE deleted_at IS NULL;</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P3-部分索引与表达式索引" tag="PostgreSQL" q="部分索引与表达式索引各解决什么问题——它们省的那一大截，代价是什么？" a="索引的价值 = 它服务的那部分查询的频率 × 被索引集合的大小——只用得上 1% 的行，就不该为 100% 的行付维护成本。部分索引只给满足谓词的行建索引，体积与服务范围成正比（本例约 1/100），而且终态化那一步完全不碰它；它还有 PG 特有的第三项收益：VACUUM 负担同步下降。唯一的关键规则是&quot;谓词必须匹配（可证明蕴含）&quot;——WHERE updated_at &gt; ?（不带 status）用不上，因为谓词缺失，PG 不敢用（用了会漏终态行），这时只能改写查询，不能靠加索引解决。表达式索引把计算结果作为索引键，让 lower(email) 这类条件也能走索引——两个硬约束是：函数必须 IMMUTABLE（now() 不行），且查询要写一模一样的表达式。两者组合就是部分唯一索引（UNIQUE (lower(email)) WHERE deleted_at IS NULL），这是软删除场景的经典解，也最能体现&quot;索引是为业务规则服务&quot;。最大的风险是静默失效——以后新增一条不匹配谓词的查询就自动走全表扫，而你不会收到通知，所以必须把服务范围写进注释。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是 <strong>PG 相对 MySQL 的一个实打实的优势</strong>，也是「索引设计」和「索引堆砌」的分界线。它同时回答了另外两个高频追问——「索引是不是越多越好」（不是，所以要把索引做小）和「函数为什么导致索引失效」（PG 有解）。<strong>能主动提这一条，说明你真的是在 PG 上做过优化。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -223,12 +223,5 @@ WHERE deleted_at IS NULL;</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

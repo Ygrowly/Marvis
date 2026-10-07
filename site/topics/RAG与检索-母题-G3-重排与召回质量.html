@@ -130,7 +130,7 @@ doc_B:  "7 天无理由退货政策说明"
           → 而且最终进上下文的条数受 token 预算限制（[[母题-C1-上下文组装与窗口预算]]）
 
 → 常见的折中是「召回几百条、重排前 50–100、最终进上下文 5–20 条」</pre>
-<p class="mv-md-p">【事实】<strong>分档启用也是常见做法</strong>：重排提高质量但增加延迟与成本，<strong>应通过 Eval 判断是否只在难题启用</strong>（study/03 的结论）——<strong>简单查询（精确编号、单跳事实）不需要重排，难题才需要。</strong></p>
+<p class="mv-md-p">【事实】<strong>分档启用也是常见做法</strong>：重排提高质量但增加延迟与成本，<strong>应通过 Eval 判断是否只在难题启用</strong>（archive/study-courses/03 的结论）——<strong>简单查询（精确编号、单跳事实）不需要重排，难题才需要。</strong></p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">4. 重排的收益：两个口径别混【推导】</h3>
 <p class="mv-md-p">【事实】Anthropic 在 Contextual Retrieval 里给的实测（检索失败率，top-20 口径）：</p>
@@ -144,7 +144,7 @@ doc_B:  "7 天无理由退货政策说明"
 绝对降幅：2.9% − 1.88% = 1.02 个百分点</pre>
 <p class="mv-md-p">【结论】<strong>三个口径要分清：绝对降幅（1.02 个百分点）、相对前一环（35%）、相对基线（累计 67%）。</strong></p>
 <p class="mv-md-p">【推论】<strong>汇报时要说清用的是哪个口径</strong>——把"累计降幅"说成"这一步的降幅"会显著高估单点手段的价值，追问一句就露馅。</p>
-<p class="mv-md-p">【事实】<strong>另一个可用的对照</strong>：<code class="mv-md-code">study/03</code> 记的数驭穹图口径是<strong>召回 81% → 95%</strong>。</p>
+<p class="mv-md-p">【事实】<strong>另一个可用的对照</strong>：<code class="mv-md-code">archive/study-courses/03</code> 记的数驭穹图口径是<strong>召回 81% → 95%</strong>。</p>
 <p class="mv-md-p">【纠正常见误解】<strong>但不要把它和上面的 5.7%→1.9% 当成"同一枚硬币的两面"</strong>——它们的<strong>对象和分母都不一样</strong>：</p>
 <pre class="mv-md-pre">Anthropic 的 5.7% → 1.9%  ：top-20 【chunk】检索失败率（文档块这一层）
 数驭穹图的 81% → 95%      ：Top-K 【Schema】召回率（表/语义资产这一层）</pre>
@@ -174,7 +174,7 @@ doc_B:  "7 天无理由退货政策说明"
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="RAG与检索/母题-G3-重排与召回质量" tag="RAG与检索" q="召回来的候选已经按相似度排过序了，为什么还要再排一遍——这一遍排的到底是什么？" a="召回和精排的优化目标不同——召回面对全量，目标是&quot;不漏&quot;，所以只能用便宜的方法（双塔，文档向量可预计算）；精排面对已经缩小过的候选集，目标是&quot;排得准&quot;，所以可以用贵的方法（交叉编码器）。两者的本质差别是&quot;有没有词级交互&quot;：双塔把 query 和 doc 分别编码，编码时看不到对方，所以&quot;除外&quot;&quot;不适用&quot;这类否定词被平均掉（这是结构性损失，换更大的双塔也补不回来）；交叉编码器把两者拼在一起，能看到逐词交互。代价是延迟随候选数线性增长（5ms × N，重排 200 条就是 1 秒，比 ANN 召回慢两个数量级），所以常见折中是&quot;召回几百 → 重排 50–100 → 进上下文 5–20&quot;。收益要说清口径：Contextual Retrieval 里重排把失败率从 2.9% 降到 1.88%，相对重排前降 35%、相对基线累计降 67%——这两个数不能混。最后，Recall@K 高不等于答案好，还要看 nDCG@K。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>区分"搭过 RAG"和"调过 RAG"的题</strong>。搭过的人会说"我们加了 rerank，效果好"；调过的人会说清<strong>它为什么好（双塔没有词级交互）、好多少（相对基线的 67%）、代价是什么（延迟随候选数线性增长）</strong>。<strong>而且它的答案模板可以直接迁移到 Agent 的工具选择（[[母题-A2-工具调用与MCP边界]]）。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -194,7 +194,7 @@ doc_B:  "7 天无理由退货政策说明"
 <p class="mv-md-p">收益要说清口径：Contextual Retrieval 里重排把失败率从 2.9% 降到 1.88%——<strong>相对重排前降 35%、相对基线累计降 67%</strong>，这两个数不能混。而且<strong>不一定值得</strong>：精确编号、单跳事实这类查询召回本身已经排得很准，重排收益很小，<strong>应通过 Eval 判断是否只在难题启用</strong>。</p>
 <p class="mv-md-p">多跳问题重排解决不了——重排只重排已有候选，<strong>需要的候选压根不在池子里</strong>；要靠 Query Decomposition 或第二轮由第一轮发现的实体驱动。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：双塔管"不漏"、交叉编码器管"排得准"；重排是用延迟换质量，不一定值得。</li><li><strong>推导链</strong>：目标不同 → 是否词级交互 → 双塔的结构性损失 → 交叉编码器代价线性 → 折中链路 → 收益口径。</li><li><strong>量化</strong>：重排 5 ms × N（200 条 = 1 秒）；失败率 2.9% → 1.88%（相对降 35%、累计降 67%）；召回几百 → 重排 50–100 → 进上下文 5–20。</li><li><strong>边界与常见误解</strong>：RRF 融合不判断内容相关性深浅（那是交叉编码器的活），两级是串联不是二选一；K 取多大要用评测定（Anthropic 试 5/10/20，20 最好，但成本线性上升）。</li></ul></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>重排一定值得吗？</strong></strong></p>
-<p class="mv-md-p"><strong>不一定</strong>。它是<strong>用延迟换质量</strong>，应该<strong>通过 Eval 判断是否只在难题启用</strong>。精确编号、单跳事实这类查询，召回本身已经排得很准，重排收益很小。<strong>study/03 的结论就是"应通过 Eval 判断是否只在难题启用"。</strong></p>
+<p class="mv-md-p"><strong>不一定</strong>。它是<strong>用延迟换质量</strong>，应该<strong>通过 Eval 判断是否只在难题启用</strong>。精确编号、单跳事实这类查询，召回本身已经排得很准，重排收益很小。<strong>archive/study-courses/03 的结论就是"应通过 Eval 判断是否只在难题启用"。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>K 该取多少？</strong></strong></p>
 <p class="mv-md-p">Anthropic 试了 <strong>5 / 10 / 20</strong>，<strong>20 最好</strong>；但 K 大会带来<strong>重排成本线性上升 + 上下文预算被占</strong>。所以 <strong>K 要按"召回率 vs 成本"用评测定</strong>，并且要和重排的候选数、最终进上下文的条数<strong>一起考虑</strong>。</p>
 <p class="mv-md-p"><strong>3. <strong>多跳（multi-hop）问题重排能解决吗？</strong></strong></p>
@@ -222,12 +222,5 @@ doc_B:  "7 天无理由退货政策说明"
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

@@ -149,7 +149,7 @@ CPU 低 + load 也低        → 在等【外部】（锁 / 下游 / 连接池�
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Linux与部署/母题-X3-线上排查的顺序" tag="Linux与部署" q="线上变慢应该按什么顺序查，哪些指标最容易把人带错方向。" a="排查的能力体现在顺序上，不在记得多少命令——先用两个是非题把范围缩掉八成：① 是全部接口慢还是个别人慢？② 是所有实例慢还是个别实例慢？；再用两个二分问题定方向：是&quot;压力&quot;（活来得太多 → 限流扩容有效）还是&quot;能力&quot;（每件活变慢 → 要优化）、是&quot;在等&quot;还是&quot;在算&quot;（CPU 占用 ÷ 总耗时，低就是等）。四类症状各有第一眼：CPU 要分清&quot;在算 / 空转 / 被容器限流&quot;（后者看 cpu.stat 的 nr_throttled）；内存先看 available 不看 used、再看容器自己的 cgroup 额度、最后分清泄漏 / 页缓存 / 无上界；磁盘要先分清&quot;空间&quot;还是&quot;性能&quot;（空间用 du/df，注意&quot;已删除但被占用的文件&quot;；性能看 %util 与 await）；网络要记住大多数&quot;网络慢&quot;其实是下游慢——必须把链路耗时与对端处理耗时分开。三个最容易误判的信号：load 高 + CPU 低（在等 IO）、CPU 不高但延迟抖（被限流）、free 显示满（页缓存可回收）。而&quot;本机一切正常&quot;是一条指向&quot;我在等外部&quot;的线索，不是&quot;代码有 bug&quot;的结论。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -198,12 +198,5 @@ CPU 低 + load 也低        → 在等【外部】（锁 / 下游 / 连接池�
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

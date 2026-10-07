@@ -153,7 +153,7 @@ TTL 设长 → 持有者真挂了要等很久才释放 → 【可用性变差】
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="并发与锁/母题-L3-分布式锁与fencing-token" tag="并发与锁" q="分布式锁怎么实现、什么时候会失效，为什么单靠锁保不住正确性。" a="跨机器互斥要把锁状态放到一个共享的地方，三种实现各有代价：Redis（SET ... NX PX 一条原子命令 + 释放要校验值；弱点是主从异步复制，切换会丢锁）、数据库（唯一约束 / 带条件更新，不引入新组件但把锁争用压在数据库上）、ZooKeeper / etcd（临时顺序节点 / 租约 + 单调 revision，语义最干净但要维护一套强一致系统）。它们的共同弱点来自同一个根因：锁服务的判断（按时间）与客户端的事实（是不是还在跑）会脱节——GC 停顿、时钟漂移、网络分区都会产生&quot;两个持有者&quot;，而 TTL 没有安全值（短了双持有者、长了可用性差，且&quot;最长停顿&quot;无上界）。所以真正的解法是把安全性搬到被保护的资源上：fencing token（单调递增号）+ 资源侧拒绝更小的号。但更该先问的是：&quot;我到底要'不同时跑'还是'不重复执行'？&quot;——后者靠幂等就够了（RuleArena 连锁都没用），锁只在地一步之后才考虑，而且它的作用是&quot;减少干扰&quot;，不是&quot;保证正确性&quot;。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -201,12 +201,5 @@ TTL 设长 → 持有者真挂了要等很久才释放 → 【可用性变差】
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

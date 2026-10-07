@@ -14,7 +14,7 @@ level: A
 > **所属主线**：三 · 输出怎么被约束与验收（从"请求它做对"变成"结构上做不错"）
 > **层级**：A · 教材级（"约束该放在哪一层"能从"生成是逐 token 采样"推出来；grammar 编译成本能从"可选参数翻倍状态空间"算出来）
 > **关联母题**：[[母题-C1-上下文组装与窗口预算]]（工具定义本身就占上下文）· [[母题-C3-Prompt版本管理与回归]]（schema 变更也是一种版本变更）· [[母题-C4-幻觉的成因与可控性]]（结构合法 ≠ 内容为真）· [[母题-M17-排行榜与防超卖]]（"应用层校验是优化、数据库约束才是正确性"的同一逻辑）
-> **素材来源**：Claude 平台文档 Structured outputs / Strict tool use / Prompt caching（**2026-09-12 联网核实**）、Anthropic Engineering《Writing effective tools for agents》与《The new rules of context engineering for Claude 5 generation models》（2026-07-24，反例："给例子反而限制探索空间"）；`study/02-LLM与Context-Engineering.md` 第 5 节。**其中"三层约束的代价对比"、重试期望次数与延迟算式、schema 复杂度的状态空间算式、自测题，为本次新增（待你核对）**
+> **素材来源**：Claude 平台文档 Structured outputs / Strict tool use / Prompt caching（**2026-09-12 联网核实**）、Anthropic Engineering《Writing effective tools for agents》与《The new rules of context engineering for Claude 5 generation models》（2026-07-24，反例："给例子反而限制探索空间"）；`archive/study-courses/02-LLM与Context-Engineering.md` 第 5 节。**其中"三层约束的代价对比"、重试期望次数与延迟算式、schema 复杂度的状态空间算式、自测题，为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① 约束放得越早代价越低 ② 解码约束不等于语义正确 ③ 重试是拿延迟买成功率）· 读完约 12 分钟 · 需要先懂：无
 

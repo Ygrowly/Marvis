@@ -58,7 +58,7 @@ trigger: AI 主战场四簇（LLM/RAG/Agent/Eval）此前只有 study 课程节�
 ## 4. 八股题单（覆盖度校验：不是学习入口，是查漏清单）
 
 > **用法**：串完整条主线后，拿这张表自查覆盖率。**不要从这张表开始学。**
-> 本题单来源：`study/02-LLM与Context-Engineering.md` 第 7 节 Q1–Q9 + `study/01` / `study/10` + `raw/llm_and_scene_only_interview.md`（LLM 不确定性一节）+ 六份 JD 融合核对表。
+> 本题单来源：`archive/study-courses/02-LLM与Context-Engineering.md` 第 7 节 Q1–Q9 + `archive/study-courses/01` / `archive/study-courses/10` + `raw/llm_and_scene_only_interview.md`（LLM 不确定性一节）+ 六份 JD 融合核对表。
 
 优先级定义：
 - **必背** = 闭卷 3 分钟 + 追问 + 一个项目案例
@@ -272,6 +272,6 @@ effort 怎么定：跑一次 sweep，对几个档位各跑一遍你的评测集�
 ## 关联
 
 - 模板：[[模块深挖卡模板]]
-- 课程底库：`study/02-LLM与Context-Engineering.md`（主线顺序与资料挂载，本模块的训练正本是母题卡）
+- 课程底库：`archive/study-courses/02-LLM与Context-Engineering.md`（主线顺序与资料挂载，本模块的训练正本是母题卡）
 - 交叉：[[母题-C4-幻觉的成因与可控性]]（不确定性的直接后果）、[[母题-M9-MVCC]]（"视图 vs 事实"的数据库版）、[[母题-N1-一次请求的完整路径]]（模型调用在网络上的那一跳）
 - 下游模块：RAG 与检索（G 系列）、Agent 运行时与工具（A 系列）、评测观测与治理（E 系列）

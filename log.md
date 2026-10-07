@@ -472,3 +472,14 @@
 - 卡片：`wiki/cards/原则-精确努力.md` 新增 jy-7~12（定策略先找障碍 / 穷尽方案一个不行换下一个 / 恐惧四格拆账 / 归因三查具体短暂可改 / 人生错题本同类三次上限 / 杠杆一次投入 N 次复用）；`source` 改「精确努力」（一书覆盖两篇）、`source_href` 指向新闭环页；**`human_reviewed` 按宪法翻回 false**（本轮 AI 归纳主人未过目，AI 不代翻），主人读完自行翻正
 - 登记：MAP 簇级登记「读厚卡簇」行 12→18 张
 - 回归：build 通过，六套件全绿（dispatch / progression / render / sync / brain / ledger）
+
+## 2026-10-07 晚（PLAN v2 定稿 + 第0期止血：双复训合并 / 死缓归档 / 清箱 / CI 断言）
+
+- **校准**：与主人重新校准系统目的——第二大脑 = 内化流水线 + 人生画像（双回路），秋招是当前战役非系统理由；方案 v2 落盘 `site/PLAN.md`（双回路 / 万物皆卡×三轴 / 两页一库 / 三态律 / 五设计律 / 分期 spec），v1 归档 `archive/site/PLAN-v1-2026-09-10.md`。**在 `feat/life-os` 分支执行**
+- **双复训合并**：index「今日复训」review-deck 退役（marvis.js 减半，ReviewDeck/LADDER/gradeCard 拆除）；decks.js/decks.json（283KB）停止生成并删除；母题页「评分会进训练台」假账通道拆除（mv-grade 监听删、文案改真话）；**唯一调度 = progress 派单引擎（1-3-7-14）**
+- **死缓归档**：`study/01-10` → `archive/study-courses/`（00/14/19 留守），全库 78 文件引用改写、断链归零；乐元素两份 → `archive/battles/`（6 处引用改写，MAP 登记行更新）；`output/_brain_review`·`_onepage_review`（63 个中间件）→ `archive/`；output 散件 `check_algo32.py`·`check_ledger.js`·`_push_via_api.py` → `output/_tools/`
+- **清箱**：`feishu-knowledge-growth/`（嵌套异质项目）→ `archive/`；`.workbuddy/`·`generated-images/` 确认已 gitignore 未跟踪（本地噪音，不入库不动）
+- **文案矛盾修正**：rules.html 统计条「全部未接入派单」→「已接入每日派单」（与 progress/brain/cards 对齐）
+- **CI 断言**：新建 `.github/workflows/check-build.yml`——全分支 push 触发：rebuild + `git status --porcelain site/` 断言（md 改了没重 build 直接红）+ 六套件全量
+- **口径同步**：CLAUDE（study 归档 / index 描述 / 1-3-7-14 / 测试数）、workflow（调度口径）、index.md、MAP（能力课程 3 行 + 战役存档节 + 知识系统形式行）
+- 回归：build 通过，六套件全绿（dispatch / progression / render / sync / brain / ledger）

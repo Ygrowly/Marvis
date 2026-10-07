@@ -173,7 +173,7 @@ ROLLBACK;</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P6-执行计划怎么看" tag="PostgreSQL" q="EXPLAIN 和 EXPLAIN ANALYZE 的区别是什么？看计划应该按什么顺序看？" a="EXPLAIN 只给估算（估计行数、估算代价），EXPLAIN ANALYZE 会真的执行并给出实际行数、实际耗时、循环次数、排序/哈希有没有落盘；看计划有固定顺序——先看「估计 vs 实际行数」的偏差，再看扫描方式是否合理，再看 JOIN 算法与两侧规模，再看 Sort/Hash 有没有落盘，最后看 loops 有没有暴露 N+1。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>索引设计能不能闭环的那一步</strong>。P1–P5 都在讲「怎么建索引」，而<strong>索引有没有被用上、用得对不对，只有执行计划能回答</strong>。更要紧的是：<strong>「只看有没有 Index Scan 就宣布优化成功」是最常见的错误动作——这道题就是那个错误的正面解法。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -222,12 +222,5 @@ ROLLBACK;</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

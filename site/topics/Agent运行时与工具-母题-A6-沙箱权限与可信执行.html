@@ -151,11 +151,11 @@ R2（高风险）：不可撤销、影响外部、涉及资金/权限 —— 【
 R0 的典型特征：
   ① 只读
   ② 或者写的是"可随时重算的派生物"（缓存、索引、临时产物）</pre>
-<p class="mv-md-p">【事实】<strong>原始素材对确认页面的要求</strong>（study/04）：<strong>至少展示「将执行什么、作用对象、关键参数、影响、证据、是否可撤销」</strong>。</p>
+<p class="mv-md-p">【事实】<strong>原始素材对确认页面的要求</strong>（archive/study-courses/04）：<strong>至少展示「将执行什么、作用对象、关键参数、影响、证据、是否可撤销」</strong>。</p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"哪些动作需要确认"这件事，本身就是一次安全设计？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">4. 批准必须绑定具体动作【推导】</h3>
-<p class="mv-md-p">【事实】study/04 的一条硬要求：</p>
+<p class="mv-md-p">【事实】archive/study-courses/04 的一条硬要求：</p>
 <p class="mv-md-p mv-md-quote"><strong>"批准必须绑定具体动作摘要和版本，不能用一次'允许所有'永久放权。"</strong></p>
 <p class="mv-md-p">【推导】<strong>为什么"允许所有"是坏的</strong>：</p>
 <pre class="mv-md-pre">"允许所有"把批准从【一次动作】降级成【一个类别】
@@ -203,7 +203,7 @@ Agent 场景：模型被诱导【调用工具】
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Agent运行时与工具/母题-A6-沙箱权限与可信执行" tag="Agent运行时与工具" q="Agent 要动真实世界，但它的决策是概率的——那&quot;不闯祸&quot;这件事靠什么保证？为什么&quot;每一步都让人确认&quot;是错的？" a="&quot;不闯祸&quot;不能靠&quot;让模型别做坏事&quot;，也不能靠&quot;人一直盯着&quot;——要靠&quot;即使它决定做坏事，也做不到&quot;。 所以核心机制是用边界替代确认：文件系统隔离（管&quot;能碰什么&quot;）+ 网络隔离（管&quot;能送到哪&quot;），两个必须是&quot;与&quot;不是&quot;或&quot;——只有文件系统隔离，它能读到的东西可以被传出去；只有网络隔离，它能改坏沙箱外的东西甚至绕出去再联网。Anthropic 的实测是沙箱把审批提示减少 84%、同时更安全——因为&quot;每次都确认&quot;会失效：50 个动作里用户从第 20 次左右就不看了，后 30 次形同虚设。所以还要风险分级（R0 自动 / R1 提示 / R2 强制拦截），把打断减少 80% 且集中在真正重要的动作上。批准必须绑定具体动作摘要和版本——&quot;允许所有&quot;等于把批准从&quot;一次动作&quot;降级成&quot;一个类别&quot;。最后，真正的凭证永远不进沙箱：沙箱内只给范围受限的凭证，真 token 由沙箱外的代理校验内容之后才附加。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>一半是安全、一半是可用性</strong>，而大多数人只答安全那一半（"我们加了审批"）。<strong>真正的机制是"用边界替代确认"</strong>——Anthropic 的实测是<strong>沙箱把审批提示减少了 84%</strong>，同时<strong>安全性反而更高</strong>。<strong>这个反直觉的结论正是这道题的高分点</strong>，而且它直接对应你 EnergyOps 的 Hook 链。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -223,7 +223,7 @@ Agent 场景：模型被诱导【调用工具】
 <p class="mv-md-p">人工确认要展示六项：<strong>将执行什么、作用对象、关键参数、影响、证据、是否可撤销</strong>；而且<strong>批准必须绑定具体动作摘要和版本</strong>——"允许所有"等于把批准从"一次动作"降级成"一个类别"。</p>
 <p class="mv-md-p">提示注入在 Agent 场景更危险：<strong>聊天场景的损失在信息层面，Agent 场景在动作层面</strong>（删文件、发消息、转账、改权限），而且是真发生了。所以防线按确定性排序：<strong>边界 → 契约（参数独立校验、危险动作需确认）→ 过滤（内容检测）</strong>，顺序不能反——过滤是概率性的、有持续成本、会被绕过，<strong>而"以为有防线"比"没有防线"更危险</strong>。最后一条：<strong>真正的凭证永远不进沙箱</strong>。</p><p class="mv-md-h mv-md-h4" style="margin-top:1rem">分层要点<span class="mv-topic-meta">追问深挖时用</span></p><ul class="mv-md-ul"><li><strong>结论</strong>：用边界替代确认；文件系统 + 网络两个隔离必须同时有；防线按确定性排序。</li><li><strong>推导链</strong>：确认会失效 → 用边界 → 两个方向都要堵 → 风险分级集中打断 → 注入损失在动作层 → 边界 &gt; 契约 &gt; 过滤。</li><li><strong>量化</strong>：沙箱让审批提示减少 84% 且更安全；50 个动作里用户从第 20 次左右就不看了。</li><li><strong>边界与常见误解</strong>：云端沙箱还要防跨租户逃逸（独立容器 / microVM）；Skill/插件扩大能力面也就扩大权限面，按"能做什么"而非"谁提供的"授权；验证靠红队测试（既读不到、也发不出，两个边界各测一条）。</li></ul></collapse-panel>
     <collapse-panel title="追问（先说后看）"><p class="mv-md-p"><strong>1. <strong>危险动作的人工确认该展示什么？</strong></strong></p>
-<p class="mv-md-p"><strong>将执行什么、作用对象、关键参数、影响、证据、是否可撤销</strong>（study/04 的清单）。<strong>而且批准要绑定具体动作摘要和版本</strong>——<strong>不能用一次"允许所有"永久放权。</strong></p>
+<p class="mv-md-p"><strong>将执行什么、作用对象、关键参数、影响、证据、是否可撤销</strong>（archive/study-courses/04 的清单）。<strong>而且批准要绑定具体动作摘要和版本</strong>——<strong>不能用一次"允许所有"永久放权。</strong></p>
 <p class="mv-md-p"><strong>2. <strong>提示注入在 Agent 场景下为什么更危险？</strong></strong></p>
 <p class="mv-md-p"><strong>聊天场景的损失在信息层面，Agent 场景的损失在动作层面</strong>（删文件、发消息、转账、改权限），<strong>而且这些动作是真的发生了</strong>。<strong>所以防线要以"边界"为主、"过滤"为辅。</strong></p>
 <p class="mv-md-p"><strong>3. <strong>Agent 需要哪些权限？怎么给？</strong></strong></p>
@@ -251,12 +251,5 @@ Agent 场景：模型被诱导【调用工具】
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

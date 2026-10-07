@@ -14,7 +14,7 @@ level: A
 > **所属主线**：二 · 怎么看见"为什么"（轨迹与归因）
 > **层级**：A · 教材级（"Trace 与日志不是一回事"能从"因果链 vs 事件流"推出来；存储与采样成本都能算）
 > **关联母题**：[[母题-E1-评测集设计与pass^k]]（本卡是它的证据来源）· [[母题-E3-回归门禁与发布卡口]]（门禁与 Replay 都读 Trace）· [[母题-G5-RAG评测与幻觉率]]（三岔路归因需要 Trace 留全）· [[母题-A4-长任务状态与Checkpoint]]（Step 记录是最低要求）
-> **素材来源**：`study/07-Eval-Trace与Observability.md` 第 6 节（Trace 数据模型与最低字段）+ **Langfuse 文档 Core Concepts**（2026-09-12 联网核实：**Observations 可嵌套**、**Trace 级属性冗余到每条 observation**、Session 归组）+ **Anthropic《Demystifying evals for AI agents》**（**grade transcript vs grade outcome**）+ raw 的《LoongSuite GenAI 可观测语义规范》。**三组算式为本次新增。**
+> **素材来源**：`archive/study-courses/07-Eval-Trace与Observability.md` 第 6 节（Trace 数据模型与最低字段）+ **Langfuse 文档 Core Concepts**（2026-09-12 联网核实：**Observations 可嵌套**、**Trace 级属性冗余到每条 observation**、Session 归组）+ **Anthropic《Demystifying evals for AI agents》**（**grade transcript vs grade outcome**）+ raw 的《LoongSuite GenAI 可观测语义规范》。**三组算式为本次新增。**
 >
 > **2026-09-20 复审核正（本轮）**：**三组算式本次全部复算一致**（50 × 2 KB = 100 KB；100 KB × 1 万 ≈ 1 GB/天；× 365 ≈ 365 GB；15 span → 30 KB/run → 300 MB/天 → 年 ≈ 110 GB，3.3 倍吻合；5% × 100% + 95% × 5% = 9.75%）。**两处外部事实已对一手文档核实**：① **Langfuse 数据模型页**（`langfuse.com/docs/observability/data-model`）原文——observations *can be nested to reflect the structure of your application*、*Trace-level attributes such as `user_id`, `session_id`, `tags`, and `metadata` live on every observation within the trace; the SDKs propagate them automatically*、*Langfuse stores one observations table, and each row holds the observation-level data plus a copy of the trace-level attributes*；② **Anthropic《Demystifying evals for AI agents》（2026-01-09，engineering 博客）确有此文**，原文 *Each grader evaluates some portion of either the transcript or the outcome*。**三处表述按复核结果改**：①「1 GB / 天」改为量级写法「≈ 1 GB / 天」（十进制与二进制差约 7%，不影响量级）；②第 4 节的「失败全采、成功抽样」**降级为【启发式】**——无任何官方文档规定该策略，它是通行工程实践；③第 5 题「成本是 8 倍（平方累计）」**已改精确**：8 倍是**步数比**，按 A1 的平方累计口径应为**约 55 倍**。
 >
@@ -66,7 +66,7 @@ Trace：一棵树，每个节点（span）有【父子关系】
 
 ### 2. Trace 的数据模型【事实】
 
-【事实】study/07 给的**最低结构**：
+【事实】archive/study-courses/07 给的**最低结构**：
 
 ```text
 Request Trace

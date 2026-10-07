@@ -14,7 +14,7 @@ level: A
 > **所属主线**：一 · 循环怎么转、什么时候停（循环里的"行动"这一环）
 > **层级**：A · 教材级（"该做什么工具"能从"agent 的 affordance 不同于传统软件"推出来；工具响应与工具定义的上下文成本都能算）
 > **关联母题**：[[母题-A1-计划执行循环与停止条件]]（工具是循环里的"行动"）· [[母题-C1-上下文组装与窗口预算]]（工具定义与工具响应都占预算）· [[母题-C6-成本与长上下文截断]]（响应进历史后被平方放大）· [[母题-A6-沙箱权限与可信执行]]（工具的权限边界）
-> **素材来源**：**Anthropic Engineering《Writing effective tools for agents — with agents》**（2026-09-12 联网核实，含 consolidation 例子、namespacing、206 vs 72 token 响应对比、25,000 token 默认上限）+ `study/05-Tool-MCP-Skill与可信执行.md`。**三组算式为本次新增（待你核对）**
+> **素材来源**：**Anthropic Engineering《Writing effective tools for agents — with agents》**（2026-09-12 联网核实，含 consolidation 例子、namespacing、206 vs 72 token 响应对比、25,000 token 默认上限）+ `archive/study-courses/05-Tool-MCP-Skill与可信执行.md`。**三组算式为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① "工具越多越好"是错的 ② 别把 API endpoint 直接包一层 ③ 工具返回什么，取决于"模型接下来还需不需要用它发起调用"）· 读完约 12 分钟 · 需要先懂：[[母题-C1-上下文组装与窗口预算]]
 

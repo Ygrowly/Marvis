@@ -209,7 +209,7 @@ timestamp（不带时区）只存字面值：
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P5-表设计与数据类型" tag="PostgreSQL" q="PG 里 text 与 varchar、jsonb 与 json、serial 与 identity、timestamptz 怎么选？" a="PG 里 text 与 varchar(n) 性能没有差别（同一套变长存储），所以选哪个是语义选择——要长度约束才用 varchar(n)；jsonb 存解析后的二进制、可建 GIN 索引，json 存原始文本、保留格式与键序，要查就用 jsonb；主键用 GENERATED ... AS IDENTITY（SQL 标准，序列是隐式的，随表走），serial 是历史写法；时间一律 timestamptz（存 UTC 瞬时点、会话时区显示），timestamp 只用于「就是本地墙上时间」的语义。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>最不起眼但最容易被追问到底</strong>的一类题。它不难，但<strong>PG 的答案和 MySQL 的答案在四个点上都不一样</strong>（varchar 的性能差异、JSON 的两种类型、自增的实现、时间的时区语义）。<strong>答成 MySQL 那一套，等于白做三个 PG 项目。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -256,12 +256,5 @@ timestamp（不带时区）只存字面值：
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

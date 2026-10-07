@@ -179,7 +179,7 @@ WHERE id = :id AND num &gt; 0;
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M17-排行榜与防超卖" tag="MySQL" q="排行榜用 MySQL 还是 Redis，为什么？高并发扣减怎么防超卖——这两道题背后是同一条原理吗？" a="场景题的第一动作是澄清（六步：澄清 → 拆解 → 方案 → 风险 → 指标 → 降级）——9.9 那次丢分的一半在&quot;没问够&quot;（榜单范围、更新频率、防作弊全没问）。技术上排行榜用 Redis ZSet：跳表把&quot;按 score 有序&quot;内建进结构，ZREVRANK / ZADD 都是 O(logN)；MySQL 算名次要 COUNT(*) WHERE score &gt; ?，O(N)（200 万榜单要数 100 万行，差约 5 万倍）。同分先到者优先靠复合分数 分数 × 倍率 + (MAX_TS − 通关时间戳)——注意位数预算：Redis 的 score 是双精度浮点，2⁵³ 以内的整数才精确，倍率取 10¹⁰ 时分数上限必须小于约 90 万，否则同分排序会静默错乱。规模上做三件事：只存 Top N（5 GB → 50 MB）、名次近似（把 O(logN) 留给头部）、Redis 前置 + DB 兜底。防超卖的本质是&quot;把判断下推进原子操作&quot;（UPDATE ... WHERE num &gt; 0），三条路按一致性要求选。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是"场景设计题"的样板卡</strong>——它考的不是知识点，而是<strong>"拿到模糊需求后的章法"</strong>（澄清 → 拆解 → 方案 → 风险 → 指标）。<strong>9.9 那次的失败链是：假设错（以为消消乐是单机）→ 被否（提分享）→ 澄清不系统 → 长时间空白 → 没有成型方案</strong>。<strong>这张卡就是修复：把"排行榜"变成一道可以闭卷重放的母题</strong>——<strong>它同时覆盖场景设计方法论 + 技术选型 + 高并发扣减三个考点，性价比极高。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -230,12 +230,5 @@ WHERE id = :id AND num &gt; 0;
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

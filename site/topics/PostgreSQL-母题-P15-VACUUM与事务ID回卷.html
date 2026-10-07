@@ -181,7 +181,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P15-VACUUM与事务ID回卷" tag="PostgreSQL" q="VACUUM 到底做了什么？事务 ID 回卷是什么，PG 怎么应对？" a="VACUUM 做三件事——把死元组的空间标记为「可复用」（不是还给操作系统）、清理索引里指向死元组的条目、推进冻结。所以「跑完 VACUUM 表还是 10 GB」完全正常，它只是不再继续长。要真正缩小只能 VACUUM FULL / CLUSTER（排他锁 + 等量磁盘空间）或 pg_repack（在线重建）。而事务 ID 是 32 位、循环使用，所以必须在 ID 绕回来之前把老行「冻结」成&quot;永远可见&quot;——清理长期跟不上（长事务、离线复制槽）→ 冻不住 → 逼近回卷红线。PG 的应对是渐进升级，最后宁可拒绝新事务——「宁可停机也不出错数据」。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>唯一一处「运维不到位会真的丢数据」的 PG 机制</strong>——<strong>其他问题最多是变慢，这个会丢数据。</strong> 而且它把主线的所有线索收在了一起：<strong>P13 的 32 位 ID、P14 的回收边界、P4 的 VACUUM 压力，最后都落到这条线上。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -228,12 +228,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

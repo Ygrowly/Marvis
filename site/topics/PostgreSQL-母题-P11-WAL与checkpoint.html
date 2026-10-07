@@ -225,7 +225,7 @@ checkpoint 间隔 = 1 GB ÷ 10 MB/s = 【100 秒】
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P11-WAL与checkpoint" tag="PostgreSQL" q="WAL 是怎么保证「提交过的不丢」的？checkpoint 在做什么？" a="WAL 是「先写日志、再改数据页」：修改先顺序写进 WAL（顺序 IO），数据页留在共享缓冲区稍后再刷；提交时靠 fsync 保证这个事务的 WAL 已经落盘（synchronous_commit = on），所以崩溃后能用 WAL 把已提交的改动重放出来。checkpoint 做的事是「把某个 LSN 之前的脏页刷盘，从而把恢复起点向前推」——它不影响正确性，只影响崩溃后要重放多久。PG 不需要 undo，是因为旧版本本来就留在堆里（P13），不靠日志回滚。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 的七处差异」里最容易被追问到底的一处</strong>。表面问题只是「PG 用什么日志」，但<strong>深一层会问到「那它为什么不需要 undo」</strong>——答案在 MVCC（[[母题-P13-MVCC与可见性]]），<strong>所以这两道题是一对，答不上 P13 就讲不透 P11。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -272,12 +272,5 @@ checkpoint 间隔 = 1 GB ÷ 10 MB/s = 【100 秒】
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

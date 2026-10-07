@@ -137,7 +137,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M12-崩溃恢复" tag="MySQL" q="崩溃重启后 MySQL 怎么恢复数据？为什么不会丢已提交的、也不会错回滚？" a="恢复 = redo 重放 + undo 回滚。重启后从 check point 起顺序重放 redo（每页自带 LSN，已落盘的直接跳过，所以重放幂等），把已提交的事务补上；再用 undo 把未提交的撤销。提交到一半（prepare）的事务由 binlog 的完整性裁决——binlog 完整就提交，不完整就回滚。顺序不能反：必须先 redo 再 undo。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -186,12 +186,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

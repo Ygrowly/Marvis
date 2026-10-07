@@ -217,7 +217,7 @@ SELECT balance  → 80     ← 同一事务，结果变了</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P8-隔离级别与读一致性" tag="PostgreSQL" q="PG 默认是 RC 还是 RR？同一事务内两次查询为什么会看到不同结果？" a="PG 默认 READ COMMITTED。RC 下每条语句开始时取一次快照，所以同一事务里的两条 SELECT 之间如果有别的事务提交，你就会看到不同的结果——这是规范允许的不可重复读。要事务内一致就提到 REPEATABLE READ（PG 的 RR 是快照隔离，整个事务一个快照，而且连幻读也一并挡住了）；但 PG 的 RR 遇到写冲突会直接报 40001 让你重试，它不靠间隙锁把冲突挡住（那是 MySQL 的做法，见 [[母题-P10-无间隙锁与锁变体]]）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「PG 与 MySQL 最容易说错的七处」里的第一条</strong>——<strong>MySQL 默认 RR，PG 默认 RC</strong>。而且它的反直觉程度最高：<strong>「同一事务内读到不一样的结果」在 PG 的默认级别下不算 bug，是规范行为。</strong> 如果这条说错，后面 MVCC、锁、膨胀全都跟着错。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -265,12 +265,5 @@ SELECT balance  → 80     ← 同一事务，结果变了</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

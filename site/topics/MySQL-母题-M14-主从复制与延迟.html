@@ -197,7 +197,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M14-主从复制与延迟" tag="MySQL" q="主从复制的原理是什么？延迟到底从哪来——换成&quot;更好的机器&quot;能解决吗？读到旧数据该怎么处理？" a="主库提交时写 binlog → 从库 IO 线程拉取并写入 relay log → 从库 SQL 线程重放。关键是复制的是&quot;变更流&quot;不是数据页，所以从库是追赶者，&quot;追不上&quot;是结构性的。延迟有三个来源：① 回放并行度永远 ≤ 主库（按库并行时天花板就是库数——4 个库 × 25,000 = 100,000 TPS，与主库刚好打平）；② 大事务必须整体重放（主库跑 10 分钟，从库也 10 分钟，期间变更对从库完全不可见）；③ 从库自身慢（Row 格式下无主键表退化成全表扫，量级差 20 万倍——所以&quot;每张表都要有主键&quot;是复制性能问题）。&quot;读到旧数据&quot;的三层解法按优先级：读己之写 → 会话粘主库 → 延迟超阈值降级；不能用 sleep（延迟波动、时长无依据、把正确性建立在猜测上）。注意半同步解决的是 RPO，不是读一致性——这两件事最常被混为一谈。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>读写分离是"数据增长"最常用的第一步</strong>，而它的<strong>第一个现实坑就是"从库不是绝对实时的"</strong>（原始素材原话）。<strong>这道题的难点不在背原理，而在延迟的三类来源能不能讲清、以及"读到旧数据"的解法为什么不能是"sleep 一下再读"。</strong> 它和 [[母题-P12-流复制与逻辑复制]] 是同构对照，<strong>也是数驭穹图接入层设计的直接背景</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -247,12 +247,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

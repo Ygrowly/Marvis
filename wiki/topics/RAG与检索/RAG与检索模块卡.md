@@ -5,7 +5,7 @@ created: 2026-09-12
 updated: 2026-09-12
 status: active
 priority: P0
-trigger: AI 主战场四簇的第 2 个。此前只有 study/03 课程节点、无训练单元；且数驭穹图的证据区（Top-K Schema 召回 81→95%）需要一个能落地的机制底库。
+trigger: AI 主战场四簇的第 2 个。此前只有 archive/study-courses/03 课程节点、无训练单元；且数驭穹图的证据区（Top-K Schema 召回 81→95%）需要一个能落地的机制底库。
 ---
 
 # RAG 与检索模块卡
@@ -58,7 +58,7 @@ trigger: AI 主战场四簇的第 2 个。此前只有 study/03 课程节点、�
 ## 4. 八股题单（覆盖度校验：不是学习入口，是查漏清单）
 
 > **用法**：串完整条主线后，拿这张表自查覆盖率。**不要从这张表开始学。**
-> 本题单来源：`study/03-RAG与企业知识系统.md` 第 8 节 Q1–Q8 + `raw/得物 RAG 核心概念与原理`（721 行，Chunking/Embedding/HNSW/多路召回）+ Anthropic《Contextual Retrieval》+ 数驭穹图项目的真实口径。
+> 本题单来源：`archive/study-courses/03-RAG与企业知识系统.md` 第 8 节 Q1–Q8 + `raw/得物 RAG 核心概念与原理`（721 行，Chunking/Embedding/HNSW/多路召回）+ Anthropic《Contextual Retrieval》+ 数驭穹图项目的真实口径。
 
 优先级定义：
 - **必背** = 闭卷 3 分钟 + 追问 + 一个项目案例
@@ -278,8 +278,8 @@ RAG 里检索层主要看 **Recall@K 和 nDCG@K**：召回阶段的目标是"不
 ## 关联
 
 - 模板：[[模块深挖卡模板]]
-- 课程底库：`study/03-RAG与企业知识系统.md`（保留主线顺序与资料挂载；学习入口是母题卡）
+- 课程底库：`archive/study-courses/03-RAG与企业知识系统.md`（保留主线顺序与资料挂载；学习入口是母题卡）
 - 上位：[[母题-C1-上下文组装与窗口预算]]（检索是"选择"这一手段的一种实现）
-- 素材：`raw/2026-08-03T105229+0800 - RAG 核心概念与原理…｜得物技术.md`、Anthropic《Contextual Retrieval》、`study/03`
+- 素材：`raw/2026-08-03T105229+0800 - RAG 核心概念与原理…｜得物技术.md`、Anthropic《Contextual Retrieval》、`archive/study-courses/03`
 - 交叉：[[母题-G5-RAG评测与幻觉率]] 与 [[母题-C4-幻觉的成因与可控性]]（"检索失败率 ≠ 幻觉率"那条结论在这里落地）
 - 下游：Agent 簇（工具检索、记忆检索同构）

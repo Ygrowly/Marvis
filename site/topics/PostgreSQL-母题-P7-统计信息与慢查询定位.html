@@ -203,7 +203,7 @@ SQL B：单次 20 ms，每秒 300 次
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P7-统计信息与慢查询定位" tag="PostgreSQL" q="估计行数与实际行数差很多说明什么？怎么修？线上的慢查询怎么第一时间定位？" a="偏差来自三类原因——统计信息过期、列之间有关联但统计假设独立、条件是表达式或函数；对应三种修法——ANALYZE（或调 autovacuum 的 analyze 阈值）、CREATE STATISTICS 建扩展统计、建表达式索引或改写 SQL。定位慢查询的第一站是 pg_stat_statements（按总耗时排序，先治「最贵的」），再对单条用 EXPLAIN (ANALYZE, BUFFERS)。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「加索引」和「修信息」的分界线</strong>。上一题的例子已经说明——<strong>优化器不是一个会犯傻的黑盒，它是在用你给它的统计信息算代价</strong>。估错说明「给它的信息不对」，这时候加索引是<strong>治症状</strong>：统计信息还是错的，下一个查询照样选错。<strong>能区分这两件事，是「会看计划」和「会调数据库」的差别。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -250,12 +250,5 @@ SQL B：单次 20 ms，每秒 300 次
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

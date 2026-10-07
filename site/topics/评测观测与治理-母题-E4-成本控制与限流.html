@@ -188,7 +188,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="评测观测与治理/母题-E4-成本控制与限流" tag="评测观测与治理" q="成本失控时该先动哪一刀——以及&quot;限流&quot;这个动作，到底在保护什么？" a="成本控制的第一性原理是&quot;先归因、再动手、先动大头、先做无损的&quot;。先拆账单（按功能 / 租户 / 任务类型 / 环节拆），先回答&quot;是量涨了还是单价涨了&quot;——两件事的解法完全不同。环节这一维最重要，因为它直接对应动作：输入占大头就提缓存命中率（无损，本例能省 43%）、输出占大头就收输出 / 调 effort、工具占大头就 consolidation、存储占大头就降采样。降本有顺序且不可颠倒：提命中率（无损）→ 去拐杖（双赢）→ 压缩（有损）→ 调 effort / 换模型（换质量）。限流的本质是&quot;保护某一条具体的资源&quot;，所以要分四层放：入口（总量）· 租户（公平）· 工具（外部配额）· 模型（RPM / TPM 与预算）——只做入口限流，一个租户就能占满配额，而且 Agent 一个请求会触发几十次下游调用，网关看起来正常但模型 TPM 已经满了。超限后的处理顺序是&quot;有界排队 → 降级 → 快速失败&quot;，无界排队是最差的（把&quot;立刻被拒&quot;变成&quot;等 30 秒后被拒&quot;）。降级的本质是把&quot;不可用&quot;换成&quot;质量下降&quot;——这笔交换划不划算取决于业务（能不能接受质量降一点），而且备用配置必须是用你自己的评测验证过的，不是&quot;顺手切一个&quot;。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>最容易答成清单</strong>（"我们加了缓存、做了压缩、换了小模型"）。<strong>能说出"先归因再动手、先动大头"以及"限流保护的是具体某条资源"才算过关。</strong> 而且它和 [[母题-C6-成本与长上下文截断]] 是一对——<strong>C6 讲"钱花在哪"，E4 讲"怎么管住它"。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -234,12 +234,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

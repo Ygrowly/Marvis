@@ -14,7 +14,7 @@ level: B
 > **所属主线**：七 · 业务并发场景（抢库存、冲排行榜怎么不出错）
 > **层级**：B · 标准级（幂等键的构造判据能推；但「兜底要不要加一层」「用 DO NOTHING 还是 DO UPDATE」是取舍题）
 > **关联母题**：[[母题-P18-乐观并发控制]]（同一个结构缺陷的另一面）· [[母题-P5-表设计与数据类型]]（`NULL` 彼此不相等）· [[母题-P9-序列化失败与重试]]（可重试的前提是幂等）· [[母题-P16-分区表]]（唯一约束必须带分区键）· [[母题-M17-排行榜与防超卖]]（MySQL 侧对照）
-> **素材来源**：**RuleArena 真实设计**（`projects/RuleArena/04-idempotency-and-recovery.md`：`UNIQUE(run_id, action_type, idempotency_key)`、Receipt 与同一事务提交）+ `study/09` 第 5 节 + **PostgreSQL 官方文档 INSERT ... ON CONFLICT / Sequence Functions / System Columns**（2026-09-13 联网核实）。**三组算式与 UPSERT 的四个坑为本次新增（待你核对）**
+> **素材来源**：**RuleArena 真实设计**（`projects/RuleArena/04-idempotency-and-recovery.md`：`UNIQUE(run_id, action_type, idempotency_key)`、Receipt 与同一事务提交）+ `archive/study-courses/09` 第 5 节 + **PostgreSQL 官方文档 INSERT ... ON CONFLICT / Sequence Functions / System Columns**（2026-09-13 联网核实）。**三组算式与 UPSERT 的四个坑为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① **应用层幂等是优化，数据库约束才是正确性**——「查—判断—写」在任何多进程/多副本下都有窗口 ② **幂等键必须基于业务身份构造，不能用 `ToolCallID` 这类技术 ID**——否则等于每次重试换一把新钥匙 ③ **`NULL` 会让唯一约束形同虚设**——PG 里 `NULL` 彼此不相等）· 读完约 12 分钟 · 需要先懂：[[母题-P18-乐观并发控制]]
 

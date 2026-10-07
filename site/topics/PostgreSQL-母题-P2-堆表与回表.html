@@ -178,7 +178,7 @@ Heap Fetches ≈ 返回行数     → 等于每行都回了堆 —— 【省了�
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P2-堆表与回表" tag="PostgreSQL" q="PG 是堆表，为什么索引查询要回表？Index Only Scan 靠什么成立？联合索引在 PG 也有最左前缀吗？" a="MySQL 的主键就是数据本身（索引组织表），PG 的索引只是&quot;指向数据的路标&quot;——PG 的表是堆，所有索引都是二级索引，叶子存 ctid（物理位置），所以走索引只能拿到&quot;行在哪&quot;，取行必须再读堆，这就是回表。而且回表成本随命中行数线性增长（命中 1000 行 ≈ 100ms，命中 10 行 ≈ 1ms），树查找却是 O(log N)——所以&quot;命中行数&quot;比&quot;树查找深度&quot;重要得多。Index Only Scan 的判据不是&quot;列齐了&quot;，而是&quot;可见性映射说这一页所有版本都可见&quot;——因为可见性信息存在堆页头部。所以它依赖 VACUUM 的维护，而验证的唯一依据是 EXPLAIN ANALYZE 里的 Heap Fetches（不是 0 就还在回堆）。最左前缀在 PG 依然成立（原因相同：B 树有序），差别在叶子存什么——PG 存 ctid + 各列值，所以更容易做到覆盖，但仍受可见性限制；而 INCLUDE 列是&quot;不改索引的可用形状，只加覆盖能力&quot;。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>整个 PG 索引体系的起点</strong>，也是 MySQL 与 PG 最容易说反的地方。你三个项目全在 PG，如果讲不清「PG 表是堆、所有索引都是二级索引」，那么后面讲覆盖索引、讲索引代价、讲主键选型全都会带着 MySQL 的语义往下走——<strong>面试官一听就知道你在背另一本书</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -226,12 +226,5 @@ Heap Fetches ≈ 返回行数     → 等于每行都回了堆 —— 【省了�
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

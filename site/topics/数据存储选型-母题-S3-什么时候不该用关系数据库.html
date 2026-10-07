@@ -149,7 +149,7 @@ TP 与 AP 互相影响 —— 在线事务和复杂分析查询争夺 CPU、IO�
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="数据存储选型/母题-S3-什么时候不该用关系数据库" tag="数据存储选型" q="什么负载不该交给关系数据库，五类专有存储各自为哪种&quot;查询形状&quot;而生，以及每多引入一个引擎要付什么账。" a="判断该不该用关系库，只看一件事——这次查询的&quot;入口&quot;是什么。 入口是主键/范围 → 关系库（B+ 树就是为等值、范围、前缀、排序设计的）；入口是关键词 → 检索库（倒排索引，LIKE '%x%' 用不上 B+ 树而且没有&quot;相关性&quot;这个概念）；入口是向量距离 → 向量索引（相似度不是可排序的一维标量）；入口是关系路径 → 图（多跳时 JOIN 会组合爆炸）；入口是纯 key → 键值库。但&quot;能做 ≠ 划得来&quot;：关系库靠 JSONB、递归 CTE、pg_trgm 这些也能做，所以真正的判断是算账——引入任何新引擎都要付六项固定成本（同步链路、谁是准的、失败点、运维监控、学习协作、存储资源），而这六项不随数据量缩小，所以数据量越小、团队越小，越不该引入。落到项目上：RuleArena 的选型卡就是正面样本——PostgreSQL 存权威状态，Redis 只做队列与限流，并明确写下&quot;Redis 不能做权威状态&quot;和升级条件。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -199,12 +199,5 @@ TP 与 AP 互相影响 —— 在线事务和复杂分析查询争夺 CPU、IO�
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

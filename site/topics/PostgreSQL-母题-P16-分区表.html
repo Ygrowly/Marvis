@@ -223,7 +223,7 @@ ALTER INDEX measurement_usls_idx ATTACH PARTITION measurement_usls_200602_idx;
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P16-分区表" tag="PostgreSQL" q="PG 的分区表有哪几种？什么规模才值得分？" a="PG 是声明式分区——PARTITION BY RANGE / LIST / HASH。它的主要收益有两个：① 分区裁剪（查询带分区键时只扫相关分区）；② 批量删除变成 DROP/DETACH 分区（比 DELETE 便宜得多，而且官方明确说它完全避免了 DELETE 带来的 VACUUM 开销）。代价：分区键必须进大部分查询条件、分区太多会有规划开销、跨分区唯一约束做不了（除非约束里带上分区键）、运维更复杂。所以判据不是「数据大」，而是「数据大 + 天然有分区键 + 有批量清理需求」。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「数据增长」这条主线里唯一真正改变架构形状的手段</strong>——加索引、加缓存都还在「同一张表」里打转，<strong>分区改变的是「表的数量和管理粒度」</strong>。而且它和主线五直接合流：<strong>「按月丢弃分区」同时解决了膨胀问题</strong>（P14/P15 的根治方案就是它）。<strong>能看出这两个事是同一件事，是这条线的价值。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -270,12 +270,5 @@ ALTER INDEX measurement_usls_idx ATTACH PARTITION measurement_usls_200602_idx;
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

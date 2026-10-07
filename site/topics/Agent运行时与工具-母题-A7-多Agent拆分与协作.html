@@ -243,7 +243,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Agent运行时与工具/母题-A7-多Agent拆分与协作" tag="Agent运行时与工具" q="一个 Agent 不够用的时候，加一个 Agent 就能解决吗——&quot;多 Agent&quot;到底买到了什么，又付出了什么？" a="多 Agent 有效的原因不是&quot;多个模型更聪明&quot;，是&quot;多花了 token + 并行&quot;——Anthropic 的归因分析显示，token 用量单独就解释了 80% 的性能方差（三个因素合计 95%）。效果实测是比单 Agent 高 90.2%（Opus 4 做 lead + Sonnet 4 做子 agent，对比单 Opus 4）。代价是 15× token（普通对话 1×、单 agent ≈ 4×、多 agent ≈ 15×），所以它的判据是&quot;任务价值高到足以支付这个性能提升&quot;。适用的任务有三类特征：重并行、信息量超出单窗口、要对接很多复杂工具；不适合的是&quot;所有 agent 必须共享同一份上下文&quot;或&quot;子任务依赖很密&quot;——原文明确说大多数编码任务的真正可并行部分比研究少。effort 必须分档（简单查找 1 个 agent/3–10 次调用、直接对比 2–4 个子 agent、复杂研究 &gt;10 个），因为模型判断不了该用多大力，不分档会浪费约 24 倍。并行的收益来自两级（lead 派 3–5 个子 agent + 子 agent 内部并行 3+ 工具），实测降 90% 时间；而另一半收益是上下文隔离——子 agent 烧几万 token 探索，只回传 1,000–2,000 token 的结论。最后，多 Agent 的评测更难：它有涌现行为，改 lead 的 prompt 会不可预测地改变子 agent 的行为，所以要评交互模式，不只是单个 agent。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>最容易答成口号</strong>（"多 Agent 更强大"）或者<strong>过度否定</strong>（"多 Agent 就是噱头"）。<strong>正确答案在中间且可量化</strong>：Anthropic 的实测是<strong>多 Agent 比单 Agent 高 90.2%</strong>，但<strong>token 消耗是普通对话的 15 倍</strong>——<strong>所以它是一个"用钱买性能"的架构决策</strong>，而判据是<strong>"任务价值够不够高 + 能不能并行拆开"</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -292,12 +292,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

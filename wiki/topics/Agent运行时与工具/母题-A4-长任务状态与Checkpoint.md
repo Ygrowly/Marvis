@@ -15,7 +15,7 @@ interactive: rulearena-run-lifecycle.html
 > **所属主线**：二 · 中断与失败之后怎么继续（异常路径）
 > **层级**：A · 教材级（"checkpoint 为什么要记两次"能从"不确定窗口"推出来；重做成本与存储成本都能算）
 > **关联母题**：[[母题-A3-失败恢复与幂等]]（幂等键是 checkpoint 的组成部分；Resume/Replay/Retry/Fork 的分工在那张卡）· [[母题-A1-计划执行循环与停止条件]]（Step 是循环的产物）· [[母题-A5-上下文压缩与记忆]]（Checkpointer vs Store 的划分在那张卡展开）
-> **素材来源**：`study/04-Agent-Runtime与Harness.md` 第 3/5 节 + **LangGraph 文档 Persistence / Interrupts**（2026-09-12 联网核实：Checkpointer 管单 thread、Store 管跨 thread）+ Anthropic《Harness design for long-running apps》/《Building agents with the Claude Agent SDK》。**三组算式为本次新增（待你核对）**
+> **素材来源**：`archive/study-courses/04-Agent-Runtime与Harness.md` 第 3/5 节 + **LangGraph 文档 Persistence / Interrupts**（2026-09-12 联网核实：Checkpointer 管单 thread、Store 管跨 thread）+ Anthropic《Harness design for long-running apps》/《Building agents with the Claude Agent SDK》。**三组算式为本次新增（待你核对）**
 
 **导读**：必懂 3 件事（① 状态要分层，不能只存聊天记录 ② checkpoint 前后各记一次 ③ 恢复的第一步是查权威状态）· 读完约 12 分钟 · 需要先懂：[[母题-A3-失败恢复与幂等]]
 
@@ -31,7 +31,7 @@ interactive: rulearena-run-lifecycle.html
 
 ### 1. 前提：状态必须分层，不能只存聊天记录
 
-【事实】**七张表 / 七个实体**（study/04 的模型）：
+【事实】**七张表 / 七个实体**（archive/study-courses/04 的模型）：
 
 | 实体 | 作用 | 关键字段 |
 |---|---|---|
@@ -65,7 +65,7 @@ interactive: rulearena-run-lifecycle.html
 
 ### 2. 一个 Step 应该记录什么【事实】
 
-【事实】study/04 给的 schema（**这一份可以直接背**）：
+【事实】archive/study-courses/04 给的 schema（**这一份可以直接背**）：
 
 ```json
 {
@@ -104,7 +104,7 @@ interactive: rulearena-run-lifecycle.html
 
 ::figure checkpoint-window.svg | Checkpoint 的位置：夹在 intent 与 result 之间的那个不确定窗口 | 副作用前记 intent、后记 result；两次之间是不确定窗口，恢复时必须查权威状态
 
-【事实】study/04 给的 checkpoint 时机：
+【事实】archive/study-courses/04 给的 checkpoint 时机：
 
 ```text
 ① 进入 / 离开每个有业务意义的节点
@@ -137,7 +137,7 @@ interactive: rulearena-run-lifecycle.html
 
 ### 4. 恢复协议【事实】
 
-【事实】study/04 的恢复流程：
+【事实】archive/study-courses/04 的恢复流程：
 
 ```text
 读取 Checkpoint → 校验版本与完整性 → 【查询业务权威状态】
@@ -364,7 +364,7 @@ unknown → 不知道做没做成 → 【必须先查权威状态】
 
 1. **上下文是"当时那一刻的视图"，不是状态本身**（[[母题-C1-上下文组装与窗口预算]]）。**恢复时应该按当前状态重建最小 Context**——否则会把**已经过期的信息、已经解决掉的中间产物、以及被压缩前的冗余内容**一起带回来。
 2. **恢复流程的第一步不是"加载上下文"，是"查询业务权威状态"**：**checkpoint 记的是意图，业务系统记的是事实**——两者之间隔着那个不确定窗口（Q3）。**跳过这一步直接续跑，就可能重复执行已经完成的副作用。**
-3. **还有版本校验**：study/04 的恢复流程第二步是"**校验版本与完整性**"——如果期间 Prompt / 工具 / 模型版本变了，直接续跑可能处在**混合版本**的状态里。
+3. **还有版本校验**：archive/study-courses/04 的恢复流程第二步是"**校验版本与完整性**"——如果期间 Prompt / 工具 / 模型版本变了，直接续跑可能处在**混合版本**的状态里。
 
 【准确说法】"恢复协议是：**读 checkpoint → 校验版本 → 查权威状态 → 判断副作用是否已发生 → 重建最小 Context → 从安全节点恢复**。**"直接加载旧上下文"跳过了中间最关键的几步。**"
 
@@ -403,11 +403,11 @@ Checkpoint 的核心是"**记两次**"：**副作用前记 intent、后记 resul
 2. **什么时间做 checkpoint？** —— **进出业务节点、副作用前后、人工中断前、大型子任务完成后、Context 压缩或分支合并后**。**纯只读的中间步骤不必记**（重做代价低，而存储成本高）。
 3. **Resume / Replay / Retry / Fork 有什么区别？** —— 见 [[母题-A3-失败恢复与幂等]]：**Resume 要把事做完、Replay 只复现轨迹（不重做副作用）、Retry 仅对可重试错误且有幂等保障、Fork 继承只读事实但不继承未批准写权限**。
 4. **为什么恢复时要"重建最小 Context"而不是"恢复原 Context"？** —— **上下文是视图不是状态**。恢复时**按当前状态重新装配**，才能避免把过期信息和已经解决的中间产物带回来（[[母题-C1-上下文组装与窗口预算]]）。
-5. **框架（LangGraph 之类）能替我解决这些吗？** —— **部分能**：它提供 checkpointer / store / interrupt 这些**机制**。**但框架不会替你决定**：**业务权威状态在哪、幂等键怎么设计、什么算"有业务意义的节点"、以及 Eval 的定义**（study/04 的原话："**框架不会替你决定业务权威状态、权限、幂等键和 Eval 定义**"）。
+5. **框架（LangGraph 之类）能替我解决这些吗？** —— **部分能**：它提供 checkpointer / store / interrupt 这些**机制**。**但框架不会替你决定**：**业务权威状态在哪、幂等键怎么设计、什么算"有业务意义的节点"、以及 Eval 的定义**（archive/study-courses/04 的原话："**框架不会替你决定业务权威状态、权限、幂等键和 Eval 定义**"）。
 
 **同类变体**
 
-- 「人机确认（HITL）怎么实现？」——**本质是一次"计划内的长暂停"**：进入 `WaitingApproval` 状态 → **checkpoint 保存待审批动作** → 释放进程 → 用户批准后**从 checkpoint Resume**。**关键是"用户审批不占住进程"**（study/04 的原话）。而且**批准必须绑定具体动作摘要和版本**，不能用一次"允许所有"永久放权（[[母题-A6-沙箱权限与可信执行]]）。
+- 「人机确认（HITL）怎么实现？」——**本质是一次"计划内的长暂停"**：进入 `WaitingApproval` 状态 → **checkpoint 保存待审批动作** → 释放进程 → 用户批准后**从 checkpoint Resume**。**关键是"用户审批不占住进程"**（archive/study-courses/04 的原话）。而且**批准必须绑定具体动作摘要和版本**，不能用一次"允许所有"永久放权（[[母题-A6-沙箱权限与可信执行]]）。
 - 「事件流（SSE）和 checkpoint 是什么关系？」——**SSE 是"传输视图"，数据库状态才是权威**。**事件带递增 sequence，客户端断线后可以从 last event 恢复**——但**恢复的依据是数据库，不是事件流**。这个区分和"上下文是视图"是同一条原理。
 
 ---

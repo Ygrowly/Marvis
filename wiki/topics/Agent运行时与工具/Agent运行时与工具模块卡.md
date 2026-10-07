@@ -5,7 +5,7 @@ created: 2026-09-12
 updated: 2026-09-12
 status: active
 priority: P0
-trigger: AI 主战场四簇的第 3 个，也是简历最硬区（EnergyOps 的 Hook 链、RuleArena 的 FSM 与 checkpoint 都落在这里）。此前只有 study/04–06 课程节点、无训练单元。
+trigger: AI 主战场四簇的第 3 个，也是简历最硬区（EnergyOps 的 Hook 链、RuleArena 的 FSM 与 checkpoint 都落在这里）。此前只有 archive/study-courses/04–06 课程节点、无训练单元。
 ---
 
 # Agent 运行时与工具模块卡
@@ -60,7 +60,7 @@ trigger: AI 主战场四簇的第 3 个，也是简历最硬区（EnergyOps 的 
 ## 4. 八股题单（覆盖度校验：不是学习入口，是查漏清单）
 
 > **用法**：串完整条主线后，拿这张表自查覆盖率。**不要从这张表开始学。**
-> 本题单来源：`study/04-Agent-Runtime与Harness.md` 第 9 节 Q1–Q8 + `study/05`/`study/06` + raw 里的 Harness 实践系列（含 EnergyOps 真实 Hook 链与 RuleArena FSM）+ 面试复盘里的真实追问。
+> 本题单来源：`archive/study-courses/04-Agent-Runtime与Harness.md` 第 9 节 Q1–Q8 + `archive/study-courses/05`/`archive/study-courses/06` + raw 里的 Harness 实践系列（含 EnergyOps 真实 Hook 链与 RuleArena FSM）+ 面试复盘里的真实追问。
 
 优先级定义：
 - **必背** = 闭卷 3 分钟 + 追问 + 一个项目案例
@@ -273,7 +273,7 @@ Agent 场景还多一个重试来源：**模型会自己重试**，所以 `max_r
 ## 关联
 
 - 模板：[[模块深挖卡模板]]
-- 课程底库：`study/04-Agent-Runtime与Harness.md`、`study/05-Tool-MCP-Skill与可信执行.md`、`study/06-Workflow-多Agent与长任务.md`（保留主线顺序与资料挂载；学习入口是母题卡）
+- 课程底库：`archive/study-courses/04-Agent-Runtime与Harness.md`、`archive/study-courses/05-Tool-MCP-Skill与可信执行.md`、`archive/study-courses/06-Workflow-多Agent与长任务.md`（保留主线顺序与资料挂载；学习入口是母题卡）
 - 上位：[[母题-C1-上下文组装与窗口预算]]（Agent 循环每转一圈都在生成新上下文）
 - 交叉：[[母题-G5-RAG评测与幻觉率]]（Agent 评测同样要分层归因）、[[母题-M16-乐观锁与悲观锁]]（幂等与条件更新）、[[母题-P19-唯一约束与UPSERT]]（"应用层幂等是优化，数据库约束才是正确性"）
 - 素材：raw 里的 Harness 实践系列（AI 不缺智商缺纪律 / Harness 工程实践 / 14-step / Loop Engineering / 你不知道的 Claude Code / Agent 治理：用 Hook 堵住偷懒越权与失忆）

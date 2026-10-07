@@ -202,7 +202,7 @@ VACUUM 判断「这个死元组能不能清掉」的唯一问题：
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P14-长事务与表膨胀" tag="PostgreSQL" q="长事务为什么危险？表膨胀是怎么发生的？" a="VACUUM 只能回收「所有活跃快照都看不见」的死元组，所以回收边界 = 最老的那个活跃快照。一个长事务（包括只读的）会把回收边界钉在过去，这两小时内产生的所有死元组都不能清——表就这么胖起来的。膨胀又会让扫描读更多页、缓存命中率下降，于是查询变慢、事务更长、回收更停摆——这是一个正反馈环，而且 PG 表膨胀经常是性能事故的【起点】而不是结果。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>PG 最反直觉、也最容易造成真实事故的一条</strong>——<strong>MySQL 里的「长事务」主要是不放锁，PG 里的「长事务」是【不让回收】。</strong> 而且它解释了 PG DBA 为什么有一半时间在跟膨胀打交道，而 MySQL 那边几乎不用。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -249,12 +249,5 @@ VACUUM 判断「这个死元组能不能清掉」的唯一问题：
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

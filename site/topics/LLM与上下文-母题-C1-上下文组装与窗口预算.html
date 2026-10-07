@@ -222,7 +222,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="LLM与上下文/母题-C1-上下文组装与窗口预算" tag="LLM与上下文" q="模型能看到的 token 是有上限的，但比&quot;有上限&quot;更麻烦的是——放进去的 token 模型不一定用得上，而且每一轮都要原样重发一遍。那么每一步到底该放什么？" a="上下文窗口是容量不是质量——Transformer 的注意力是 n² 关系，token 越多这份预算越被摊薄，实测表现为 context rot。所以目标不是&quot;塞满窗口&quot;，而是找到最小的那组高信号 token。工程上是四种手段的组合：选择（只放当前步骤所需）、压缩（摘要 + 外部持久化指针）、隔离（子任务独立窗口，只回传 1–2K）、缓存（稳定前缀复用）。另外成本是平方增长的——每轮都要重发全部历史，40 轮 × 15K 的会话累计输入 12.3M，是最后一轮 prompt 的 20.5 倍。缓存能把重复内容降到 0.1× 计价但不改占用；要真正降占用只能靠压缩。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -274,12 +274,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

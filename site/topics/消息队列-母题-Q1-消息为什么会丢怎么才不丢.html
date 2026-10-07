@@ -152,7 +152,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="消息队列/母题-Q1-消息为什么会丢怎么才不丢" tag="消息队列" q="一条消息从生产到生效，中间哪几段可能丢、每段靠什么兜住，加严到哪一档最划算？" a="消息只可能在三段丢——发送、存储、消费，每段各有一道确认：生产端等 Broker 确认（acks）、Broker 端持久化 + 多副本、消费端处理完再 ack。不丢不是一个参数能搞定的，要三个一起给：acks=all（等 ISR 全部确认）+ min.insync.replicas≥2（ISR 不足就拒绝写，把&quot;可能丢&quot;换成&quot;明确不可用&quot;）+ unclean.leader.election.enable=false（不从落后副本选主）。而且必须接受一个前提：跨进程通信没有&quot;恰好一次&quot;，框架只保证至少一次——所以&quot;不丢&quot;的准确定义是&quot;生产者收到成功 ack 的消息永不消失&quot;，重复是它的代价，由业务幂等吃掉。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -202,12 +202,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

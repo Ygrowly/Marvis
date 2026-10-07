@@ -248,7 +248,7 @@ langsmith.span.kind ∈ llm / chain / tool / retriever / embedding / prompt / pa
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="评测观测与治理/母题-E7-AgentOps平台与自建Trace-Eval" tag="评测观测与治理" q="观测与评测这套东西，业界是怎么做成产品的——它替你做了什么、不替你做什么；如果不用，自己要付什么？" a="平台卖的不是&quot;更漂亮的日志&quot;，是一条管道——采集（SDK / OTel）→ Trace 树 → Score → Dataset + Experiment，正好把 E 簇三条主线做成了现成实现。两家的数据模型独立收敛到同一套形状（层级 / 边界 / 归组：observation 或 run 可嵌套 → trace → session 或 thread），说明这是问题的形状而不是产品口味——所以记结构、别背命名。采集必须非阻塞且先落地再入库（SDK 缓冲 → Web 批量 → 立刻写 S3 → Redis 只留引用 → Worker 落 ClickHouse），两个理由都是可靠性：峰值不打库、库挂了不丢事件——代价是短命进程要 flush()、以及 OTLP 下孤儿 span 会被静默丢弃，所以&quot;有 Trace&quot;必须靠 Replay 反向验证。存储按查询形状选：Trace 的读是分析型、写是追加型 → 列存 + 队列 + 事务库 + 对象存储。最关键的一条是 Trace 会过期而 Dataset 不会（SaaS 只留 180 天，到期永久删除；Dataset 无限期保留）——所以&quot;坏例要尽快沉淀&quot;是硬约束，人工标注队列的容量必须按失败量倒推（每天 500 条失败、每天只能看 50 条时，90% 会在没人看过之前就过期）。最后，平台是控制面：业务真值与代码里的安全红线它都替不了，Judge 与专家一致性没达标前不能单独触发发布阻断；选型只看三条不会过期的约束——数据能不能出网、在谁的生态里、要不要和现有观测栈并存。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>字节 JD 把它写进了「强竞争力要求」</strong>（不是加分项，是明牌）。<strong>但这类题最容易答砸在两个方向</strong>：① <strong>只说"我们用了 Langfuse"</strong>——那是汇报工具，不是回答能力；② <strong>背功能对比表</strong>——功能表半年就变，而且面试官问的是"为什么这么设计"。<strong>真正值钱的是三层：数据的形状（为什么都长这样）、管道的形状（为什么必须这么存）、以及责任边界（哪些事平台替不了）。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -297,12 +297,5 @@ langsmith.span.kind ∈ llm / chain / tool / retriever / embedding / prompt / pa
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

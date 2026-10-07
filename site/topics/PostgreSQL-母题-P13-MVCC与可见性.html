@@ -177,7 +177,7 @@ VACUUM FULL  ：重写整张表到新文件，把空间还给操作系统
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P13-MVCC与可见性" tag="PostgreSQL" q="MVCC 在 PG 里怎么实现？xmin / xmax 与「更新即新版本」意味着什么？" a="PG 把每个行版本都留在堆里，用行的 xmin（创建它的事务 ID）和 xmax（删除它的事务 ID）+ 当前快照的事务范围判断可见性——读的时候不改数据、不加锁。所以 UPDATE 实际是「写一个新版本 + 把旧版本的 xmax 标成本事务」。代价是死元组必须靠 VACUUM 回收，而且索引里还留着指向旧元组的条目——这正是表膨胀的根源，也是它和 MySQL「版本链放 undo log、purge 线程自动清理」最大的差别。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>整条主线五的地基</strong>——膨胀、VACUUM、事务 ID 回卷这三件 PG 独有的事，<strong>全都是「版本留在堆里」的直接后果</strong>。而且它同时是 P11 那道题的答案（<strong>为什么 PG 不需要 undo</strong>）。<strong>面试官问 PG 的 MVCC，其实是在问「你知不知道代价藏在哪」。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -224,12 +224,5 @@ VACUUM FULL  ：重写整张表到新文件，把空间还给操作系统
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

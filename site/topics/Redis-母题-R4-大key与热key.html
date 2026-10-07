@@ -152,7 +152,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Redis/母题-R4-大key与热key" tag="Redis" q="大 key 与热 key 各是什么、为什么危险、怎么发现和拆。" a="大 key 与热 key 是两个维度的问题——大 key 是体积（危害来自&quot;Redis 命令执行单线程&quot;，一条大命令会把所有人一起挡住；删一个 200 万 field 的 Hash 能阻塞约 200 ms，所以要用 UNLINK 或 HSCAN 分批）；热 key 是频率（危害来自&quot;集群里一个 key 只属于一个分片&quot;，加节点完全无效，只对读有效——读热用本地缓存（命中 95% 就把 3 万 QPS 降到 1500）或打散成多个副本 key；写热只能靠本地聚合、队列串行或换结构）。发现手段分别是 --bigkeys/MEMORY USAGE（采样估算 + 逐个确认）和客户端/代理层统计 + &quot;单分片倾斜&quot;这个信号；MONITOR 能看但代价大，别在生产常开。而&quot;按业务维度拆成大堆小 key&quot;是一箭双雕的动作：既解决了大 key，也顺带分散了访问。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -199,12 +199,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

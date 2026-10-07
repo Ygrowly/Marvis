@@ -1,0 +1,37 @@
+name: Check build freshness（落盘即上站）
+
+> PLAN v2 治理律 1 的机器执行：md 正本改了、site/ 派生物没重新生成 → 本检查红。
+> 本地修法恒为一条：python site/build.py 后重新提交。
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rebuild site from md sources
+        run: python site/build.py
+
+      - name: Assert site/ matches committed artifacts
+        run: |
+          if [ -n "$(git status --porcelain site/)" ]; then
+            echo "::error::site/ 与 md 正本不同步——本地跑 python site/build.py 后再提交"
+            git status --porcelain site/
+            exit 1
+          fi
+
+      - name: Regression suites（六套件）
+        run: |
+          for t in test_dispatch test_progression test_render test_sync test_brain; do
+            node "site/_tests/$t.js"
+          done
+          python site/_tests/test_ledger.py

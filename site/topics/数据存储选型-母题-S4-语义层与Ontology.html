@@ -218,7 +218,7 @@ Agent    ：还要【写】——下单、退款、发券、改状态、发起�
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="数据存储选型/母题-S4-语义层与Ontology" tag="数据存储选型" q="自然语言问数的准确率上限到底卡在哪里，业务语义应该存在系统里还是提示词里，以及 Ontology 在 Agent 语境下指的是什么。" a="NL2SQL 的准确率上限不在模型，在&quot;业务定义&quot;——模型没有业务先验，它看到 pay_amount 不知道这是下单金额、实付还是净额；而企业分析中的大多数错误不是 SQL 语法错误，而是业务定义错误（语法全对但口径错，而且错了看不出来）。所以正确形态不是&quot;让模型猜口径&quot;，而是把口径做成可检索、可版本化、可审计的语义资产：三层知识（技术元数据自动抽取 / 业务语义人工确权 / 公共规则平台统一）、状态机（DRAFT → REVIEWED → PUBLISHED → DEPRECATED）、查询只用已发布版本并把语义版本写进溯源。把口径塞进提示词是最常见的偷懒解法，它的硬伤是上下文有上界、改了没记录、无法对账、无法评测、会漂移——正确做法是按问题检索后只注入相关的那几条。Ontology 这个词有两种用法：学术义指概念层的形式化定义（与&quot;实例化的知识图谱&quot;是&quot;类定义 vs 对象集合&quot;的关系），厂商语境指把数据、逻辑、动作打包成可操作层——两者的共同内核都是&quot;显式表达含义，而不是让它隐含在代码里&quot;，而这个内核在 Agent 时代变重要，是因为 Agent 还要&quot;做事&quot;，必须知道什么动作在什么状态下允许。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -270,12 +270,5 @@ Agent    ：还要【写】——下单、退款、发券、改状态、发起�
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

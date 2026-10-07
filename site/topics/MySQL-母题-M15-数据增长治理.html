@@ -155,7 +155,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M15-数据增长治理" tag="MySQL" q="冷热分离、归档、读写分离、分库分表——它们分别解决什么？为什么不是一上来就分库分表？" a="&quot;数据量大&quot;本身不是问题，&quot;热查询背着冷数据跑&quot;才是问题。 所以治理顺序是五步：① 索引与 SQL做好 → ② 事务边界与锁冲突管好 → ③ 冷热分离与归档 → ④ 读写分离 → ⑤ 单机真的扛不住才分库分表。这个顺序的依据是&quot;便宜且可逆的先做，贵且难回头的后做&quot;——而分库分表有四项代价：路由变复杂（查询必须带分片键，否则广播）、跨分片聚合分页难、跨分片事务难、扩容要迁移约 50% 的数据。冷热分离按时间轴把热数据与冷数据分层（8000 万行归档到 800 万行，索引从 4 层降到 3 层）；归档 ≠ 删除，要分批搬分批删（否则 7000 万行一次性 DELETE 会产生约 14 GB undo、拖成长事务）；分片键不是&quot;数据本身的属性&quot;，是&quot;查询形状的属性&quot;，而且它最难改。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是主线六的收口题</strong>，而且它有一个<strong>几乎所有人都会答错的顺序问题</strong>——"数据量大 = 分库分表"。<strong>原始素材给出的五步顺序是这道题的灵魂</strong>，它同时考验<strong>克制（知道什么时候不动）</strong>和<strong>视野（知道每一步解决什么）</strong>。<strong>而且它和 [[母题-P16-分区表]] 合流：有持续清理需求的大表，分区的"丢弃分区"就是归档的最优解。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -203,12 +203,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

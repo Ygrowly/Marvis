@@ -183,7 +183,7 @@ varchar(10) 存 'a'   → 1 字节内容 + 1 字节长度 = 2 字节
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M5-引擎与表设计基本盘" tag="MySQL" q="MyISAM 和 InnoDB 差在哪？建表时主键、varchar/char、DATETIME/TIMESTAMP 该怎么选——每一个选择背后付的是什么代价？" a="选 InnoDB 是因为它的三条硬差异——支持事务、行级锁、崩溃恢复——正好对应业务表的三个硬要求；MyISAM 只适合&quot;读多写少 + 无事务 + 数据可重建&quot;。表设计的三条硬规则都有可算的依据：主键用自增（随机主键导致页分裂，填充率降到约一半、页数翻倍，还让缓存能装的页减半）、长度不定用 varchar（char(10) 存 'a' 占 10 字节 vs varchar(10) 占 2 字节，差 5 倍）、远期时间用 DATETIME（TIMESTAMP 只有 4 字节，2^31−1 秒 ÷ 31,557,600 ≈ 68 年，2038-01-19 溢出）。另外主键会被复制进每一个二级索引——BIGINT→UUID 让单个索引从 18B/条涨到 46B/条。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>最高频、也最容易被轻视</strong>的一类题。它不难，但答"知道"和答"选过"是两回事——面试官问它是为了确认：你建的表现在会不会埋雷（主键用 UUID 导致页分裂、时间字段选了 TIMESTAMP 结果 2038 年溢出）。<strong>而且它是后面所有索引题的前置</strong>：不懂 InnoDB 是索引组织表，就讲不清回表。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -233,12 +233,5 @@ varchar(10) 存 'a'   → 1 字节内容 + 1 字节长度 = 2 字节
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

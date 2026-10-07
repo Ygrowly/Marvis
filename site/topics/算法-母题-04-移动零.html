@@ -41,7 +41,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="算法/母题-04-移动零" tag="算法" q="如何原地把满足某条件的元素归位，同时保持其余元素的相对顺序？" a="快指针找非零元素，慢指针指向下一个写入位置，找到就交换并推进慢指针。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：快慢指针的最简形态，一切「原地改造数组」问题的母题。写起来简单，但讲清不变量才是得分点。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -112,12 +112,5 @@ def moveZero(nums):
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

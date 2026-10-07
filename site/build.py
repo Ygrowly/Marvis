@@ -7,8 +7,6 @@ md 工作台 → 按格式选 adapter → 三类视图（P1 已实现母题页�
     python site/build.py
 
 产物：
-    site/_data/decks.json   多牌组数据（训练台用）
-    site/_data/decks.js     同上，file:// 版本（fetch 本地 json 会被 CORS 拦）
     site/topics/*.html      母题页
 
 md 里的约定：
@@ -670,7 +668,7 @@ PAGE = """<!DOCTYPE html>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="%%KEY%%" tag="%%MODULE%%" q="%%Q%%" a="%%A%%"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     %%IMPORTANCE%%
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -692,13 +690,6 @@ PAGE = """<!DOCTYPE html>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>
 """
@@ -2150,7 +2141,6 @@ def cleanup_html():
 
 # ---------------------------------------------------------------- 面经手册 → 牌组
 
-INTERVIEW_MANUAL = "wiki/interview/面经-字节AI-Agent.md"
 
 
 def _subsec(sec, title):
@@ -2183,63 +2173,6 @@ def card_text(md):
         lines.append(s)
     return plain("\n".join(lines)).strip()
 
-
-def parse_interview_manual():
-    """把面试手册拆成可练的牌组。
-
-    来源格式：
-      ## N. 母题 XX：<问题>  → 取「15 秒」「60 秒标准回答」做主卡
-      ## 20. 三个项目的定向回答卡 → 取每个 ### 小节做项目口述卡
-    小节缺失就跳过，不报错——不因为格式不全卡住整条流水线。
-    """
-    p = ROOT / INTERVIEW_MANUAL
-    if not p.exists():
-        return []
-    body = split_front(p.read_text(encoding="utf-8"))[1]
-    parts = re.split(r"^##\s+\d+\.\s+([^\n]+)$", body, flags=re.M)
-
-    topics, projects = [], []
-    for i in range(1, len(parts) - 1, 2):
-        title, sec = parts[i].strip(), parts[i + 1]
-        if "母题" in title and "：" in title:
-            no, name = title.split("：", 1)
-            num = re.search(r"\d+", no)
-            long_ = _subsec(sec, "60 秒标准回答") or _subsec(sec, "60 秒版本")
-            if not long_:
-                continue
-            short = _subsec(sec, "15 秒")
-            back = card_text(long_)
-            if short:
-                back = card_text(short) + "\n\n" + back
-            topics.append({
-                "id": "ai-%s" % (num.group(0) if num else len(topics) + 1),
-                "q": plain(name), "a": back, "tag": "AI/Agent",
-                "src": INTERVIEW_MANUAL,
-            })
-        elif "项目" in title and "定向" in title:
-            for m in re.finditer(r"^###\s+([^\n]+)$", sec, re.M):
-                head = m.group(1).strip()
-                if "：" not in head:
-                    continue
-                proj, variant = head.split("：", 1)
-                proj = re.sub(r"^\d+(\.\d+)*\s*", "", proj).strip()
-                chunk = sec[m.end():]
-                nxt = re.search(r"^###\s", chunk, re.M)
-                if nxt:
-                    chunk = chunk[:nxt.start()]
-                projects.append({
-                    "id": "proj-%s" % proj.lower(),
-                    "q": "讲一遍 %s（%s）" % (proj, variant.strip()),
-                    "a": card_text(chunk), "tag": "项目口述",
-                    "src": INTERVIEW_MANUAL,
-                })
-
-    decks = []
-    if topics:
-        decks.append({"id": "ai", "name": "AI 母题", "cards": topics})
-    if projects:
-        decks.append({"id": "project", "name": "项目口述", "cards": projects})
-    return decks
 
 
 # ── 读厚卡片层（2026-10-03）：wiki/cards/ 正本 → _data/cards.js + site/cards.html ────
@@ -2791,34 +2724,9 @@ def main():
     # 读厚卡片层：wiki/cards 正本 → cards.js（派单簇）+ cards.html 内化馆
     write_cards(modules)
 
-    # 复训牌组：2026-09-25 起不再按 md 的 integrated 过滤（状态机退场）。
-    # 判据改为「这张卡有可供复述的骨架或结论」——讲没讲过由进度页的本机数据决定。
-    def _speakable(t):
-        return bool(t.get("conclusion") or t.get("skeleton"))
-    live = [t for t in topics if _speakable(t)]
-    drafts = [t for t in topics if not _speakable(t)]
-
-    decks = []
-    if live:
-        decks.append({
-            "id": "topics", "name": "母题",
-            "cards": [{"id": t["key"], "q": t["question"], "a": t["conclusion"],
-                       "tag": t["module"], "href": t["page"], "src": t["src"]}
-                      for t in live],
-        })
-    decks.extend(parse_interview_manual())
-    if cards:
-        decks.append({
-            "id": "extra", "name": "补充卡",
-            "cards": [{"id": c["id"], "q": c["q"], "a": c["a"],
-                       "tag": c["tag"], "src": c["src"]} for c in cards],
-        })
-
-    (OUT_DATA / "decks.json").write_text(
-        json.dumps(decks, ensure_ascii=False, indent=2), encoding="utf-8")
-    (OUT_DATA / "decks.js").write_text(
-        "window.MARVIS_DECKS = " + json.dumps(decks, ensure_ascii=False) + ";\n",
-        encoding="utf-8")
+    # decks.js/json 已随双复训合并退役（PLAN v2 第0期）：唯一调度在 progress 派单引擎。
+    # drafts（暂不可复述的母题）只进构建报告。
+    drafts = [t for t in topics if not (t.get("conclusion") or t.get("skeleton"))]
 
     review_index = [{"title": rv["title"], "href": rv["page"],
                      "items": len(rv["items"]), "missing": len(rv["missing"])}
@@ -2882,13 +2790,10 @@ def main():
 
     inject_mermaid_runtime()
 
-    n = sum(len(d["cards"]) for d in decks)
-    print("母题页 %d | 牌组 %d | 可练卡片 %d" % (len(topics), len(decks), n))
+    print("母题页 %d" % len(topics))
     if drafts:
-        print("  草稿 %d 个（只读不练）：%s"
+        print("  草稿 %d 个（暂不可复述）：%s"
               % (len(drafts), " ".join(t["stem"] for t in drafts)))
-    for d in decks:
-        print("  [%s] %d 个" % (d["name"], len(d["cards"])))
     for t in topics:
         print("  -> %s（%s，追问 %d，变体 %d）"
               % (t["page"], "有图" if t["figures"] else "无图",

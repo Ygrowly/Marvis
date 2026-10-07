@@ -215,7 +215,7 @@ n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="LLM与上下文/母题-C3-Prompt版本管理与回归" tag="LLM与上下文" q="Prompt 是针对&quot;当时的模型&quot;写下的控制层。模型变了、任务变了，这套控制层的收益和代价都会变——那么你怎么用最小的代价，知道自己该删哪一条？" a="Prompt 不是配置文件，是针对当时模型写的控制层——它和模型是一个耦合系统，模型一变，同一份 prompt 的收益和代价全变。所以改动必须走消融：逐段删除、跑同一套 Eval、看指标是掉了还是变好；验收必须用没参与调优的 held-out 集合（真实案例：训练集上 98.9% 打平，held-out 上 90.5% vs 78.6%）。反直觉的实证是：Anthropic 为 Claude 5 代删掉了 80%+ 的系统提示，编码评测无损失；清掉六类&quot;拐杖&quot;后成本降 14.6%、准确率升 5.3%（错误率腰斩）。而验证一次消融只要几美元——所以&quot;要不要做消融&quot;是习惯问题，不是成本问题。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -267,12 +267,5 @@ n = p(1−p) / SE² = 0.09 / 0.0001 = 900 条</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

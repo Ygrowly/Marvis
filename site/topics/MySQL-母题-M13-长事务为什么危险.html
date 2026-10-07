@@ -182,7 +182,7 @@ SELECT ...;        -- 隐式开了一个事务
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M13-长事务为什么危险" tag="MySQL" q="长事务为什么危险——它到底&quot;按住&quot;了什么？为什么&quot;只读&quot;这件事并不构成豁免？" a="长事务按住两样东西，所以危害是两条独立的链。走 MVCC 的那条：ReadView 不释放 → purge 不敢清理它还可能读的旧版本 → undo 膨胀、版本链变长 → 快照读回溯变慢（一行每秒改 100 次、挂 2 小时就是 72 万节，单次回溯 72 毫秒）、回滚成本更高。走锁的那条：写锁持到事务结束 → 其他写事务排队 → 死锁概率上升。反直觉点：只读事务触发不了锁那条，但 MVCC 那条照样走——最常见的真实形态是 SET autocommit = 0 之后跑了查询忘了提交，这种连接 CPU 低、几乎无查询，监控上很不起眼，却在按住全库的回收边界。监控口径：盯最老事务的 trx_started（PG 侧对应最老事务的 xmin）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>raw 里这句"很多人知道不太好，但说不清楚到底坏在哪"就是这道题的价值</strong>——<strong>它考的是你能不能从 MVCC 机制推导出长事务的完整危害链</strong>，而不是背一句"长事务不好"。<strong>而且它有一个反直觉点：只读事务同样危险。</strong> <strong>这条和 PG 的 [[母题-P14-长事务与表膨胀]] 几乎是同构的。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -234,12 +234,5 @@ SELECT ...;        -- 隐式开了一个事务
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

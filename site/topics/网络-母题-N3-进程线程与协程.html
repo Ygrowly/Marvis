@@ -156,7 +156,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="网络/母题-N3-进程线程与协程" tag="网络" q="三种执行单元该怎么选？asyncio 的优势和它的前提是什么？" a="并发不是&quot;同时干很多事&quot;，而是&quot;在等的时候去干别的事&quot;——所以收益由等待占比决定（CPU 占 2% 的请求，单核理论上能并发约 50 个）。三种执行单元的差别从&quot;谁调度&quot;推出来：进程由 OS 调度、地址空间独立（隔离好、通信贵）；线程由 OS 调度、共享地址空间（方便、切换走内核）；协程由用户态事件循环调度、约 2KB 一个（切换几乎免费，但一处阻塞全体停摆）。asyncio 能扛住大量连接，是因为单线程一次 epoll 就能问出成千上万连接里哪些就绪，加上单位开销小两个数量级——线程每个要占内核侧约 25KB（16KB 内核栈 + task_struct，且不计入 RSS）和内核里一个调度实体，协程这两笔全省。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -204,12 +204,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

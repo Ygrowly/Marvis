@@ -145,7 +145,7 @@ throttled_usec —— 累计被限流的时间
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Linux与部署/母题-X1-容器是什么" tag="Linux与部署" q="容器隔离了什么、限制了哪些资源，为什么&quot;容器里看到的&quot;和&quot;实际能用的&quot;经常是两回事。" a="容器不是轻量级虚拟机，它共享宿主机的同一个内核——namespace 管&quot;能看到什么&quot;（PID / NET / MNT / UTS / IPC / USER 等，把视野收窄），cgroup 管&quot;能用多少&quot;（memory / cpu / pids / io，给资源设上界），两者合起来才让一个普通进程&quot;看起来像小机器&quot;（启动快是因为不用起内核，隔离弱于虚拟机也是因为共享内核）。关键推论：内存没有 namespace——所以容器里 free 看到的是宿主机的内存，而真实额度只在 cgroup 的文件里（memory.max / memory.current / memory.events）；超 memory.max 是 cgroup OOM（日志前缀 Memory cgroup out of memory），与宿主机剩多少无关。CPU 是&quot;每周期的时间预算&quot;（cpu.max = &quot;50000 100000&quot; = 0.5 核），用完之后即使核空闲也用不了——所以&quot;利用率不高&quot;不代表没被限流，要看 cpu.stat 的 nr_throttled / throttled_usec。而&quot;进程以为有多少内存&quot;和&quot;实际能有多少&quot;不一致，是容器里最经典的一类坑（老版本 JVM 按宿主机 1/4 设堆，在 512MB 的容器里会被反复杀）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -195,12 +195,5 @@ throttled_usec —— 累计被限流的时间
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

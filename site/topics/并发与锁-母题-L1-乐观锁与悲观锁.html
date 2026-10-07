@@ -160,7 +160,7 @@ p 很大（接近 1）          → 乐观锁基本就是"反复重试"，必须
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="并发与锁/母题-L1-乐观锁与悲观锁" tag="并发与锁" q="乐观锁与悲观锁各自的代价花在哪，冲突率多高时应该换。" a="乐观锁和悲观锁不是&quot;快慢&quot;之别，而是把代价花在不同地方——悲观锁在动手前排队（并发被压成串行，但不浪费工作），乐观锁在提交时校验（并发不受限，但冲突时白干）。判据可以算：期望尝试次数 = 1/(1−冲突率 p)，p = 10% 只要 1.11 次、p = 50% 就要 2 次（等于白干一遍）、p = 90% 要 10 次——所以冲突率低用乐观、高则换方案。还要纠正一个关键认知：乐观锁在数据库里同样要拿行锁，只是只拿一条语句（UPDATE ... WHERE version = N），真正的差别是持锁时间。而最好的答案往往既不是乐观也不是悲观，而是&quot;条件更新&quot;：UPDATE ... SET n = n−1 WHERE n ≥ 1——把判断和写入合成一条原子语句，不排队也不重试（EnergyOps 的任务抢占用的就是这类带条件的 UPDATE）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -210,12 +210,5 @@ p 很大（接近 1）          → 乐观锁基本就是"反复重试"，必须
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

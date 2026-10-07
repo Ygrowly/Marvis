@@ -184,7 +184,7 @@ LLM Agent：上下文有限且昂贵
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Agent运行时与工具/母题-A2-工具调用与MCP边界" tag="Agent运行时与工具" q="该给 Agent 做什么工具、做多少个——为什么&quot;把现有 API 包一层&quot;是错的？" a="工具不是&quot;能力的暴露面&quot;，是&quot;给模型看的界面&quot;——所以要按 agent 的 affordance 设计，而不是把 API 包一层。第一条原则：别把 API 直接封装——传统软件内存充足可以遍历全量，agent 只能 token by token 读，list_contacts 会逼它用有限上下文做暴力搜索，search_contacts 才是对的。第二条：按工作流做 consolidation（list_users+list_events+create_event → schedule_event；read_logs → search_logs），收益不只是少调几次，更是让中间产物不进上下文。第三条：命名空间（asana_projects_search），而且前缀还是后缀对评测有实质影响、因模型而异。第四条：返回什么取决于&quot;接下来还需不需要它发起调用&quot;——同一份数据详细版 206 token、精简版 72 token，差约 2/3。第五条：错误响应要&quot;可行动&quot;，不是不透明错误码。最后，工具的真实代价会被平方放大：5,000 token 的响应在 40 轮里能被重发 30 次 = 1.5M token ≈ $7.5；Claude Code 因此把工具响应默认限制在 25,000 token。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题<strong>直接对应你 EnergyOps 的 30 个 MCP 工具</strong>——面试官问"30 个工具会不会太多"，答"我们分成了 6 类 Capability Bundle"只是<strong>结果</strong>，<strong>说不出判据就还是背的</strong>。Anthropic 这篇原文里有一句很硬的话：<strong>"More tools don't always lead to better outcomes"</strong>，而且给了具体例子说明<strong>为什么</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -231,12 +231,5 @@ LLM Agent：上下文有限且昂贵
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

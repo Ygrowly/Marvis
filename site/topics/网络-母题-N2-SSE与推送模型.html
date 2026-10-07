@@ -138,7 +138,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="网络/母题-N2-SSE与推送模型" tag="网络" q="SSE 是长连接吗？三种推送方式该怎么选？" a="SSE 是基于 HTTP 的长连接——客户端发一次请求，服务端保持响应不结束，以 text/event-stream 持续单向推送，自带断线重连（Last-Event-ID）与事件 ID，跑在普通 HTTP 上所以过网关不用额外改造。它和长轮询的区别是&quot;服务端按住请求 vs 客户端反复发&quot;；和 WebSocket 的区别是&quot;单向且复用 HTTP vs 双向但要协议升级&quot;。选型判据是两个问题：要不要双向？要事件流还是只要最新状态？"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -186,12 +186,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

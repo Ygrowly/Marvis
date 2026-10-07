@@ -145,7 +145,7 @@ JOIN (SELECT id FROM task ORDER BY id LIMIT 1000000, 10) s ON t.id = s.id;</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M7-慢查询与SQL优化手段" tag="MySQL" q="慢查询怎么定位？常见的优化手段各自在治什么——为什么&quot;加个索引&quot;只是其中一类？" a="定位按三步走——慢查询日志（按&quot;频率 × 单次耗时&quot;排优先级）→ EXPLAIN 看计划（type / key / rows / Extra）→ 按类型动手再 explain 验证。所有优化手段围绕&quot;少扫、少回、少排&quot;：少扫靠最左前缀设计与不用偏移量；少回靠覆盖索引与索引下推 ICP（ICP 把回表从 10,000 次降到 100 次）；少排靠让索引顺序匹配 ORDER BY。深分页的代价 = 偏移量（LIMIT 1000000, 10 要扫 1,000,010 行），首选游标定位（扫描与回表都降到 10），必须跳页时才用延迟关联（只降回表）。最容易漏的一类：索引失效不一定是写法错——优化器算过成本后主动放弃，命中 99% 时全表扫比走索引快约 47 倍。所以最后有一条不可颠倒的优化优先级：先缩小业务范围 → 修 JOIN 与 N+1 → 再改索引 → 再改写 SQL → 最后才上缓存。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是面试里"给一个真实案例"最容易出彩的题</strong>——因为它能同时展示：定位方法（有章法）、优化手段（有清单）、以及<strong>"索引失效不一定是写法错"这种反直觉判断</strong>。EnergyOps 的 20.4s → 2.8s 就是这条线的真实案例，<strong>必须能讲成"按顺序定位、按优先级动手"，而不是"我们加了个索引"</strong>。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -196,12 +196,5 @@ JOIN (SELECT id FROM task ORDER BY id LIMIT 1000000, 10) s ON t.id = s.id;</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

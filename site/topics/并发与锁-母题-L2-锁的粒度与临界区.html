@@ -160,7 +160,7 @@ CAS：        比较 + 交换，一条指令完成                            �
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="并发与锁/母题-L2-锁的粒度与临界区" tag="并发与锁" q="锁画多大才合适，自旋还是睡眠，无锁（CAS）相较加锁的边界在哪。" a="锁的粒度不是在&quot;性能&quot;和&quot;开销&quot;之间选，而是在冲突率和记账开销之间选——分段锁（striping）把冲突率降到约 1/N（p = 40% 分 16 段后从 1.67 次降到 1.03 次），但前提是访问均匀分散；热键始终落在同一段，分段救不了它，得换方案（本地聚合 / 队列串行 / 每节点累加）。自旋还是睡眠由一个比值决定：等待时间 vs &quot;挂起 + 唤醒&quot;约 2 μs 的成本——临界区不到 1 μs 就自旋，毫秒级必须睡；读写锁在临界区极短时可能比互斥锁更慢（记账比省下的等待还贵），&quot;读多写少&quot;的第一选择通常是让读不参与竞争（MVCC / 快照 / 读副本）。CAS 把乐观并发下沉到了指令层，但它有三个边界：ABA（要连版本号一起 CAS）、高竞争时退化成&quot;自旋烧 CPU&quot;（这时加锁反而更好）、一次只能保护一个变量。而最优先的动作永远是：减少竞争本身。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -207,12 +207,5 @@ CAS：        比较 + 交换，一条指令完成                            �
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

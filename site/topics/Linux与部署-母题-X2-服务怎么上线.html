@@ -156,7 +156,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Linux与部署/母题-X2-服务怎么上线" tag="Linux与部署" q="一个服务从&quot;镜像是好的&quot;到&quot;能稳定服务&quot;，中间要过哪几关。" a="上线的成败取决于&quot;怎么退出&quot;，不取决于&quot;怎么启动&quot;。正确的优雅退出顺序是 ① 先摘流量（从 LB / 注册中心摘掉，或让就绪探针失败）→ ② 等在途请求处理完 → ③ 关依赖（连接池、事务、缓冲）→ ④ 主动退出，其中 ①最容易漏（漏了就会&quot;永远等不到没有在途请求&quot;，最后被 SIGKILL 打断）。时间窗可以算：摘流量生效 + 最长在途请求 + 清理 ≤ 平台宽限期（SIGTERM 之后平台会等一段，超时就 SIGKILL——不可捕获、不可协商），所以长任务必须设计成&quot;可中断 + 可恢复&quot;（写 checkpoint 后主动退出，而不是撑着跑完）。启动侧的关键是分清两类探针：存活失败 → 重启（只检查进程自己，绝不查外部依赖）；就绪失败 → 暂时不接流量（不重启）——把依赖故障放进存活探针会造成&quot;重启风暴&quot;。队列消费者额外遵守一条：没处理完就不 ack，让它重投（重复由幂等吃掉，丢是不可接受的）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -206,12 +206,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

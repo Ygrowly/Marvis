@@ -116,7 +116,7 @@
 <p class="mv-md-p">【事实】原始素材给的关键原则很准：</p>
 <p class="mv-md-p mv-md-quote"><strong>"Loop 很短，复杂度应集中在可测试的边界组件，而不是一个巨大的 Prompt。"</strong></p>
 <p class="mv-md-p">【推论】<strong>这句话有一个直接的工程含义</strong>：如果你发现自己在往系统提示里堆"遇到 X 要 Y"的规则，<strong>那多半是缺一个边界组件</strong>（校验器、预算检查、重试分类），而不是提示写得不细。<strong>提示里堆的规则无法被测试，边界组件可以。</strong></p>
-<p class="mv-md-p">【事实】<strong>最小 Loop 之外还需要什么</strong>（study/04 列全了）：<strong>超时、取消、重试分类、HITL、流式事件、并发控制、checkpoint、版本和 trace</strong>。</p>
+<p class="mv-md-p">【事实】<strong>最小 Loop 之外还需要什么</strong>（archive/study-courses/04 列全了）：<strong>超时、取消、重试分类、HITL、流式事件、并发控制、checkpoint、版本和 trace</strong>。</p>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"把规则写进 Prompt"解决不了 Agent 的失控问题？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">3. 预算不是一个数，是七种</h3>
@@ -168,7 +168,7 @@
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"步数少"不等于"没失控"，而"步数多"也不等于"失控"？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">5. 终止原因必须结构化【推导】</h3>
-<p class="mv-md-p">【事实】<strong>八种终止原因</strong>（study/04 的清单）：</p>
+<p class="mv-md-p">【事实】<strong>八种终止原因</strong>（archive/study-courses/04 的清单）：</p>
 <pre class="mv-md-pre">completed_verified     结果通过验证
 needs_clarification    缺少必要输入
 waiting_approval       高风险步骤待确认
@@ -190,7 +190,7 @@ unrecoverable_error    不可恢复错误</pre>
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"终止原因"这种看起来是日志细节的东西，值得在面试里专门讲？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">6. 验证：Agent 必须能检查自己的工作【事实】</h3>
-<p class="mv-md-p">【事实】<strong>验证的优先级</strong>（study/04 的排序，从强到弱）：</p>
+<p class="mv-md-p">【事实】<strong>验证的优先级</strong>（archive/study-courses/04 的排序，从强到弱）：</p>
 <pre class="mv-md-pre">① 确定性测试、Schema、规则、编译器、SQL AST
 ② 工具返回和权威状态查询
 ③ 多源交叉证据
@@ -213,7 +213,7 @@ unrecoverable_error    不可恢复错误</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="Agent运行时与工具/母题-A1-计划执行循环与停止条件" tag="Agent运行时与工具" q="一个 Agent 循环长什么样——以及凭什么判定它&quot;做完了&quot;、又怎么防它转不停？" a="Agent 的五条件是有目标、能观察、模型能选动作、动作改变环境、根据结果继续或停止——所以&quot;问一次模型返回文本&quot;不是 Agent，固定 DAG 是 Workflow。循环体只有四步（组装上下文 → 模型决策 → 校验并执行工具 → 记录 Step），工程的分量全在出口：正常出口是结果通过验证（而不是模型说 done），异常出口是多种预算 + 无进展检测。预算是七种不是一个——max_steps（防循环）、max_tokens/cost、deadline（防慢）、max_tool_calls、per-tool quota、max_retries（防重试放大）、artifact size；而且它们先到先停，设的时候要算清楚哪个会先生效。为什么必须设：50 步每步 2.5K token 的失控 run，累计输入 3.19M、成本约 $16（平方累计，不是线性）。无进展检测比调小 max_steps 更准——判的是&quot;状态有没有变&quot;，能把浪费降到 1/14。最后，终止原因必须分八类（completed_verified / needs_clarification / waiting_approval / budget_exhausted / tool_unavailable / policy_blocked / cancelled_by_user / unrecoverable_error）——&quot;模型停了&quot;不是工程可用的终止原因。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：<strong>这是 Agent 方向的第一道门</strong>。它看起来简单（画个循环谁都会），但<strong>"怎么停"才是真问题</strong>——raw 里那句 <strong>"只保存消息历史，进程重启后不知道哪些写操作已完成"</strong> 和 <strong>"无限 <code class="mv-md-code">while</code> 等模型说 done"</strong> 就是两个反例。<strong>能说清终止原因的粒度，比能画出循环体更能证明你跑过线上。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -262,12 +262,5 @@ unrecoverable_error    不可恢复错误</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

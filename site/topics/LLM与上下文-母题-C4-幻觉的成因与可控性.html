@@ -176,7 +176,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="LLM与上下文/母题-C4-幻觉的成因与可控性" tag="LLM与上下文" q="&quot;幻觉&quot;是一个把四件不同的事装在一起的说法。它们各自的成因不同、可治程度不同——你能分清手里这个错误属于哪一类吗？" a="幻觉不是一个 bug，是四件不同的事叠加：① 预训练只有流畅语言的正例、没有真假标签，所以任意低频事实（比如生日）从统计上就学不出来，而拼写这类有规律的错误会随规模消失；② 评测只按准确率排名时，&quot;猜&quot;的期望收益为正、&quot;弃答&quot;稳定为零，模型被训成应试高手；③ 上下文里根本没有那条信息；④ 信息给了却被稀释、冲突或忽略。对策必须按来源分开：给证据 + 先摘录再作答 + 引用绑定（治③④）、允许弃答 + 改评分（治②）、上下文管理（治④）。最关键的一个换算：错误和弃答不能同价——实测数据里，准确率更低（22% vs 24%）的模型，错误率只要 26% vs 75%，按业务成本算总成本只有对方的 38%。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -228,12 +228,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

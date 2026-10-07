@@ -98,7 +98,7 @@ Trace：一棵树，每个节点（span）有【父子关系】
 <p class="mv-md-p"><strong>到这里你应该能回答</strong>：为什么"我们日志打得很全"仍然可能定位不了 Agent 的失败？</p>
 <hr class="mv-md-hr">
 <h3 class="mv-md-h mv-md-h3">2. Trace 的数据模型【事实】</h3>
-<p class="mv-md-p">【事实】study/07 给的<strong>最低结构</strong>：</p>
+<p class="mv-md-p">【事实】archive/study-courses/07 给的<strong>最低结构</strong>：</p>
 <pre class="mv-md-pre">Request Trace
  └─ Agent Run Span
      ├─ Model Span      → Tokens / Version / Latency
@@ -194,7 +194,7 @@ Session      = 把属于同一次用户交互的多个 trace 归组</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="评测观测与治理/母题-E2-Trace与可观测性" tag="评测观测与治理" q="一次运行到底发生了什么——为什么&quot;打日志&quot;不够，必须要有 Trace？而 Trace 里最少要有什么？" a="Trace 是树，日志是线——日志回答&quot;发生了什么&quot;，Trace 回答&quot;谁导致了谁&quot;。三类信号分工不同：指标看分布与趋势、Trace 看因果与归因、日志看细节与原文；跨步、跨服务的因果链，靠日志只能人工对着时间戳猜，而 Agent 天然多步，这个成本随步数急剧上升。Trace 的数据模型是 Request → Run → Model / Retrieval / Tool / Approval Span，每个 span 必须带：版本（model / prompt / tool / rule）、Artifact 引用、幂等键、latency、token 用量、错误码——少了版本就复现不出来（和 [[母题-A4-长任务状态与Checkpoint]] 的 Step 记录是同一套字段）。存储要控：50 span × 2 KB × 1 万 run = 1 GB/天 = 365 GB/年，所以只记&quot;有业务意义或有副作用&quot;的 span（15 个 → 一年约 110 GB）。采样要按信息价值：失败的全采、成功的抽样（失败率 5% 时 = 5% + 95%×5% = 9.75%，存储降到约 1/10 而归因能力完全保留）——&quot;随机采样 10%&quot;会把最需要的长尾失败采没。最后，判分要分结果和轨迹：先有结果判分（底线），再补轨迹判分（体检）——因为&quot;结果对了但过程有问题&quot;（绕远路、用了危险工具）只有轨迹能发现。 而「业界是怎么把它做成产品的」单独成卡——见 [[母题-E7-AgentOps平台与自建Trace-Eval]]：管道四段 · 三层同构 · 先落地再入库 · Trace 易失而 Dataset 持久（字节 JD 把它列为强竞争力要求）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>"能迭代"和"只能重来"的分界线</strong>。<strong>没有 Trace 的团队，每次 Bad Case 都只能靠猜</strong>——而 [[母题-G5-RAG评测与幻觉率]] 里那条三岔路归因（没捞到 / 没进上下文 / 生成错）<strong>需要 Trace 把候选、分数、重排位置、上下文版本都留下来</strong>。<strong>这道题也是"你是不是真的上过线"的直接证据。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -243,12 +243,5 @@ Session      = 把属于同一次用户交互的多个 trace 归组</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

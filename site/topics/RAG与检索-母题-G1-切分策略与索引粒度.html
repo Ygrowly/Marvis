@@ -175,7 +175,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="RAG与检索/母题-G1-切分策略与索引粒度" tag="RAG与检索" q="把文档切成检索单元时，粒度该多大——为什么这个问题无论怎么答都会被追问？" a="切块粒度是一个两头都会坏的问题——太小语义不自足（条款的例外被切走，单块意思可能是反的）；太大相关内容占比下降、相似度被稀释，关键内容排不进 Top-K（2000 字里只有 200 字相关时占比只剩 10%）。所以答案不是某个数字，而是把两个矛盾的需拆开：小块召回（保召回率）+ 父块返回（保上下文完整）——这就是 Child-Parent。另一种思路是不改粒度、改信息：Contextual Retrieval 先给每块补 50–100 token 的定位说明再做索引，索引只涨约 12.5%，实测把检索失败率从 5.7% 降到 2.9%（−49%），再叠加重排是 1.88%（−67%）。切分策略必须按数据结构选（标题 / FAQ / 代码 / 表格 / 条款各有首选），并用目标问题集评测来定参数，不能照搬经验值。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这道题几乎每场 RAG 面试都会问，而且它是<strong>最容易暴露"照搬经验数值"的一题</strong>——答"我们切 500 字"和答"我们用小块召回 + 父块返回，因为这两个需求互相矛盾"是两个档次。<strong>它也是唯一一个"在离线阶段就能决定线上质量上限"的环节</strong>：切坏了，后面的重排和生成再强也救不回来。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -221,12 +221,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

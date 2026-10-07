@@ -134,7 +134,7 @@ Topic 数量极多 / 需要灵活路由           → RabbitMQ
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="消息队列/母题-Q3-积压与高可用" tag="消息队列" q="积压要怎么算、怎么消，消不掉时该改什么；MQ 的高可用由哪几件事共同构成，选型到底在选什么？" a="积压是一个减法：净消解速率 = min(消费者数, 分区数) × 单消费者速率 − 生产速率，而消费能力的天花板是分区数——消费者数超过分区数后多出来的全闲置，要扩容得先加分区再加消费者，并且扩容前必须先查根因（否则只是让更多线程一起去撞慢点）。高可用是三层递进：多副本 → 能自动选主 → 客户端知道新地址，缺一层都等于没有；选举策略上&quot;只从 ISR 选&quot;是用可用性换不丢数据（ISR 全光则分区不可用）。但&quot;MQ 永不挂&quot;是个伪目标——正确的兜底是让&quot;MQ 不可用&quot;成为被设计过的状态：降级、本地缓冲 / Outbox、幂等补发、可观测。选型看五个维度（吞吐 / Topic 数 / 顺序与回溯 / 高级特性 / 团队栈），选最匹配约束的，MVP 阶段甚至可能不需要 MQ。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -181,12 +181,5 @@ Topic 数量极多 / 需要灵活路由           → RabbitMQ
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

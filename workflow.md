@@ -53,7 +53,7 @@ captured → candidate → reading → integrated
      ├ 要给别人（交付型）    → 交付页
      └ 都不是               → 留在 md（素材 / 过程 / 讨论）
   ↓ ③ python site/build.py
-  ↓ ④ 训练台按 1-3-7-14-30 调度
+  ↓ ④ 训练台按 1-3-7-14 调度（唯一调度：progress 派单引擎）
 ```
 
 判据：**视图必须增加编码通道（图 / 动 / 交互）或提取动作**。只把 md 排版变好看，不做。

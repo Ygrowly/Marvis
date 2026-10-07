@@ -200,7 +200,7 @@ PG：连接是「进程」
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P17-连接模型与连接池" tag="PostgreSQL" q="PG 的连接为什么贵？连接池怎么配、有什么坑？" a="PG 是「一个连接一个进程」——官方原话是为每个连接 fork 一个新进程，所以每个连接都有一份真实的进程内存，连接数是重资源。再加上 work_mem 是【每个操作】的上限而不是每个连接，一个连接可能同时占用好几份 work_mem，内存放大比直觉大得多。所以生产上的标准做法是在应用和数据库之间放一个连接池（pgbouncer 之类），把「几百个客户端连接」映射成「几十个服务端连接」。但连接池有两个必须知道的坑：事务级池化会让预处理语句与会话状态的作用域错乱；而池化本身不解决 idle in transaction——它只让这类连接更少。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「数据增长」这条线里最容易被忽略、也最容易在上线当天炸掉的一环</strong>——<strong>应用侧的连接数是一个会随「副本数 × 每副本连接数」相乘的东西</strong>，<strong>而 PG 的 <code class="mv-md-code">max_connections</code> 是一个【服务端启动时固定】的上限</strong>，<strong>两者一旦撞上，表现是"间歇性连不上"而不是"明确的报错"。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -249,12 +249,5 @@ PG：连接是「进程」
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

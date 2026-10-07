@@ -133,7 +133,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M8-隔离级别与ACID" tag="MySQL" q="四个隔离级别分别解决什么问题？ACID 分别是怎么实现的？" a="事务就是&quot;一组动作一起成败&quot;。A 靠 undo（前镜像）、D 靠 redo（后镜像）、I 靠锁管写写 + MVCC 管读写、C 是前三者加约束共同得到的结果——它不是独立机制。 并发三问题是脏读、不可重复读、幻读，四个隔离级别逐级挡住它们，越严格并发越低。InnoDB 默认 RR，靠 MVCC 挡快照读的幻读、靠间隙锁挡当前读的幻读。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -181,12 +181,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

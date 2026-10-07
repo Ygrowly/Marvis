@@ -218,7 +218,7 @@ pg_wal 可用空间 = 500 GB
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P12-流复制与逻辑复制" tag="PostgreSQL" q="流复制和逻辑复制有什么区别？同步 / 异步怎么取舍？" a="流复制（物理）复制的是「整个实例的 WAL 字节流」——备库是主库的逐字节副本，只能整实例、备库只读（但可查询）、版本必须一致；逻辑复制复制的是「逻辑变更」——可以按表、可以按行过滤、备端可写、可跨大版本、能做异构与多源汇聚。所以 ① 只读副本用流复制；② 部分表同步到别的系统用逻辑复制。同步 / 异步的取舍本质是 RPO vs 提交延迟。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>直接落在你项目上的一道题</strong>——数驭穹图的接入层明确写着「MySQL 优先用 Binlog，PostgreSQL 优先用逻辑复制 / WAL」，而且第一版<strong>有意没上完整 CDC</strong>。<strong>为什么这么选、代价是什么，这道题必须能自己讲出来</strong>，否则那个设计决策就只是一个抄来的结论。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -266,12 +266,5 @@ pg_wal 可用空间 = 500 GB
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

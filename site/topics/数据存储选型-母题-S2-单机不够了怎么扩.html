@@ -209,7 +209,7 @@ E（否则 Else，即正常运行时）：在 L（低延迟）和 C（一致）�
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="数据存储选型/母题-S2-单机不够了怎么扩" tag="数据存储选型" q="单机数据库的瓶颈在哪里、三条扩展路线各自买到什么付出什么，以及&quot;一致性&quot;在分布式系统里到底是怎么被取舍的。" a="扩展的第一步是分清&quot;哪一种不够用&quot;——读并发高就加从库（最便宜，但绝不解决写）；分析干扰线上就隔离到从库或列存；容量与维护成本高就先归档 + 分区；只有写并发高才需要分片。分片买到的是总写入能力与容量，付出的是七条代价（跨片 join / 分页 / 事务 / 全局 ID / 全局二级索引 / 扩容迁移 / 分片键选错），所以它的判据不是&quot;多少行&quot;，而是&quot;你还付不付得起维护这张表的代价&quot;。而&quot;应用层分片&quot;与&quot;换分布式数据库（OceanBase / TiDB）&quot;的区别是把复杂度放在应用层还是下沉到基础设施——后者把跨片事务、自动扩容、全局索引都做进数据库，代价是产品锁定更深、资源开销更高。OceanBase 与 TiDB 的共同点是&quot;多副本一致性协议（Paxos / Raft）+ 自动分片 + 分布式事务&quot;，差别主要在组件摆法（TiDB 是计算存储分离 + PD 调度；OceanBase 是一体化、单机也能跑）。最后 CAP 不是三选二：P 是前提，真实选择是&quot;分区时选 C 还是 A&quot;，而日常的取舍是 PACELC 的后半句——一致性与延迟。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -258,12 +258,5 @@ E（否则 Else，即正常运行时）：在 L（低延迟）和 C（一致）�
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

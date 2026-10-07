@@ -256,7 +256,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="数据存储选型/母题-S1-OLTP与OLAP的分野与选型" tag="数据存储选型" q="OLTP 与 OLAP 的本质差别是什么，凭什么它俩不能被一个引擎同时做好，什么信号出现时才真的该上第二个引擎。" a="OLTP 与 OLAP 的差别只有一个根因——数据在磁盘上怎么排。 行存把同一行的字段放在一起，所以点查一次 IO 拿回整行、改写一行只碰一处，但它做聚合时必须整行读进来再扔掉大部分字段；列存把同一列的放在一起，所以聚合只读用到的列（一张 100 列的表只取 2 列时，IO 差 60 倍以上），而且同列同构所以压缩率高、数据连续所以能用向量化，但它点查要拼 N 个列段、改一行要碰 N 个列段——这就是列存引擎的 UPDATE 普遍是异步按批的根本原因。由此推出选型三步：先问访问模式（点查→行存，聚合→列存）；再问数据量（千万行以内先别加引擎，因为同步链路与运维的固定成本不随数据量缩小）；最后问更新模式（高频点更新别给列存，大批量追加才是列存的地盘）。HTAP 是折中不是终点：它把&quot;同步链路&quot;的成本换成&quot;资源隔离 + 产品锁定&quot;的成本。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -307,12 +307,5 @@
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

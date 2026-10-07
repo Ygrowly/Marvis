@@ -148,7 +148,7 @@ B 驱动 A：外层循环 10 万次，每次去 A 的索引里查一次 → 约 
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M6-一条SQL的执行链路" tag="MySQL" q="MySQL 的 server 层和引擎层各管什么？那条 SQL 慢的时候，你凭什么判断是&quot;哪一层&quot;出了问题？" a="一条 SQL 走五层——连接器（鉴权与连接管理）→ 分析器（词法/语法解析）→ 优化器（选索引、选 JOIN 顺序、决定是否临时表/排序）→ 执行器（按计划逐行调用引擎接口）→ InnoDB 引擎层（Buffer Pool、索引、事务）。server 层管&quot;功能与计划&quot;，引擎层管&quot;数据怎么存怎么取&quot;。 五层里只有优化器在做决定，所以&quot;SQL 慢&quot;的第一嫌疑人是它估算错了——一次估算错误能把代价放大近 50 倍（990 万行回表 vs 62.5 万页全表扫）。慢的根源收口成三类：扫描行数多、回表次数多、JOIN 顺序错——每一个都能在 EXPLAIN 的字段上找到对应位置。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>"会用 SQL"和"能定位慢 SQL"的分界线</strong>。它同时是 M7 的前提——<strong>你必须先知道"慢可以慢在哪几层"，explain 里那些字段才有意义</strong>（<code class="mv-md-code">type</code> 是优化器选的访问方式、<code class="mv-md-code">rows</code> 是它的估算、<code class="mv-md-code">Extra</code> 是执行器阶段的附加动作）。<strong>背得出分层没用，能把"某一层慢"对应到"某个现象"才有用。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -195,12 +195,5 @@ B 驱动 A：外层循环 10 万次，每次去 A 的索引里查一次 → 约 
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

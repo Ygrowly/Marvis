@@ -41,7 +41,7 @@
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="算法/母题-33-合并K个有序链表" tag="算法" q="如何从 k 个有序序列里，持续取出当前的最小值？" a="最小堆维护 k 个候选头，弹出最小值接到结果后，把它的后继入堆。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：多路归并的母题，外部排序、多路日志合并、TopK 归并都用它。还考堆的工程细节（Python 元组比较陷阱）。</p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -148,12 +148,5 @@ def merge_k_lists(lists):
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

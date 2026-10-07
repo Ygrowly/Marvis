@@ -133,7 +133,7 @@ WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();   -- 不再回表</pre
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M3-聚簇索引与回表" tag="MySQL" q="聚簇索引和二级索引的区别是什么？「回表」为什么慢，「覆盖索引」为什么能省掉它？" a="InnoDB 是索引组织表——主键索引的叶子就是整行数据，二级索引的叶子只是「索引列 + 主键」。所以&quot;先用二级索引、再取非索引列&quot;要付出两次 B+ 树查找的代价，这就是回表；它随命中行数线性增长，且是随机 IO。覆盖索引把需要的列全放进索引里，让第二次查找消失（Extra 出现 Using index）。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -181,12 +181,5 @@ WHERE status = 'PENDING' AND next_retry_time &lt;= NOW();   -- 不再回表</pre
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

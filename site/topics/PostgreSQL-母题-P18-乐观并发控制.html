@@ -198,7 +198,7 @@ WHERE id = :id
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="PostgreSQL/母题-P18-乐观并发控制" tag="PostgreSQL" q="乐观并发控制在 PG 里怎么写？条件更新和 FOR UPDATE 怎么选？" a="「先查再写」必然有竞态（两个请求都读到合法状态），唯一解法是让判断和写入不可分割。条件更新就是把判断条件搬进 WHERE——影响 1 行 = 成功，影响 0 行 = 别人先改了，0 行是一个正常业务分支，不是异常。它相对 FOR UPDATE 的好处是三条：冲突时不排队（立即返回 0 行）、基本无死锁、天然幂等（重复执行第二次影响 0 行）。判据是冲突频率：冲突低 → 条件更新；冲突高到重试成本超过加锁成本 → 才用悲观锁。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     <p class="mv-note" style="margin-top:10px">为什么重要：这是<strong>「业务并发」这条线上最直接能落到代码的一题</strong>——<strong>它不是"选个模式"，而是"你的判据和写入必须在同一个原子操作里"。</strong> 而且它承接 [[母题-P10-无间隙锁与锁变体]]：<strong>PG 没有间隙锁，所以"锁住一个范围"根本做不到——这直接决定了有些场景只能用条件更新或约束。</strong></p>
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -245,12 +245,5 @@ WHERE id = :id
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>

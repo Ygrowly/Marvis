@@ -21,7 +21,7 @@ trigger: 乐元素二面面试官明确团队栈为「MySQL + Redis + Mongo」�
 ## 0. 模块边界
 
 - **包含**：MySQL 8.0 / InnoDB 的存储引擎与表设计基础、索引、事务与锁、SQL 优化、日志与崩溃恢复、复制与高可用基础、游戏服务端高频场景（排行榜、防超卖）
-- **明确不包含**（写下它们，然后放下）：MySQL 源码、DBA 参数调优大全、ShardingSphere 源码、PG 深入（归 [[PostgreSQL模块深挖卡]] 与 `study/09`）、NoSQL 选型（归 `study/09`）、存储过程开发（校招不问，且阿里手册禁止）
+- **明确不包含**（写下它们，然后放下）：MySQL 源码、DBA 参数调优大全、ShardingSphere 源码、PG 深入（归 [[PostgreSQL模块深挖卡]] 与 `archive/study-courses/09`）、NoSQL 选型（归 `archive/study-courses/09`）、存储过程开发（校招不问，且阿里手册禁止）
 - **为什么现在**：9.9 乐元素二面面试官原话「后端数据库 MySQL、Redis、Mongo」；一面 Redis 11 分、乐观锁 11 分，数据库是显性缺口，且是**每家公司都会问的通用底盘**
 
 ## 1. 一句话结论（先空着，闭卷后自己写 20 秒版）

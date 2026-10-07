@@ -158,7 +158,7 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
       <textarea class="mv-ask-in" rows="3" placeholder="先闭卷把答案说一遍（或写下关键词），再往下看…"></textarea>
     </div>
     <flip-card gradable card-id="MySQL/母题-M10-锁与死锁" tag="MySQL" q="行锁、间隙锁、next-key lock 各锁什么？锁为什么会变大？死锁怎么来、怎么排查、怎么避免？" a="三种锁——Record Lock 锁记录本身；Gap Lock 锁记录之间的空隙（防插入，是防幻读的必要手段）；Next-Key Lock 把两者合起来，是 RR 下的默认单位。锁加在索引记录上，所以锁的范围等于&quot;扫描到的索引范围&quot;，不是&quot;WHERE 里写的行&quot;——非唯一索引、范围条件、缺少索引都会把锁放大到万级甚至全表。死锁 = 多个事务的加锁顺序不一致形成环，InnoDB 会检测并回滚代价小的事务。避免靠精确索引 + 短事务 + 一致顺序 +（队列场景）SKIP LOCKED。"></flip-card>
-    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测，评分会进训练台的复训调度。</p>
+    <p class="mv-note" id="mv-grade-tip" style="margin-top:8px">翻面对照自测；复训调度以训练台派单为准。</p>
     
   </div>
   <div class="mv-section" id="s-conclusion">
@@ -207,12 +207,5 @@ A 等 B 放 2，B 等 A 放 1 → 环 → 谁都不动</pre>
   </div>
 </div>
 <script src="../_components/marvis.js"></script>
-<script>
-document.addEventListener('mv-grade', function (e) {
-  var s = window.Marvis && Marvis.gradeCard(e.detail.id, e.detail.ok);
-  var t = document.getElementById('mv-grade-tip');
-  if (t && s) t.textContent = (e.detail.ok ? '已记录 · 下次复训 ' : '已归零 · 明天重来 ') + s.next;
-});
-</script>
 </body>
 </html>
