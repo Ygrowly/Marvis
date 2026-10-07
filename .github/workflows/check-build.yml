@@ -26,7 +26,7 @@ jobs:
           if [ -n "$(git status --porcelain site/)" ]; then
             echo "::error::site/ 与 md 正本不同步——本地跑 python site/build.py 后再提交"
             git status --porcelain site/
-            python3 - <<'PYEOF'
+            python3 site/_tests/_byte_diff.py'
 import subprocess
 old = subprocess.run(['git','show','HEAD:site/_data/breaks.js'],capture_output=True).stdout
 new = open('site/_data/breaks.js','rb').read()
