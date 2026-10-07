@@ -6,6 +6,7 @@ updated: 2026-09-11
 status: active
 priority: P0
 trigger: 9.9 一面 A20「Redis 有哪些主要数据结构」只拿 11 分（当次最低单题）；缺口是「漏了 Set 与扩展类型，且没有给出任何一个自己用过的场景」
+domain: 学识
 ---
 
 # Redis 模块深挖卡

@@ -5,6 +5,7 @@ created: 2026-09-08
 updated: 2026-09-13
 status: integrated
 human_reviewed: true
+domain: 学识
 ---
 
 # 母题 34 · LRU 缓存

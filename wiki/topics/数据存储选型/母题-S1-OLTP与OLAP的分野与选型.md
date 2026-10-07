@@ -6,6 +6,7 @@ updated: 2026-09-24
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 S1 · OLTP 与 OLAP 的分野与选型

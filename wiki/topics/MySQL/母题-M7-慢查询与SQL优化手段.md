@@ -6,6 +6,7 @@ updated: 2026-09-12
 status: candidate
 human_reviewed: false
 level: B
+domain: 学识
 ---
 
 # 母题 M7 · 慢查询与 SQL 优化手段

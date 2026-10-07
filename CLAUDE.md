@@ -269,7 +269,7 @@ AI 对单篇素材的独立总结区。与 `wiki/sources/` 的主题综述互补
 
 **输出侧学习界面**（2026-09-10 起）。md 是工作台，`site/` 是它的派生视图：**不由人直接写**，一律由 `build.py` 从 md 正本生成。
 
-- `index.html`：今日入口（宫殿导航 + 卡墙 + 台账提醒条；**复训牌组已退役**——decks.js/json 停生成、mv.review 假账通道拆除，唯一调度在 progress）；`progress.html`：进度页（派单 + 闭卷自评 + 断点回流，进度存本机，云同步到 `data/marvis-sync.json`：看免配置（公开仓库直读 raw），上传只需贴一次令牌）；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
+- `index.html`：**今日页（两页一库·内化回路唯一入口）**——派单引擎 + 闭卷自评 + 台账抽屉与提醒条 + 模块/项目卡墙与宫殿导航 + 内化速览与新到架（**2026-10-07 第1期：progress 并入，唯一账本 `mv.progress.v1`，复训牌组与 mv.review 假账已拆**）；`progress.html`：仅重定向 stub；`cards.html`：内化馆（读厚卡视图，build 从 `wiki/cards/` 生成）
 - `topics/`：母题页（题目 + 主卡 + 图 + 折叠子卡）；`modules/`：模块学习页（模块概览 + 主线子页）；`reviews/`：诊断页（面试复盘）；`projects/`：项目口述页
 - **手写页例外（build 不生成，已登记 [[MAP]] 第三节）**：`index.html`、`progress.html`、`brain.html`（第二大脑书架，2026-10-03 加「今日内化」侧栏）、`rules.html`（行事准则，数据 `site/_data/rules.js`，题面正本在 `wiki/thinking/`）；`_data/clusters.js` 同为手写数据源；`interactive/` 为外部工具产物（build 跳过清理）；`onepage/` 一页族成品（2026-10-04 起：13 张模块一页通 + 一页答，离线管线产出、build 同样跳过清理，书架书页「一页总览」直达，页内导航回书架 / 模块概览）。`deliver/` 交付页**规划中、未建**
 - `_components/`（10 个组件封顶）、`figures/`（图）、`_data/`（构建产物 + 上述手写数据）、`_tests/`（回归测试：5 个 node + 1 个 python，手跑，改派单 / 解析器或数据源后全绿再提交；CI `check-build.yml` 亦全量跑 + build 同步断言）

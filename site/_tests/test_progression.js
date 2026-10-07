@@ -8,7 +8,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const code = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
 global.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
@@ -37,7 +37,7 @@ const sandbox = {
   window: global.window,
   localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
   document: {
-    getElementById: () => ({ innerHTML: '', textContent: '', hidden: true, value: '' }),
+    getElementById: () => ({ innerHTML: '', textContent: '', hidden: true, value: '', remove: () => {}, style: {} }),
     addEventListener: () => {}, querySelector: () => null,
   },
   alert: () => {}, confirm: () => true, console,

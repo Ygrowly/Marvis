@@ -6,6 +6,7 @@ updated: 2026-09-12
 status: active
 priority: P0
 trigger: AI 主战场四簇（LLM/RAG/Agent/Eval）此前只有 study 课程节点、无训练单元，26 个母题一张卡都没有。本模块是四簇的第一个，也是其余三簇的地基。
+domain: 学识
 ---
 
 # LLM 与上下文工程模块卡

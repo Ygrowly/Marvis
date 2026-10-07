@@ -6,6 +6,7 @@ updated: 2026-09-11
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 R1 · Redis 的数据结构与选型

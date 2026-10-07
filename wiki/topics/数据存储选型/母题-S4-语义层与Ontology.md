@@ -6,6 +6,7 @@ updated: 2026-09-24
 status: candidate
 human_reviewed: false
 level: B
+domain: 学识
 ---
 
 # 母题 S4 · 语义层与 Ontology：NL2SQL 的准确率上限为什么是"口径"

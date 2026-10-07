@@ -6,6 +6,7 @@ updated: 2026-09-21
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 E2 · Trace 与可观测性

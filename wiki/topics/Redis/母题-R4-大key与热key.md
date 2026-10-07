@@ -6,6 +6,7 @@ updated: 2026-09-17
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 R4 · 大 key 与热 key：怎么发现、怎么拆、为什么会同时打穿三样东西

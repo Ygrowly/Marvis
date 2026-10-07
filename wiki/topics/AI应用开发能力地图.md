@@ -5,6 +5,7 @@ updated: 2026-09-14
 status: integrated
 human_reviewed: true
 aliases: [AI开发, AI应用, 能力台账]
+domain: 学识
 ---
 
 # AI 应用开发 + Python 后端能力地图与掌握度台账

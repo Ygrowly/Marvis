@@ -6,6 +6,7 @@ updated: 2026-09-10
 status: active
 priority: P0
 trigger: 三个项目全部使用 PostgreSQL——这是「我项目里实际用的」，必须能讲准；面试时被追问 PG 细节不能含糊
+domain: 学识
 ---
 
 # PostgreSQL 模块深挖卡

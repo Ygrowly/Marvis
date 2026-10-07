@@ -6,6 +6,7 @@ updated: 2026-09-13
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 P11 · WAL 与 checkpoint

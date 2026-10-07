@@ -6,6 +6,7 @@ updated: 2026-09-13
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 P13 · MVCC 与可见性

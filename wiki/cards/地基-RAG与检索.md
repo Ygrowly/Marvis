@@ -6,6 +6,7 @@ status: candidate
 human_reviewed: false
 created: 2026-10-03
 updated: 2026-10-03
+domain: 学识
 ---
 
 ## ground ground-rag · RAG 与检索 地基包

@@ -6,6 +6,7 @@ updated: 2026-09-17
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 L3 · 分布式锁：三种实现、三大失效场景与 fencing token

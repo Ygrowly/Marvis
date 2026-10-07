@@ -6,6 +6,7 @@ updated: 2026-09-11
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 M1 · 为什么 InnoDB 用 B+ 树

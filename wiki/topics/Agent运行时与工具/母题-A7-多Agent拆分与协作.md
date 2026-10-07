@@ -6,6 +6,7 @@ updated: 2026-09-13
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 A7 · 多 Agent 拆分与协作

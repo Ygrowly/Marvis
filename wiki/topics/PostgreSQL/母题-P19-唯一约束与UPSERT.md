@@ -6,6 +6,7 @@ updated: 2026-09-13
 status: candidate
 human_reviewed: false
 level: B
+domain: 学识
 ---
 
 # 母题 P19 · 唯一约束与 UPSERT

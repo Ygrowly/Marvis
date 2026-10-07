@@ -6,6 +6,7 @@ updated: 2026-09-20
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 E1 · 评测集设计与 pass^k

@@ -6,6 +6,7 @@ updated: 2026-09-21
 status: candidate
 human_reviewed: false
 level: B
+domain: 学识
 ---
 
 # 母题 E7 · AgentOps 平台与自建 Trace / Eval

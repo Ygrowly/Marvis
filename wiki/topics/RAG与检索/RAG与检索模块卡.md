@@ -6,6 +6,7 @@ updated: 2026-09-12
 status: active
 priority: P0
 trigger: AI 主战场四簇的第 2 个。此前只有 archive/study-courses/03 课程节点、无训练单元；且数驭穹图的证据区（Top-K Schema 召回 81→95%）需要一个能落地的机制底库。
+domain: 学识
 ---
 
 # RAG 与检索模块卡

@@ -6,6 +6,7 @@ status: candidate
 human_reviewed: false
 created: 2026-10-03
 updated: 2026-10-03
+domain: 学识
 ---
 
 ## ground ground-llm · LLM 与上下文 地基包

@@ -6,6 +6,7 @@ updated: 2026-09-16
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 O3 · 为什么要 IO 多路复用，epoll 强在哪，零拷贝省了什么

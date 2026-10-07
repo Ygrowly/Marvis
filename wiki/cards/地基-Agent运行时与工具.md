@@ -6,6 +6,7 @@ status: candidate
 human_reviewed: false
 created: 2026-10-03
 updated: 2026-10-03
+domain: 学识
 ---
 
 ## ground ground-agent · Agent 运行时与工具 地基包

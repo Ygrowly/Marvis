@@ -6,6 +6,7 @@ updated: 2026-09-11
 status: candidate
 human_reviewed: false
 level: A
+domain: 学识
 ---
 
 # 母题 N2 · SSE 是长连接吗，以及推送方式怎么选

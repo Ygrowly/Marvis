@@ -483,3 +483,11 @@
 - **CI 断言**：新建 `.github/workflows/check-build.yml`——全分支 push 触发：rebuild + `git status --porcelain site/` 断言（md 改了没重 build 直接红）+ 六套件全量
 - **口径同步**：CLAUDE（study 归档 / index 描述 / 1-3-7-14 / 测试数）、workflow（调度口径）、index.md、MAP（能力课程 3 行 + 战役存档节 + 知识系统形式行）
 - 回归：build 通过，六套件全绿（dispatch / progression / render / sync / brain / ledger）
+
+## 2026-10-07 深夜（第1期地基：domain 三轴 + 今日页合并 + insight/recent 数据层）
+
+- **domain 注入**：128 个正本 frontmatter 加 `domain:`——wiki/cards 15（地基 13 + 模块卡 13 → 学识；被讨厌的勇气 → 关系；精确努力 → 事业主域）、topics 113（模块卡 + 母题卡 → 学识）；「功夫与场分离」口径：行动规则等 thinking 正本第 2 期画像时再收
+- **今日页合并（两页一库核心步）**：progress 派单引擎整体并入 `index.html`（今日 · 进度与作业）——指标条 / 今天区 / 六抽屉 / 自评弹窗 + 原 index 的模块墙、项目口述、宫殿导航、台账提醒条、限时输出；`progress.html` 降为重定向 stub；三个引擎测试（dispatch/progression/render）指向改 `index.html` 并补 DOM 桩 `remove/style`；规则抽屉「模块内按序号」双写文案去重；头部导航收敛（第二大脑 / 限时输出 / 用法与规则）
+- **mv.review 作废**：引擎加载时检测旧键一次性清除（console 提示），唯一账本 `mv.progress.v1` 落定——"练了这边那边不知道"的历史脏账就此终结
+- **insight.js + recent.js（build 端静态盘面）**：`write_insight()` 扫 wiki/{cards,topics,thinking,interview} + reading/ 的 frontmatter——insight = 域×状态分布（当前 3 域 128 正本：学识 113 / 关系 6 / 事业 12 卡）；recent = 近 14 天落盘 23 条「新到架」；今日页新增「内化速览与新到架」抽屉（域验收率条 + 新落盘直达 Obsidian）。内化度五档的运行时聚合（闭卷等级/复训位置/uses 打卡）留第 2 期画像页接线
+- 回归：build 通过，六套件全绿

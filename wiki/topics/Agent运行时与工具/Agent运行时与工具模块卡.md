@@ -6,6 +6,7 @@ updated: 2026-09-12
 status: active
 priority: P0
 trigger: AI 主战场四簇的第 3 个，也是简历最硬区（EnergyOps 的 Hook 链、RuleArena 的 FSM 与 checkpoint 都落在这里）。此前只有 archive/study-courses/04–06 课程节点、无训练单元。
+domain: 学识
 ---
 
 # Agent 运行时与工具模块卡

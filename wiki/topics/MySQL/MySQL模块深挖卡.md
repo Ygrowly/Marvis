@@ -6,6 +6,7 @@ updated: 2026-09-10
 status: active
 priority: P0
 trigger: 乐元素二面面试官明确团队栈为「MySQL + Redis + Mongo」；9.9 一面 Redis 11 分、乐观锁 11 分
+domain: 学识
 ---
 
 # MySQL 模块深挖卡

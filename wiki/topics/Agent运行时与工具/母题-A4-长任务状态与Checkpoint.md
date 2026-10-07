@@ -7,6 +7,7 @@ status: candidate
 human_reviewed: false
 level: A
 interactive: rulearena-run-lifecycle.html
+domain: 学识
 ---
 
 # 母题 A4 · 长任务状态与 Checkpoint

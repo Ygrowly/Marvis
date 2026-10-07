@@ -5,7 +5,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(ROOT, 'progress.html'), 'utf8');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const m = html.match(/<script>\r?\n([\s\S]*?)<\/script>/);
 if (!m) throw new Error('找不到内联脚本');
 const code = m[1];
@@ -33,7 +33,7 @@ const sandbox = {
   },
   document: {
     getElementById: (id) => {
-      if (!ELS[id]) ELS[id] = { id: id, innerHTML: '', textContent: '', hidden: true, value: '' };
+      if (!ELS[id]) ELS[id] = { id: id, innerHTML: '', textContent: '', hidden: true, value: '', remove: () => {}, style: {} };
       return ELS[id];
     },
     addEventListener: () => {}, querySelector: () => null,

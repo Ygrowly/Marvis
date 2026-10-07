@@ -2206,6 +2206,7 @@ def parse_brain_cards_file(path):
         return None
     out = {
         "kind": kind,
+        "domain": (meta.get("domain") or "学识").strip(),
         "source": (meta.get("source") or path.stem).strip(),
         "author": (meta.get("author") or "").strip(),
         "source_href": (meta.get("source_href") or "").strip(),
@@ -2541,6 +2542,73 @@ def write_cards(modules):
     return payload
 
 
+
+# ── 内化画像静态层（PLAN v2 第1期）：wiki 正本 → _data/insight.js + recent.js ──────────
+# insight.js：域 × 状态分布（画像页/今日页「内化速览」用；内化度五档的运行时信号
+# 在 localStorage，由页面端聚合，build 只供静态盘面）。
+# recent.js：新到架——近 14 天 created/updated 的正本与阅读流水，保证"落盘即上站"。
+INSIGHT_ROOTS = ["wiki/cards", "wiki/topics", "wiki/thinking", "wiki/interview", "reading"]
+RECENT_DAYS = 14
+RECENT_CAP = 24
+
+
+def _front_title(body):
+    m = re.search(r"^#\s+(.+)$", body, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def write_insight():
+    import datetime as _dt
+    today = _dt.date.today()
+    domains, recent = {}, []
+    for root in INSIGHT_ROOTS:
+        for path in sorted((ROOT / root).rglob("*.md")):
+            if path.name.startswith("README"):
+                continue
+            meta, body = split_front(path.read_text(encoding="utf-8"))
+            status = (meta.get("status") or "").strip() or "未标注"
+            domain = (meta.get("domain") or "").strip()
+            kind = (meta.get("type") or "").strip()
+            title = _front_title(body) or path.stem
+            rel = path.relative_to(ROOT).as_posix()
+            if domain:
+                d = domains.setdefault(domain, {"name": domain, "files": []})
+                d["files"].append({"title": title, "path": rel, "kind": kind, "status": status})
+            if kind in ("topic", "study-module", "brain-cards") or rel.startswith("reading/"):
+                for key in ("updated", "created"):
+                    raw = (meta.get(key) or "").strip()
+                    if raw:
+                        try:
+                            age = (today - _dt.date.fromisoformat(raw[:10])).days
+                        except ValueError:
+                            break
+                        if age <= RECENT_DAYS:
+                            recent.append({"date": raw[:10], "title": title,
+                                           "path": rel, "status": status})
+                        break
+    out_domains = []
+    for name in sorted(domains):
+        d = domains[name]
+        d["files"].sort(key=lambda f: f["title"])
+        d["stats"] = {}
+        for f in d["files"]:
+            d["stats"][f["status"]] = d["stats"].get(f["status"], 0) + 1
+        out_domains.append(d)
+    recent.sort(key=lambda r: r["date"], reverse=True)
+    recent = recent[:RECENT_CAP]
+    (OUT_DATA / "insight.js").write_text(
+        "window.MARVIS_INSIGHT = " + json.dumps({"generated": today.isoformat(),
+                                                 "domains": out_domains},
+                                                ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+    (OUT_DATA / "recent.js").write_text(
+        "window.MARVIS_RECENT = " + json.dumps(recent, ensure_ascii=False) + ";\n",
+        encoding="utf-8")
+    n_files = sum(len(d["files"]) for d in out_domains)
+    print("内化速览：%d 域 %d 正本 → insight.js；新到架 %d 条（近 %d 天）→ recent.js"
+          % (len(out_domains), n_files, len(recent), RECENT_DAYS))
+
+
 # ── 问题台账（questions.md → _data/ledger.js，进度页「问题台账」抽屉用）────────────
 # 版式（2026-10-02 卡片版）：### Q-YYYY-NNN · 标题 [active|parked]，字段行
 #   - 为什么现在： / - 下一步： / - 落点： / - 重启条件： / - 触碰：YYYY-MM-DD ｜ 创建：YYYY-MM-DD
@@ -2787,6 +2855,7 @@ def main():
     print("断点回流 %d 张卡（其中 %d 张有真断点原文）" % (len(breaks), _nbp))
 
     write_ledger()
+    write_insight()
 
     inject_mermaid_runtime()
 

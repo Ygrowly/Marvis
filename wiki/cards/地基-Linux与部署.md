@@ -6,6 +6,7 @@ status: candidate
 human_reviewed: false
 created: 2026-10-04
 updated: 2026-10-04
+domain: 学识
 ---
 
 ## ground ground-linux · Linux与部署地基包
