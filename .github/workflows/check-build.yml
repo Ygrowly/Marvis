@@ -26,20 +26,7 @@ jobs:
           if [ -n "$(git status --porcelain site/)" ]; then
             echo "::error::site/ 与 md 正本不同步——本地跑 python site/build.py 后再提交"
             git status --porcelain site/
-            python3 site/_tests/_byte_diff.py'
-import subprocess
-old = subprocess.run(['git','show','HEAD:site/_data/breaks.js'],capture_output=True).stdout
-new = open('site/_data/breaks.js','rb').read()
-print('len old', len(old), 'new', len(new))
-for i,(a,b) in enumerate(zip(old,new)):
-    if a!=b:
-        print('first diff at byte', i)
-        print('OLD:', repr(old[max(0,i-60):i+60]))
-        print('NEW:', repr(new[max(0,i-60):i+60]))
-        break
-else:
-    print('common prefix identical, tail-only diff')
-PYEOF
+            python3 site/_tests/_byte_diff.py
             exit 1
           fi
 
