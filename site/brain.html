@@ -6,79 +6,83 @@
 <title>我的书架 · 第二大脑</title>
 <link rel="stylesheet" href="_components/marvis.css">
 <style>
-  .brain-cols { display: flex; gap: 14px; align-items: stretch; margin: 14px 0 10px; }
-  #stage { position: relative; flex: 1 1 auto; min-width: 0; height: 640px; border-radius: 12px; overflow: hidden;
+  .brain-cols { display: flex; gap: 1.5rem; align-items: stretch; margin: 1.25rem 0 1rem; }
+  #stage { position: relative; flex: 1 1 auto; min-width: 0; height: clamp(560px, 70vh, 780px); border-radius: var(--mv-radius); overflow: hidden;
     background: radial-gradient(120% 105% at 50% 0%, #f8f3e9 0%, #f0e9db 55%, #e5dbc6 100%);
     border: 1px solid rgba(0,0,0,.10); box-shadow: inset 0 0 70px rgba(122,96,66,.12); cursor: grab; }
   #stage.dragging { cursor: grabbing; }
   #cv { display: block; width: 100%; height: 100%; }
   #labels { position: absolute; inset: 0; pointer-events: none; }
-  .lbl { position: absolute; font-size: 11px; line-height: 1.15; padding: 1px 6px; border-radius: 5px;
-    background: rgba(255,255,255,.9); border: 1px solid rgba(0,0,0,.12); white-space: nowrap;
-    transform: translate(-50%,-50%); color: #2C2C2A; pointer-events: auto; cursor: pointer; }
+  .lbl { position: absolute; font-size: 0.8125rem; line-height: 1.35; padding: 0.125rem 0.5rem; border-radius: 5px;
+    background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.12); white-space: nowrap;
+    transform: translate(-50%,-50%); color: var(--mv-text); pointer-events: auto; cursor: pointer; }
   .lbl.hot { background: #fff; border-color: rgba(0,0,0,.45); font-weight: 500; z-index: 5; }
-  .hall-lbl { font-size: 11px; font-weight: 500; color: #f2ddb0;
+  .hall-lbl { font-size: 0.8125rem; font-weight: 500; color: #f2ddb0;
     background: linear-gradient(180deg, rgba(74,55,34,.94), rgba(52,38,22,.94));
-    border: 1px solid rgba(214,180,120,.55); border-radius: 5px; padding: 2px 10px;
+    border: 1px solid rgba(214,180,120,.55); border-radius: 5px; padding: 0.1875rem 0.75rem;
     box-shadow: 0 2px 8px rgba(30,18,8,.4), inset 0 1px 0 rgba(255,236,190,.18);
-    letter-spacing: .5px; }
+    letter-spacing: .5px; white-space: nowrap; }
   .hall-lbl b { font-weight: 600; }
-  .hall-lbl i { font-style: normal; color: #cbb68a; font-size: 11px; margin-left: 4px; }
+  .hall-lbl i { font-style: normal; color: #cbb68a; font-size: 0.8125rem; margin-left: 0.375rem; }
   @media (max-width: 980px) { .brain-cols { flex-direction: column; } #side { width: auto !important; flex: none !important; } }
 
+  /* —— 导语与图例：限宽，行长拉满 76rem 读着累 —— */
+  .intro { max-width: 58rem; margin-bottom: 0.875rem; }
+  .legend { display: flex; gap: 0.5rem 1.25rem; flex-wrap: wrap; font-size: 0.8125rem; color: var(--mv-muted);
+    margin: 0 0 0.75rem; max-width: 58rem; }
+  .legend span.k { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 3px; margin-right: 0.375rem; vertical-align: -1px; }
+
   /* —— 今日内化侧栏 —— */
-  #side { flex: 0 0 300px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-  .side-card { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; padding: 12px 14px; }
-  .side-card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: #2C2C2A; }
-  .side-card h4 em { font-style: normal; font-weight: 400; font-size: 11px; color: #5F5E5A; margin-left: 6px; }
-  .side-big { font-size: 24px; font-weight: 500; line-height: 1.2; }
-  .side-big small { font-size: 12px; color: #5F5E5A; font-weight: 400; }
-  .side-note { font-size: 12px; color: #5F5E5A; line-height: 1.6; margin: 4px 0 0; }
-  .mini-track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); overflow: hidden; margin-top: 5px; }
+  #side { flex: 0 0 19.5rem; display: flex; flex-direction: column; gap: 0.875rem; min-width: 0; }
+  .side-card { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface); padding: 1rem 1.125rem; }
+  .side-card h4 { margin: 0 0 0.375rem; font-size: 0.9375rem; font-weight: 600; color: var(--mv-text); }
+  .side-card h4 em { font-style: normal; font-weight: 400; font-size: 0.8125rem; color: var(--mv-muted); margin-left: 0.375rem; }
+  .side-big { font-size: 1.5rem; font-weight: 500; line-height: 1.25; }
+  .side-big small { font-size: 0.8125rem; color: var(--mv-muted); font-weight: 400; }
+  .side-note { font-size: 0.8125rem; color: var(--mv-muted); line-height: 1.75; margin: 0.375rem 0 0; }
+  .mini-track { height: 0.375rem; border-radius: 999px; background: var(--mv-surface-2); overflow: hidden; margin-top: 0.375rem; }
   .mini-track i { display: block; height: 100%; }
-  .situ { background: #fbfaf7; border-left: 3px solid #F3C1AC; border-radius: 0 8px 8px 0;
-    padding: 8px 10px; font-size: 13px; line-height: 1.65; margin: 8px 0 0; }
+  .situ { background: var(--mv-surface-2); border-left: 3px solid #F3C1AC; border-radius: 0 var(--mv-radius-sm) var(--mv-radius-sm) 0;
+    padding: 0.625rem 0.75rem; font-size: 0.875rem; line-height: 1.8; margin: 0.625rem 0 0; }
   .situ b { font-weight: 500; color: #993C1D; }
-  .situ details { margin-top: 6px; }
-  .situ summary { cursor: pointer; font-size: 12px; color: #993C1D; list-style: none; user-select: none; }
+  .situ details { margin-top: 0.375rem; }
+  .situ summary { cursor: pointer; font-size: 0.8125rem; color: #993C1D; list-style: none; user-select: none; }
   .situ summary::-webkit-details-marker { display: none; }
   .situ summary::before { content: '▸ '; }
   .situ details[open] summary::before { content: '▾ '; }
-  .side-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .side-btns .mv-btn { padding: 2px 10px; font-size: 12px; }
+  .side-btns { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.625rem; }
+  .side-btns .mv-btn { padding: 0.1875rem 0.75rem; font-size: 0.8125rem; }
 
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #5F5E5A; margin: 0 0 10px; }
-  .legend span.k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-  #panel { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; padding: 14px 16px; background: #fff; margin-top: 0; min-height: 96px; }
-  #panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
-  #panel .meta { font-size: 12px; color: #5F5E5A; margin-bottom: 6px; line-height: 1.5; }
-  #panel ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
-  #panel li { margin: 3px 0; }
+  #panel { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); padding: 1.125rem 1.375rem; background: var(--mv-surface); margin-top: 0; min-height: 96px; }
+  #panel h3 { margin: 0 0 0.375rem; font-size: 1.0625rem; font-weight: 600; }
+  #panel .meta { font-size: 0.8125rem; color: var(--mv-muted); margin-bottom: 0.375rem; line-height: 1.7; }
+  #panel ul { margin: 0.375rem 0 0; padding-left: 1.125rem; font-size: 0.875rem; line-height: 1.8; }
+  #panel li { margin: 0.25rem 0; }
   #panel a { color: #185FA5; text-decoration: none; }
-  .bars { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
-  .bar { flex: 1 1 140px; border: 1px solid rgba(0,0,0,.10); border-radius: 10px; padding: 8px 10px; background: #fff; }
-  .bar small { display: block; color: #5F5E5A; font-size: 11px; }
-  .bar strong { font-size: 18px; font-weight: 500; }
-  .track { height: 6px; border-radius: 4px; background: rgba(0,0,0,.07); margin-top: 6px; overflow: hidden; }
+  .bars { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0.875rem 0 0; }
+  .bar { flex: 1 1 11rem; border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm); padding: 0.625rem 0.875rem; background: var(--mv-surface); }
+  .bar small { display: block; color: var(--mv-muted); font-size: 0.8125rem; }
+  .bar strong { font-size: 1.25rem; font-weight: 500; }
+  .track { height: 0.375rem; border-radius: 999px; background: var(--mv-surface-2); margin-top: 0.375rem; overflow: hidden; }
   .track i { display: block; height: 100%; }
-  .fallback { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 10px; margin-top: 10px; }
-  .fb-hall { border: 1px solid rgba(0,0,0,.12); border-radius: 10px; padding: 10px 12px; background: #fff; }
-  .fb-hall h4 { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
-  .fb-hall a { display: block; font-size: 12px; margin: 2px 0; color: #185FA5; text-decoration: none; }
+  .fallback { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+  .fb-hall { border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm); padding: 0.75rem 0.875rem; background: var(--mv-surface); }
+  .fb-hall h4 { margin: 0 0 0.375rem; font-size: 0.9375rem; font-weight: 600; }
+  .fb-hall a { display: block; font-size: 0.875rem; margin: 0.25rem 0; color: #185FA5; text-decoration: none; }
 
   /* —— 翻开一本书：双页书页弹层（左页概要/前序，右页目录）—— */
   #bookmask { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
     background: rgba(38,26,13,.55); backdrop-filter: blur(2px); }
   #bookmask[hidden] { display: none; }   /* 显式 display 会压掉 [hidden] 的默认 none，必须补回来——否则遮罩永远盖在页面上 */
-  #book { position: relative; width: min(900px, 94vw); perspective: 1800px; }
-  .bk-sheet { display: flex; width: 100%; min-height: 540px; max-height: 82vh; position: relative;
+  #book { position: relative; width: min(960px, 94vw); perspective: 1800px; }
+  .bk-sheet { display: flex; width: 100%; min-height: 560px; max-height: 84vh; position: relative;
     filter: drop-shadow(0 24px 48px rgba(30,18,8,.45));
     transform: rotateY(-28deg) translateX(26px); opacity: 0;
     transition: transform .5s cubic-bezier(.2,.75,.25,1), opacity .32s ease-out; }
   #bookmask.open .bk-sheet { transform: rotateY(0) translateX(0); opacity: 1; }
   .bk-strip { position: absolute; left: -14px; top: -5px; bottom: -5px; width: 18px; border-radius: 6px 0 0 6px;
     box-shadow: 0 6px 18px rgba(30,18,8,.4); }
-  .bk-page { flex: 1 1 50%; min-width: 0; background: #fcf7ec; padding: 24px 26px 20px; overflow-y: auto;
+  .bk-page { flex: 1 1 50%; min-width: 0; background: #fcf7ec; padding: 1.5rem 1.625rem 1.25rem; overflow-y: auto;
     position: relative; }
   .bk-page::-webkit-scrollbar { width: 8px; }
   .bk-page::-webkit-scrollbar-thumb { background: rgba(150,110,60,.3); border-radius: 4px; }
@@ -91,24 +95,24 @@
     background: repeating-linear-gradient(90deg, rgba(150,110,60,.06) 0 1px, rgba(150,110,60,.22) 1px 2px); }
   .bk-left::before { left: 3px; }
   .bk-right::after { right: 3px; }
-  .bk-tag { display: inline-block; font-size: 11px; letter-spacing: .5px; color: #fff;
-    padding: 1px 8px; border-radius: 4px; margin-bottom: 10px; align-self: flex-start; }
-  .bk-title { font-family: "KaiTi","STKaiti","楷体","Noto Serif SC",serif; font-size: 24px; font-weight: 600;
-    margin: 0 0 4px; color: #2C2C2A; line-height: 1.35; }
-  .bk-meta { font-size: 12px; color: #88806E; margin-bottom: 14px; }
-  .bk-sec { margin: 12px 0 0; }
-  .bk-sec > b { display: block; font-size: 12px; font-weight: 600; color: #A0763F;
-    letter-spacing: 2px; margin-bottom: 6px; border-bottom: 1px solid rgba(160,118,63,.22);
-    padding-bottom: 4px; }
-  .bk-sec > div { font-size: 13.5px; line-height: 1.8; color: #3D382F; white-space: pre-wrap; }
-  .bk-row { display: flex; gap: 8px; align-items: baseline; padding: 7px 6px; border-radius: 6px;
-    text-decoration: none; color: #3D382F; font-size: 13.5px; line-height: 1.55; }
+  .bk-tag { display: inline-block; font-size: 0.8125rem; letter-spacing: .5px; color: #fff;
+    padding: 0.125rem 0.625rem; border-radius: 4px; margin-bottom: 0.625rem; align-self: flex-start; }
+  .bk-title { font-family: "KaiTi","STKaiti","楷体","Noto Serif SC",serif; font-size: 1.5rem; font-weight: 600;
+    margin: 0 0 0.375rem; color: var(--mv-text); line-height: 1.35; }
+  .bk-meta { font-size: 0.8125rem; color: #88806E; margin-bottom: 0.875rem; }
+  .bk-sec { margin: 0.875rem 0 0; }
+  .bk-sec > b { display: block; font-size: 0.8125rem; font-weight: 600; color: #A0763F;
+    letter-spacing: 2px; margin-bottom: 0.375rem; border-bottom: 1px solid rgba(160,118,63,.22);
+    padding-bottom: 0.25rem; }
+  .bk-sec > div { font-size: 0.9375rem; line-height: 1.8; color: #3D382F; white-space: pre-wrap; }
+  .bk-row { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.5rem 0.375rem; border-radius: 6px;
+    text-decoration: none; color: #3D382F; font-size: 0.9375rem; line-height: 1.7; }
   .bk-row:hover { background: rgba(176,124,58,.10); }
   .bk-row + .bk-row { border-top: 1px dashed rgba(160,118,63,.18); }
-  .bk-dot { flex: none; font-size: 11px; color: #B07C3A; width: 14px; text-align: center; }
+  .bk-dot { flex: none; font-size: 0.8125rem; color: #B07C3A; width: 1rem; text-align: center; }
   .bk-row-name { font-weight: 500; }
-  .bk-row-sub { margin-left: auto; font-size: 11px; color: #978971; text-align: right; flex: none; max-width: 46%; }
-  .bk-actions { margin-top: auto; padding-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .bk-row-sub { margin-left: auto; font-size: 0.8125rem; color: #978971; text-align: right; flex: none; max-width: 46%; }
+  .bk-actions { margin-top: auto; padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .bk-actions .mv-btn { text-decoration: none; }
   .bk-x { position: absolute; right: 14px; top: 12px; z-index: 5; width: 30px; height: 30px; border-radius: 50%;
     border: 1px solid rgba(120,90,50,.35); background: rgba(252,247,236,.95); color: #6B5B3E;
@@ -117,7 +121,7 @@
 </style>
 </head>
 <body class="mv-page">
-<div class="mv-wrap" style="max-width:78rem">
+<div class="mv-wrap-lg">
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <h1 class="mv-h1" style="margin:0">我的书架</h1>
@@ -128,7 +132,7 @@
       <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
     </div>
   </div>
-  <p class="mv-sub" style="margin-bottom:8px">
+  <p class="mv-sub intro">
     第二大脑，做成一面书架。<b>五个区就是五个方向，一本书就是一个模块、一个项目、一条准则或一本读过的书</b>，名字印在书脊上。
     <b>书越厚、颜色越实 = 练得越透</b>；灰而薄的是还没读进去的部分，虚影书位是还没长出来的部分。
     拖拽小幅转视角，滚轮缩放，点书看明细和下钻。右侧是<b>今天该长哪块</b>。
@@ -271,6 +275,7 @@
     { n: '秋招破局方案', d: 'offer = 投递量 × 过筛率 × 转化率；两条可观测止损线', f: '../output/秋招破局方案.html', h: true },
     { n: '投递台账 108 家', d: '五层分组 S16 / A28 / B35 / C21 / D8 + 硬窗口日历', f: '../output/秋招投递台账.html', h: true },
     { n: '简历族（母版+3 方向）', d: '事实不变、表达自由；只改母版再派生', f: '../output/resume/刘宇广-AI应用开发-2027届.html', h: true },
+    { n: '简历逐句作战地图', d: '新母版 15 条 bullet × 速答/追问/弹药 + 数字遮罩自测 + 闭卷勾选', f: 'resume-map.html', h: true },
     { n: '面试复盘报告', d: '乐元素 · 线上 AI 业务推演的实测评分与缺失模块', f: 'reviews/', h: true },
     { n: '网申开放题作答', d: '逐条最优版本，纯文本可直接粘进表单', f: '../output/网申开放题作答-刘宇广.md', h: false }
   ].forEach(function (r, i) {
@@ -824,7 +829,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBook(); });
 
   // ── 相机：正面平视，只允许小幅左右转 ──────────────────────
-  var theta = 0, phi = 1.40, dist = 21.5;
+  var theta = 0, phi = 1.40, dist = 21.5, userZoomed = false;
   var drag = false, px = 0, py = 0;
   stage.addEventListener('mousedown', function (e) {
     drag = true; px = e.clientX; py = e.clientY; stage.classList.add('dragging');
@@ -840,6 +845,7 @@
   });
   stage.addEventListener('wheel', function (e) {
     e.preventDefault();
+    userZoomed = true;
     dist = Math.max(7, Math.min(34, dist + e.deltaY * 0.014));
   }, { passive: false });
 
@@ -879,6 +885,11 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // 横向视野随 aspect 收缩（fov 40° 竖向），画布变窄/变高都会裁墙——按墙宽反推最小视距，
+    // 保证整面墙连边距收进画面；手动缩放过就不再动 dist，尊重用户的选择。
+    var fit = (WALL_W / 2 + 1.5) / (Math.tan(Math.PI / 9) * camera.aspect * Math.sin(phi));
+    fit = Math.max(21.5, Math.min(34, fit));
+    if (!userZoomed) dist = fit;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -948,7 +959,7 @@
     document.getElementById('side-situ').innerHTML =
       '<h4>今日情境 <em>' + (pick ? (pick.kind === 'rule' ? '行事准则' : '读厚原则卡') : '') + '</em></h4>' +
       (pick
-        ? '<div style="font-size:15px;font-weight:500">' + pick.name + ' <span style="font-size:11px;color:#888780">' + pick.src + '</span></div>' +
+        ? '<div style="font-size:1rem;font-weight:600">' + pick.name + ' <span style="font-size:0.8125rem;font-weight:400;color:var(--mv-muted)">' + pick.src + '</span></div>' +
           '<div class="situ"><b>情境</b>　' + pick.scene +
           '<details><summary>想好了，对一下标准动作</summary><div style="margin-top:6px">' + pick.action + '</div></details></div>' +
           '<div class="side-btns">' +
@@ -966,8 +977,8 @@
     cAll.forEach(function (c) { if (lvOf('card/' + c.id) >= MASTER) cGot++; });
     function mini(label, got, tot, color) {
       var pct = tot ? Math.round(got / tot * 100) : 0;
-      return '<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px">' +
-        '<span>' + label + '</span><span style="color:#888780">' + got + '/' + tot + '</span></div>' +
+      return '<div style="margin-top:0.625rem"><div style="display:flex;justify-content:space-between;font-size:0.8125rem">' +
+        '<span>' + label + '</span><span style="color:var(--mv-muted)">' + got + '/' + tot + '</span></div>' +
         '<div class="mini-track"><i style="width:' + pct + '%;background:' + color + '"></i></div></div>';
     }
     document.getElementById('side-progress').innerHTML =

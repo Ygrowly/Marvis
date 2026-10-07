@@ -50,7 +50,12 @@ for (const m of modules) {
 
 console.log('【地基包对账：13/13，module 字段与 modules.js 一致】');
 ok((cards.grounds || []).length === 13, 'cards.js grounds = 13', String((cards.grounds || []).length));
-ok((cards.principles || []).length === 12, 'cards.js principles = 12', String((cards.principles || []).length));
+// 原则卡总数不写死——与原则卡正本里的 card 小节对账（增卡只改正本，这里自动跟）
+const nCardsInMd = fs.readdirSync(path.join(ROOT, '..', 'wiki', 'cards'))
+  .filter(f => f.startsWith('原则-') && f.endsWith('.md'))
+  .reduce((a, f) => a + (fs.readFileSync(path.join(ROOT, '..', 'wiki', 'cards', f), 'utf8').match(/^## card\s/gm) || []).length, 0);
+ok((cards.principles || []).length === nCardsInMd, 'cards.js principles 与原则卡正本对账',
+  'js=' + (cards.principles || []).length + ' md=' + nCardsInMd);
 const modNames = new Set(modules.map(m => m.module));
 for (const g of cards.grounds || []) {
   ok(modNames.has(g.module), '地基包 ' + g.id + ' 的 module「' + g.module + '」能对上模块');

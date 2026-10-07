@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>简历逐句作战地图 · 简历作战舱</title>
+<link rel="stylesheet" href="_components/marvis.css">
+<style>
+  .rm-global { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface);
+    padding: 1.125rem 1.375rem; margin: 1.25rem 0; }
+  .rm-global ul { margin: 0.375rem 0 0; padding-left: 1.25rem; font-size: 0.9375rem; line-height: 1.85; }
+  .rm-global li { margin: 0.375rem 0; }
+  .rm-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 0; }
+  .rm-tab { border: 1px solid var(--mv-border-strong); background: var(--mv-surface); border-radius: 999px;
+    padding: 0.4375rem 1.125rem; font-size: 0.875rem; cursor: pointer; color: var(--mv-text); }
+  .rm-tab:hover { background: var(--mv-surface-2); }
+  .rm-tab.on { color: #fff; border-color: transparent; font-weight: 500; }
+  .rm-prog { font-size: 0.8125rem; color: var(--mv-muted); margin-left: auto; align-self: center; }
+  .rm-core { border: 1px solid var(--mv-border); border-left-width: 4px; border-radius: var(--mv-radius-sm);
+    background: var(--mv-surface-2); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.9375rem; line-height: 1.85; }
+  .rm-core b.k { display: block; font-size: 0.8125rem; letter-spacing: 2px; color: #A0763F; margin-bottom: 0.375rem; }
+  .rm-core ol { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+  .rm-card { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface);
+    padding: 0; margin: 1.25rem 0; overflow: hidden; }
+  .rm-card > .hd { display: flex; gap: 0.75rem; align-items: baseline; padding: 0.875rem 1.25rem; cursor: pointer; user-select: none; }
+  .rm-card > .hd:hover { background: var(--mv-surface-2); }
+  .rm-card .rid { flex: none; font-size: 0.8125rem; font-weight: 600; color: #fff; border-radius: 5px;
+    padding: 0.0625rem 0.5rem; letter-spacing: .5px; }
+  .rm-card .rt { font-size: 1rem; font-weight: 600; line-height: 1.6; }
+  .rm-card .chk { flex: none; margin-left: auto; display: flex; gap: 0.375rem; align-items: center;
+    font-size: 0.8125rem; color: var(--mv-muted); white-space: nowrap; cursor: pointer; }
+  .rm-card .chk input { accent-color: #2C7A4B; width: 1rem; height: 1rem; cursor: pointer; }
+  .rm-card.done > .hd .rt { color: var(--mv-muted); text-decoration: line-through solid rgba(0,0,0,.25); }
+  .rm-card > .bd { display: none; padding: 0.25rem 1.25rem 1.25rem; border-top: 1px dashed var(--mv-border); }
+  .rm-card.open > .bd { display: block; }
+  .rm-sec { margin: 1rem 0 0; font-size: 0.9375rem; line-height: 1.85; }
+  .rm-sec b.lb { display: inline-block; font-size: 0.8125rem; color: #fff; border-radius: 4px;
+    padding: 0.0625rem 0.5625rem; margin-right: 0.5rem; vertical-align: 1px; }
+  .rm-sec.q b.lb { background: #8B7FD4; }
+  .rm-sec.a b.lb { background: #6FA054; }
+  .rm-sec.e { font-size: 0.8125rem; color: var(--mv-muted); }
+  .rm-sec.e b.lb { background: #B4B2A9; }
+  .rm-numtbl { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: var(--mv-surface); }
+  .rm-numtbl th, .rm-numtbl td { border: 1px solid var(--mv-border); padding: 0.625rem 0.75rem; text-align: left; line-height: 1.7; }
+  .rm-numtbl th { background: var(--mv-surface-2); font-weight: 600; font-size: 0.8125rem; }
+  .rm-numtbl td:first-child { font-size: 0.8125rem; font-weight: 600; white-space: nowrap; }
+  .masked { filter: blur(7px); cursor: pointer; user-select: none; }
+  .rm-btnrow { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.75rem; align-items: center; }
+  .rm-tip { font-size: 0.8125rem; color: var(--mv-muted); }
+  @media print { .rm-tabs, .rm-btnrow, .chk { display: none !important; } .rm-card > .bd { display: block !important; } }
+</style>
+</head>
+<body class="mv-page">
+<div class="mv-wrap-md">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h1 class="mv-h1" style="margin:0">简历逐句作战地图</h1>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <a class="mv-btn" href="index.html" style="text-decoration:none">回今日</a>
+      <a class="mv-btn" href="brain.html" style="text-decoration:none">← 书架</a>
+      <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
+    </div>
+  </div>
+  <p class="mv-sub" style="margin-bottom:0.5rem">
+    母版简历 <b>15 条 bullet</b>（EnergyOps 5 · 数驭穹图 5 · RuleArena 5）× 30 秒速答 / 追问链 / 深挖弹药 / 数字口径。
+    用法见「三遍法」页签：<b>通读只许一遍，然后全程先说后看</b>；数字页每天 5 分钟遮罩自测。
+  </p>
+  <p class="mv-note" style="margin:0">
+    正本：<code>wiki/interview/简历逐句作战地图.md</code>（candidate 待主人审）——本页是呈现与训练层，改内容先改正本，再手工同步本页。
+    勾选存本机 <code>mv.resumemap.v1</code>。
+  </p>
+
+  <div class="rm-global" id="rm-global"></div>
+
+  <div class="rm-tabs" id="rm-tabs"></div>
+  <div id="rm-body"></div>
+
+  <p class="mv-note" style="margin-top:16px">
+    过关线（学习法 §二）：闭卷讲 3 分钟 + 吃住两层追问 + 数字带口径；写型 6 项要<b>闭卷写出来</b>，复述糊弄不过去。
+    面试前 24 小时禁新增文档，只做提取（面试冲刺执行协议）。
+  </p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'mv.resumemap.v1';
+  var S = {};
+  try { S = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { S = {}; }
+  if (!S.done) S.done = {};
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var GLOBAL = [
+    '<b>总主线</b>（自我介绍收尾、每题落点）：数据可信（数驭穹图）→ 执行可控（EnergyOps）→ 结果可证（RuleArena）——Agent 生产化的瓶颈在可靠性工程，不在模型。',
+    '<b>基础口径数字</b>：15 分钟采集周期 / 日均 5.8 万条（604×24×4，计算事实——别说成「统计出来的」）/ 30 个 MCP 工具。',
+    '<b>E2 起手句</b>（E2 数字必须自带）：「这是在固定评测集/回放窗口上得到的离线结果，不是线上监控数字。」',
+    '<b>责任档位</b>（说错直接翻车）：EnergyOps = 独立设计与实现（Mentor 把关业务方向）；数驭穹图 = 初创团队核心开发（<b>禁用「主导项目」</b>）；RuleArena = 个人项目独立设计实现；结算财务口径与财务团队对齐，<b>不抢</b>。',
+    '<b>纪律</b>：PayTrace 已移出简历不主动提；Ovanta 只用一段话空档版本（全栈实习 + 支付幂等账权一致率 99.95% + 同期并行开始数驭穹图）。'
+  ];
+
+  var PROJECTS = [
+    {
+      id: 'eo', tab: 'EnergyOps', anchor: '执行可控', color: '#C08A3E',
+      core: [
+        '<b>立意（A≠B）</b>：读数齐全 ≠ 能耗账可信；能调工具 ≠ 操作受控——做的是 AI 接入核心业务系统的信任工程（第三方数据进财务账、Agent 开写权限）。',
+        '<b>真差异</b>：执行前拦截 + 高风险人工确认是 2026 共识，不声称首创；差异在业务能力级风险分级（R 级配在业务能力上）+ 与数据质量/责任门联动 + 可插拔配置；7 类质量状态是「参差第三方数据 → 业务账」的领域格。',
+        '<b>证据</b>：完整率 96.8→99.7%、80 条越权拦截 100%、研判 18→6min（全 E2）。'
+      ],
+      before: 'before：行政按月手工对账、告警直发淹没真问题、第三方读数直减出错账单、写操作无分级——现在分层建模+质量治理自动出可信账、三层过滤 18→6min、坏数据进异常账、R 分级 Hook 前置拦截。',
+      bullets: [
+        { id: 'EO1', t: '四层数据模型 + 7 类质量状态 + 可信白名单（完整率 96.8→99.7%）',
+          q: 'raw 不可信 → interval 定质 → hourly/daily 聚合，三账分流（用能账/异常账/结算账）；只有可信区间进聚合，坏数据进异常账不进用能账。',
+          ask: '① 四层各解决什么，能否合并？② 7 类质量状态怎么判定，举「倍率变更」例子？③ 白名单误杀好数据怎么办？④ 96.8→99.7 怎么算的？',
+          ammo: '完整率 = 有效区间 ÷ 应产生区间（604×24×4 ≈ 5.8 万/日）；口径唯一，自动聚合只做交叉核对，结算以抄表底稿为准（不抢）；病根格 =「把物理事实当业务事实用」——坏数据的去处是异常账，不是消失。',
+          ev: '项目说明 §3/§6；§0.7.2 行 1' },
+        { id: 'EO2', t: '30 个 MCP 工具 + 6 类 Capability Bundle + R0/R1/R2 + Hook 校验链（完成率 83.3→95.8%、越权拦截 100%）',
+          q: '六类业务能力收敛为 30 个 MCP 工具 + 6 类 Bundle；R0/R1/R2 风险分级配在能力上，Before/After Tool + Before Model 三个 Hook 插桩点分别管越权、上下文膨胀、过程失忆；R2 未确认直接阻断。',
+          ask: '① Hook 链几个插桩点，各防什么？② R 分级怎么定，R2 未确认会怎样？③ 为什么 Hook 不是 Prompt 约束？换个业务怎么复用？④ 拦截 100% 的 80 条用例怎么构造？',
+          ammo: 'R 级是 Hook 上的策略配置，不是独立机制；失败语义分级返回（NEEDS_CONFIRMATION / PARTIAL / TOOL_TIMEOUT）；「核心 Loop 不随业务增改」——业务只声明「哪个能力什么风险级要不要确认」（新简历取舍句，必讲）；80 条越权 = 跨租户/越权限/越范围三类构造；完成率口径 = 72 条固定任务集（同模型同权限）。',
+          ev: '项目说明 §6/§14.3；§0.7.2 行 2；金山话术' },
+        { id: 'EO3', t: '查询重构（重复 JOIN/全表扫描 → 组合索引+预聚合）P95 20.4→2.8s；幂等窗口 + 状态持久化 + 7 天回补（96.9→99.6%）',
+          q: '设备归属关联导致每窗口重复 JOIN + 全表扫描；EXPLAIN 定位后按查询模式建组合索引，聚合结果预计算落表；重启缺口由任务状态持久化发现，启动时按窗口幂等键回补 7 天，重跑不重不漏。',
+          ask: '① 重复 JOIN 怎么产生、怎么定位？② 组合索引怎么设计，为什么预聚合能到 2.8s？③ 重启缺口怎么发现、回补怎么不重不漏？④ 幂等窗口的键是什么？',
+          ammo: '立意上这是工程基本功，支撑机制，不单列创新——被问「算创新吗」就答支撑层；聚合成功率 = 成功窗口 ÷ 应执行窗口；补数对比取两个等长窗口；P95 ↓86.3% 是派生值：(20.4−2.8)/20.4，追问直接给算式。',
+          ev: '项目说明 §6/§7；§0.7.2 末行' },
+        { id: 'EO4', t: '「异常候选 ≠ 业务告警」三层分离（告警 -43%、研判 18→6min）',
+          q: '自适应基线从多日历史学正常形态输出候选 → 历史 dry-run 准入验证规则质量 → 告警指纹去重守住通知门槛；拆开的原因：识别准确率和打扰成本是两个目标，耦合在一起两者都做不好。',
+          ask: '① 三层各是什么，为什么拆？② 自适应基线怎么学正常形态？③ 误报和漏报怎么权衡，指纹去重会漏掉真问题吗？',
+          ammo: '病根格 =「告警 = 规则直发」；研判时间 = Incident 到首次分类的中位时长。',
+          ev: '项目说明 §5/§8；§0.7.2 行 4' },
+        { id: 'EO5', t: '结算三道质量门（分摊守恒率 100%）+ 92 单元 + 30 回归（核心链路 98.4%）',
+          q: '事实源门（数据齐且可信）→ 预演门（分摊守恒校验）→ 责任门（行政确认 + 财务核验）；任一失败阻断正式账单生成——结算错误是不可逆外部影响，宁可延迟不可出错。',
+          ask: '① 三道门各挡什么，为什么任一失败是阻断不是告警？② 分摊守恒怎么校验？③ 测试怎么分层，回归集怎么维护？',
+          ammo: '病根格 =「AI 生成结果没人负责」——AI 不能替代责任人的业务口径裁决；结算财务口径与财务团队对齐（不抢）；92+30 覆盖统计口径、数据质量、工具参数、权限边界、失败恢复。',
+          ev: '项目说明 §4.5/§7.4/§14.3；§0.7.2 行 5' }
+      ]
+    },
+    {
+      id: 'sz', tab: '数驭穹图', anchor: '数据可信', color: '#4C82B8',
+      core: [
+        '<b>立意（A≠B）</b>：SQL 能执行 ≠ 业务答案正确——语义层解决「理解对」，但语义层已是共识（SuperSonic / Wren AI / Kyligence）；真正的最后一公里是治理与闭环：口径错了能不能停（fail-closed）、结果能不能被证明（证据绑定）、答案能不能沉淀成资产（回写复用）。',
+        '<b>真差异（按防御力排序）</b>：① 口径治理一票否决（无对位物）→ ② 三重证据绑定 → ③ 协作沉淀回写 → ④ 不绑定数仓的轻量湖仓；「有语义层」「六阶段」只是入场券，不单当差异讲。',
+        '<b>证据</b>：150 条评测集「可执行且口径正确」78→91%（含人工复核）、100 条抽检复现一致率 100%、Token 18.4K→3.6K——全部 E2 固定评测集。'
+      ],
+      before: 'before：业务人员提工单等排期（周报取数 40→12min）→ 自助问数，拿到能交出去、能被追问的答案；数据团队从取数工单里出来做指标治理。',
+      bullets: [
+        { id: 'SZ1', t: '六阶段可归因链路 + 限次自愈（Bad Case 30→8min、78→91%）',
+          q: '意图路由 → Domain Schema 检索 → NL2SemQL → SQL 生成 → 安全校验 → 执行；拆开使业务理解错误、SQL 生成错误、执行错误可独立归因；自愈区分语法错误/字段缺失/方言差异/权限拒绝，回灌执行反馈 + 有效 Schema + 错误标签，限次防震荡。',
+          ask: '① 六阶段各自产出什么，为什么拆？② 错误怎么归因到阶段？③ 自愈回灌什么信息，为什么限次？④ 为什么不让模型从 NL 直接生成 SQL？',
+          ammo: '直接 NL→SQL 无法独立验证「理解对」和「写对」；六阶段是入场券不是差异（真差异排序里没有它）；150 条评测集判定 =「可执行且口径正确」，含人工复核。',
+          ev: '项目说明 §4/§13.3；§0.7 真差异排序' },
+        { id: 'SZ2', t: '五层查询安全边界（拦截 100%、误拦 2.7%）',
+          q: '租户权限 → 受治理 Tool 注册 → Tool Call Schema/Validator 校验（tenant_id 服务端注入，模型报的不算）→ 只读 SQL AST 审查（租户注入/超时/行数限制）→ 输出字段脱敏；核心姿态 = 把模型输出当不可信输入。',
+          ask: '① 五层各挡什么威胁？② 为什么把模型输出当不可信输入？③ AST 审查查什么？④ 300 条对抗请求怎么构造？⑤ 拦截 100% 会不会牺牲可用性？',
+          ammo: '对抗请求三类 = 提示注入诱导越权 / 跨租户 / 写操作；误拦 2.7% = 150 条正常查询里 4 条；执行侧五层 vs 结果侧五层不是一回事，被混问先分清。',
+          ev: '项目说明 §4/§13.3 末行' },
+        { id: 'SZ3', t: '轻量湖仓物理隔离 + Artifact 外置（Token 18.4K→3.6K，↓80.4%）',
+          q: '文件/协同表格/同步数据以 Parquet 副本交 DuckDB 本地计算；强实时走只读受限连接（EXPLAIN 成本预估、慢查询熔断降级、独立配额）；分析负载与客户生产库物理隔离；大结果外置为 Artifact（Hot/Warm/Cold），模型只收口径摘要 + 聚合统计。',
+          ask: '① 哪些走 DuckDB、哪些走只读连接，路由依据？② 客户生产库被慢查询拖垮怎么办？③ 大结果外置后模型看到什么？',
+          ammo: 'Token 降 80% 的本质是「给模型结论，不给明细」；↓80.4% 是派生值：(18.4−3.6)/18.4，追问直接给算式；真差异第 4 位——被问「凭什么不用数仓」答：目标客户没有数仓团队，也要用得起、部署得动。',
+          ev: '项目说明 §4.11；§0.7.2' },
+        { id: 'SZ4', t: '3 套 Domain Pack + 领域路由 + 混合检索（Top-K Schema 召回 81→95%）',
+          q: '65 核心指标 + 120 术语别名 + 指标口径 + 表关联约束，来自行业调研 + 客户共建；关键词（精确术语）+ 向量（语义变体）+ 元数据过滤（域内收窄）三路混合检索。',
+          ask: '① Domain Pack 里具体有什么，怎么沉淀出来的？② 三路各解决什么？③ 新行业接入要多久？④ 召回率怎么算？',
+          ammo: 'Top-K 正确表/字段命中即召回；与 EnergyOps 迁移「三件套」同构（字段/点位映射 + 领域规则 + 分级表）——两项目复用性互证，跨项目迁移题的弹药。',
+          ev: '项目说明 §4/§13；§0.7.3' },
+        { id: 'SZ5', t: '语义资产健康度 + 口径一票否决 + 三重证据绑定（100 条抽检复现一致率 100%）',
+          q: '核心指标缺业务定义即暂停该域自动问数（fail-closed）；Schema/DDL 变更自动降级资产可信度；结果绑定 call_id / query_fingerprint / result_hash 三重证据，图表渲染校验失败降级占位块——宁可显示异常，不出示假数据。',
+          ask: '① 一票否决挡住的是什么事故？② 三重绑定各防什么？③ 抽检复现 100% 怎么验证的？④ Schema 变更后旧看板怎么办？',
+          ammo: '本条是真差异第 1、2 位的承载（口径一票否决无对位物、三重证据绑定），「最后一公里是治理与闭环」立意的主战场；过期语义不能冒充当前口径；抽检复现 100% 是抽检口径（100 条抽样），不是全量一致。',
+          ev: '项目说明 §4/§13；§0.7 真差异排序' }
+      ]
+    },
+    {
+      id: 'ra', tab: 'RuleArena', anchor: '结果可证', color: '#6FA054',
+      core: [
+        '<b>立意（A≠B）</b>：ACK ≠ 业务成功；单次成绩 ≠ 可复现能力——把「上线前的评测分数」变成「发布时的门禁行为」：门禁的价值在不放行时兑现（57% &lt; 75% 如实拒绝）。',
+        '<b>真差异</b>：pass@k / pass^k 沿用 τ-bench（Sierra，2024）是依据不是首创；产品化组合无对位物——运行时门禁 + 独立 Oracle 不变量裁决 + 反例回归资产 + 如实拒绝放行。',
+        '<b>证据</b>：裸跑 ¥1920 → 门禁 0 笔（15 工单 × 2 模式 × 3 重复，E2 可复现）；pass@3 = 8/14 vs pass^3 = 1/14；机制层误报 0 / 泄漏 0 / 稳定重放 42/42。'
+      ],
+      before: 'before：上线后靠对账差异和客户投诉发现问题 → 上线前预算内搜索 + 独立裁决 + 如实放行或拒绝；运营/风控从「不敢让 Agent 碰写操作」变成「有门禁数据才放行」。',
+      bullets: [
+        { id: 'RA1', t: '「候选风险 ≠ 确认漏洞」防自证三角（Simulator → Sandbox → Oracle）',
+          q: 'Agent 提议只算候选 → Reference Simulator 快速剪枝 → 干净 Commerce Sandbox（幂等键 / ActionReceipt / 只追加事件）真实 HTTP 重放 → 独立 Oracle 按资金守恒、状态生命周期、幂等不变量裁决；裁决以冻结 RuleSpec 为基准、每步重读权威状态而非信任 Receipt；Agent 全程无法触达 Ground Truth。',
+          ask: '① Oracle 依据什么不变量？② Agent 能不能污染 Ground Truth？③ Simulator 会不会滤掉真 bug，晋升靠什么？',
+          ammo: '防自证的关键 = 裁决者与被裁决者隔离（Oracle 不读 Agent 的任何中间结论）；Simulator 只做剪枝不做裁决，晋升必须过 Sandbox 实测 + Oracle 判定。',
+          ev: '项目说明 §2/§3/§14' },
+        { id: 'RA2', t: '门禁实测（裸跑 60% / 多退 ¥1920 → 门禁 100% / 0 笔，而且更省）',
+          q: '同一份 Agent 跑两次，15 张工单 × 2 模式 × 3 次重复：裸跑组 6 张工单重复退款、多退 ¥1920、终态正确率 60%；加门禁后重复退款 0 笔、终态正确率 100%、误拦 0——而且更省：少发 30 次工具调用、平均耗时低 0.3s。',
+          ask: '① 加了门禁为什么反而更快更省？② 误拦 0 是怎么保证的？③ 这个实验证明的是「规则安全」吗？',
+          ammo: '「更省」的原因 = 坏路径在门禁处被拦掉，省掉无效工具调用与重试；门禁承诺「预算内未发现」，不承诺「规则安全」——分层不混淆；两项指标必须并列报（终态正确率 ≠ 无资损），不许合并成一句「正确率 100%」——账本红线；全库唯一一组「裸跑 vs 门禁」对照实验，E2 可复现。',
+          ev: '项目说明 §0.6；账本 §5.2' },
+        { id: 'RA3', t: '双评测集 + 归一化预算消融 + pass@3 vs pass^3（8/14 vs 1/14、57% < 75% 如实拒绝）',
+          q: 'development 21 + hidden 17 物理隔离（Runtime 连读都读不到，防针对考纲训练）；Random / BFS 基线在同一归一化预算下比较，证明策略增益不是预算堆出来的；hidden 重复 3 次暴露 pass@3 = 8/14 而 pass^3 = 1/14——单次成绩掩盖搜索不可复现；Release Gate 据此如实拒绝放行（57% &lt; 75% 门槛）；机制层误报 0 / 泄漏 0 / 稳定重放 42/42。',
+          ask: '① hidden 怎么隔离、防什么？② 为什么做预算归一化消融？③ 门禁承诺的是什么、不是什么？④ 21+17 的规模会过拟合吗？⑤ pass@3 和 pass^3 为什么要分开报？',
+          ammo: 'dev 集 Multi-strategy 5/14 &gt; BFS 2/14 说明策略有增益；hidden pass^3 = 1/14 说明增益不可复现——两件事必须并列讲，这正是「必须有运行时门禁」的实测依据；pass^3 定义（同一任务 3 次全部通过的比例）要能脱口而出。',
+          ev: '项目说明 §6/§9；§0.7 核心三句' },
+        { id: 'RA4', t: '四个真实缺陷 + Delta Debugging 最小反例 + FSM/Checkpoint/ACTION_UNKNOWN',
+          q: '四个缺陷全是真实运行打出来的——工具层把沙箱「业务拒绝」（HTTP 200 + status: REJECTED）读成成功、504 未走恢复路径、同幂等键重放被当成新写入、门禁理由码泄给 Agent；修完补回归测试后重跑出 RA2 的数字。确认违规经删除式 Delta Debugging 压到 1-minimal 并绑定证据链（请求序列 + 回执 + 事件 + 状态 Diff + 违反的不变量）；修复版本自动重放历史反例；显式 FSM 支持 Checkpoint 恢复与 ACTION_UNKNOWN 超时语义。',
+          ask: '① 四个缺陷分别暴露什么机制缺口？② 反例为什么压到 1-minimal？③ 旧反例怎么防复发？④ ACTION_UNKNOWN 是什么问题，怎么解？',
+          ammo: '四个缺陷 = 四条机制层教训——成功判定要看业务语义不是 HTTP 码 / 超时必须有恢复路径 / 幂等键重放语义要明确（同键 = 查询不是新写入）/ 面向 Agent 的信息要脱敏（理由码泄给 Agent 等于把考卷给考生）；ACTION_UNKNOWN 的解法 = 超时后查询权威状态防重复副作用，不靠猜测；「执行中打出并修正」是本简历最值钱的叙事——缺陷不是设计出来的，是跑出来的。',
+          ev: '项目说明 §6/§9/§10' }
+      ],
+      extra: { id: '附A1', t: '附 · NL→RuleSpec 编译链路（非简历 bullet——7→5 压缩时降级为口述弹药）',
+        q: '自然语言 → 候选 RuleSpec → 确定性校验 → 歧义清单 → 人工确认 → 不可变 RuleVersion；歧义必须人工澄清冻结，模型不自行决定语义；限定优惠/退款/积分/会员四域固定原语才能确定性证明；未确认规则不得进入攻击运行。',
+        ask: '① 为什么编译成契约而不是直接让 Agent 理解规则？② 歧义清单怎么产生？③ 为什么禁止动态表达式求值？',
+        ammo: '确定性证明的前提是原语封闭——原语不封闭就不存在可判定的不变量；「Issue 描述了目标 ≠ Issue 定义了完成」，完成由证据证明。',
+        ev: '项目说明 §2/§5；§0.7.2' }
+    }
+  ];
+
+  var NUMS = [
+    ['EO1', '完整率 96.8→99.7%', '有效区间 ÷ 应产生区间（604×24×4 ≈ 5.8 万/日）'],
+    ['EO2', '完成率 83.3→95.8%；拦截 100%', '72 条固定任务集（同模型同权限）；80 条越权用例'],
+    ['EO3', 'P95 20.4→2.8s；成功率 96.9→99.6%', '固定查询集核心统计接口；成功窗口 ÷ 应执行窗口；↓86.3% = (20.4−2.8)/20.4'],
+    ['EO4', '告警 -43%；研判 18→6min', '相同历史窗口回放；Incident 到首次分类的中位时长'],
+    ['EO5', '分摊守恒率 100%；92+30；核心链路 98.4%', '任一门失败阻断正式账单；122 用例通过 120（E1）'],
+    ['SZ1', '定位 30→8min；78→91%', '150 条评测集「可执行且口径正确」（含人工复核，117→137 条）'],
+    ['SZ2', '拦截 100%；误拦 2.7%', '300 条正常+对抗请求；150 条正常里 4 条误拦'],
+    ['SZ3', 'Token 18.4K→3.6K（↓80.4%）', '给模型结论不给明细；↓80.4% = (18.4−3.6)/18.4'],
+    ['SZ4', '召回 81→95%', 'Top-K 正确表/字段命中（150 条问题，约 122→143 条）'],
+    ['SZ5', '抽检复现一致率 100%', '100 条抽检（抽检口径，非全量）'],
+    ['RA2', '¥1920→0；60%→100%；误拦 0；少发 30 次调用、-0.3s', '15 工单 × 2 模式 × 3 次重复（并列报：终态正确率 ≠ 无资损）'],
+    ['RA3', 'pass@3 8/14 vs pass^3 1/14；dev 5/14 vs BFS 2/14；57%&lt;75%', 'hidden 重复 3 次；21+17 双评测集；四基线同归一化预算'],
+    ['RA4', '误报 0 / 泄漏 0 / 稳定重放 42/42', '机制层（dev 误报 0/7、hidden 误报 0/3）']
+  ];
+
+  var METHOD = [
+    '<b>第 0 遍 · 通读（30 分钟/项目）</b>：通读核心三句 + 全部 bullet，只求知道骨架长什么样，不背。',
+    '<b>第 1 遍 · 提取轮（约 90 分钟/项目，建议次日）</b>：对着简历 PDF 逐条——先合上材料自己讲 60–90 秒（手机录音、掐表），再对照标缺口；只在缺口处停留，缺口写成事实句进 questions.md；最后过一遍数字页（遮罩自测）。讲过一条就勾一条。',
+    '<b>第 2 遍起 · 回抽轮（第 1/3/7/14 天，每次 15–20 分钟）</b>：只回听录音 + 只看「30 秒速答」行重讲；三项目 90 秒全貌（总主线收尾）每天开场一遍。',
+    '<b>过关线</b>：闭卷 3 分钟 + 两层追问 + 数字带口径；写型 6 项闭卷写出来。',
+    '<b>写型补课清单</b>：① Hook 拦截 R2 伪代码 + 任务状态外置字段（EO2）② 幂等键设计 + 7 天回补流程（EO3）③ 只读 SQL AST 关键规则清单（SZ2）④ AnalysisIntent→SemQL 关键字段（SZ1）⑤ 退款后积分守恒不变量判定 + ACTION_UNKNOWN 状态流（RA1/RA4）⑥ 金山话术 7 个【】真实信息。',
+    '<b>红线</b>：面试前 24 小时禁新增文档，只做提取（面试冲刺执行协议）。'
+  ];
+
+  // ── 渲染 ──────────────────────────────────────────────────
+  function el(id) { return document.getElementById(id); }
+  function globalHtml() {
+    return '<ul>' + GLOBAL.map(function (g) { return '<li>' + g + '</li>'; }).join('') + '</ul>';
+  }
+  function coreHtml(p) {
+    return '<div class="rm-core" style="border-left-color:' + p.color + '">' +
+      '<b class="k">核心三句 · 立意正本 §0.7</b><ol>' +
+      p.core.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ol>' +
+      '<div style="margin-top:6px;color:#5F5E5A">' + p.before + '</div></div>';
+  }
+  function cardHtml(p, b, isExtra) {
+    var done = !!S.done[b.id];
+    var col = isExtra ? '#B4B2A9' : p.color;
+    return '<div class="rm-card' + (done ? ' done open' : ' open') + '" id="c-' + b.id + '">' +
+      '<div class="hd" onclick="toggleCard(\'' + b.id + '\')">' +
+        '<span class="rid" style="background:' + col + '">' + b.id + '</span>' +
+        '<span class="rt">' + b.t + '</span>' +
+        (isExtra ? '' :
+        '<label class="chk" onclick="event.stopPropagation()"><input type="checkbox" ' + (done ? 'checked' : '') +
+          ' onchange="markDone(\'' + b.id + '\', this.checked)">闭卷讲过</label>') +
+      '</div>' +
+      '<div class="bd">' +
+        '<div class="rm-sec"><b class="lb" style="background:' + col + '">30 秒速答</b>' + b.q + '</div>' +
+        '<div class="rm-sec q"><b class="lb">追问会怎么打</b>' + b.ask + '</div>' +
+        '<div class="rm-sec a"><b class="lb">深挖弹药</b>' + b.ammo + '</div>' +
+        '<div class="rm-sec e"><b class="lb">证据</b>' + b.ev + '</div>' +
+      '</div></div>';
+  }
+  function projectHtml(p) {
+    var bs = p.bullets.map(function (b) { return cardHtml(p, b, false); }).join('');
+    var ex = p.extra ? cardHtml(p, p.extra, true) : '';
+    var n = p.bullets.filter(function (b) { return S.done[b.id]; }).length;
+    return coreHtml(p) + bs + ex +
+      '<p class="rm-tip" style="margin-top:10px">本项目闭卷讲过 <b>' + n + '/' + p.bullets.length +
+      '</b>。勾选只是打卡，过关线以「闭卷 3 分钟 + 两层追问 + 数字带口径」为准。</p>';
+  }
+  function numsHtml() {
+    return '<div class="rm-btnrow" style="margin-top:12px">' +
+      '<button class="mv-btn" type="button" onclick="maskNums(1)">遮数字</button>' +
+      '<button class="mv-btn" type="button" onclick="maskNums(2)">遮口径</button>' +
+      '<button class="mv-btn" type="button" onclick="maskNums(0)">全显示</button>' +
+      '<span class="rm-tip">遮住后点单元格可以偷看一格——但先在嘴里把答案说完。</span></div>' +
+      '<table class="rm-numtbl"><tr><th>条目</th><th>数字</th><th>口径</th></tr>' +
+      NUMS.map(function (r) {
+        return '<tr><td>' + r[0] + '</td><td class="rm-n">' + r[1] + '</td><td class="rm-k">' + r[2] + '</td></tr>';
+      }).join('') + '</table>';
+  }
+  function methodHtml() {
+    return '<div class="rm-global" style="margin-top:12px"><ul>' +
+      METHOD.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul></div>';
+  }
+
+  var TABS = PROJECTS.map(function (p) { return { k: p.id, label: p.tab + ' · ' + p.anchor, color: p.color }; });
+  TABS.push({ k: 'nums', label: '数字遮罩自测', color: '#B07C3A' });
+  TABS.push({ k: 'how', label: '三遍法', color: '#8B7FD4' });
+  var cur = PROJECTS[0].id;
+
+  function renderTabs() {
+    el('rm-tabs').innerHTML = TABS.map(function (t) {
+      return '<button class="rm-tab' + (t.k === cur ? ' on' : '') + '" style="' + (t.k === cur ? 'background:' + t.color : '') +
+        '" onclick="showTab(\'' + t.k + '\')">' + t.label + '</button>';
+    }).join('') + '<span class="rm-prog" id="rm-prog"></span>';
+    var all = [];
+    PROJECTS.forEach(function (p) { all = all.concat(p.bullets); });
+    var got = all.filter(function (b) { return S.done[b.id]; }).length;
+    el('rm-prog').textContent = '闭卷讲过 ' + got + '/' + all.length;
+  }
+  function renderBody() {
+    if (cur === 'nums') el('rm-body').innerHTML = numsHtml();
+    else if (cur === 'how') el('rm-body').innerHTML = methodHtml();
+    else el('rm-body').innerHTML = projectHtml(PROJECTS.filter(function (p) { return p.id === cur; })[0]);
+    renderTabs();
+  }
+  window.showTab = function (k) { cur = k; renderBody(); window.scrollTo(0, 0); };
+  window.toggleCard = function (id) { el('c-' + id).classList.toggle('open'); };
+  window.markDone = function (id, on) {
+    S.done[id] = !!on; save();
+    var c = el('c-' + id);
+    c.classList.toggle('done', !!on);
+    c.querySelector('input[type=checkbox]').checked = !!on;
+    renderTabs();
+  };
+  window.maskNums = function (mode) {
+    document.querySelectorAll('.rm-numtbl .rm-n').forEach(function (td) {
+      td.classList.toggle('masked', mode === 1);
+    });
+    document.querySelectorAll('.rm-numtbl .rm-k').forEach(function (td) {
+      td.classList.toggle('masked', mode === 2);
+    });
+  };
+  document.addEventListener('click', function (e) {
+    if (e.target.classList && e.target.classList.contains('masked')) e.target.classList.remove('masked');
+  });
+
+  el('rm-global').innerHTML = globalHtml();
+  renderBody();
+})();
+</script>
+</body>
+</html>

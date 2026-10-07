@@ -2331,40 +2331,40 @@ CARDS_PAGE = """<!DOCTYPE html>
 <title>内化馆 · 读厚卡片</title>
 <link rel="stylesheet" href="_components/marvis.css">
 <style>
-  .crd, .gnd { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
-    padding: 14px 16px; margin: 12px 0; scroll-margin-top: 20px; }
-  .sum-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
-  .sum-row div { border: 1px solid rgba(0,0,0,.1); border-radius: 10px; padding: 8px 12px; background: #fff; }
-  .sum-row small { display: block; color: #5F5E5A; font-size: 11px; }
-  .sum-row strong { font-size: 17px; font-weight: 500; }
+  .crd, .gnd { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface);
+    padding: 1.125rem 1.375rem; margin: 1.25rem 0; scroll-margin-top: 20px; }
+  .sum-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1.25rem 0 0.5rem; }
+  .sum-row div { border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm); padding: 0.625rem 1rem; background: var(--mv-surface); }
+  .sum-row small { display: block; color: var(--mv-muted); font-size: 0.8125rem; }
+  .sum-row strong { font-size: 1.25rem; font-weight: 500; }
   .crd.hl, .gnd.hl { border-color: #D85A30; box-shadow: 0 0 0 3px rgba(216,90,48,.14); }
-  .crd-h, .gnd-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-  .crd-n { font-size: 12px; color: #888780; font-variant-numeric: tabular-nums; }
-  .crd-t { font-size: 15px; font-weight: 500; }
-  .crd-tag { font-size: 11px; padding: 1px 7px; border-radius: 20px; background: #FBE9E1; color: #993C1D; }
-  .crd-lv { font-size: 11px; padding: 1px 7px; border-radius: 20px; background: #EEEDFE; color: #534AB7; }
-  .crd-src { font-size: 11px; color: #888780; margin-left: auto; }
-  .crd-one { font-size: 14px; line-height: 1.65; margin: 0 0 10px; color: #2C2C2A; }
+  .crd-h, .gnd-h { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.625rem; }
+  .crd-n { font-size: 0.8125rem; color: var(--mv-muted); font-variant-numeric: tabular-nums; }
+  .crd-t { font-size: 1.0625rem; font-weight: 600; }
+  .crd-tag { font-size: 0.8125rem; padding: 0.0625rem 0.5625rem; border-radius: 20px; background: #FBE9E1; color: #993C1D; }
+  .crd-lv { font-size: 0.8125rem; padding: 0.0625rem 0.5625rem; border-radius: 20px; background: var(--mv-accent-soft); color: var(--mv-accent); }
+  .crd-src { font-size: 0.8125rem; color: var(--mv-muted); margin-left: auto; }
+  .crd-one { font-size: 0.9375rem; line-height: 1.8; margin: 0 0 0.75rem; color: var(--mv-text); }
   .crd-one b { font-weight: 500; color: #993C1D; }
-  .crd-scene { font-size: 14px; line-height: 1.65; color: #2C2C2A;
-    background: #fbfaf7; border-left: 3px solid #F3C1AC; border-radius: 0 8px 8px 0;
-    padding: 10px 12px; margin: 0 0 10px; }
+  .crd-scene { font-size: 0.9375rem; line-height: 1.8; color: var(--mv-text);
+    background: var(--mv-surface-2); border-left: 3px solid #F3C1AC; border-radius: 0 var(--mv-radius-sm) var(--mv-radius-sm) 0;
+    padding: 0.75rem 1rem; margin: 0 0 0.75rem; }
   .crd-scene b { font-weight: 500; color: #993C1D; }
-  details.crd-d, details.gnd-d { border-top: 1px dashed rgba(0,0,0,.12); padding-top: 8px; }
-  details.crd-d summary, details.gnd-d summary { cursor: pointer; font-size: 13px; color: #993C1D;
+  details.crd-d, details.gnd-d { border-top: 1px dashed var(--mv-border); padding-top: 0.625rem; }
+  details.crd-d summary, details.gnd-d summary { cursor: pointer; font-size: 0.875rem; color: #993C1D;
     list-style: none; user-select: none; }
   details.crd-d summary::-webkit-details-marker, details.gnd-d summary::-webkit-details-marker { display: none; }
   details.crd-d summary::before, details.gnd-d summary::before { content: '▸ '; }
   details.crd-d[open] summary::before, details.gnd-d[open] summary::before { content: '▾ '; }
-  .crd-sec { font-size: 14px; line-height: 1.7; margin: 8px 0 0; color: #2C2C2A; }
-  .crd-sec b { font-weight: 500; color: #5F5E5A; }
-  .crd-f { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
-  .crd-use { font-size: 12px; color: #5F5E5A; }
-  .gnd .crd-sec ul, .gnd .crd-sec ol { margin: 6px 0 0; padding-left: 20px; }
-  .gnd .crd-sec li { margin: 4px 0; }
+  .crd-sec { font-size: 0.9375rem; line-height: 1.8; margin: 0.5rem 0 0; color: var(--mv-text); }
+  .crd-sec b { font-weight: 500; color: var(--mv-muted); }
+  .crd-f { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+  .crd-use { font-size: 0.8125rem; color: var(--mv-muted); }
+  .gnd .crd-sec ul, .gnd .crd-sec ol { margin: 0.375rem 0 0; padding-left: 1.25rem; }
+  .gnd .crd-sec li { margin: 0.25rem 0; }
   a.mv-cref { color: #185FA5; text-decoration: none; border-bottom: 1px dotted rgba(24,95,165,.5); }
-  .src-h { margin: 26px 0 4px; font-size: 16px; font-weight: 500; }
-  .src-h small { font-weight: 400; color: #5F5E5A; font-size: 12px; margin-left: 8px; }
+  .src-h { margin: 1.75rem 0 0.375rem; font-size: 1.0625rem; font-weight: 600; }
+  .src-h small { font-weight: 400; color: var(--mv-muted); font-size: 0.8125rem; margin-left: 0.5rem; }
 </style>
 </head>
 <body class="mv-page">
@@ -2378,7 +2378,7 @@ CARDS_PAGE = """<!DOCTYPE html>
       <a class="mv-btn mv-btn-primary" href="progress.html" style="text-decoration:none">进度与作业</a>
     </div>
   </div>
-  <p class="mv-sub" style="margin-bottom:4px">
+  <p class="mv-sub" style="margin-bottom:0.5rem">
     读过的书在这里被「读厚」：每张卡只回答一件事——<b>遇到这个情境，具体怎么做</b>。
     概念记住不算数，真实用过一次记一笔 ⚡；等级仍只由进度页的闭卷自评推进。
   </p>
@@ -2525,7 +2525,7 @@ def render_cards_page(payload, line_href):
         src = first["source"]
         head = '<div class="src-h">%s<small>%s</small>' % (esc(src), esc(first["author"]))
         if first["source_href"]:
-            head += (' <a href="obsidian://open?vault=Marvis&amp;file=%s" style="font-size:12px;color:#185FA5;text-decoration:none">打开阅读闭环 →</a>'
+            head += (' <a href="obsidian://open?vault=Marvis&amp;file=%s" style="font-size:0.8125rem;color:#185FA5;text-decoration:none">打开阅读闭环 →</a>'
                      % quote(first["source_href"].replace(".md", "")))
         head += ('　<small>%s</small></div>'
                  % ("人已复核" if first["human_reviewed"] else "AI 读厚产出 · 待本人验证（status %s）" % first["status"]))

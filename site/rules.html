@@ -6,30 +6,30 @@
 <title>行事准则 · 场景判断题</title>
 <link rel="stylesheet" href="_components/marvis.css">
 <style>
-  .rl { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
-    padding: 14px 16px; margin: 12px 0; scroll-margin-top: 20px; }
+  .rl { border: 1px solid var(--mv-border); border-radius: var(--mv-radius); background: var(--mv-surface);
+    padding: 1.125rem 1.375rem; margin: 1.25rem 0; scroll-margin-top: 20px; }
   .rl.hl { border-color: #7F77DD; box-shadow: 0 0 0 3px rgba(127,119,221,.14); }
-  .rl-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-  .rl-n { font-size: 12px; color: #888780; font-variant-numeric: tabular-nums; }
-  .rl-t { font-size: 15px; font-weight: 500; }
-  .rl-tag { font-size: 11px; padding: 1px 7px; border-radius: 20px;
-    background: #EEEDFE; color: #534AB7; }
-  .rl-src { font-size: 11px; color: #888780; margin-left: auto; }
-  .rl-scene { font-size: 14px; line-height: 1.65; color: #2C2C2A;
-    background: #fbfaf7; border-left: 3px solid #CECBF6; border-radius: 0 8px 8px 0;
-    padding: 10px 12px; margin: 0 0 10px; }
-  .rl-scene b { font-weight: 500; color: #534AB7; }
-  details.rl-d { border-top: 1px dashed rgba(0,0,0,.12); padding-top: 8px; }
-  details.rl-d summary { cursor: pointer; font-size: 13px; color: #534AB7;
+  .rl-h { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.625rem; }
+  .rl-n { font-size: 0.8125rem; color: var(--mv-muted); font-variant-numeric: tabular-nums; }
+  .rl-t { font-size: 1.0625rem; font-weight: 600; }
+  .rl-tag { font-size: 0.8125rem; padding: 0.0625rem 0.5625rem; border-radius: 20px;
+    background: var(--mv-accent-soft); color: var(--mv-accent); }
+  .rl-src { font-size: 0.8125rem; color: var(--mv-muted); margin-left: auto; }
+  .rl-scene { font-size: 0.9375rem; line-height: 1.8; color: var(--mv-text);
+    background: var(--mv-surface-2); border-left: 3px solid #CECBF6; border-radius: 0 var(--mv-radius-sm) var(--mv-radius-sm) 0;
+    padding: 0.75rem 1rem; margin: 0 0 0.75rem; }
+  .rl-scene b { font-weight: 500; color: var(--mv-accent); }
+  details.rl-d { border-top: 1px dashed var(--mv-border); padding-top: 0.625rem; }
+  details.rl-d summary { cursor: pointer; font-size: 0.875rem; color: var(--mv-accent);
     list-style: none; user-select: none; }
   details.rl-d summary::-webkit-details-marker { display: none; }
   details.rl-d summary::before { content: '▸ '; }
   details.rl-d[open] summary::before { content: '▾ '; }
-  .rl-act { font-size: 14px; line-height: 1.7; margin: 8px 0 0; color: #2C2C2A; }
-  .rl-sum { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
-  .rl-sum div { border: 1px solid rgba(0,0,0,.1); border-radius: 10px; padding: 8px 12px; background: #fff; }
-  .rl-sum small { display: block; color: #5F5E5A; font-size: 11px; }
-  .rl-sum strong { font-size: 17px; font-weight: 500; }
+  .rl-act { font-size: 0.9375rem; line-height: 1.8; margin: 0.5rem 0 0; color: var(--mv-text); }
+  .rl-sum { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1.25rem 0 0.5rem; }
+  .rl-sum div { border: 1px solid var(--mv-border); border-radius: var(--mv-radius-sm); padding: 0.625rem 1rem; background: var(--mv-surface); }
+  .rl-sum small { display: block; color: var(--mv-muted); font-size: 0.8125rem; }
+  .rl-sum strong { font-size: 1.25rem; font-weight: 500; }
 </style>
 </head>
 <body class="mv-page">
@@ -42,7 +42,7 @@
       <a class="mv-btn" href="brain.html" style="text-decoration:none">我的宫殿</a>
     </div>
   </div>
-  <p class="mv-sub" style="margin-bottom:4px">
+  <p class="mv-sub" style="margin-bottom:0.5rem">
     这里不是摘抄。每条只问一件事：<b>遇到这个情境，你做什么。</b>
     先自己想一遍再展开——展开的是标准动作，不是标准答案。
   </p>
@@ -89,7 +89,7 @@
     Object.keys(tags).map(function (k) {
       return '<div><small>' + k + '</small><strong>' + tags[k] + '</strong></div>';
     }).join('') +
-    '<div><small>全部</small><strong style="font-size:13px;color:#993C1D">未接入派单</strong></div>';
+    '<div><small>全部</small><strong style="font-size:0.9375rem;color:#993C1D">未接入派单</strong></div>';
 
   // 从派单跳进来时高亮对应那条
   if (location.hash) {
