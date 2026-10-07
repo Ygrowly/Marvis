@@ -29,7 +29,8 @@ aliases: [MAP, 正本登记表, 主题地图]
 |---|---|---|
 | 模块簇 ×13 | 每簇 = 模块卡 1 + 母题卡 3–19（合计 87）+ 地基包 1（2026-10-04 全齐） | 模块卡 `wiki/topics/{模块}/`（认 frontmatter `type: study-module` + `module:`，早期三张名带「深挖」不必改）；地基包 `wiki/cards/地基-{模块名}.md` |
 | 算法簇 ×1 | 排班正本 + 母题组 12 + 母题池（无标准模块卡，刻意不套模板） | `wiki/topics/算法/00-算法母题索引.md` |
-| 读厚卡簇 ×2 书 | 原则卡 18 张（被讨厌的勇气 6 + 精确努力 12 = 目标篇 6 + 策略篇 6，2026-10-07 增） | `wiki/cards/原则-{书名}.md`；视图与派单见第三节 cards 行 |
+| 读厚卡簇 ×4 书 | 原则卡 29 张（被讨厌的勇气 6 + 精确努力 12 + 心态制胜 6 + 儒释道 5，2026-10-07 第3期增两本：身心域点亮） | `wiki/cards/原则-{书名}.md`；视图与派单见第三节 cards 行 |
+| life 流水簇 | 一周一文件（`life/YYYY-Www.md`，2026-W41 开张）+ 模板 `templates/life-week-template.md` | 人生记录本 + 错题/错话进料口（每周巡检 AI 提取成卡候选，产出归 thinking/interview 正本）；不进画像版图，进「新到架」；满季度移 archive |
 | 一页通族 ×13 | 每模块一张总览页 + 素材 md（素材是派生物，改动回模块卡 / 母题卡） | 成品 `site/onepage/{模块}-一页通.html`；素材 `output/{模块}-一页通-素材.md` |
 | 一页答族 ×1 | 复杂问题的单页可视化回答（answer-me-with-html 管线，2026-10-04 起） | 稿件 `output/answers/*.md`，成品上站 `site/onepage/`；约定见 [[CLAUDE]]〈回答形态〉，索引 `output/answers/README.md` |
 | 复盘族 ×2 | 面试复盘报告（六段结构） | `wiki/interview/*复盘*.md` |

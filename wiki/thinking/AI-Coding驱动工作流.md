@@ -6,6 +6,7 @@ status: candidate
 human_reviewed: false
 trigger: 2026-09-14 复盘自己的 AI Coding 三步法；JD 横向总览 CORE-28 与能力地图 F10 均把它列为硬要求
 aliases: [AI Coding, 驱动 AI 工作流, AI Coding 最佳实践]
+domain: 学识
 ---
 
 # AI Coding 驱动工作流

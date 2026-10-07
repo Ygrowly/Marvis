@@ -2552,7 +2552,7 @@ def write_cards(modules):
 # insight.js：域 × 状态分布（画像页/今日页「内化速览」用；内化度五档的运行时信号
 # 在 localStorage，由页面端聚合，build 只供静态盘面）。
 # recent.js：新到架——近 14 天 created/updated 的正本与阅读流水，保证"落盘即上站"。
-INSIGHT_ROOTS = ["wiki/cards", "wiki/topics", "wiki/thinking", "wiki/interview", "reading"]
+INSIGHT_ROOTS = ["wiki/cards", "wiki/topics", "wiki/thinking", "wiki/interview", "reading", "life"]
 RECENT_DAYS = 14
 RECENT_CAP = 24
 
@@ -2579,7 +2579,7 @@ def write_insight():
             if domain:
                 d = domains.setdefault(domain, {"name": domain, "files": []})
                 d["files"].append({"title": title, "path": rel, "kind": kind, "status": status})
-            if kind in ("topic", "study-module", "brain-cards") or rel.startswith("reading/"):
+            if kind in ("topic", "study-module", "brain-cards") or rel.startswith(("reading/", "life/")):
                 for key in ("updated", "created"):
                     raw = (meta.get(key) or "").strip()
                     if raw:
@@ -2591,6 +2591,30 @@ def write_insight():
                             recent.append({"date": raw[:10], "title": title,
                                            "path": rel, "status": status})
                         break
+    # 断舍离候选（PLAN v2 治理律 3）：candidate/未标注 且 30 天未触碰 → 今日页出抽屉，
+    # 三选一（验收 / 归档 archive/ / 删）的动作在 Obsidian 里做，页面只列不写回。
+    STALE_DAYS = 30
+    stale = []
+    for root in INSIGHT_ROOTS:
+        for path in sorted((ROOT / root).rglob("*.md")):
+            meta, body = split_front(path.read_text(encoding="utf-8"))
+            status = (meta.get("status") or "").strip()
+            if status in ("integrated", "active"):
+                continue
+            raw = (meta.get("updated") or meta.get("created") or "").strip()
+            if not raw:
+                continue
+            try:
+                age = (today - datetime.date.fromisoformat(raw[:10])).days
+            except ValueError:
+                continue
+            if age > STALE_DAYS:
+                stale.append({"title": _front_title(body) or path.stem,
+                              "path": path.relative_to(ROOT).as_posix(),
+                              "status": status or "未标注", "days": age})
+    stale.sort(key=lambda x: -x["days"])
+    stale = stale[:15]
+
     out_domains = []
     for name in sorted(domains):
         d = domains[name]
@@ -2603,15 +2627,15 @@ def write_insight():
     recent = recent[:RECENT_CAP]
     (OUT_DATA / "insight.js").write_text(
         "window.MARVIS_INSIGHT = " + json.dumps({"generated": today.isoformat(),
-                                                 "domains": out_domains},
+                                                 "domains": out_domains, "stale": stale},
                                                 ensure_ascii=False) + ";\n",
         encoding="utf-8")
     (OUT_DATA / "recent.js").write_text(
         "window.MARVIS_RECENT = " + json.dumps(recent, ensure_ascii=False) + ";\n",
         encoding="utf-8")
     n_files = sum(len(d["files"]) for d in out_domains)
-    print("内化速览：%d 域 %d 正本 → insight.js；新到架 %d 条（近 %d 天）→ recent.js"
-          % (len(out_domains), n_files, len(recent), RECENT_DAYS))
+    print("内化速览：%d 域 %d 正本 → insight.js；新到架 %d 条（近 %d 天）→ recent.js；断舍离候选 %d 条"
+          % (len(out_domains), n_files, len(recent), RECENT_DAYS, len(stale)))
 
 
 # ── 问题台账（questions.md → _data/ledger.js，进度页「问题台账」抽屉用）────────────
