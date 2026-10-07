@@ -40,14 +40,17 @@ else:
 
 # 反向对照：用旧写法（直接排 Path 对象）在本机上跑一遍，把「这写法随平台变」
 # 这件事本身打印出来——下一个人再看到 psort 的注释时，能立刻对上号。
+#
+# 注意：这行只打印，不作断言。它的值随平台变化正是要展示的现象本身
+# （Windows 打 Linux 在前，Linux runner 打 LLM 在前）。早先误把它写成
+# 「必须与 psort 反序」的断言，结果 Linux 上自己把自己判红——那条断言
+# 等于断言「这台机器必须是 Windows」，与本测试要验的东西无关。
 _win = [p.name for p in sorted([pathlib.Path("Linux与部署-模块卡.md"),
                                  pathlib.Path("LLM与上下文-模块卡.md")])]
-print("     （对照）旧写法 sorted(Path) 在本机给的是 %s"
-      % " / ".join(x[:4] for x in _win))
-if _win != got_names:
-    print("     → 确实相反：Linux 排在 LLM 前，这就是 CI 与本地产物不一致的来源")
-else:
-    fails.append("旧写法在本机竟与 psort 同序，说明标尺没选中大小写那一对")
+print("     （对照）旧写法 sorted(Path) 在本机给的是 %s，%s"
+      % (" / ".join(x[:4] for x in _win),
+         "Windows 大小写不敏感，与 psort 反序" if _win != got_names
+         else "POSIX 码点序，与 psort 同序"))
 
 # ---- ② build.py 里所有遍历点都必须走 psort --------------------------------
 # 只管「glob/rglob 结果」这一种形状——排序对象是 Path，平台相关。
