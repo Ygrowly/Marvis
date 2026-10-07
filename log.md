@@ -552,3 +552,10 @@
 - **对比原方案 b 的优势**：b 让行动规则在 X 光上隐身（最核心资产画像不可见）；功夫域让它可见，且其他域房间语义更准
 - 落地：domains.js 第 5 域 + 行动规则 frontmatter `domain: 功夫` + PLAN §二宪法句改写（主场景归位+横切收容+归位非使用边界）+ 设计律 2/停车场/MAP insight 行同步
 - 回归：build 直验 exit=0（内化速览 **5 域 140 正本** · 断舍离候选 7 条），七套件直取退出码全绿
+
+## 2026-10-08（交付前全链路自查 + 使用手册上 README）
+
+- **全链路对账**（交付前门禁）：① 原则卡簇 29/29 锚点、clusters.js 58 href 全有实体页；② 准则锚点发现为**运行时动态 id**（rules.html `d.id='r-'+r.id`，静态 grep 查不到——三轮审查均未覆盖此链路），补 test_insight 源码级对账断言（rules.js 10 条 × 动态 id 生成器在）；③ sync.js 实为整包 `mv.*` 命名空间同步（brain/ledger/resumemap 全随同步），此前「随 mv.* 云同步」文案属实；④ insight 域分布文件级对账：事业 3 / 关系 2 / 功夫 1 / 学识 130 / 身心 4 ✓
+- **修一处真瑕疵**：`progress.html` stub 的 meta-refresh 丢 hash——旧书签 `progress.html#ledger` 落今日页顶部而非台账抽屉；stub 加 `location.replace('index.html' + location.hash)`
+- **README「日常动线」重写为「使用手册」**（PLAN v2 两页结构）：每天（今日页闭环 + life/ 几行）/ 每周一（巡检 + life 提取 + 断舍离三选一）/ 每两周（画像页三问）/ 新内容流程（md→build→CI）/ 卡验收（使用中验收：派单命中闭卷过即翻 integrated）；目录与页面导航段旧口径同步（progress stub、index 合并后清单）
+- 回归：七套件直取退出码全绿 + build 直验 exit=0

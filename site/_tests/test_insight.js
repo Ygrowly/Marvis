@@ -85,5 +85,12 @@ const titledTop = (cardsHtml.match(/href="rules\.html" title="行事准则总览
    cards.html 只渲染卡五段+关联区——关联区 36 条全带 R 系别名） */
 ok(true, '无别名规则书回退逻辑就绪（当前零实例，防未来静默死文本）');
 
+/* 准则锚点链路（源码级对账）：派单 href=rules.html#r-RX → rules.html 运行时生成 id='r-'+r.id。
+   静态 grep 查不到动态 id，此断言看护生成器与数据两侧。 */
+const rulesHtmlSrc = srcOf('rules.html');
+const rulesJsIds = (srcOf('_data/rules.js').match(/id:\s*'R\d+'/g) || []).map(x => x.replace(/[^R0-9]/g, ''));
+ok(rulesJsIds.length >= 10 && /d\.id\s*=\s*'r-'\s*\+\s*r\.id/.test(rulesHtmlSrc),
+   '准则锚点链路通：rules.js ' + rulesJsIds.length + ' 条 × rules.html 动态 id 生成器在');
+
 if (fails) { console.log('❌ ' + fails + ' 项对账失败'); process.exit(1); }
 console.log('✅ 内化聚合对账全通过（含五档行为模拟）');
