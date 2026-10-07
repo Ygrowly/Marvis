@@ -26,6 +26,7 @@ jobs:
           if [ -n "$(git status --porcelain site/)" ]; then
             echo "::error::site/ 与 md 正本不同步——本地跑 python site/build.py 后再提交"
             git status --porcelain site/
+            git diff -- site/ | head -60 || true
             exit 1
           fi
 
