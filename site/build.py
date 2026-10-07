@@ -188,6 +188,26 @@ def to_pairs(items):
 
 # ---------------------------------------------------------------- md → html（轻量）
 
+def psort(paths):
+    """把 Path 序列排成**跨平台确定**的顺序（2026-10-07 修 CI rebuild 断言）。
+
+    坑：`sorted(rglob(...))` 直接排 Path 对象时，pathlib 内部按 `_str_normcase`
+    比较——Windows 上是「全小写化后比较」（大小写不敏感），POSIX 上是「原样比较」
+    （大小写敏感、Unicode 码点序）。于是同一份源码：
+
+        Windows：Linux与部署 → LLM与上下文   （linux < llm）
+        Linux  ：LLM与上下文 → Linux与部署   （'L'76 < 'l'108）
+
+    发现模块的遍历顺序决定 `modules` / `topics` 列表顺序 → 直接写进 modules.js、
+    breaks.js、cards.js 的数组顺序 → CI rebuild 产物与提交进仓库的产物不一致，
+    check-build 的「落盘即上站」断言红，而本地怎么重跑都复现不了。
+
+    修法：排序键显式走字符串（`as_posix()`），两边都是原始码点序。
+    不要改回「排 Path 对象」——那等于把 bug 放回去。
+    """
+    return sorted(paths, key=lambda p: p.as_posix())
+
+
 def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -275,7 +295,7 @@ def warm_mermaid():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             try:
                 codes += _mmd.blocks_of(p.read_text(encoding="utf-8"))
             except Exception:                            # noqa: BLE001
@@ -375,7 +395,7 @@ def inject_mermaid_runtime():
     for d in [SITE, OUT_TOPICS, OUT_MODULES, OUT_PROJECTS]:
         if not d.exists():
             continue
-        for p in sorted(d.glob("*.html")):
+        for p in psort(d.glob("*.html")):
             try:
                 s = p.read_text(encoding="utf-8")
             except Exception:                            # noqa: BLE001
@@ -1340,7 +1360,7 @@ def parse_module_card(path):
 
     # 同目录下的母题卡（内容来源）
     cards = {}
-    for p in sorted(path.parent.glob("母题-*.md")):
+    for p in psort(path.parent.glob("母题-*.md")):
         mm = re.match(r"母题-([A-Za-z]?\d+)", p.stem)
         if mm:
             cards[mm.group(1)] = p
@@ -1639,7 +1659,7 @@ def index_topic_cards():
     题单里会引用别的模块的母题（Redis Q19 → [[母题-L3-分布式锁与fencing-token]]），
     模块内查不到就查全局。全库母题 id 无重名（审查已确认），所以这张表是安全的。
     """
-    for p in sorted((ROOT / "wiki" / "topics").glob("*/母题-*.md")):
+    for p in psort((ROOT / "wiki" / "topics").glob("*/母题-*.md")):
         m = re.match(r"母题-([A-Za-z]?\d+)", p.stem)
         if m:
             TOPIC_CARD_BY_ID.setdefault(m.group(1).upper(), p)
@@ -2113,7 +2133,7 @@ def prune_dir(d, expected):
     if not d.exists():
         return []
     gone = []
-    for p in d.glob("*.html"):
+    for p in psort(d.glob("*.html")):
         if p.name not in expected:
             p.unlink()
             gone.append(p.name)
@@ -2127,7 +2147,7 @@ def cleanup_html():
     页面——它的 data-* 是它自己的运行时状态，扫过去改掉会静默改坏交互图。
     """
     n = 0
-    for p in SITE.rglob("*.html"):
+    for p in psort(SITE.rglob("*.html")):
         if p.parent.name in ("interactive", "onepage"):
             # interactive/ = archify 外部产物；onepage/ = 一页族成品（一页通/一页答，离线工具产出）
             continue
@@ -2515,7 +2535,7 @@ def write_cards(modules):
             line_href[(md["module"], CN_INDEX.get(_cn_line(ln["no"]), 0))] = module_line_page(md, ln["no"])
 
     principles, grounds, seen = [], [], set()
-    for p in sorted(CARDS_DIR.glob("*.md")):
+    for p in psort(CARDS_DIR.glob("*.md")):
         f = parse_brain_cards_file(p)
         if not f:
             continue
@@ -2572,7 +2592,7 @@ def write_insight():
     domains, recent = {}, []
     stale = []
     for root in INSIGHT_ROOTS:
-        for path in sorted((ROOT / root).rglob("*.md")):
+        for path in psort((ROOT / root).rglob("*.md")):
             if path.name.startswith("README"):
                 continue
             meta, body = split_front(path.read_text(encoding="utf-8"))
@@ -2724,7 +2744,7 @@ def main():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             head = p.read_text(encoding="utf-8")[:600]
             if "type: study-module" not in head:
                 continue
@@ -2738,7 +2758,7 @@ def main():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             if p.name.startswith("00-") or "母题池" in p.name or "母题组" in p.name:
                 continue
             t = parse_topic(p)
@@ -2755,7 +2775,7 @@ def main():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             if OUT_DATA in p.parents:
                 continue
             for c in parse_cards(p):
@@ -2775,7 +2795,7 @@ def main():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             rv = parse_review(p)
             if not rv or rv["stem"] in seen_r:
                 continue
@@ -2793,7 +2813,7 @@ def main():
         base = ROOT / d
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*.md")):
+        for p in psort(base.rglob("*.md")):
             md = parse_module_card(p)
             if not md or md["module"] in seen_m:
                 continue

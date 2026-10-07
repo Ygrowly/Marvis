@@ -36,3 +36,9 @@ jobs:
             node "site/_tests/$t.js"
           done
           python site/_tests/test_ledger.py
+
+      # 可复现性回归：这台runner 是 Linux，本地是 Windows，两边都跑才算数。
+      # 排Path 对象的大小写敏感性差异只在这类跨平台检查里才暴露得出来
+      # （2026-10-07 修的就是它：本地重跑多少次都对，只有 CI 红）。
+      - name: Build determinism（跨平台键序确定）
+        run: python site/_tests/test_determinism.py
